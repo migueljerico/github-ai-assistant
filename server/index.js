@@ -21,7 +21,7 @@ const {
   GITHUB_CLIENT_ID,
   GITHUB_CLIENT_SECRET,
   SESSION_SECRET = 'dev-secret-change-in-production',
-  FRONTEND_URL = 'https://github-ai-assistant-748914382449.europe-southwest1.run.app/',
+  FRONTEND_URL = 'https://github-ai-assistant-748914382449.us-central1.run.app/',
 } = process.env;
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
