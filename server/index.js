@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import session from 'express-session';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -44,6 +45,59 @@ app.use(session({
 // ─── Health Check (required for Cloud Run) ────────────────────────────────────
 app.get('/health', (_req, res) => {
   res.status(200).json({ status: 'ok' });
+});
+
+// ─── Gemini API Proxy ─────────────────────────────────────────────────────────
+// The Gemini API blocks direct browser requests from EU regions (EEA).
+// This proxy routes Gemini calls through the server, which is deployed in
+// us-central1 (Cloud Run) where the API is fully accessible.
+//
+// The user's API key travels in the HTTPS request body and is used only for
+// the duration of this call — it is never stored, logged, or cached.
+//
+// Request body: { apiKey, model, messages: [{role, content}], systemPrompt }
+// Response:     { text }
+//
+// Groq calls are NOT proxied — they go directly from the browser (no EU block).
+app.post('/api/gemini', async (req, res) => {
+  const { apiKey, model, messages, systemPrompt } = req.body;
+
+  if (!apiKey || !model || !Array.isArray(messages) || !systemPrompt) {
+    return res.status(400).json({
+      error: 'Faltan campos requeridos: apiKey, model, messages, systemPrompt',
+    });
+  }
+
+  try {
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const gemModel = genAI.getGenerativeModel({
+      model,
+      systemInstruction: systemPrompt,
+    });
+
+    // Translate from internal Message format → Gemini SDK format.
+    // All messages except the last form the chat history.
+    // Internal role 'assistant' maps to Gemini role 'model'.
+    const history = messages.slice(0, -1).map(m => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    }));
+
+    const chat = gemModel.startChat({ history });
+    const lastMessage = messages[messages.length - 1];
+    const result = await chat.sendMessage(lastMessage.content);
+    const text = result.response.text();
+
+    res.json({ text });
+  } catch (err) {
+    console.error('Gemini proxy error:', err);
+    // Surface the HTTP status from the Gemini SDK error when available
+    const status = err?.status ?? err?.httpErrorCode ?? 500;
+    const safeStatus = (status >= 400 && status < 600) ? status : 500;
+    res.status(safeStatus).json({
+      error: err?.message || 'Error al contactar con la API de Gemini',
+    });
+  }
 });
 
 // ─── GitHub OAuth ─────────────────────────────────────────────────────────────
@@ -139,5 +193,7 @@ app.listen(PORT, () => {
   console.log(`   Server:  http://localhost:${PORT}`);
   console.log(`   Health:  http://localhost:${PORT}/health`);
   console.log(`   OAuth:   http://localhost:${PORT}/auth/github`);
-  console.log(`\n   ℹ️  AI calls go directly from the browser (user's own API key)\n`);
+  console.log(`   Proxy:   POST http://localhost:${PORT}/api/gemini`);
+  console.log(`\n   ℹ️  Groq  → llamadas directas desde el navegador`);
+  console.log(`   ℹ️  Gemini → proxiado via /api/gemini (elude bloqueo EU)\n`);
 });
