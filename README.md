@@ -1,6 +1,3 @@
-
-Original file line number	Diff line number	Diff line change
-@@ -1,33 +1,54 @@
 # github-ai-assistant
 Este proyecto es un asistente de GitHub que utiliza inteligencia artificial para ayudar a los usuarios a gestionar sus repositorios.
 ## Características
