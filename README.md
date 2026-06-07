@@ -40,7 +40,7 @@ El repositorio github-ai-assistant está licenciado bajo la licencia MIT. Puedes
 Queremos agradecer a todos los contribuyentes y colaboradores que han hecho posible este proyecto. Sin su ayuda y apoyo, no hubiera sido posible crear una herramienta tan poderosa y personalizable.
 
 ## Enlace a la web actual
-Puedes acceder a la web actual del proyecto en [https://github-ai-assistant-748914382449.europe-southwest1.run.app/]([https://github-ai-assistant-748914382449.europe-southwest1.run.app/))
+Puedes acceder a la web actual del proyecto en [https://github-ai-assistant-748914382449.europe-southwest1.run.app/]([https://github-ai-assistant-748914382449.europe-southwest1.run.app/]
 
 ## Licencia MIT
 
