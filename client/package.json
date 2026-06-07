@@ -10,7 +10,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.21.0",
     "diff": "^5.2.0",
     "diff2html": "^3.4.47",
     "react": "^18.3.1",
