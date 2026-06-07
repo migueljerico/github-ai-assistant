@@ -18,7 +18,7 @@
 
 ## 🔗 Acceso a la Aplicación
 
-[![Ver App en Producción](https://img.shields.io/badge/🚀_Ver_App-Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)](https://github-ai-assistant-748914382449.europe-southwest1.run.app/)
+[![Ver App en Producción](https://img.shields.io/badge/🚀_Ver_App-Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)](https://github-ai-assistant-748914382449.us-central1.run.app/)
 
 > Conecta tu cuenta de GitHub (OAuth) y tu proveedor de IA preferido para empezar.  
 > Tus claves **nunca salen de tu navegador** — no se almacenan en ningún servidor.
