@@ -25,7 +25,7 @@ Para utilizar el repositorio github-ai-assistant, sigue los siguientes pasos:
 1. Clona el repositorio utilizando el comando `git clone https://github.com/github-ai-assistant/github-ai-assistant.git`
 2. Instala las dependencias necesarias utilizando el comando `npm install`
 3. Inicia el servidor utilizando el comando `npm start`
-4. Accede a la interfaz de usuario en [http://localhost:3000](http://localhost:3000)
+4. Accede a la interfaz de usuario en [https://github-ai-assistant.github.io](https://github-ai-assistant.github.io)
 
 ## Contribución
 Si deseas contribuir al repositorio github-ai-assistant, sigue los siguientes pasos:
@@ -40,4 +40,4 @@ El repositorio github-ai-assistant está licenciado bajo la licencia MIT. Puedes
 Queremos agradecer a todos los contribuyentes y colaboradores que han hecho posible este proyecto. Sin su ayuda y apoyo, no hubiera sido posible crear una herramienta tan poderosa y personalizable.
 
 ## Enlace a la web actual
-Puedes acceder a la web actual del proyecto en [http://github-ai-assistant.com]([http://github-ai-assistant.com](https://github-ai-assistant-748914382449.europe-southwest1.run.app/))
+Puedes acceder a la web actual del proyecto en [https://github-ai-assistant.github.io](https://github-ai-assistant.github.io)
