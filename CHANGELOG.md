@@ -5,6 +5,40 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.1.0] — 2026-06-08
+
+### Gemini API proxy — solución al bloqueo europeo (EEA)
+
+La API de Gemini bloquea las peticiones directas desde navegadores en la región europea (EEA). Esta versión añade un proxy server-side que enruta las llamadas a Gemini a través del servidor Express, desplegado en `us-central1` (Cloud Run), donde la API es plenamente accesible.
+
+### Added
+
+- **`POST /api/gemini`** en `server/index.js` — proxy que recibe `{ apiKey, model, messages, systemPrompt }` del frontend, reconstruye el historial de conversación multi-turno con el SDK de Gemini, y devuelve `{ text }`. La API key viaja en el body HTTPS y no se almacena.
+- **`@google/generative-ai`** añadido a las dependencias del servidor (`package.json` raíz).
+
+### Changed
+
+- **`callGeminiDirect()`** en `gemini.ts` — ahora llama a `POST /api/gemini` en lugar de usar el SDK directamente desde el navegador. La estructura de mensajes multi-turno y el system prompt se preservan íntegramente.
+- **`@google/generative-ai`** eliminado de las dependencias del cliente (`client/package.json`) — el SDK ahora reside solo en el servidor.
+- Log de arranque del servidor actualizado para reflejar el nuevo endpoint proxy.
+
+### Architecture note
+
+> Groq no se ve afectado — sus llamadas siguen siendo directas desde el navegador sin restricción geográfica. El proxy solo aplica a Gemini.
+
+---
+
+## [2.0.1] — 2026-06-07
+
+### Security fixes
+
+### Fixed
+
+- **OAuth state verification** (`server/index.js`) — el parámetro `state` ahora se genera, almacena en sesión y verifica en el callback para prevenir ataques CSRF en el flujo OAuth.
+- **SESSION_SECRET obligatorio en producción** — el servidor llama a `process.exit(1)` si `SESSION_SECRET` no está definido en entorno de producción, previniendo despliegues con secret débil por omisión.
+
+---
+
 ## [2.0.0] — 2026-06-07
 
 ### Migración: Google AI Studio → Aplicación full-stack React + Express
@@ -28,44 +62,3 @@ La versión 2.0 es una reescritura completa que transforma el script original de
 - **Límite de 80 archivos** y exclusión de binarios en el modo de documentación de repos
 - **Resolución de placeholders en endpoints** — el executor sustituye `{username}`, `{owner}`, `{repo}` automáticamente
 - **Formateador inteligente de resultados** — muestra repos, archivos y datos de la API en formato legible (no JSON crudo)
-
-### Changed
-
-- **Clave de IA en el cliente** — `GEMINI_API_KEY` eliminada del servidor; cada usuario conecta su propia clave en el navegador vía `sessionStorage`
-- **Arquitectura de llamadas a IA** — de proxy en el servidor a llamadas directas del navegador al proveedor de IA
-- **System prompt mejorado** — instrucciones explícitas de endpoints correctos (ej: `/user/repos` en vez de `/users/{username}/repos`)
-- **Dependencias del servidor** — eliminadas `@google/generative-ai` y `node-fetch` del servidor; solo quedan `cors`, `express`, `express-session`
-
-### Security
-
-- La clave de IA del usuario **nunca llega al servidor Express**
-- El token OAuth de GitHub se almacena en `sessionStorage` (se elimina al cerrar la pestaña)
-- El servidor no almacena ningún dato del usuario
-- `sessionStorage` preferido sobre `localStorage` para reducir ventana de exposición
-
-### Fixed
-
-- Error `GEMINI_API_KEY not configured on server` — eliminada la dependencia de clave en servidor
-- Error `404 Not Found` en `GET /users/{username}/repos` — corregido a `GET /user/repos` con resolución de placeholders
-- Error `500` genérico del proxy de IA — reemplazado con mensajes de error específicos en español
-- Respuesta JSON cruda de la API de GitHub — reemplazada con formateador legible por humanos
-
----
-
-## [1.0.0] — 2026 (versión original)
-
-### Initial Release
-
-- Despliegue inicial en Google AI Studio
-- Operaciones básicas en lenguaje natural → GitHub REST API
-- Autenticación solo con PAT (Personal Access Token)
-- Proxy de Gemini API en el servidor con `GEMINI_API_KEY` en `.env`
-- Sin interfaz gráfica de confirmación (ejecución directa)
-- Sin historial de sesión
-- Sin soporte multi-repo
-
----
-
-<p align="center">
-  Desarrollado con ❤️ por <a href="https://github.com/migueljerico">@migueljerico</a> · 2026
-</p>
