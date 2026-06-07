@@ -45,12 +45,18 @@ app.get('/auth/github', (req, res) => {
   if (!GITHUB_CLIENT_ID) {
     return res.status(500).json({ error: 'GITHUB_CLIENT_ID not configured' });
   }
+
+  // BALA DE PLATA: Si el host contiene 'run.app', forzamos el https sí o sí
+  const host = req.get('host') || '';
+  const baseUrl = host.includes('run.app') ? `https://${host}` : `${req.protocol}://${host}`;
+
   const params = new URLSearchParams({
     client_id: GITHUB_CLIENT_ID,
-    redirect_uri: `${req.protocol}://${req.get('host')}/auth/callback`,
+    redirect_uri: `${baseUrl}/auth/callback`,
     scope: 'repo user read:org',
     state: Math.random().toString(36).substring(2),
   });
+  
   res.redirect(`https://github.com/login/oauth/authorize?${params}`);
 });
 
