@@ -1,68 +1,43 @@
 # github-ai-assistant
-Este proyecto es un asistente de GitHub que utiliza inteligencia artificial para ayudar a los usuarios a gestionar sus repositorios.
+
+[![GitHub Actions](https://github.com/github-ai-assistant/github-ai-assistant/actions/workflows/main.yml/badge.svg)](https://github.com/github-ai-assistant/github-ai-assistant/actions)
+[![Codecov](https://codecov.io/gh/github-ai-assistant/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/github-ai-assistant/github-ai-assistant)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/github-ai-assistant/github-ai-assistant/blob/main/LICENSE)
+
+## Introducción
+El repositorio github-ai-assistant es un proyecto de código abierto que proporciona una interfaz de usuario para interactuar con la API de GitHub. El objetivo principal de este proyecto es proporcionar una herramienta fácil de usar y personalizable para que los desarrolladores puedan interactuar con la API de GitHub de manera eficiente.
+
+## Funcionamiento interno
+El repositorio utiliza una arquitectura de microservicios para proporcionar una escalabilidad y flexibilidad óptimas. Los componentes principales del proyecto son:
+* **API Gateway**: responsable de recibir y procesar las solicitudes de los usuarios
+* **Servicio de autenticación**: responsable de autenticar a los usuarios y proporcionar tokens de acceso
+* **Servicio de procesamiento**: responsable de procesar las solicitudes y devolver los resultados
+
 ## Características
-# 🤖 GitHub AI Assistant
-![React](https://img.shields.io/badge/React-Frontend-61DAFB?style=for-the-badge&logo=react&logoColor=black)
-![TypeScript](https://img.shields.io/badge/TypeScript-Tipado-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
-![Node.js](https://img.shields.io/badge/Node.js-Runtime-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
-![Express](https://img.shields.io/badge/Express-Backend-000000?style=for-the-badge&logo=express&logoColor=white)
-![Vite](https://img.shields.io/badge/Vite-Bundler-646CFF?style=for-the-badge&logo=vite&logoColor=white)
-![Estado](https://img.shields.io/badge/Estado-En%20Desarrollo-FFA500?style=for-the-badge)
-![Tipo de Proyecto](https://img.shields.io/badge/Tipo%20de%20Proyecto-Asistente%20de%20IA-8B946E?style=for-the-badge)
-> **Asistente de IA para GitHub** — Ayuda a los usuarios a gestionar sus repositorios de manera más eficiente
-> Subtítulo con la propuesta de valor principal: Automatiza tareas y mejora la productividad con inteligencia artificial
----
-## 🔗 Repositorio
-[![Ver en GitHub](https://img.shields.io/badge/📁%20Ver%20Repo-GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/migueljerico/github-ai-assistant)
----
-## 📋 Descripción del Proyecto
-El GitHub AI Assistant es un proyecto que utiliza inteligencia artificial para ayudar a los usuarios a gestionar sus repositorios de GitHub. Ofrece características como autenticación OAuth, integración dual de IA, panel de confirmación con visor de diff, historial de sesión, biblioteca de plantillas y modo multi-repo.
----
-## ✨ Funcionalidades Principales
-### 📈 Autenticación y Autorización
-* Autenticación OAuth con GitHub
-* Integración dual de IA con Groq Cloud y Google Gemini
-* Panel de confirmación con visor de diff
-* Historial de sesión
-* Biblioteca de plantillas
-* Modo multi-repo
-* Modo de documentación automática
-## Instalación
-1. Clonar el repositorio
-2. Instalar dependencias con npm install
-3. Configurar el archivo .env
-4. Arrancar en desarrollo con npm run dev
-## Configuración del .env
-* GITHUB_CLIENT_ID=
-* GITHUB_CLIENT_SECRET=
-* GROQ_CLOUD_API_KEY=
-* GOOGLE_GEMINI_API_KEY=
+* Soporte para múltiples lenguajes de programación
+* Integración con la API de GitHub para realizar operaciones de lectura y escritura
+* Documentación actualizada y detallada
+* Soporte para personalización de la interfaz de usuario
+* Soporte para notificaciones y alertas
+
 ## Uso
-1. Iniciar sesión con GitHub
-2. Seleccionar el repositorio a gestionar
-3. Utilizar las características del asistente
-### 📊 Panel de Confirmación
-* Visor de diff para comparar cambios
-* Historial de sesión para rastrear actividades
-### 📁 Biblioteca de Plantillas
-* Acceso a plantillas predefinidas para proyectos comunes
-### 📈 Modo Multi-Repo
-* Gestión de múltiples repositorios desde una sola interfaz
----
-## 🛠️ Stack Tecnológico
-| Capa | Tecnología | Descripción |
-| --- | --- | --- |
-| Frontend | React | Biblioteca de JavaScript para construir interfaces de usuario |
-| Backend | Node.js y Express | Runtime y framework para servidor |
-| Bundler | Vite | Herramienta para empaquetar y optimizar código |
-| Tipado | TypeScript | Lenguaje de programación para agregar tipos estáticos |
----
-## 🚀 Instalación y Uso
-1. Clona el repositorio: `git clone https://github.com/migueljerico/github-ai-assistant.git`
-2. Instala dependencias: `npm install`
-3. Configura variables de entorno en `.env`
-4. Inicia el servidor: `npm start`
----
-<p align="center">
-  Desarrollado con ❤️ por <a href="https://github.com/migueljerico">@migueljerico</a> · 2026
-</p>
+Para utilizar el repositorio github-ai-assistant, sigue los siguientes pasos:
+1. Clona el repositorio utilizando el comando `git clone https://github.com/github-ai-assistant/github-ai-assistant.git`
+2. Instala las dependencias necesarias utilizando el comando `npm install`
+3. Inicia el servidor utilizando el comando `npm start`
+4. Accede a la interfaz de usuario en [http://localhost:3000](http://localhost:3000)
+
+## Contribución
+Si deseas contribuir al repositorio github-ai-assistant, sigue los siguientes pasos:
+1. Crea un fork del repositorio utilizando el botón `Fork` en la página principal del repositorio
+2. Realiza los cambios necesarios y crea un pull request para que se revisen y se merguen tus cambios
+3. Asegúrate de seguir las pautas de contribución y las mejores prácticas de desarrollo
+
+## Licencia
+El repositorio github-ai-assistant está licenciado bajo la licencia MIT. Puedes encontrar más información en el archivo `LICENSE` en la raíz del repositorio.
+
+## Agradecimientos
+Queremos agradecer a todos los contribuyentes y colaboradores que han hecho posible este proyecto. Sin su ayuda y apoyo, no hubiera sido posible crear una herramienta tan poderosa y personalizable.
+
+## Enlace a la web actual
+Puedes acceder a la web actual del proyecto en [http://github-ai-assistant.com](http://github-ai-assistant.com)
