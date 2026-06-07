@@ -7,6 +7,12 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// ── Fix #2: Fail loudly if SESSION_SECRET is missing in production ────────────
+if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
+  console.error('FATAL: SESSION_SECRET must be set in production. Exiting.');
+  process.exit(1);
+}
+
 const app = express();
 app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3001;
@@ -46,6 +52,12 @@ app.get('/auth/github', (req, res) => {
     return res.status(500).json({ error: 'GITHUB_CLIENT_ID not configured' });
   }
 
+  // Fix #1: Generate a random state, store it in the session, and send it to
+  // GitHub. The callback will verify it matches before exchanging the code.
+  // This prevents CSRF attacks on the OAuth flow.
+  const state = Math.random().toString(36).substring(2) + Date.now().toString(36);
+  req.session.oauthState = state;
+
   // BALA DE PLATA: Si el host contiene 'run.app', forzamos el https sí o sí
   const host = req.get('host') || '';
   const baseUrl = host.includes('run.app') ? `https://${host}` : `${req.protocol}://${host}`;
@@ -54,14 +66,25 @@ app.get('/auth/github', (req, res) => {
     client_id: GITHUB_CLIENT_ID,
     redirect_uri: `${baseUrl}/auth/callback`,
     scope: 'repo user read:org',
-    state: Math.random().toString(36).substring(2),
+    state,
   });
-  
+
   res.redirect(`https://github.com/login/oauth/authorize?${params}`);
 });
 
 app.get('/auth/callback', async (req, res) => {
-  const { code } = req.query;
+  const { code, state } = req.query;
+
+  // Fix #1: Verify the state matches what we stored in the session.
+  // Mismatch means the request was not initiated by this server (CSRF attempt).
+  const expectedState = req.session.oauthState;
+  delete req.session.oauthState; // consume it — single use only
+
+  if (!state || !expectedState || state !== expectedState) {
+    console.error('OAuth state mismatch — possible CSRF attempt');
+    return res.redirect(`${FRONTEND_URL}/#error=state_mismatch`);
+  }
+
   if (!code) {
     return res.redirect(`${FRONTEND_URL}/#error=no_code`);
   }
