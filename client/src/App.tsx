@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useAuth } from './context/AuthContext';
 import { useHistory } from './context/HistoryContext';
+import { useAIProvider } from './context/AIProviderContext';
 import { callAI, parseGeminiAction, generateRepoDocs } from './services/gemini';
 import { executeAction, executeActionMultiRepo } from './services/actionExecutor';
 import { getFileContents, decodeBase64, fetchRepoTreeRecursive, createOrUpdateFile } from './services/github';
@@ -155,6 +156,9 @@ function formatResultData(data: unknown): string {
 export default function App() {
   const { token, user, isAuthenticated } = useAuth();
   const { addEntry, updateEntry } = useHistory();
+  // Fix #12: read active AI provider to show correct name in status messages
+  const { provider } = useAIProvider();
+  const providerName = provider === 'groq' ? 'Groq Cloud' : 'Google Gemini';
 
   // Chat state
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -188,7 +192,7 @@ export default function App() {
     setMessages(prev => prev.map(m => m.id === id ? { ...m, ...update } : m));
   }, []);
 
-  // ── Send message to Gemini ─────────────────────────────────────────────────
+  // ── Send message to AI ─────────────────────────────────────────────────────
   const handleSend = useCallback(async () => {
     if (!inputValue.trim() || !token || !user) return;
 
@@ -208,7 +212,7 @@ export default function App() {
       const action = parseGeminiAction(rawResponse);
 
       if (!action) {
-        // Gemini returned non-JSON — treat as plain response
+        // AI returned non-JSON — treat as plain response
         updateMessage(loadingId, { content: rawResponse, isLoading: false });
         setConversationHistory([...newHistory, { role: 'assistant', content: rawResponse }]);
         return;
@@ -318,8 +322,9 @@ export default function App() {
     try {
       const { files, totalScanned, truncated } = await fetchRepoTreeRecursive(token, owner, repoName);
 
+      // Fix #12: show the active AI provider name instead of hardcoded "Gemini"
       updateMessage(loadingId, {
-        content: `📄 Analizando ${files.length} archivos de **${owner}/${repoName}**${truncated ? ` (de ${totalScanned} totales)` : ''}... Generando documentación con Gemini...`,
+        content: `📄 Analizando ${files.length} archivos de **${owner}/${repoName}**${truncated ? ` (de ${totalScanned} totales)` : ''}... Generando documentación con ${providerName}...`,
         isLoading: true,
       });
 
@@ -346,7 +351,7 @@ export default function App() {
     } finally {
       setIsChatLoading(false);
     }
-  }, [token, user, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [token, user, providerName, addMessage, updateMessage, addEntry, updateEntry]);
 
   // ── Commit docs ────────────────────────────────────────────────────────────
   const handleCommitDocs = useCallback(async () => {
