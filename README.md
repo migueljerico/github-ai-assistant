@@ -224,6 +224,21 @@ Ver [`MEJORAS_FUTURAS.md`](./MEJORAS_FUTURAS.md) para el análisis completo del 
 
 ---
 
+
+## 🔌 Otros proveedores de IA — Mejoras futuras
+
+La app soporta actualmente **Groq Cloud** y **Google Gemini**. Estas son las alternativas evaluadas para futuras iteraciones, priorizando opciones sin restricciones en la UE y con tier gratuito disponible:
+
+| Proveedor | Tier gratuito | Sin restricciones EU | Compatibilidad con el código | Destacado |
+|---|---|---|---|---|
+| **Mistral AI** | ✅ Sí (La Plateforme) | ✅ Empresa francesa | 🟢 Alta — API OpenAI-compatible | Primera opción recomendada para usuarios EU |
+| **Together AI** | ✅ $5 crédito inicial | ✅ | 🟢 Alta — API OpenAI-compatible | Modelos open source (Llama, Qwen, Mistral) |
+| **OpenAI GPT-4o-mini** | ⚠️ Solo crédito inicial | ✅ | 🟢 Alta — misma estructura que Groq | Estándar del sector, amplia documentación |
+| **Anthropic Claude API** | ❌ Solo de pago | ✅ | 🟡 Media — API propia | Mayor calidad de razonamiento y generación de código |
+| **Ollama (local)** | ✅ Gratuito total | ✅ No aplica | 🟡 Media — servidor local | Privacidad máxima, cero coste, sin internet |
+
+> **Mistral AI** es la alternativa más natural para este proyecto: empresa europea, GDPR by design, API compatible con el formato OpenAI (Groq usa el mismo formato), tier gratuito sin tarjeta de crédito y sin restricciones geográficas. Añadirla requeriría cambios mínimos en `gemini.ts`.
+
 ## 📚 Contexto formativo
 
 Este proyecto forma parte del programa de formación en **Análisis de Datos e Inteligencia Artificial** (INAEM, 2025–2026). El objetivo fue explorar el desarrollo de aplicaciones full-stack asistido por agentes de IA, desde la arquitectura hasta el despliegue en producción, integrando múltiples servicios de IA y APIs REST en un flujo de trabajo completamente agéntico.
