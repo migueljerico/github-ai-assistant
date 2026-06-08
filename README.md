@@ -113,7 +113,7 @@ git push -u origin main
 ```bash
 gcloud run deploy github-ai-assistant \
   --source . \
-  --region europe-southwest1 \
+  --region us-central1 \
   --allow-unauthenticated \
   --set-env-vars GITHUB_CLIENT_ID=...,GITHUB_CLIENT_SECRET=...,SESSION_SECRET=...
 ```
