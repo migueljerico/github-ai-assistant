@@ -19,32 +19,13 @@ import type { GeminiAction } from '../types';
 import type { AIProviderType } from '../context/AIProviderContext';
 
 // ── System prompt ─────────────────────────────────────────────────────────────
-//
-// DESIGN DECISIONS:
-//
-// 1. JSON-only responses: We instruct the AI to respond ONLY with a JSON object.
-//    This makes responses machine-parseable so the frontend can display a
-//    structured confirmation UI (not just a text blob).
-//
-// 2. Never execute: The AI is explicitly told NOT to execute actions. It only
-//    generates a description. Execution happens in actionExecutor.ts after the
-//    user confirms in the UI. This is the key safety guarantee of the system.
-//
-// 3. Endpoint rules: Early versions of the app had the AI generate placeholder
-//    endpoints like `/users/{username}/repos` which the GitHub API rejected with
-//    404. The explicit rules below prevent this, with resolveEndpoint() in
-//    actionExecutor.ts as a second safety net.
-//
-// 4. Language: The prompt is in Spanish because the target user interacts in
-//    Spanish. The JSON field names are in Spanish for the same reason.
-
 export const SYSTEM_PROMPT = `Eres un agente experto en la GitHub REST API v3.
 Cuando el usuario te dé una instrucción en lenguaje natural, responde
 ÚNICAMENTE con un JSON que describa la acción a tomar, antes de ejecutarla.
 
 Formato del JSON de respuesta:
 {
-  "tipo": "lectura|escritura|creacion|listado",
+  "tipo": "lectura|escritura|creacion|listado|borrado",
   "accion": "descripción breve en lenguaje natural de lo que harás",
   "endpoint": "el endpoint exacto de la GitHub API (sin parámetros de plantilla)",
   "metodo": "GET|POST|PUT|PATCH|DELETE",
@@ -62,6 +43,14 @@ REGLAS IMPORTANTES PARA LOS ENDPOINTS:
 - Para repos de otro usuario: "/users/NOMBRE_REAL/repos" con el nombre real, no un placeholder
 - Para archivos: "/repos/OWNER/REPO/contents/RUTA"
 
+REGLA OBLIGATORIA SOBRE requiereConfirmacion:
+- false → operaciones de SOLO LECTURA que no modifican datos: listar repos, ver archivos,
+          obtener información del perfil, consultar estadísticas. tipo = "lectura" o "listado"
+- true  → operaciones que CREAN, MODIFICAN O BORRAN datos: subir archivos, crear repos,
+          actualizar contenido, eliminar. tipo = "escritura", "creacion" o "borrado"
+Ejemplo: "lista mis repositorios" → requiereConfirmacion: false
+Ejemplo: "crea un README" → requiereConfirmacion: true
+
 Para operaciones de escritura en archivos existentes, incluye
 "contenidoActual" con el contenido actual del archivo (obtenido
 previamente con GET) para permitir mostrar el diff.
@@ -72,23 +61,12 @@ El frontend se encargará de la confirmación y ejecución.
 IMPORTANTE: responde SOLO con el JSON, sin texto adicional, sin markdown, sin \`\`\`json.`;
 
 // ── Message type ──────────────────────────────────────────────────────────────
-
-/** A single message in the conversation history */
 export interface Message {
   role: 'user' | 'assistant';
   content: string;
 }
 
 // ── Read provider config from sessionStorage ──────────────────────────────────
-
-/**
- * Read the active AI provider configuration from sessionStorage.
- * Throws if no provider has been connected yet (should not happen in normal
- * flow because AIProviderGate prevents reaching this code without a valid config).
- *
- * @returns { provider, apiKey, model } — all guaranteed non-null
- * @throws Error if any required key is missing from sessionStorage
- */
 function getConfig(): { provider: AIProviderType; apiKey: string; model: string } {
   const provider = sessionStorage.getItem('ai_provider') as AIProviderType | null;
   const apiKey = sessionStorage.getItem('ai_api_key');
@@ -100,28 +78,8 @@ function getConfig(): { provider: AIProviderType; apiKey: string; model: string 
 }
 
 // ── Groq implementation ───────────────────────────────────────────────────────
-
-/** Base URL for the Groq OpenAI-compatible chat completions endpoint */
 const GROQ_API = 'https://api.groq.com/openai/v1/chat/completions';
 
-/**
- * Call the Groq Cloud API using the OpenAI-compatible REST endpoint.
- * Calls are made directly from the browser — no EU restriction applies to Groq.
- *
- * Message translation from internal format to OpenAI format:
- *   'assistant' → role 'assistant'
- *   'user'      → role 'user'
- *   systemPrompt is prepended as a separate 'system' message
- *
- * Settings: temperature 0.1 (low, deterministic JSON output), max_tokens 4096
- *
- * @param apiKey       - Groq API key (starts with `gsk_`)
- * @param model        - Model identifier (e.g. `llama-3.3-70b-versatile`)
- * @param messages     - Conversation history in internal Message format
- * @param systemPrompt - System-level instruction prepended to the message array
- * @returns The assistant's text response
- * @throws Error with HTTP status attached if the API returns an error
- */
 async function callGroq(
   apiKey: string,
   model: string,
@@ -161,28 +119,6 @@ async function callGroq(
 }
 
 // ── Gemini implementation (proxied through server) ────────────────────────────
-
-/**
- * Call the Google Gemini API via the server-side proxy endpoint (/api/gemini).
- *
- * WHY A PROXY: The Gemini API (generativelanguage.googleapis.com) blocks direct
- * browser requests from EU/EEA regions. By routing calls through the Express
- * server deployed in us-central1 (Cloud Run), the restriction is bypassed.
- *
- * The full conversation structure (messages array + systemPrompt) is preserved —
- * the server reconstructs the multi-turn chat using the Gemini SDK before
- * forwarding the request, so context is maintained exactly as in the direct call.
- *
- * Security: the API key is sent in the HTTPS request body and is never stored,
- * logged or cached by the server. It is used only for this single SDK call.
- *
- * @param apiKey       - Google AI Studio API key (starts with `AIzaSy`)
- * @param model        - Gemini model identifier (e.g. `gemini-2.0-flash`)
- * @param messages     - Conversation history in internal Message format
- * @param systemPrompt - System instruction forwarded to the proxy
- * @returns The model's text response
- * @throws Error with HTTP status from the proxy if the Gemini API returns an error
- */
 async function callGeminiDirect(
   apiKey: string,
   model: string,
@@ -209,58 +145,19 @@ async function callGeminiDirect(
 }
 
 // ── Unified callAI ────────────────────────────────────────────────────────────
-
-/**
- * Unified AI call function — routes to the correct provider based on the
- * configuration stored in sessionStorage by AIProviderPanel.
- *
- * Routing logic:
- *   provider === 'groq'    → callGroq()         (direct browser → Groq API)
- *   provider === 'gemini'  → callGeminiDirect()  (browser → /api/gemini → Gemini)
- *
- * The system prompt defaults to SYSTEM_PROMPT (GitHub agent) but can be
- * overridden for other use cases (e.g. generateRepoDocs uses a documentation prompt).
- *
- * @param messages     - Full conversation history including the new user message
- * @param systemPrompt - Instruction for the AI (defaults to SYSTEM_PROMPT)
- * @returns The AI's response text
- * @throws Error if no provider is configured or the API call fails
- */
 export async function callAI(
   messages: Message[],
   systemPrompt: string = SYSTEM_PROMPT,
 ): Promise<string> {
   const { provider, apiKey, model } = getConfig();
-
-  if (provider === 'groq') {
-    return callGroq(apiKey, model, messages, systemPrompt);
-  }
-  // Default: gemini (proxied through server)
+  if (provider === 'groq') return callGroq(apiKey, model, messages, systemPrompt);
   return callGeminiDirect(apiKey, model, messages, systemPrompt);
 }
 
-/**
- * Backward-compatible alias for callAI.
- * @deprecated Use callAI() directly.
- */
+/** @deprecated Use callAI() directly. */
 export const callGemini = callAI;
 
 // ── Key validation ────────────────────────────────────────────────────────────
-
-/**
- * Validate an AI provider API key by making a real test call.
- *
- * Sends a minimal prompt ("Hi" with system "Reply with one word.") to
- * avoid consuming tokens. Error handling:
- *   - HTTP 401 / `API_KEY_INVALID` / `invalid_api_key` → key is invalid
- *   - HTTP 429 → quota exceeded but key is valid → treated as success
- *   - Any other error → propagated as an error message
- *
- * @param provider - The AI provider to validate against
- * @param apiKey   - The API key to test
- * @param model    - The model to use for the test call
- * @returns `{ valid: true }` on success, `{ valid: false, error: string }` on failure
- */
 export async function validateProviderKey(
   provider: AIProviderType,
   apiKey: string,
@@ -276,43 +173,21 @@ export async function validateProviderKey(
   } catch (err) {
     const status = (err as { status?: number }).status;
     const message = (err as Error).message ?? '';
-
-    if (
-      status === 401 ||
-      message.includes('401') ||
-      message.toLowerCase().includes('api_key_invalid') ||
-      message.toLowerCase().includes('invalid_api_key')
-    ) {
+    if (status === 401 || message.includes('401') ||
+        message.toLowerCase().includes('api_key_invalid') ||
+        message.toLowerCase().includes('invalid_api_key')) {
       return {
         valid: false,
         error: 'Clave inválida, compruébala en tu panel de ' +
           (provider === 'groq' ? 'Groq' : 'Google AI Studio'),
       };
     }
-    if (status === 429 || message.includes('429')) {
-      // Quota exhausted but key is valid — let them proceed
-      return { valid: true };
-    }
+    if (status === 429 || message.includes('429')) return { valid: true };
     return { valid: false, error: message || 'Error de conexión con el proveedor de IA' };
   }
 }
 
 // ── Response parsing ──────────────────────────────────────────────────────────
-
-/**
- * Parse the raw AI text response into a `GeminiAction` object.
- *
- * The AI is instructed to return pure JSON, but may occasionally wrap it in
- * markdown code fences. This function strips those fences before parsing.
- *
- * Returns `null` if:
- * - The text is not valid JSON
- * - The JSON is missing required fields (`tipo`, `accion`, `metodo`)
- * - The AI returned a plain-text response (treated as a conversational reply)
- *
- * @param rawText - Raw text response from the AI
- * @returns Parsed GeminiAction or null if the response is not an action JSON
- */
 export function parseGeminiAction(rawText: string): GeminiAction | null {
   try {
     const cleaned = rawText
@@ -327,42 +202,126 @@ export function parseGeminiAction(rawText: string): GeminiAction | null {
   }
 }
 
-// ── Repo documentation generator ──────────────────────────────────────────────
-
+// ── Primary language detector ─────────────────────────────────────────────────
 /**
- * Generate README.md and MANUAL_TECNICO.md content for a repository.
+ * Infers the primary programming language of a repo from file extension counts.
+ * Used to provide language-specific context to the documentation generator.
+ */
+function detectPrimaryLanguage(files: Array<{ path: string }>): string {
+  const extMap: Record<string, string> = {
+    '.ts': 'TypeScript', '.tsx': 'TypeScript',
+    '.js': 'JavaScript', '.jsx': 'JavaScript',
+    '.py': 'Python', '.java': 'Java', '.go': 'Go',
+    '.rs': 'Rust', '.rb': 'Ruby', '.php': 'PHP',
+    '.cs': 'C#', '.cpp': 'C++', '.c': 'C',
+    '.swift': 'Swift', '.kt': 'Kotlin',
+    '.r': 'R', '.scala': 'Scala',
+  };
+  const counts: Record<string, number> = {};
+  for (const f of files) {
+    const ext = '.' + (f.path.split('.').pop() ?? '').toLowerCase();
+    if (extMap[ext]) counts[ext] = (counts[ext] ?? 0) + 1;
+  }
+  const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+  return top ? extMap[top[0]] : 'múltiple';
+}
+
+// ── Repo documentation generator ──────────────────────────────────────────────
+/**
+ * Generate README.md and MANUAL_TECNICO.md for a repository.
  *
- * Workflow:
- * 1. Receives a flat list of files with their decoded content
- * 2. Builds a prompt including each file's path and first 2000 chars of content
- * 3. Calls `callAI()` with a documentation-specific system prompt
- * 4. Parses the returned JSON: `{ readme: string, manualTecnico: string }`
- *
- * @param repoName - Full repo name in `owner/repo` format
- * @param fileTree - Array of files with their paths and decoded content
- * @returns Object containing `readme` and `manualTecnico` as markdown strings
- * @throws Error if the AI response is not valid JSON or missing expected fields
+ * Improvements over v1 (fix #3):
+ * - Detects the primary programming language from file extensions
+ * - Sends the full file tree as a structural overview before the content
+ * - Uses a rich, prescriptive few-shot system prompt that enforces
+ *   badge rows, emoji section headers, tables, code examples, and
+ *   ASCII architecture diagrams — resulting in professional output
+ *   regardless of whether Groq or Gemini is the active provider.
  */
 export async function generateRepoDocs(
   repoName: string,
   fileTree: Array<{ path: string; content: string }>,
 ): Promise<{ readme: string; manualTecnico: string }> {
-  const docSystemPrompt = `Eres un experto en documentación de software.
-Analiza la estructura y el código del repositorio proporcionado y genera documentación completa.
-Responde ÚNICAMENTE con un JSON con este formato exacto:
-{
-  "readme": "contenido completo del README.md en markdown",
-  "manualTecnico": "contenido completo del MANUAL_TECNICO.md en markdown"
-}
-El README debe incluir: badges relevantes, descripción, instalación, uso, estructura de archivos, herramientas/dependencias, y licencia.
-El MANUAL_TECNICO debe incluir: arquitectura, flujo de datos, configuración, APIs/endpoints, y guía de despliegue.
-Responde SOLO con el JSON, sin texto adicional.`;
 
-  const treeText = fileTree
-    .map(f => `### Archivo: ${f.path}\n${f.content.slice(0, 2000)}${f.content.length > 2000 ? '\n[... truncado ...]' : ''}`)
+  const primaryLanguage = detectPrimaryLanguage(fileTree);
+
+  // ── Rich system prompt with structure template ────────────────────────────
+  const docSystemPrompt = `Eres un experto en documentación técnica de software de nivel profesional.
+Tu tarea es analizar el código de un repositorio y generar documentación completa, detallada y visualmente atractiva.
+Responde ÚNICAMENTE con un objeto JSON con este formato exacto (sin markdown exterior, sin texto adicional):
+{ "readme": "...", "manualTecnico": "..." }
+
+═══════════════════════════════════════════════════════
+REQUISITOS OBLIGATORIOS PARA EL README.md
+═══════════════════════════════════════════════════════
+
+1. CABECERA:
+   - Título con emoji descriptivo del proyecto
+   - Fila de badges shields.io (for-the-badge): lenguaje principal, framework/stack,
+     estado (Publicado/En desarrollo), tipo de licencia
+   - Tagline en cursiva describiendo el proyecto en una frase
+
+2. SECCIONES (en este orden, con emojis en los títulos):
+   🔗 Acceso / Demo (si hay URL de despliegue)
+   📋 Descripción (2-3 párrafos explicando el propósito, qué problema resuelve y para quién)
+   ✨ Funcionalidades (tabla con columna Funcionalidad y columna Descripción)
+   ⚙️ Instalación (pasos numerados con bloques de código reales)
+   🚀 Uso (ejemplos de uso con código real extraído del proyecto)
+   📁 Estructura del proyecto (árbol de carpetas formateado en bloque de código)
+   🛠️ Tecnologías (tabla: Herramienta | Versión/Detalle | Uso en el proyecto)
+   📚 Contexto formativo o motivación del proyecto (si aplica)
+   Footer: <p align="center">Desarrollado por @[autor] · [año]</p>
+
+3. CALIDAD:
+   - Usa el contenido REAL del código para las explicaciones (nombres de funciones, rutas, comandos)
+   - Los bloques de código deben contener comandos reales (npm install, python main.py, etc.)
+   - Las tablas deben tener filas con información concreta, no placeholders genéricos
+   - Detecta el lenguaje principal y usa badges específicos de ese ecosistema
+
+═══════════════════════════════════════════════════════
+REQUISITOS OBLIGATORIOS PARA EL MANUAL_TECNICO.md
+═══════════════════════════════════════════════════════
+
+1. Arquitectura general con diagrama ASCII de capas o flujo:
+   └── Capa de presentación → Capa de lógica → Capa de datos/API
+
+2. Descripción de cada módulo o componente principal:
+   Para cada archivo/carpeta relevante: nombre, responsabilidad, funciones exportadas clave
+
+3. APIs y endpoints documentados (si aplica):
+   Tabla: Método | Ruta | Descripción | Parámetros
+
+4. Variables de entorno:
+   Tabla: Variable | Valor de ejemplo | Obligatoria | Descripción
+
+5. Guía de despliegue paso a paso para el stack detectado
+
+6. Limitaciones conocidas y posibles mejoras futuras
+
+═══════════════════════════════════════════════════════
+LENGUAJE PRIMARIO DETECTADO: ${primaryLanguage}
+REPOSITORIO: ${repoName}
+═══════════════════════════════════════════════════════
+
+Recuerda: responde SOLO con el JSON { "readme": "...", "manualTecnico": "..." }.
+No incluyas ningún texto fuera del JSON. No uses bloques de código externos.`;
+
+  // ── Build message: tree overview + file contents ──────────────────────────
+  const treeOverview = fileTree.map(f => f.path).join('\n');
+  const fileContents = fileTree
+    .map(f =>
+      `### ${f.path}\n` +
+      f.content.slice(0, 2000) +
+      (f.content.length > 2000 ? '\n[... truncado a 2000 chars ...]' : '')
+    )
     .join('\n\n---\n\n');
 
-  const userMessage = `Repositorio: ${repoName}\n\nArchivos:\n\n${treeText}`;
+  const userMessage =
+    `Repositorio: ${repoName}\n` +
+    `Lenguaje principal detectado: ${primaryLanguage}\n` +
+    `Archivos analizados: ${fileTree.length}\n\n` +
+    `ESTRUCTURA DEL PROYECTO:\n\`\`\`\n${treeOverview}\n\`\`\`\n\n` +
+    `CONTENIDO DE ARCHIVOS CLAVE:\n\n${fileContents}`;
 
   const rawText = await callAI(
     [{ role: 'user', content: userMessage }],
@@ -374,6 +333,9 @@ Responde SOLO con el JSON, sin texto adicional.`;
     .replace(/\s*```\s*$/, '')
     .trim();
 
-  const parsed = JSON.parse(cleaned);
+  const parsed = JSON.parse(cleaned) as { readme: string; manualTecnico: string };
+  if (!parsed.readme || !parsed.manualTecnico) {
+    throw new Error('La IA no devolvió el formato esperado { readme, manualTecnico }');
+  }
   return { readme: parsed.readme, manualTecnico: parsed.manualTecnico };
 }
