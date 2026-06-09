@@ -5,6 +5,31 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.2.0] — 2026-06-09
+
+### Modelos Gemini 2.5 · catálogo Groq dinámico · región us-central1
+
+### Added
+
+- **Gemini 2.5 Flash** y **Gemini 2.5 Flash Lite** como únicos modelos disponibles en el panel de Gemini. Los modelos anteriores (`gemini-2.0-flash`, `gemini-1.5-*`) tienen cuota = 0 por deprecación de Google y producen siempre un error 429. Cada modelo incluye descripción de características y un indicador de recomendación para orientar al usuario.
+- **Catálogo dinámico de Groq** — `AIProviderPanel.tsx` llama a `GET https://api.groq.com/openai/v1/models` en cuanto el usuario introduce una clave `gsk_*` válida (≥ 20 caracteres). Los resultados se filtran (excluyen `whisper`, `playai`, `tts`), se ordenan alfabéticamente y se cachean en `sessionStorage` durante 1 hora. Un mensaje de estado confirma cuántos modelos están disponibles en tiempo real.
+- **Sección de proveedores alternativos** en `README.md` con tabla comparativa de Mistral AI, Together AI, OpenAI GPT-4o-mini, Anthropic Claude API y Ollama — indicadores de tier gratuito, restricciones EU y compatibilidad con el código actual.
+
+### Fixed
+
+- **Fix #12** — El mensaje de estado durante la generación de documentación ahora muestra el nombre del proveedor activo ("Groq Cloud" o "Google Gemini") en lugar de "Gemini" hardcodeado. Implementado leyendo `provider` desde `useAIProvider()` en `App.tsx`.
+
+### Changed
+
+- **Región de despliegue** migrada de `europe-southwest1` a `us-central1` para eludir las restricciones de la API de Gemini en la UE/EEA.
+
+### Resolved (MEJORAS_FUTURAS.md)
+
+- Mejora #7 → ✅ Catálogo de modelos Groq cargado dinámicamente desde la API oficial
+- Mejora #12 → ✅ Nombre del proveedor de IA dinámico en mensajes de estado
+
+---
+
 ## [2.1.0] — 2026-06-08
 
 ### Gemini API proxy — solución al bloqueo europeo (EEA)
