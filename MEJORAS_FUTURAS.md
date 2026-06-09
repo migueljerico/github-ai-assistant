@@ -36,12 +36,14 @@ El componente ahora llama a `GET https://api.groq.com/openai/v1/models` cuando e
 
 ## 🔴 Alta prioridad
 
-### 3. Calidad del contenido generado por Groq
-**Archivo:** `client/src/services/gemini.ts` → `generateRepoDocs()`
+### ~~3. Calidad del contenido generado por Groq~~
+**Archivo:** `client/src/services/gemini.ts` → `generateRepoDocs()` — **Resuelto en v2.3.0**
 
-El modo "Documenta mi repositorio" genera documentación funcional pero genérica cuando usa Groq. El prompt de documentación es idéntico para ambos proveedores, pero Groq produce resultados más sobrios para tareas de escritura larga.
-
-**Solución:** Enriquecer el `docSystemPrompt` con ejemplos de estructura deseada (few-shot prompting) e incluir la descripción del repo y su lenguaje principal como contexto adicional.
+El docSystemPrompt fue completamente reescrito con:
+- Detección automática del lenguaje principal del repo (TypeScript, Python, Java, etc.)
+- Prompt estructurado con secciones obligatorias, emojis, badges, tablas y bloques de código
+- El mensaje al modelo incluye ahora: árbol de carpetas completo + contenido de archivos + lenguaje detectado
+- Validación del JSON devuelto: si falta `readme` o `manualTecnico`, lanza un error descriptivo
 
 ---
 
@@ -108,13 +110,22 @@ El `useEffect` suprime el warning de dependencias de React con `eslint-disable-l
 
 ---
 
+### 13. Internacionalización (i18n)
+**Archivo:** Múltiples — `App.tsx`, prompts en `gemini.ts`, textos de UI
+
+La app está completamente en español: textos de interfaz, mensajes del sistema, prompts del agente. Para hacerla accesible a usuarios de habla inglesa o de otras lenguas, sería necesario implementar i18n (por ejemplo con `react-i18next`).
+
+**Solución:** Extraer todos los strings a archivos de traducciones `es.json` / `en.json`, configurar `i18next` y añadir un selector de idioma en el header. Los system prompts del agente deberían adaptarse también al idioma seleccionado.
+
+---
+
 ## 📋 Resumen
 
 | # | Estado | Prioridad | Archivo | Esfuerzo |
 |---|---|---|---|---|
 | 1 | ✅ Resuelto | — | `server/index.js` | — |
 | 2 | ✅ Resuelto | — | `server/index.js` | — |
-| 3 | ⏳ Pendiente | 🔴 Alta | `gemini.ts` | 2-3h |
+| 3 | ✅ Resuelto | — | `gemini.ts` | — |
 | 4 | ⏳ Pendiente | 🟠 Media | `actionExecutor.ts` | 30 min |
 | 5 | ⏳ Pendiente | 🟠 Media | `App.tsx` | 20 min |
 | 6 | ⏳ Pendiente | 🟠 Media | `App.tsx` | 20 min |
@@ -124,6 +135,7 @@ El `useEffect` suprime el warning de dependencias de React con `eslint-disable-l
 | 10 | ⏳ Pendiente | 🟡 Baja | `actionExecutor.ts` | 30 min |
 | 11 | ⏳ Pendiente | 🟡 Baja | `AuthContext.tsx` | 30 min |
 | 12 | ✅ Resuelto | — | `App.tsx` | — |
+| 13 | ⏳ Pendiente | 🟡 Baja | Múltiples | 3-4h |
 
 ---
 
