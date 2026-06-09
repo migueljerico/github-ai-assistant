@@ -287,7 +287,9 @@ export default function App() {
       updateEntry(histId, { status: result.success ? 'completed' : 'error', description: result.message });
       addMessage({
         role: 'assistant',
-        content: result.success ? `✅ ${result.message}` : `❌ ${result.message}`,
+        content: result.success
+          ? `✅ ${result.message}${result.data ? '\n\n' + formatResultData(result.data) : ''}`
+          : `❌ ${result.message}`,
       });
     }
 
