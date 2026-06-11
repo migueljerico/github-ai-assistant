@@ -11,12 +11,12 @@ import TemplatePanel from './components/templates/TemplatePanel';
 import ChatArea from './components/chat/ChatArea';
 import ChatInput from './components/chat/ChatInput';
 import ConfirmModal from './components/confirm/ConfirmModal';
-import type { ChatMessage, GeminiAction, GitHubRepo, PendingAction, RepoAnalysis } from './types';
+import type { ChatMessage, GeminiAction, GitHubRepo, PendingAction, RepoAnalysis, RepoFile } from './types';
 
 // Generate a simple unique ID
 const uid = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
-// ── Documentation Modal ────────────────────────────────────────────────────────
+// ── Documentation Modal ───────────────────────────────────────────────────────
 function DocModal({
   analysis,
   onConfirm,
@@ -73,7 +73,7 @@ function DocModal({
   );
 }
 
-// ── Smart result formatter ────────────────────────────────────────────────────
+// ── Smart result formatter ─────────────────────────────────────────────────────
 // Turns GitHub API responses into readable text rather than raw JSON dumps
 
 interface GitHubRepoItem {
@@ -89,7 +89,7 @@ interface GitHubRepoItem {
 }
 
 function formatResultData(data: unknown): string {
-  // ── Array of repos ──────────────────────────────────────────────────────────
+  // ── Array of repos ────────────────────────────────────────────────────────
   if (Array.isArray(data) && data.length > 0 && (data[0] as GitHubRepoItem)?.full_name) {
     const repos = data as GitHubRepoItem[];
     const lines: string[] = [];
@@ -107,12 +107,12 @@ function formatResultData(data: unknown): string {
     return lines.join('\n\n');
   }
 
-  // ── Empty array ─────────────────────────────────────────────────────────────
+  // ── Empty array ────────────────────────────────────────────────────────
   if (Array.isArray(data) && data.length === 0) {
     return '_No se encontraron resultados._';
   }
 
-  // ── Single repo object ──────────────────────────────────────────────────────
+  // ── Single repo object ───────────────────────────────────────────────────
   if (data && typeof data === 'object' && !Array.isArray(data)) {
     const r = data as Record<string, unknown>;
     if (r.full_name && r.html_url) {
@@ -127,12 +127,12 @@ function formatResultData(data: unknown): string {
       return lines.join('\n');
     }
 
-    // ── File content (GitHub contents API) ───────────────────────────────────
+    // ── File content (GitHub contents API) ──────────────────────────────
     if (typeof r.content === 'string' && r.encoding === 'base64') {
       return '_Contenido del archivo obtenido. Usa la información en tu siguiente instrucción._';
     }
 
-    // ── Generic object: compact key-value ────────────────────────────────────
+    // ── Generic object: compact key-value ──────────────────────────────
     const entries = Object.entries(r)
       .filter(([, v]) => typeof v !== 'object' && v !== null && v !== '')
       .slice(0, 12)
@@ -140,19 +140,19 @@ function formatResultData(data: unknown): string {
     if (entries.length > 0) return entries.join('\n');
   }
 
-  // ── Plain string ────────────────────────────────────────────────────────────
+  // ── Plain string ────────────────────────────────────────────────────────
   if (typeof data === 'string') {
     const trimmed = data.slice(0, 1500);
     return `\`\`\`\n${trimmed}${data.length > 1500 ? '\n...' : ''}\n\`\`\``;
   }
 
-  // ── Fallback: compact JSON (capped) ─────────────────────────────────────────
+  // ── Fallback: compact JSON (capped) ──────────────────────────────────────
   const json = JSON.stringify(data, null, 2);
   const capped = json.slice(0, 1200);
   return `\`\`\`json\n${capped}${json.length > 1200 ? '\n...' : ''}\n\`\`\``;
 }
 
-// ── Main App ───────────────────────────────────────────────────────────────────
+// ── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
   const { token, user, isAuthenticated } = useAuth();
   const { addEntry, updateEntry } = useHistory();
@@ -192,7 +192,7 @@ export default function App() {
     setMessages(prev => prev.map(m => m.id === id ? { ...m, ...update } : m));
   }, []);
 
-  // ── Send message to AI ─────────────────────────────────────────────────────
+  // ── Send message to AI ────────────────────────────────────────────────────
   const handleSend = useCallback(async () => {
     if (!inputValue.trim() || !token || !user) return;
 
@@ -265,7 +265,7 @@ export default function App() {
     }
   }, [inputValue, token, user, conversationHistory, multiRepoEnabled, selectedRepos, addMessage, updateMessage, addEntry, updateEntry]);
 
-  // ── Confirm action ─────────────────────────────────────────────────────────
+  // ── Confirm action ──────────────────────────────────────────────────────
   const handleConfirm = useCallback(async () => {
     if (!pendingAction || !token || !user) return;
     setIsExecuting(true);
@@ -296,7 +296,7 @@ export default function App() {
     setIsExecuting(false);
   }, [pendingAction, token, user, addEntry, updateEntry, addMessage]);
 
-  // ── Cancel action ──────────────────────────────────────────────────────────
+  // ── Cancel action ─────────────────────────────────────────────────────
   const handleCancel = useCallback(() => {
     if (pendingAction) {
       addEntry({ status: 'cancelled', description: `Cancelado: ${pendingAction.action.accion}`, repo: pendingAction.action.repo });
@@ -305,7 +305,7 @@ export default function App() {
     setPendingAction(null);
   }, [pendingAction, addEntry, addMessage]);
 
-  // ── Document repo ──────────────────────────────────────────────────────────
+  // ── Document repo ───────────────────────────────────────────────────────
   const handleDocumentRepo = useCallback(async (repoInput: string) => {
     if (!token || !user) return;
 
@@ -330,7 +330,13 @@ export default function App() {
         isLoading: true,
       });
 
-      const { readme, manualTecnico } = await generateRepoDocs(`${owner}/${repoName}`, files);
+      // Convert github service files to RepoFile format for generateRepoDocs()
+      const repoFiles: RepoFile[] = files.map(f => ({
+        path: f.path,
+        content: f.content,
+      }));
+
+      const { readme, manualTecnico } = await generateRepoDocs(repoFiles);
 
       updateMessage(loadingId, {
         content: `✅ Documentación generada para **${owner}/${repoName}**. Revisa el contenido antes de hacer commit.`,
@@ -355,7 +361,7 @@ export default function App() {
     }
   }, [token, user, providerName, addMessage, updateMessage, addEntry, updateEntry]);
 
-  // ── Commit docs ────────────────────────────────────────────────────────────
+  // ── Commit docs ────────────────────────────────────────────────────────
   const handleCommitDocs = useCallback(async () => {
     if (!docAnalysis || !token || !user) return;
     setIsCommittingDocs(true);
