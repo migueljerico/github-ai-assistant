@@ -1,4 +1,4 @@
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
 // AuthContext — GitHub authentication state
 //
 // DUAL AUTH MODEL:
@@ -20,9 +20,9 @@
 // The token is stored in sessionStorage (key: 'gh_token'), NOT localStorage.
 // sessionStorage is scoped to the browser tab and is cleared when the tab
 // closes, reducing the window of exposure if the device is left unlocked.
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
 
-import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef, type ReactNode } from 'react';
 import type { GitHubUser } from '../types';
 
 /** Full authentication state shape */
@@ -73,6 +73,9 @@ const AuthContext = createContext<AuthContextValue | null>(null);
  * On mount, if a token exists in sessionStorage, it is validated immediately
  * (in case the page was refreshed). If validation fails, the stale token is
  * removed and the user is shown the login screen.
+ *
+ * Uses a ref-based approach (hasValidated) to guard against double-validation
+ * in Strict Mode without suppressing ESLint warnings.
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
@@ -83,6 +86,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading: !!sessionStorage.getItem('gh_token'),
     error: null,
   });
+
+  // Ref-based guard: ensure we validate the stored token only once on mount
+  // This prevents double-validation in Strict Mode without suppressing ESLint
+  const hasValidated = useRef(false);
 
   /**
    * Validate a token by calling `GET https://api.github.com/user`.
@@ -108,12 +115,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // On mount: validate any token that survived a page refresh
+  // Using a ref guard instead of an empty dependency array to avoid ESLint suppression
   React.useEffect(() => {
+    // Skip validation if already done (prevents double-validation in Strict Mode)
+    if (hasValidated.current) return;
+    hasValidated.current = true;
+
     const stored = sessionStorage.getItem('gh_token');
     if (stored && !state.user) {
       fetchUser(stored);
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [state.user, fetchUser]);
 
   const loginWithPat = useCallback(async (pat: string) => {
     await fetchUser(pat);
