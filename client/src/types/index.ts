@@ -1,8 +1,8 @@
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
 // Shared TypeScript types for the entire application
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
 
-// ── Auth ──────────────────────────────────────────────────────────────────────
+// ── Auth ─────────────────────────────────────────────────────────────────────
 export interface GitHubUser {
   login: string;
   avatar_url: string;
@@ -12,7 +12,7 @@ export interface GitHubUser {
   public_repos: number;
 }
 
-// ── GitHub ────────────────────────────────────────────────────────────────────
+// ── GitHub ───────────────────────────────────────────────────────────────────
 export interface GitHubRepo {
   id: number;
   name: string;
@@ -37,7 +37,7 @@ export interface GitHubFile {
   download_url?: string | null;
 }
 
-// ── Gemini Action ─────────────────────────────────────────────────────────────
+// ── Gemini Action ────────────────────────────────────────────────────────────
 export type ActionType = 'lectura' | 'escritura' | 'creacion' | 'listado';
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
@@ -54,7 +54,7 @@ export interface GeminiAction {
   requiereConfirmacion: boolean;
 }
 
-// ── Chat ──────────────────────────────────────────────────────────────────────
+// ── Chat ─────────────────────────────────────────────────────────────────────
 export type MessageRole = 'user' | 'assistant' | 'system';
 
 export interface ChatMessage {
@@ -66,7 +66,7 @@ export interface ChatMessage {
   isLoading?: boolean;
 }
 
-// ── History ───────────────────────────────────────────────────────────────────
+// ── History ──────────────────────────────────────────────────────────────────
 export type HistoryStatus = 'completed' | 'error' | 'cancelled' | 'pending';
 
 export interface HistoryEntry {
@@ -77,7 +77,7 @@ export interface HistoryEntry {
   repo: string | null;
 }
 
-// ── Templates ─────────────────────────────────────────────────────────────────
+// ── Templates ────────────────────────────────────────────────────────────────
 export interface Template {
   id: string;
   name: string;
@@ -92,13 +92,13 @@ export interface TemplateCategory {
   templates: Template[];
 }
 
-// ── Confirmation ──────────────────────────────────────────────────────────────
+// ── Confirmation ─────────────────────────────────────────────────────────────
 export interface PendingAction {
   action: GeminiAction;
   targetRepos: GitHubRepo[]; // 1 for single, N for multi-repo
 }
 
-// ── Document Repo ─────────────────────────────────────────────────────────────
+// ── Document Repo ────────────────────────────────────────────────────────────
 export interface RepoAnalysis {
   readme: string;
   manualTecnico: string;
@@ -107,3 +107,13 @@ export interface RepoAnalysis {
   truncated: boolean;
   repoName: string;
 }
+
+// ── Re-export types from gemini service for convenience ──────────────────────
+// These can be used by components that need to import directly from types/
+export type RepoFile = { path: string; content?: string };
+export type GeneratedDocs = {
+  readme: string;
+  manualTecnico: string;
+  resumen?: string;
+  metadatos?: Record<string, unknown>;
+};
