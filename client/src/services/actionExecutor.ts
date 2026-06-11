@@ -1,4 +1,4 @@
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
 // Action Executor — executes confirmed GeminiAction objects via the GitHub API
 //
 // ARCHITECTURE NOTE:
@@ -10,7 +10,7 @@
 // The AI sometimes generates endpoint strings with literal placeholders like
 // `/users/{username}/repos`. resolveEndpoint() substitutes these with real
 // values before making any API call, so the GitHub API always receives a valid URL.
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
 
 import type { GeminiAction, GitHubRepo, HistoryStatus } from '../types';
 import {
@@ -108,6 +108,10 @@ function resolveEndpoint(
  *   - /user/repos -> createRepo() with name/description/private from payload
  *   - anything else -> generic authenticated POST with action.payload as body
  *
+ * PATCH:
+ *   - Generic authenticated PATCH with action.payload as body
+ *   - Used for partial updates (e.g., repo description, permissions, etc.)
+ *
  * PUT:
  *   - Fetches the current file SHA if the file exists (needed for updates)
  *   - Calls createOrUpdateFile() — works for both new files and updates
@@ -172,6 +176,21 @@ export async function executeAction(
         // Generic POST
         const res = await fetch(`https://api.github.com${endpoint}`, {
           method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/vnd.github+json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(action.payload),
+        });
+        const data = await res.json();
+        return { success: res.ok, message: res.ok ? 'Operación completada' : (data as { message?: string }).message ?? String(res.status), data };
+      }
+
+      case 'PATCH': {
+        // Generic PATCH — used for partial updates (repo description, visibility, etc.)
+        const res = await fetch(`https://api.github.com${endpoint}`, {
+          method: 'PATCH',
           headers: {
             Authorization: `Bearer ${token}`,
             Accept: 'application/vnd.github+json',
