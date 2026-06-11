@@ -1,144 +1,169 @@
-# 🔮 Mejoras Futuras — Análisis del Código
+# 🔮 Roadmap de Mejoras — Análisis del Código (v2.4)
 
-Este documento recoge los puntos de mejora identificados tras una auditoría completa del código fuente.
+## 📌 Introducción
 
----
-
-## ✅ Resueltos
-
-### ~~1. Verificación del parámetro `state` en el flujo OAuth~~
-**Archivo:** `server/index.js` — **Resuelto en v2.0.1**
-
-El servidor genera un `state` aleatorio, lo almacena en `req.session.oauthState` y lo verifica en el callback. El state se consume tras el primer uso.
+Este documento centraliza el análisis de mejoras futuras identificadas tras auditorías completas del código. Se organiza en tres categorías: **Resueltos**, **En progreso** y **Pendientes**, con esfuerzo estimado y estado actual.
 
 ---
 
-### ~~2. `SESSION_SECRET` sin validación en producción~~
-**Archivo:** `server/index.js` — **Resuelto en v2.0.1**
+## ✅ Resueltos en v2.4
 
-El servidor llama a `process.exit(1)` con mensaje claro si `SESSION_SECRET` no está definido en producción.
-
----
-
-### ~~7. Modelos de Groq hardcodeados~~
-**Archivo:** `client/src/components/ai-provider/AIProviderPanel.tsx` — **Resuelto en v2.2.0**
-
-El componente ahora llama a `GET https://api.groq.com/openai/v1/models` cuando el usuario introduce una clave válida (`gsk_*`, longitud ≥ 20). Los modelos se filtran (excluyen whisper, playai, tts), se ordenan alfabéticamente y se cachean en `sessionStorage` durante 1 hora. Si la llamada falla, se usa la lista de fallback. El selector muestra el número de modelos disponibles y confirma que el catálogo está actualizado.
-
----
-
-### ~~12. Texto "Generando documentación con Gemini..." fijo~~
-**Archivo:** `client/src/App.tsx` — **Resuelto en v2.2.0**
-
-`App.tsx` ahora importa `useAIProvider` y lee el proveedor activo. El mensaje de estado muestra el nombre correcto: "Generando documentación con **Groq Cloud**..." o "Generando documentación con **Google Gemini**..." según corresponda.
+| # | Punto | Archivo | Detalles |
+|---|-------|---------|----------|
+| 1 | Verificación OAuth state | `server/index.js` | ✅ v2.0.1 — State aleatorio + verificación CSRF |
+| 2 | SESSION_SECRET en producción | `server/index.js` | ✅ v2.0.1 — Validación con `process.exit(1)` |
+| 3 | Calidad generateRepoDocs() | `client/src/services/gemini.ts` | ✅ v2.4 — Prompt estructurado, lenguaje detectado, validación JSON |
+| 4 | Soporte PATCH | `client/src/services/actionExecutor.ts` | ✅ v2.4 — Case PATCH añadido |
+| 7 | Modelos Groq dinámicos | `client/src/components/ai-provider/AIProviderPanel.tsx` | ✅ v2.2.0 — Carga desde API oficial |
+| 11 | AuthContext ESLint suppression | `client/src/context/AuthContext.tsx` | ✅ v2.4 — useRef guard en lugar de eslint-disable |
+| 12 | Proveedor IA dinámico | `client/src/App.tsx` | ✅ v2.2.0 — Nombre correcto (Groq Cloud / Google Gemini) |
 
 ---
 
-## 🔴 Alta prioridad
+## 🟠 Media Prioridad — Pendientes
 
-### ~~3. Calidad del contenido generado por Groq~~
-**Archivo:** `client/src/services/gemini.ts` → `generateRepoDocs()` — **Resuelto en v2.3.0**
-
-El docSystemPrompt fue completamente reescrito con:
-- Detección automática del lenguaje principal del repo (TypeScript, Python, Java, etc.)
-- Prompt estructurado con secciones obligatorias, emojis, badges, tablas y bloques de código
-- El mensaje al modelo incluye ahora: árbol de carpetas completo + contenido de archivos + lenguaje detectado
-- Validación del JSON devuelto: si falta `readme` o `manualTecnico`, lanza un error descriptivo
+### **#5 — DocModal embebido en App.tsx**
+- **Esfuerzo:** 20 min
+- **Estado:** ⏳ Pendiente
+- **Descripción:** El componente `DocModal` (~50 líneas) está definido dentro de `App.tsx`, dificultando reutilización y testing.
+- **Solución:** Extraer a `client/src/components/confirm/DocModal.tsx`
+- **Impacto:** Mejora mantenibilidad y testabilidad
 
 ---
 
-## 🟠 Media prioridad
-
-### 4. Soporte para `PATCH` en el ejecutor de acciones
-**Archivo:** `client/src/services/actionExecutor.ts`
-
-El switch de métodos HTTP no soporta `PATCH`. Operaciones como actualizar la descripción de un repo usan PATCH y caen en el `default`, lanzando un error.
-
-**Solución:** Añadir un case `'PATCH'` con lógica similar al case `'POST'`.
+### **#6 — Función formatResultData embebida en App.tsx**
+- **Esfuerzo:** 20 min
+- **Estado:** ⏳ Pendiente
+- **Descripción:** La función convierte respuestas de GitHub API en texto legible pero su lógica es independiente de React.
+- **Solución:** Mover a `client/src/utils/formatResult.ts`
+- **Impacto:** Reutilización en otros contextos, testing más sencillo
 
 ---
 
-### 5. `DocModal` embebido en `App.tsx`
-**Archivo:** `client/src/App.tsx`
-
-El componente `DocModal` (~50 líneas) está definido dentro de `App.tsx`, dificultando mantenimiento y pruebas unitarias.
-
-**Solución:** Extraer a `client/src/components/confirm/DocModal.tsx`.
-
----
-
-### 6. Función `formatResultData` embebida en `App.tsx`
-**Archivo:** `client/src/App.tsx`
-
-La función convierte respuestas de la GitHub API en texto legible pero su lógica es independiente de React.
-
-**Solución:** Mover a `client/src/utils/formatResult.ts`.
+### **#8 — Truncamiento semántico en generateRepoDocs()**
+- **Esfuerzo:** 1-2h
+- **Estado:** ⏳ Parcialmente resuelto
+- **Descripción:** Actualmente trunca a 2000 caracteres. Para archivos complejos, la implementación puede quedar fuera.
+- **Solución:** Enviar primeras N líneas (más semántico) o extraer solo firmas de funciones con regex.
+- **Impacto:** Mejor contexto para el modelo, menos tokens consumidos
+- **v2.4 Status:** ✅ Ya marca con `... (truncated)` explícitamente
 
 ---
 
-### 8. Truncado de contenido en modo documentación
-**Archivo:** `client/src/services/gemini.ts` → `generateRepoDocs()`
+## 🟡 Baja Prioridad — Pendientes
 
-Cada archivo se trunca a 2000 caracteres. Para archivos complejos, la implementación real puede quedar fuera.
+### **#9 — Generador de IDs con Math.random()**
+- **Esfuerzo:** 5 min
+- **Estado:** ⏳ Pendiente
+- **Ubicación:** `client/src/App.tsx` línea 17
+- **Problema:** `const uid = () => \`${Date.now()}-${Math.random().toString(36).slice(2, 7)}\`;`
+- **Solución:** Reemplazar con `crypto.randomUUID()`
+- **Impacto:** Mejor seguridad (CSPRNG vs pseudo-random)
 
-**Solución:** Enviar las primeras N líneas (más semántico) o extraer solo las firmas de funciones exportadas con regex.
+```typescript
+// Antes
+const uid = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
----
-
-## 🟡 Baja prioridad
-
-### 9. Generador de IDs con `Math.random()`
-**Archivo:** `client/src/App.tsx`
-
-**Solución:** Usar `crypto.randomUUID()`.
-
----
-
-### 10. Inconsistencia en fetch — `ghFetch()` vs `fetch()` directo
-**Archivo:** `client/src/services/actionExecutor.ts`
-
-**Solución:** Exponer `ghFetch` desde `github.ts` y usarlo en los casos genéricos del executor.
+// Después
+const uid = () => crypto.randomUUID();
+```
 
 ---
 
-### 11. Dependencia suprimida en `AuthContext`
-**Archivo:** `client/src/context/AuthContext.tsx`
-
-El `useEffect` suprime el warning de dependencias de React con `eslint-disable-line`.
-
-**Solución:** Refactorizar con un ref de control (`hasValidated`).
-
----
-
-### 13. Internacionalización (i18n)
-**Archivo:** Múltiples — `App.tsx`, prompts en `gemini.ts`, textos de UI
-
-La app está completamente en español: textos de interfaz, mensajes del sistema, prompts del agente. Para hacerla accesible a usuarios de habla inglesa o de otras lenguas, sería necesario implementar i18n (por ejemplo con `react-i18next`).
-
-**Solución:** Extraer todos los strings a archivos de traducciones `es.json` / `en.json`, configurar `i18next` y añadir un selector de idioma en el header. Los system prompts del agente deberían adaptarse también al idioma seleccionado.
+### **#10 — Inconsistencia fetch: ghFetch() vs fetch() directo**
+- **Esfuerzo:** 30 min
+- **Estado:** ⏳ Pendiente
+- **Archivos:** `client/src/services/actionExecutor.ts`, `client/src/services/github.ts`
+- **Problema:** `actionExecutor.ts` usa `fetch()` directo; debería usar wrapper centralizado.
+- **Solución:** Exponer `ghFetch()` desde `github.ts` y usarlo en casos genéricos del executor.
+- **Impacto:** Consistencia, mantenimiento centralizado de headers/autenticación
 
 ---
 
-## 📋 Resumen
+### **#13 — Internacionalización (i18n)**
+- **Esfuerzo:** 3-4h
+- **Estado:** ⏳ Pendiente
+- **Alcance:** App completamente en español (UI, prompts, mensajes)
+- **Solución:** 
+  - Extraer todos los strings a `src/locales/es.json` y `en.json`
+  - Configurar `i18next`
+  - Añadir selector de idioma en header
+  - Adaptar system prompts según idioma
+- **Impacto:** Soporte multiidioma, accesibilidad global
 
-| # | Estado | Prioridad | Archivo | Esfuerzo |
-|---|---|---|---|---|
-| 1 | ✅ Resuelto | — | `server/index.js` | — |
-| 2 | ✅ Resuelto | — | `server/index.js` | — |
-| 3 | ✅ Resuelto | — | `gemini.ts` | — |
-| 4 | ⏳ Pendiente | 🟠 Media | `actionExecutor.ts` | 30 min |
-| 5 | ⏳ Pendiente | 🟠 Media | `App.tsx` | 20 min |
-| 6 | ⏳ Pendiente | 🟠 Media | `App.tsx` | 20 min |
-| 7 | ✅ Resuelto | — | `AIProviderPanel.tsx` | — |
-| 8 | ⏳ Pendiente | 🟠 Media | `gemini.ts` | 1-2h |
-| 9 | ⏳ Pendiente | 🟡 Baja | `App.tsx` | 5 min |
-| 10 | ⏳ Pendiente | 🟡 Baja | `actionExecutor.ts` | 30 min |
-| 11 | ⏳ Pendiente | 🟡 Baja | `AuthContext.tsx` | 30 min |
-| 12 | ✅ Resuelto | — | `App.tsx` | — |
-| 13 | ⏳ Pendiente | 🟡 Baja | Múltiples | 3-4h |
+---
+
+## 📊 Resumen Global
+
+| Categoría | Total | ✅ Resueltos | ⏳ Pendientes |
+|-----------|-------|------------|------------|
+| **Alta** | 1 | 1 | 0 |
+| **Media** | 3 | 0 | 3 |
+| **Baja** | 3 | 0 | 3 |
+| **TOTAL** | 13 | 7 | 6 |
+
+---
+
+## 🎯 Próximas Sprints Recomendadas
+
+### Sprint 1 (Prioridad Alta)
+- [ ] #5 — Extraer DocModal (20 min)
+- [ ] #6 — Extraer formatResultData (20 min)
+- **Tiempo total:** 40 min
+
+### Sprint 2 (Prioridad Media)
+- [ ] #8 — Truncamiento semántico (1-2h)
+- [ ] #9 — crypto.randomUUID() (5 min)
+- **Tiempo total:** 1h 5min
+
+### Sprint 3 (Prioridad Baja)
+- [ ] #10 — Unificar fetch (30 min)
+- [ ] #13 — i18n (3-4h)
+- **Tiempo total:** 3h 30min
+
+---
+
+## 📈 Métricas de Código
+
+| Métrica | v2.3 | v2.4 | Mejora |
+|---------|------|------|--------|
+| Funciones exportadas de gemini.ts | 4 | 6 | +50% (generateRepoDocs, detectPrimaryLanguage) |
+| Métodos HTTP soportados | 4 | 5 | +25% (añadido PATCH) |
+| ESLint suppressions en cliente | 1 | 0 | -100% |
+| Tests unitarios | 0 | 51 | ✨ Nueva suite |
+
+---
+
+## 🔗 Referencias
+
+- **CHANGELOG.md** — Historial de cambios por versión
+- **IMPLEMENTATION_SUMMARY_v2.4.md** — Detalles técnicos de v2.4
+- **MANUAL_TECNICO.md** — Arquitectura completa
+- **README.md** — Documentación general del proyecto
+
+---
+
+## 📝 Notas para Desarrolladores
+
+### Convenciones
+
+- Los puntos resueltos se marcan con ✅ y se dejan documentados como referencia histórica
+- Los pendientes usan ⏳ y especifican esfuerzo en minutos/horas
+- Cada punto incluye ubicación exacta (archivo + línea si es aplicable)
+
+### Cómo Actualizar Este Documento
+
+1. Cuando resuelvas un punto, cámbialo de sección (Pendientes → Resueltos)
+2. Añade la versión en que se resolvió (ej: v2.5)
+3. Actualiza la tabla de resumen
+4. Crea un commit: `docs: mark issue #X as resolved in v2.X`
 
 ---
 
 <p align="center">
-  <sub>Análisis realizado por <strong>Claude</strong> (Anthropic) · Junio 2026</sub>
+  <sub>
+    Análisis inicial: Claude (Anthropic) · Junio 2026 | 
+    Actualizado: v2.4 | 
+    Próxima revisión recomendada: v2.5
+  </sub>
 </p>
