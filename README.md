@@ -11,7 +11,7 @@
 ![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
 ![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)
 
-> **Proyecto de portfolio — Curso Análisis de Datos e IA (2025–2026)**  
+> **Proyecto de portfolio — Curso Análisis de Datos e IA (2025–2026)**
 > Gestiona tus repositorios de GitHub escribiendo en lenguaje natural — con confirmación previa, historial de sesión y documentación automática, impulsado por **Groq Cloud** o **Google Gemini**
 
 ---
@@ -20,7 +20,7 @@
 
 [![Ver App en Producción](https://img.shields.io/badge/🚀_Ver_App-Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)](https://github-ai-assistant-748914382449.us-central1.run.app/)
 
-> Conecta tu cuenta de GitHub (OAuth) y tu proveedor de IA preferido para empezar.  
+> Conecta tu cuenta de GitHub (OAuth) y tu proveedor de IA preferido para empezar.
 > Tus claves **nunca salen de tu navegador** — no se almacenan en ningún servidor.
 
 ---
@@ -44,7 +44,7 @@ El proyecto evolucionó de un prototipo en **Google AI Studio** a una aplicació
 | 📄 **Plantillas predefinidas** | README, `.gitignore` y licencias por tipo de proyecto, pre-formuladas para el chat |
 | 🗂️ **Operaciones multi-repo** | Aplica la misma acción a varios repositorios seleccionados simultáneamente |
 | 🤖 **Documenta tu repositorio entero** | El agente lee hasta 80 archivos y genera README + MANUAL_TECNICO de forma automática |
-| 🔑 **Doble proveedor de IA** | Soporte para **Groq Cloud** (llama-3.3-70b) y **Google Gemini** — usas tu propia clave |
+| 🔑 **Doble proveedor de IA** | Soporte para **Groq Cloud** (modelos dinámicos) y **Google Gemini 2.5** — usas tu propia clave |
 | 🔒 **Autenticación OAuth** | Flujo GitHub OAuth completo con fallback a PAT manual |
 
 ---
@@ -174,19 +174,21 @@ Usuario (lenguaje natural)
 │  ├── HistoryPanel     (log exportable)              │
 │  ├── TemplatePanel    (plantillas predefinidas)     │
 │  └── RepoSelector     (multi-repo con paginación)  │
-└──────────┬─────────────────────────┬────────────────┘
-           │ /auth/github            │ Llamadas directas
-           │ /auth/callback          │ con la key del usuario
-           ▼                         ▼
-┌─────────────────┐    ┌──────────────────────────────┐
-│  Express.js     │    │  APIs externas               │
-│  (solo OAuth)   │    │  ├── GitHub REST API v3       │
-│  + /health      │    │  ├── Groq Cloud API           │
-│  + static files │    │  └── Google Gemini API        │
-└─────────────────┘    └──────────────────────────────┘
+└──────────┬──────────────────────────┬───────────────┘
+           │ /auth/github             │ Llamadas directas
+           │ /auth/callback           │ (GitHub + Groq)
+           │ /api/gemini (proxy EU)   │
+           ▼                          ▼
+┌──────────────────────┐  ┌───────────────────────────────┐
+│  Express.js          │  │  APIs externas                │
+│  ├── OAuth           │  │  ├── GitHub REST API v3        │
+│  ├── /api/gemini     │  │  ├── Groq Cloud (directo)      │
+│  ├── /health         │  │  └── Google Gemini API         │
+│  └── static files    │  │    (via proxy en el servidor) │
+└──────────────────────┘  └───────────────────────────────┘
 ```
 
-**Decisión arquitectónica clave:** el backend Express es intencionalmente mínimo. Solo gestiona el intercambio de secretos OAuth. Todas las llamadas a GitHub y a la IA se realizan directamente desde el navegador del usuario, con su propio token y su propia clave de IA. Esto elimina costes de API para el desarrollador y garantiza que ningún dato del usuario pasa por el servidor.
+**Decisión arquitectónica clave:** el backend Express es intencionalmente mínimo. Gestiona el intercambio de secretos OAuth y actúa como proxy para la API de Gemini — necesario porque Google bloquea las llamadas directas desde navegadores en la UE/EEA. Las llamadas a GitHub y a Groq se realizan directamente desde el navegador del usuario, con su propio token y su propia clave de IA.
 
 ---
 
@@ -196,12 +198,12 @@ Usuario (lenguaje natural)
 |---|---|---|
 | **React 18 + TypeScript** | Interfaz de usuario, estado, contextos | Gratuito |
 | **Vite** | Bundler y dev server del frontend | Gratuito |
-| **Express.js** | Backend thin — solo OAuth | Gratuito |
+| **Express.js** | Backend thin — OAuth + proxy Gemini | Gratuito |
 | **GitHub REST API v3** | Todas las operaciones sobre repositorios | Gratuito |
-| **Groq Cloud** | Inferencia de IA ultrarrápida (llama-3.3-70b) | Tier gratuito |
-| **Google Gemini** | Modelo de IA alternativo (gemini-2.0-flash) | Tier gratuito |
+| **Groq Cloud** | Inferencia de IA ultrarrápida (modelos dinámicos) | Tier gratuito |
+| **Google Gemini** | Modelo de IA alternativo (gemini-2.5-flash) | Tier gratuito |
 | **diff + diff2html** | Motor y renderizado de diffs | Gratuito |
-| **Google Cloud Run** | Despliegue serverless | Pay-per-use |
+| **Google Cloud Run** | Despliegue serverless (us-central1) | Pay-per-use |
 | **Antigravity 2.0** | Entorno de desarrollo agéntico (construcción del código) | — |
 | **Claude (Anthropic)** | Arquitectura, revisión y documentación | — |
 
@@ -215,6 +217,7 @@ Usuario (lenguaje natural)
 | Clave de IA (Groq/Gemini) | `sessionStorage` del navegador | Al cerrar la pestaña |
 | `GITHUB_CLIENT_SECRET` | Variables de entorno del servidor | Solo en memoria del proceso |
 | Datos del usuario | Ningún servidor externo | No se almacenan |
+| Clave Gemini en tránsito | Cuerpo HTTPS hacia `/api/gemini` | No se persiste en el servidor |
 
 ---
 
@@ -223,7 +226,6 @@ Usuario (lenguaje natural)
 Ver [`MEJORAS_FUTURAS.md`](./MEJORAS_FUTURAS.md) para el análisis completo del código con los puntos de mejora identificados.
 
 ---
-
 
 ## 🔌 Otros proveedores de IA — Mejoras futuras
 
@@ -238,6 +240,8 @@ La app soporta actualmente **Groq Cloud** y **Google Gemini**. Estas son las alt
 | **Ollama (local)** | ✅ Gratuito total | ✅ No aplica | 🟡 Media — servidor local | Privacidad máxima, cero coste, sin internet |
 
 > **Mistral AI** es la alternativa más natural para este proyecto: empresa europea, GDPR by design, API compatible con el formato OpenAI (Groq usa el mismo formato), tier gratuito sin tarjeta de crédito y sin restricciones geográficas. Añadirla requeriría cambios mínimos en `gemini.ts`.
+
+---
 
 ## 📚 Contexto formativo
 
