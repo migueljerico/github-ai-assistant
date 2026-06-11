@@ -1,4 +1,4 @@
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
 // Unified AI client — supports Google Gemini and Groq Cloud
 //
 // ARCHITECTURE NOTE (v2.1):
@@ -13,7 +13,7 @@
 // Provider routing:
 //   sessionStorage['ai_provider'] === 'gemini'  →  POST /api/gemini (server proxy)
 //   sessionStorage['ai_provider'] === 'groq'    →  fetch() to Groq OpenAI endpoint
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
 
 import type { GeminiAction } from '../types';
 import type { AIProviderType } from '../context/AIProviderContext';
@@ -60,13 +60,22 @@ El frontend se encargará de la confirmación y ejecución.
 
 IMPORTANTE: responde SOLO con el JSON, sin texto adicional, sin markdown, sin \`\`\`json.`;
 
-// ── Message type ──────────────────────────────────────────────────────────────
+// ── Message type ─────────────────────────────────────────────────────────────
 export interface Message {
   role: 'user' | 'assistant';
   content: string;
 }
 
-// ── Read provider config from sessionStorage ──────────────────────────────────
+// ── Types for repo documentation generation ───────────────────────────────────
+export type RepoFile = { path: string; content?: string };
+export type GeneratedDocs = {
+  readme: string;
+  manualTecnico: string;
+  resumen?: string;
+  metadatos?: Record<string, unknown>;
+};
+
+// ── Read provider config from sessionStorage ───────────────────────────────────
 function getConfig(): { provider: AIProviderType; apiKey: string; model: string } {
   const provider = sessionStorage.getItem('ai_provider') as AIProviderType | null;
   const apiKey = sessionStorage.getItem('ai_api_key');
@@ -118,7 +127,7 @@ async function callGroq(
   return data.choices[0].message.content;
 }
 
-// ── Gemini implementation (proxied through server) ────────────────────────────
+// ── Gemini implementation (proxied through server) ─────────────────────────────
 async function callGeminiDirect(
   apiKey: string,
   model: string,
@@ -144,7 +153,7 @@ async function callGeminiDirect(
   return data.text;
 }
 
-// ── Unified callAI ────────────────────────────────────────────────────────────
+// ── Unified callAI ───────────────────────────────────────────────────────────
 export async function callAI(
   messages: Message[],
   systemPrompt: string = SYSTEM_PROMPT,
@@ -157,7 +166,7 @@ export async function callAI(
 /** @deprecated Use callAI() directly. */
 export const callGemini = callAI;
 
-// ── Key validation ────────────────────────────────────────────────────────────
+// ── Key validation ───────────────────────────────────────────────────────────
 export async function validateProviderKey(
   provider: AIProviderType,
   apiKey: string,
@@ -187,7 +196,7 @@ export async function validateProviderKey(
   }
 }
 
-// ── Response parsing ──────────────────────────────────────────────────────────
+// ── Response parsing ────────────────────────────────────────────────────────
 export function parseGeminiAction(rawText: string): GeminiAction | null {
   try {
     const cleaned = rawText
@@ -202,12 +211,15 @@ export function parseGeminiAction(rawText: string): GeminiAction | null {
   }
 }
 
-// ── Primary language detector ─────────────────────────────────────────────────
+// ── Primary language detector ───────────────────────────────────────────────
 /**
  * Infers the primary programming language of a repo from file extension counts.
  * Used to provide language-specific context to the documentation generator.
+ *
+ * @param files Array of RepoFile objects with path property
+ * @returns The detected primary language or 'múltiple' as fallback
  */
-function detectPrimaryLanguage(files: Array<{ path: string }>): string {
+export function detectPrimaryLanguage(files: RepoFile[]): string {
   const extMap: Record<string, string> = {
     '.ts': 'TypeScript', '.tsx': 'TypeScript',
     '.js': 'JavaScript', '.jsx': 'JavaScript',
@@ -226,30 +238,72 @@ function detectPrimaryLanguage(files: Array<{ path: string }>): string {
   return top ? extMap[top[0]] : 'múltiple';
 }
 
-// ── Repo documentation generator ──────────────────────────────────────────────
+// ── Extract JSON from model response ────────────────────────────────────────
+/**
+ * Attempts to extract valid JSON from model response, handling:
+ * - Markdown code fences (```json ... ```)
+ * - Plain backticks (` ... `)
+ * - Raw JSON
+ * - JSON wrapped in prose
+ */
+function extractJSON(rawText: string): Record<string, unknown> {
+  const cleaned = rawText
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```\s*$/i, '')
+    .trim();
+
+  try {
+    return JSON.parse(cleaned) as Record<string, unknown>;
+  } catch {
+    // Try to find JSON object in the text
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    if (match) {
+      try {
+        return JSON.parse(match[0]) as Record<string, unknown>;
+      } catch {
+        throw new Error(`No se pudo parsear el JSON extraído: ${match[0].slice(0, 100)}...`);
+      }
+    }
+    throw new Error(`No se encontró JSON válido en la respuesta del modelo`);
+  }
+}
+
+// ── Repo documentation generator ────────────────────────────────────────────
 /**
  * Generate README.md and MANUAL_TECNICO.md for a repository.
  *
- * Improvements over v1 (fix #3):
- * - Detects the primary programming language from file extensions
- * - Sends the full file tree as a structural overview before the content
- * - Uses a rich, prescriptive few-shot system prompt that enforces
- *   badge rows, emoji section headers, tables, code examples, and
- *   ASCII architecture diagrams — resulting in professional output
- *   regardless of whether Groq or Gemini is the active provider.
+ * @param files Array of RepoFile objects with path and optional content
+ * @returns GeneratedDocs with readme, manualTecnico, optional resumen and metadatos
+ *
+ * Key features (v2.4):
+ * - Detects primary programming language from file extensions
+ * - Sends full file tree as structural overview
+ * - Truncates large files at 2000 chars with explicit truncation marker
+ * - Validates model response for required fields
+ * - Extracts JSON from wrapped responses (backticks, markdown)
+ * - Handles model errors gracefully with descriptive messages
  */
 export async function generateRepoDocs(
-  repoName: string,
-  fileTree: Array<{ path: string; content: string }>,
-): Promise<{ readme: string; manualTecnico: string }> {
+  files: RepoFile[],
+): Promise<GeneratedDocs> {
+  if (!files.length) {
+    throw new Error('No hay archivos para analizar. Proporciona al menos un archivo.');
+  }
 
-  const primaryLanguage = detectPrimaryLanguage(fileTree);
+  const primaryLanguage = detectPrimaryLanguage(files);
+  const repoName = files[0].path?.split('/')[0] ?? 'repositorio';
+  const filesCount = files.length;
 
-  // ── Rich system prompt with structure template ────────────────────────────
+  // ── Rich system prompt with structure template ──────────────────────────────
   const docSystemPrompt = `Eres un experto en documentación técnica de software de nivel profesional.
 Tu tarea es analizar el código de un repositorio y generar documentación completa, detallada y visualmente atractiva.
 Responde ÚNICAMENTE con un objeto JSON con este formato exacto (sin markdown exterior, sin texto adicional):
-{ "readme": "...", "manualTecnico": "..." }
+{
+  "readme": "<string: README completo en Markdown>",
+  "manualTecnico": "<string: Manual técnico detallado en Markdown>",
+  "resumen": "<string: breve resumen de 2-3 líneas>",
+  "metadatos": { "lenguaje": "${primaryLanguage}", "filesCount": ${filesCount} }
+}
 
 ═══════════════════════════════════════════════════════
 REQUISITOS OBLIGATORIOS PARA EL README.md
@@ -276,7 +330,7 @@ REQUISITOS OBLIGATORIOS PARA EL README.md
    - Usa el contenido REAL del código para las explicaciones (nombres de funciones, rutas, comandos)
    - Los bloques de código deben contener comandos reales (npm install, python main.py, etc.)
    - Las tablas deben tener filas con información concreta, no placeholders genéricos
-   - Detecta el lenguaje principal y usa badges específicos de ese ecosistema
+   - Detecta el lenguaje principal (${primaryLanguage}) y usa badges específicos de ese ecosistema
 
 ═══════════════════════════════════════════════════════
 REQUISITOS OBLIGATORIOS PARA EL MANUAL_TECNICO.md
@@ -301,41 +355,68 @@ REQUISITOS OBLIGATORIOS PARA EL MANUAL_TECNICO.md
 ═══════════════════════════════════════════════════════
 LENGUAJE PRIMARIO DETECTADO: ${primaryLanguage}
 REPOSITORIO: ${repoName}
+TOTAL DE ARCHIVOS ANALIZADOS: ${filesCount}
 ═══════════════════════════════════════════════════════
 
-Recuerda: responde SOLO con el JSON { "readme": "...", "manualTecnico": "..." }.
-No incluyas ningún texto fuera del JSON. No uses bloques de código externos.`;
+Recuerda: responde SOLO con el JSON.
+No inclujas ningún texto fuera del JSON. No uses bloques de código externos.
+TODAS las claves (readme, manualTecnico, resumen, metadatos) son OBLIGATORIAS.`;
 
-  // ── Build message: tree overview + file contents ──────────────────────────
-  const treeOverview = fileTree.map(f => f.path).join('\n');
-  const fileContents = fileTree
-    .map(f =>
-      `### ${f.path}\n` +
-      f.content.slice(0, 2000) +
-      (f.content.length > 2000 ? '\n[... truncado a 2000 chars ...]' : '')
-    )
+  // ── Build message: tree overview + file contents ─────────────────────────────
+  const treeOverview = files.map(f => f.path).join('\n');
+  const fileContents = files
+    .filter(f => f.content)
+    .map(f => {
+      const content = f.content ?? '';
+      const truncated = content.length > 2000;
+      const truncationMarker = truncated ? '\n\n... (truncated)' : '';
+      return `### ${f.path}\n${content.slice(0, 2000)}${truncationMarker}`;
+    })
     .join('\n\n---\n\n');
 
   const userMessage =
     `Repositorio: ${repoName}\n` +
     `Lenguaje principal detectado: ${primaryLanguage}\n` +
-    `Archivos analizados: ${fileTree.length}\n\n` +
+    `Archivos analizados: ${filesCount}\n\n` +
     `ESTRUCTURA DEL PROYECTO:\n\`\`\`\n${treeOverview}\n\`\`\`\n\n` +
     `CONTENIDO DE ARCHIVOS CLAVE:\n\n${fileContents}`;
 
-  const rawText = await callAI(
-    [{ role: 'user', content: userMessage }],
-    docSystemPrompt,
-  );
+  try {
+    const rawText = await callAI(
+      [{ role: 'user', content: userMessage }],
+      docSystemPrompt,
+    );
 
-  const cleaned = rawText
-    .replace(/^```(?:json)?\s*/i, '')
-    .replace(/\s*```\s*$/, '')
-    .trim();
+    // Extract and validate JSON response
+    const parsed = extractJSON(rawText);
 
-  const parsed = JSON.parse(cleaned) as { readme: string; manualTecnico: string };
-  if (!parsed.readme || !parsed.manualTecnico) {
-    throw new Error('La IA no devolvió el formato esperado { readme, manualTecnico }');
+    // Check for model errors
+    if (parsed.error) {
+      throw new Error(`Error del modelo: ${parsed.error}`);
+    }
+
+    // Validate required fields
+    if (!parsed.readme || typeof parsed.readme !== 'string') {
+      throw new Error('La IA no devolvió el campo "readme" en el formato esperado');
+    }
+    if (!parsed.manualTecnico || typeof parsed.manualTecnico !== 'string') {
+      throw new Error('La IA no devolvió el campo "manualTecnico" en el formato esperado');
+    }
+
+    // Return GeneratedDocs with optional fields
+    return {
+      readme: parsed.readme,
+      manualTecnico: parsed.manualTecnico,
+      resumen: typeof parsed.resumen === 'string' ? parsed.resumen : undefined,
+      metadatos: typeof parsed.metadatos === 'object' && parsed.metadatos !== null
+        ? (parsed.metadatos as Record<string, unknown>)
+        : { lenguaje: primaryLanguage, filesCount },
+    };
+  } catch (err) {
+    const message = (err as Error).message;
+    if (message.includes('parseRequest') || message.includes('Failed to parse')) {
+      throw new Error(`Error de parseo del modelo: ${message}. Intenta nuevamente.`);
+    }
+    throw err;
   }
-  return { readme: parsed.readme, manualTecnico: parsed.manualTecnico };
 }
