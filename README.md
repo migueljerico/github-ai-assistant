@@ -9,6 +9,8 @@
 ![Gemini](https://img.shields.io/badge/Google_Gemini-4285F4?style=for-the-badge&logo=google&logoColor=white)
 ![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
 ![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
+![Versión](https://img.shields.io/badge/Versión-v2.4.0-blue?style=for-the-badge)
+![Release](https://img.shields.io/github/v/release/migueljerico/github-ai-assistant?style=for-the-badge&color=4CAF50)
 ![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)
 
 > **Proyecto de portfolio — Curso Análisis de Datos e IA (2025–2026)**
