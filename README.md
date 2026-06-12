@@ -225,7 +225,7 @@ Usuario (lenguaje natural)
 
 ## 🔮 Mejoras futuras
 
-Ver [`MEJORAS_FUTURAS.md`](./MEJORAS_FUTURAS.md) — fuente de verdad única con estado actual, sprints y roadmap completo.
+Ver [`MEJORAS_FUTURAS.md`](./MEJORAS_FUTURAS.md) — Estado actual, sprints y roadmap completo.
 
 ---
 
