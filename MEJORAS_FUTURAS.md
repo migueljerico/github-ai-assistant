@@ -16,6 +16,8 @@
 | 7 | Modelos Groq cargados dinámicamente desde API | `AIProviderPanel.tsx` | v2.2.0 |
 | 8 | Truncamiento semántico por líneas (80 líneas) | `services/gemini.ts` | v2.5 · `c2553e92be` |
 | 9 | `crypto.randomUUID()` en lugar de `Math.random()` | `App.tsx` | v2.5 · `87aa5c5b15` |
+| 5 | Extraer `DocModal` a componente propio | `components/confirm/DocModal.tsx` | v2.6 · `8287ebc476` |
+| 6 | Extraer `formatResultData` a utilidad pura | `utils/formatResult.ts` | v2.6 · `c7cf86211b` |
 | 11 | Eliminación ESLint suppression en `AuthContext` | `context/AuthContext.tsx` | v2.4 |
 | 12 | Nombre del proveedor IA dinámico en mensajes | `App.tsx` | v2.2.0 |
 
@@ -23,21 +25,7 @@
 
 ## ⏳ Pendientes
 
-### Sprint 1 — Refactorización UI · ~40 min
-
-#### **#5 — Extraer DocModal de App.tsx**
-- **Esfuerzo:** 20 min · **Milestone:** [Sprint 1](https://github.com/migueljerico/github-ai-assistant/milestone/1)
-- `DocModal` (~50 líneas) está embebido en `App.tsx`, dificultando reutilización y tests.
-- **Solución:** Mover a `client/src/components/confirm/DocModal.tsx`
-
-#### **#6 — Extraer formatResultData a utils**
-- **Esfuerzo:** 20 min · **Milestone:** [Sprint 1](https://github.com/migueljerico/github-ai-assistant/milestone/1)
-- Función pura sin dependencias React; debería vivir fuera del componente.
-- **Solución:** Mover a `client/src/utils/formatResult.ts`
-
----
-
-### Sprint 2 — DX & Consistencia · ~30 min
+### Sprint 1 — DX & Consistencia · ~30 min
 
 #### **#10 — Unificar cliente fetch con ghFetch()**
 - **Esfuerzo:** 30 min · **Milestone:** [Sprint 3](https://github.com/migueljerico/github-ai-assistant/milestone/3)
@@ -65,9 +53,9 @@
 | Prioridad | Total | ✅ Resueltos | ⏳ Pendientes |
 |-----------|-------|-------------|--------------|
 | Alta | 5 | 5 | 0 |
-| Media | 4 | 2 | 2 |
+| Media | 4 | 4 | 0 |
 | Baja | 3 | 0 | 3 |
-| **TOTAL** | **12** | **9** | **4** |
+| **TOTAL** | **12** | **11** | **2** |
 
 ---
 
@@ -90,7 +78,7 @@
 <p align="center">
   <sub>
     Análisis inicial: Claude (Anthropic) · Junio 2026 |
-    Actualizado: v2.5 |
-    Próxima revisión: v2.6
+    Actualizado: v2.6 |
+    Próxima revisión: v2.7
   </sub>
 </p>
