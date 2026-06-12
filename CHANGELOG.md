@@ -5,6 +5,23 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.6.0] — 2026-06-12
+
+### Refactorización UI — Sprint 1 completado
+
+### Refactored
+
+- **Fix #5 — DocModal extraído** — El componente `DocModal` (~80 líneas de JSX) ha sido movido de `App.tsx` a su propio módulo `client/src/components/confirm/DocModal.tsx`. Props tipadas con interfaz explícita `DocModalProps`. `App.tsx` pasa de 456 a 324 líneas.
+- **Fix #6 — formatResultData extraída** — La función `formatResultData()` y la interfaz auxiliar `GitHubRepoItem` han sido movidas a `client/src/utils/formatResult.ts` como utilidad pura sin dependencias React. Exportada nombrada para facilitar testing unitario en aislamiento.
+
+### Resolved (MEJORAS_FUTURAS.md)
+
+- Mejora #5 → ✅ `DocModal` en `components/confirm/DocModal.tsx`
+- Mejora #6 → ✅ `formatResultData` en `utils/formatResult.ts`
+- **Sprint 1 — Refactorización UI** → ✅ COMPLETADO
+
+---
+
 ## [2.5.0] — 2026-06-12
 
 ### Code Quality & Documentation Consolidation
