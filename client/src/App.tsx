@@ -14,7 +14,8 @@ import ConfirmModal from './components/confirm/ConfirmModal';
 import type { ChatMessage, GeminiAction, GitHubRepo, PendingAction, RepoAnalysis, RepoFile } from './types';
 
 // Generate a simple unique ID
-const uid = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+// Use CSPRNG for unique IDs (crypto.randomUUID — UUID v4, guaranteed unique)
+const uid = () => crypto.randomUUID();
 
 // ── Documentation Modal ───────────────────────────────────────────────────────
 function DocModal({
