@@ -5,6 +5,29 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.5.0] — 2026-06-12
+
+### Code Quality & Documentation Consolidation
+
+### Fixed
+
+- **Fix #8 — Truncamiento semántico** (`gemini.ts`) — `generateRepoDocs()` ahora trunca a 80 líneas en lugar de 2000 caracteres. Los archivos de código preservan imports y firmas de funciones; los Markdown conservan encabezados e introducción. El marcador de truncación incluye el número de líneas original: `... (truncated — showing first 80 of N lines)`.
+- **Fix #9 — crypto.randomUUID()** (`App.tsx`) — Reemplazado `Math.random()` por `crypto.randomUUID()` en la función `uid()`. CSPRNG nativo del navegador, IDs UUID v4 garantizadamente únicos.
+
+### Docs
+
+- **MEJORAS_FUTURAS.md** unificado: absorbe `OTRAS POSIBLES MEJORAS.md`, añade mejora #14 (autocompletado), tabla de resumen actualizada (9 resueltos / 4 pendientes).
+- **OTRAS POSIBLES MEJORAS.md** eliminado — contenido integrado en `MEJORAS_FUTURAS.md`.
+- **README.md** simplificado: tabla de proveedores alternativos movida a `MEJORAS_FUTURAS.md`.
+- **v2.4_COMPLETION_SUMMARY.md** actualizado: Sprint 2 marcado como completado con SHAs de commit.
+
+### Resolved (MEJORAS_FUTURAS.md)
+
+- Mejora #8 → ✅ Truncamiento semántico por líneas implementado
+- Mejora #9 → ✅ `crypto.randomUUID()` implementado
+
+---
+
 ## [2.2.0] — 2026-06-09
 
 ### Modelos Gemini 2.5 · catálogo Groq dinámico · región us-central1
