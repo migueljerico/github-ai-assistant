@@ -278,7 +278,7 @@ function extractJSON(rawText: string): Record<string, unknown> {
  * Key features (v2.4):
  * - Detects primary programming language from file extensions
  * - Sends full file tree as structural overview
- * - Truncates large files at 2000 chars with explicit truncation marker
+ * - Truncates large files at 80 lines (semantic) with explicit truncation marker
  * - Validates model response for required fields
  * - Extracts JSON from wrapped responses (backticks, markdown)
  * - Handles model errors gracefully with descriptive messages
@@ -368,9 +368,15 @@ TODAS las claves (readme, manualTecnico, resumen, metadatos) son OBLIGATORIAS.`;
     .filter(f => f.content)
     .map(f => {
       const content = f.content ?? '';
-      const truncated = content.length > 2000;
-      const truncationMarker = truncated ? '\n\n... (truncated)' : '';
-      return `### ${f.path}\n${content.slice(0, 2000)}${truncationMarker}`;
+      // Semantic truncation: first 80 lines preserves structure better than char-based slice.
+      // Code files show imports + function signatures; markdown files show headings + intro.
+      const MAX_LINES = 80;
+      const lines = content.split('\n');
+      const truncated = lines.length > MAX_LINES;
+      const truncationMarker = truncated
+        ? `\n\n... (truncated — showing first ${MAX_LINES} of ${lines.length} lines)`
+        : '';
+      return `### ${f.path}\n${lines.slice(0, MAX_LINES).join('\n')}${truncationMarker}`;
     })
     .join('\n\n---\n\n');
 
