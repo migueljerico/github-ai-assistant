@@ -225,23 +225,13 @@ Usuario (lenguaje natural)
 
 ## 🔮 Mejoras futuras
 
-Ver [`MEJORAS_FUTURAS.md`](./MEJORAS_FUTURAS.md) para el análisis completo del código con los puntos de mejora identificados.
+Ver [`MEJORAS_FUTURAS.md`](./MEJORAS_FUTURAS.md) — fuente de verdad única con estado actual, sprints y roadmap completo.
 
 ---
 
-## 🔌 Otros proveedores de IA — Mejoras futuras
+## 🔌 Proveedores de IA soportados y roadmap
 
-La app soporta actualmente **Groq Cloud** y **Google Gemini**. Estas son las alternativas evaluadas para futuras iteraciones, priorizando opciones sin restricciones en la UE y con tier gratuito disponible:
-
-| Proveedor | Tier gratuito | Sin restricciones EU | Compatibilidad con el código | Destacado |
-|---|---|---|---|---|
-| **Mistral AI** | ✅ Sí (La Plateforme) | ✅ Empresa francesa | 🟢 Alta — API OpenAI-compatible | Primera opción recomendada para usuarios EU |
-| **Together AI** | ✅ $5 crédito inicial | ✅ | 🟢 Alta — API OpenAI-compatible | Modelos open source (Llama, Qwen, Mistral) |
-| **OpenAI GPT-4o-mini** | ⚠️ Solo crédito inicial | ✅ | 🟢 Alta — misma estructura que Groq | Estándar del sector, amplia documentación |
-| **Anthropic Claude API** | ❌ Solo de pago | ✅ | 🟡 Media — API propia | Mayor calidad de razonamiento y generación de código |
-| **Ollama (local)** | ✅ Gratuito total | ✅ No aplica | 🟡 Media — servidor local | Privacidad máxima, cero coste, sin internet |
-
-> **Mistral AI** es la alternativa más natural para este proyecto: empresa europea, GDPR by design, API compatible con el formato OpenAI (Groq usa el mismo formato), tier gratuito sin tarjeta de crédito y sin restricciones geográficas. Añadirla requeriría cambios mínimos en `gemini.ts`.
+La app soporta actualmente **Groq Cloud** y **Google Gemini**. Para el análisis de proveedores alternativos evaluados (Mistral AI, Together AI, OpenAI, Ollama), métricas de código y sprints pendientes, consulta [`MEJORAS_FUTURAS.md`](./MEJORAS_FUTURAS.md).
 
 ---
 
