@@ -1,6 +1,6 @@
 # 🔮 Roadmap de Mejoras — Análisis del Código
 
-> **Fuente de verdad única** para el estado del código, mejoras pendientes y roadmap del proyecto.  
+> **Estado del código, mejoras pendientes y roadmap del proyecto** 
 > Actualizado a: **v2.5** · Junio 2026
 
 ---
