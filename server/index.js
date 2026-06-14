@@ -4,6 +4,7 @@ import session from 'express-session';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import crypto from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -25,7 +26,7 @@ const {
   FRONTEND_URL = 'https://github-ai-assistant-748914382449.us-central1.run.app/',
 } = process.env;
 
-// ─── Middleware ───────────────────────────────────────────────────────────────
+// ─── Middleware ─────────────────────────────────────────────────────────
 app.use(express.json({ limit: '4mb' }));
 app.use(cors({
   origin: FRONTEND_URL,
@@ -47,7 +48,7 @@ app.get('/health', (_req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
-// ─── Gemini API Proxy ─────────────────────────────────────────────────────────
+// ─── Gemini API Proxy ───────────────────────────────────────────────────────
 // The Gemini API blocks direct browser requests from EU regions (EEA).
 // This proxy routes Gemini calls through the server, which is deployed in
 // us-central1 (Cloud Run) where the API is fully accessible.
@@ -100,7 +101,7 @@ app.post('/api/gemini', async (req, res) => {
   }
 });
 
-// ─── GitHub OAuth ─────────────────────────────────────────────────────────────
+// ─── GitHub OAuth ────────────────────────────────────────────────────────
 app.get('/auth/github', (req, res) => {
   if (!GITHUB_CLIENT_ID) {
     return res.status(500).json({ error: 'GITHUB_CLIENT_ID not configured' });
@@ -109,7 +110,7 @@ app.get('/auth/github', (req, res) => {
   // Fix #1: Generate a random state, store it in the session, and send it to
   // GitHub. The callback will verify it matches before exchanging the code.
   // This prevents CSRF attacks on the OAuth flow.
-  const state = Math.random().toString(36).substring(2) + Date.now().toString(36);
+  const state = crypto.randomUUID();
   req.session.oauthState = state;
 
   // BALA DE PLATA: Si el host contiene 'run.app', forzamos el https sí o sí
@@ -187,7 +188,7 @@ app.get('*', (req, res) => {
   res.sendFile(join(clientDistPath, 'index.html'));
 });
 
-// ─── Start ────────────────────────────────────────────────────────────────────
+// ─── Start ──────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`\n🚀 Asistente de IA para Publicar Repositorios`);
   console.log(`   Server:  http://localhost:${PORT}`);
