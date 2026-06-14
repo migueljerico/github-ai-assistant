@@ -8,7 +8,7 @@
 ## ✅ Resueltos
 
 | # | Punto | Archivo | Versión |
-|---|-------|---------|---------| 
+|---|-------|---------|---------|
 | 1 | Verificación OAuth state (CSRF) | `server/index.js` | v2.0.1 |
 | 2 | SESSION_SECRET obligatorio en producción | `server/index.js` | v2.0.1 |
 | 3 | Calidad `generateRepoDocs()` — prompt estructurado | `services/gemini.ts` | v2.4 |
@@ -41,32 +41,87 @@
 
 ---
 
-### Sprint — Seguridad, Mantenibilidad y Multi-Proveedor · ~6-8h
+### Sprint — Seguridad, Mantenibilidad y Multi-Proveedor · ~8-10h
 
 #### **#15 — Migrar prompts largos a archivos externos**
 - **Esfuerzo:** 2h
 - Mover todos los system prompts largos a carpeta `client/src/prompts/`.
+- **Beneficio:** Legibilidad, edición sin tocar código TypeScript, posibilidad de i18n por prompt.
 
 #### **#16 — Refactor de App.tsx — Extraer lógica a custom hooks**
 - **Esfuerzo:** 2h
-- Crear `hooks/useChat.ts` y `hooks/useActions.ts`.
+- Crear `hooks/useChat.ts` (lógica de `handleSend`, historial de mensajes) y `hooks/useActions.ts` (confirmación, ejecución, log de sesión).
+- **Beneficio:** App.tsx queda como orquestador puro; cada hook es testeable de forma aislada.
 
 #### ~~**#17 — Añadir rate limiting en proxy Gemini**~~ ✅ Resuelto
 - **Esfuerzo:** 1h · **Versión:** v2.8
 - Usar `express-rate-limit` en el endpoint `/api/gemini` (40 req/min).
-- **Beneficio:** Protección contra abuso y rate limits excesivos.
+- **Beneficio:** Protección contra abuso y rate limits excesivos de la API de Gemini.
 
-#### **#18 — Soporte multi-proveedor (Together AI / OpenRouter)**
-- **Esfuerzo:** 2h
-- Añadir Together AI y fallback automático entre proveedores.
+#### **#18 — Soporte multi-proveedor (Together AI / OpenRouter / Ollama)**
+- **Esfuerzo:** 3–4h
+- Implementar un sistema de fallback configurable entre proveedores.
+- **Proveedores evaluados:**
+
+| Proveedor | Ventajas | Tier gratuito | Prioridad |
+|-----------|----------|---------------|-----------|
+| **Together AI** | Llama 3.1, Qwen2.5, DeepSeek, Mistral | Generoso | ⭐ Alta |
+| **OpenRouter** | Router a decenas de modelos, incluyendo gratuitos | Free credits + pay-per-use | ⭐ Alta |
+| **Fireworks AI** | Muy rápido en modelos grandes, buen contexto | Buen free tier | Media |
+| **DeepInfra** | Barato y rápido, buena selección | Tier gratuito | Media |
+| **Ollama (local)** | 100% privado, sin red, sin límites | Ilimitado (hardware propio) | ⭐ Alta (portfolio) |
+| **Hugging Face** | Miles de modelos para tareas específicas | Free tier | Baja |
+
+- **Arquitectura sugerida:** Groq → Together AI → Gemini como cadena de fallback con selector de prioridad en el panel de IA.
 
 #### **#19 — Añadir tests unitarios básicos**
-- **Esfuerzo:** 2h
-- Cobertura mínima de `formatResult.ts`, `github.ts` y el proxy Gemini.
+- **Esfuerzo:** 2–3h
+- Añadir Vitest (ya en el ecosistema Vite) para cobertura mínima de las funciones críticas.
+- **Targets prioritarios:**
+  - `parseGeminiAction()` — parseo de JSON desde respuesta del modelo
+  - `detectPrimaryLanguage()` — detección de lenguaje de archivos del repo
+  - `extractJSON()` — extracción robusta de bloques JSON en texto libre
+  - `formatResultData()` — ya extraído como utilidad pura, ideal para empezar
+  - Proxy `/api/gemini` — tests de integración con supertest
 
 #### **#20 — Mejorar DX y despliegue**
-- **Esfuerzo:** 1h
-- Dockerizar el proyecto y añadir script de despliegue automatizado a Cloud Run.
+- **Esfuerzo:** 2–3h
+- **Tareas:**
+  - Añadir **GitHub Actions CI** (lint + build en cada push/PR a main)
+  - Logs estructurados en el servidor (JSON con timestamp, level, requestId)
+  - Healthcheck extendido en `/health` (versión, uptime, estado de variables de entorno)
+  - Script `deploy.sh` automatizado para Cloud Run con validación previa de variables
+
+---
+
+### Sprint — Expansión Funcional · ~5-7h
+
+#### **#21 — Advertencia de caducidad de sesión (sessionStorage TTL)**
+- **Esfuerzo:** 1–2h · **Prioridad:** Alta
+- Los tokens de GitHub y las claves de IA se guardan en `sessionStorage` sin ninguna indicación de caducidad para el usuario.
+- **Solución:** Guardar timestamp al conectar y mostrar un aviso visual (banner o tooltip) cuando el token de GitHub lleve más de X horas activo, o cuando la pestaña lleve mucho tiempo abierta. No es bloqueo forzado, es UX defensiva.
+- **Beneficio:** El usuario sabe cuándo reconnectar antes de que una acción falle por token expirado.
+
+#### **#22 — Mejor manejo de errores de rate limit de GitHub API**
+- **Esfuerzo:** 1h · **Prioridad:** Media
+- Actualmente los errores 429 de GitHub API se muestran como errores genéricos.
+- **Solución:** Leer la cabecera `X-RateLimit-Reset` de la respuesta de GitHub y mostrar al usuario "Rate limit de GitHub alcanzado. Disponible de nuevo en X minutos." con un countdown visual opcional.
+- **Beneficio:** UX mucho más clara; el usuario entiende qué esperar y no reintenta en bucle.
+
+#### **#23 — Expansión de acciones GitHub: issues, PRs, branches, workflows**
+- **Esfuerzo:** 3–4h · **Prioridad:** Alta
+- La app actualmente opera principalmente sobre contenido de archivos y metadatos de repos.
+- **Acciones a añadir (por orden de impacto):**
+  1. **Issues:** crear, cerrar, comentar, listar (muy solicitado en portfolios)
+  2. **Branches:** crear, borrar, listar, proteger rama main
+  3. **Pull Requests:** crear, listar, merge básico
+  4. **GitHub Actions workflows:** listar, relanzar un workflow fallido
+- **Beneficio:** Convierte la app en un gestor de proyecto completo sobre GitHub, no solo de contenido.
+
+#### **#24 — Añadir CONTRIBUTING.md**
+- **Esfuerzo:** 1h · **Prioridad:** Baja
+- Documento estándar para proyectos open-source: cómo configurar el entorno local, convenciones de commits, cómo abrir PRs.
+- **Beneficio:** Señal de madurez del proyecto en el portfolio; GitHub lo enlaza automáticamente al abrir issues y PRs.
 
 ---
 
@@ -74,10 +129,10 @@
 
 | Prioridad | Total | ✅ Resueltos | ⏳ Pendientes |
 |-----------|-------|-------------|--------------|
-| Alta | 7 | 6 | 1 |
-| Media | 6 | 4 | 2 |
-| Baja | 4 | 1 | 3 |
-| **TOTAL** | **17** | **11** | **6** |
+| Alta | 9 | 6 | 3 |
+| Media | 7 | 4 | 3 |
+| Baja | 5 | 1 | 4 |
+| **TOTAL** | **21** | **11** | **10** |
 
 ---
 
