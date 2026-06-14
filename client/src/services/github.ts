@@ -23,7 +23,7 @@ function headers(token: string): HeadersInit {
 }
 
 /**
- * Internal fetch helper for the GitHub API.
+ * Shared fetch helper for the GitHub API.
  * Throws an Error with GitHub's error message on non-2xx responses.
  *
  * @param token  - GitHub OAuth token or PAT
@@ -32,7 +32,7 @@ function headers(token: string): HeadersInit {
  * @returns Parsed JSON response as type T
  * @throws Error with GitHub's `message` field or a generic HTTP status error
  */
-async function ghFetch<T>(token: string, path: string, options?: RequestInit): Promise<T> {
+export async function ghFetch<T>(token: string, path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     ...options,
     headers: { ...headers(token), ...(options?.headers as Record<string, string> || {}) },
