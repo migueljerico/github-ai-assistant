@@ -9,7 +9,7 @@
 ![Gemini](https://img.shields.io/badge/Google_Gemini-4285F4?style=for-the-badge&logo=google&logoColor=white)
 ![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
 ![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
-![Versión](https://img.shields.io/badge/Versión-v2.4.0-blue?style=for-the-badge)
+![Versión](https://img.shields.io/badge/Versión-v2.8-blue?style=for-the-badge)
 ![Release](https://img.shields.io/github/v/release/migueljerico/github-ai-assistant?style=for-the-badge&color=4CAF50)
 ![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)
 
@@ -201,6 +201,7 @@ Usuario (lenguaje natural)
 | **React 18 + TypeScript** | Interfaz de usuario, estado, contextos | Gratuito |
 | **Vite** | Bundler y dev server del frontend | Gratuito |
 | **Express.js** | Backend thin — OAuth + proxy Gemini | Gratuito |
+| **express-rate-limit** | Rate limiting del proxy Gemini (40 req/min por IP) | Gratuito |
 | **GitHub REST API v3** | Todas las operaciones sobre repositorios | Gratuito |
 | **Groq Cloud** | Inferencia de IA ultrarrápida (modelos dinámicos) | Tier gratuito |
 | **Google Gemini** | Modelo de IA alternativo (gemini-2.5-flash) | Tier gratuito |
@@ -231,7 +232,7 @@ Ver [`MEJORAS_FUTURAS.md`](./MEJORAS_FUTURAS.md) — Estado actual, sprints y ro
 
 ## 🔌 Proveedores de IA soportados y roadmap
 
-La app soporta actualmente **Groq Cloud** y **Google Gemini**. Para el análisis de proveedores alternativos evaluados (Mistral AI, Together AI, OpenAI, Ollama), métricas de código y sprints pendientes, consulta [`MEJORAS_FUTURAS.md`](./MEJORAS_FUTURAS.md).
+La app soporta actualmente **Groq Cloud** y **Google Gemini**. Para el análisis de proveedores alternativos evaluados (Together AI, OpenRouter, Fireworks AI, Ollama local, DeepInfra), métricas de código y sprints pendientes, consulta [`MEJORAS_FUTURAS.md`](./MEJORAS_FUTURAS.md).
 
 ---
 
