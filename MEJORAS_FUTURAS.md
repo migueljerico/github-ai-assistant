@@ -1,14 +1,14 @@
 # 🔮 Roadmap de Mejoras — Análisis del Código
 
-> **Estado del código, mejoras pendientes y roadmap del proyecto** 
-> Actualizado a: **v2.5** · Junio 2026
+> **Estado del código, mejoras pendientes y roadmap del proyecto** \
+> Actualizado a: **v2.8** · Junio 2026
 
 ---
 
 ## ✅ Resueltos
 
 | # | Punto | Archivo | Versión |
-|---|-------|---------|---------|
+|---|-------|---------|---------| 
 | 1 | Verificación OAuth state (CSRF) | `server/index.js` | v2.0.1 |
 | 2 | SESSION_SECRET obligatorio en producción | `server/index.js` | v2.0.1 |
 | 3 | Calidad `generateRepoDocs()` — prompt estructurado | `services/gemini.ts` | v2.4 |
@@ -21,6 +21,7 @@
 | 10 | Unificar cliente fetch — `ghFetch()` en `actionExecutor.ts` | `services/github.ts` + `actionExecutor.ts` | v2.7 · `3f55dbf49a` |
 | 11 | Eliminación ESLint suppression en `AuthContext` | `context/AuthContext.tsx` | v2.4 |
 | 12 | Nombre del proveedor IA dinámico en mensajes | `App.tsx` | v2.2.0 |
+| 17 | Rate limiting en proxy Gemini (40 req/min) | `server/index.js` · `package.json` | v2.8 |
 
 ---
 
@@ -40,14 +41,43 @@
 
 ---
 
+### Sprint — Seguridad, Mantenibilidad y Multi-Proveedor · ~6-8h
+
+#### **#15 — Migrar prompts largos a archivos externos**
+- **Esfuerzo:** 2h
+- Mover todos los system prompts largos a carpeta `client/src/prompts/`.
+
+#### **#16 — Refactor de App.tsx — Extraer lógica a custom hooks**
+- **Esfuerzo:** 2h
+- Crear `hooks/useChat.ts` y `hooks/useActions.ts`.
+
+#### ~~**#17 — Añadir rate limiting en proxy Gemini**~~ ✅ Resuelto
+- **Esfuerzo:** 1h · **Versión:** v2.8
+- Usar `express-rate-limit` en el endpoint `/api/gemini` (40 req/min).
+- **Beneficio:** Protección contra abuso y rate limits excesivos.
+
+#### **#18 — Soporte multi-proveedor (Together AI / OpenRouter)**
+- **Esfuerzo:** 2h
+- Añadir Together AI y fallback automático entre proveedores.
+
+#### **#19 — Añadir tests unitarios básicos**
+- **Esfuerzo:** 2h
+- Cobertura mínima de `formatResult.ts`, `github.ts` y el proxy Gemini.
+
+#### **#20 — Mejorar DX y despliegue**
+- **Esfuerzo:** 1h
+- Dockerizar el proyecto y añadir script de despliegue automatizado a Cloud Run.
+
+---
+
 ## 📊 Resumen
 
 | Prioridad | Total | ✅ Resueltos | ⏳ Pendientes |
 |-----------|-------|-------------|--------------|
-| Alta | 5 | 5 | 0 |
-| Media | 4 | 4 | 0 |
-| Baja | 3 | 1 | 2 |
-| **TOTAL** | **12** | **10** | **2** |
+| Alta | 7 | 6 | 1 |
+| Media | 6 | 4 | 2 |
+| Baja | 4 | 1 | 3 |
+| **TOTAL** | **17** | **11** | **6** |
 
 ---
 
@@ -70,7 +100,7 @@
 <p align="center">
   <sub>
     Análisis inicial: Claude (Anthropic) · Junio 2026 |
-    Actualizado: v2.7 |
-    Próxima revisión: v2.8
+    Actualizado: v2.8 |
+    Próxima revisión: v3.0
   </sub>
 </p>
