@@ -20,6 +20,7 @@ import {
   getFileContents,
   decodeBase64,
   listAllRepos,
+  ghFetch,
 } from './github';
 
 /** Result of a single action execution */
@@ -156,15 +157,9 @@ export async function executeAction(
           const repos = await listAllRepos(token);
           return { success: true, message: `${repos.length} repositorios encontrados`, data: repos };
         }
-        // Generic GET — fetch the resolved endpoint directly
-        const res = await fetch(`https://api.github.com${endpoint}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: 'application/vnd.github+json',
-          },
-        });
-        const data = await res.json();
-        return { success: res.ok, message: res.ok ? 'Operación completada' : (data as { message?: string }).message ?? String(res.status), data };
+        // Generic GET — delegate to ghFetch (auth headers managed centrally)
+        const data = await ghFetch<unknown>(token, endpoint);
+        return { success: true, message: 'Operación completada', data };
       }
 
       case 'POST': {
@@ -173,33 +168,23 @@ export async function executeAction(
           const newRepo = await createRepo(token, payload.name, payload.description, payload.private);
           return { success: true, message: `Repositorio "${newRepo.name}" creado correctamente`, data: newRepo };
         }
-        // Generic POST
-        const res = await fetch(`https://api.github.com${endpoint}`, {
+        // Generic POST — delegate to ghFetch (auth headers managed centrally)
+        const data = await ghFetch<unknown>(token, endpoint, {
           method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: 'application/vnd.github+json',
-            'Content-Type': 'application/json',
-          },
           body: JSON.stringify(action.payload),
+          headers: { 'Content-Type': 'application/json' },
         });
-        const data = await res.json();
-        return { success: res.ok, message: res.ok ? 'Operación completada' : (data as { message?: string }).message ?? String(res.status), data };
+        return { success: true, message: 'Operación completada', data };
       }
 
       case 'PATCH': {
-        // Generic PATCH — used for partial updates (repo description, visibility, etc.)
-        const res = await fetch(`https://api.github.com${endpoint}`, {
+        // Generic PATCH — delegate to ghFetch (auth headers managed centrally)
+        const data = await ghFetch<unknown>(token, endpoint, {
           method: 'PATCH',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: 'application/vnd.github+json',
-            'Content-Type': 'application/json',
-          },
           body: JSON.stringify(action.payload),
+          headers: { 'Content-Type': 'application/json' },
         });
-        const data = await res.json();
-        return { success: res.ok, message: res.ok ? 'Operación completada' : (data as { message?: string }).message ?? String(res.status), data };
+        return { success: true, message: 'Operación completada', data };
       }
 
       case 'PUT': {
