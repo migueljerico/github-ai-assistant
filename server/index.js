@@ -5,6 +5,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import crypto from 'crypto';
+import rateLimit from 'express-rate-limit';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -43,6 +44,17 @@ app.use(session({
   },
 }));
 
+// ─── Rate Limiting para Gemini Proxy ─────────────────────────────────────────
+const geminiLimiter = rateLimit({
+  windowMs: 60 * 1000,        // 1 minuto
+  max: 40,                    // máximo 40 peticiones por minuto por IP
+  message: {
+    error: 'Demasiadas solicitudes al proxy de Gemini. Espera un momento e inténtalo de nuevo.'
+  },
+  standardHeaders: true,      // informa de los límites en las cabeceras
+  legacyHeaders: false,
+});
+
 // ─── Health Check (required for Cloud Run) ────────────────────────────────────
 app.get('/health', (_req, res) => {
   res.status(200).json({ status: 'ok' });
@@ -60,7 +72,7 @@ app.get('/health', (_req, res) => {
 // Response:     { text }
 //
 // Groq calls are NOT proxied — they go directly from the browser (no EU block).
-app.post('/api/gemini', async (req, res) => {
+app.post('/api/gemini', geminiLimiter, async (req, res) => {
   const { apiKey, model, messages, systemPrompt } = req.body;
 
   if (!apiKey || !model || !Array.isArray(messages) || !systemPrompt) {
