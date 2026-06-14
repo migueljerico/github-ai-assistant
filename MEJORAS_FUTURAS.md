@@ -18,6 +18,7 @@
 | 9 | `crypto.randomUUID()` en lugar de `Math.random()` | `App.tsx` | v2.5 · `87aa5c5b15` |
 | 5 | Extraer `DocModal` a componente propio | `components/confirm/DocModal.tsx` | v2.6 · `8287ebc476` |
 | 6 | Extraer `formatResultData` a utilidad pura | `utils/formatResult.ts` | v2.6 · `c7cf86211b` |
+| 10 | Unificar cliente fetch — `ghFetch()` en `actionExecutor.ts` | `services/github.ts` + `actionExecutor.ts` | v2.7 · `3f55dbf49a` |
 | 11 | Eliminación ESLint suppression en `AuthContext` | `context/AuthContext.tsx` | v2.4 |
 | 12 | Nombre del proveedor IA dinámico en mensajes | `App.tsx` | v2.2.0 |
 
@@ -25,16 +26,7 @@
 
 ## ⏳ Pendientes
 
-### Sprint 1 — DX & Consistencia · ~30 min
-
-#### **#10 — Unificar cliente fetch con ghFetch()**
-- **Esfuerzo:** 30 min · **Milestone:** [Sprint 3](https://github.com/migueljerico/github-ai-assistant/milestone/3)
-- `actionExecutor.ts` usa `fetch()` directo; debería usar el wrapper `ghFetch()` de `github.ts`.
-- **Solución:** Exportar `ghFetch()` e importarlo en el executor.
-
----
-
-### Sprint 3 — Internacionalización · ~3-4h
+### Sprint — Internacionalización · ~3-4h
 
 #### **#13 — Soporte i18n con i18next**
 - **Esfuerzo:** 3–4h · **Milestone:** [Sprint 3](https://github.com/migueljerico/github-ai-assistant/milestone/3)
@@ -54,8 +46,8 @@
 |-----------|-------|-------------|--------------|
 | Alta | 5 | 5 | 0 |
 | Media | 4 | 4 | 0 |
-| Baja | 3 | 0 | 3 |
-| **TOTAL** | **12** | **11** | **2** |
+| Baja | 3 | 1 | 2 |
+| **TOTAL** | **12** | **10** | **2** |
 
 ---
 
@@ -78,7 +70,7 @@
 <p align="center">
   <sub>
     Análisis inicial: Claude (Anthropic) · Junio 2026 |
-    Actualizado: v2.6 |
-    Próxima revisión: v2.7
+    Actualizado: v2.7 |
+    Próxima revisión: v2.8
   </sub>
 </p>
