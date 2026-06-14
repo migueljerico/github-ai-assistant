@@ -5,6 +5,22 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.7.0] — 2026-06-12
+
+### DX & Consistencia — ghFetch unificado
+
+### Refactored
+
+- **Fix #10 — Unificación de cliente fetch** — `ghFetch()` en `github.ts` pasa de función privada a exportada. `actionExecutor.ts` elimina los 3 bloques `fetch()` directos con headers de `Authorization` duplicados (GET genérico, POST genérico, PATCH) y los sustituye por llamadas a `ghFetch()`. Esto establece un **único punto de verdad** para la gestión de headers y autenticación hacia la GitHub API, simplificando futuros cambios (retry logic, rate-limit handling, etc.).
+  - `Authorization` inline en `actionExecutor.ts`: **3 → 0**
+  - Líneas en `actionExecutor.ts`: **293 → 278**
+
+### Resolved (MEJORAS_FUTURAS.md)
+
+- Mejora #10 → ✅ `ghFetch()` exportado e importado en `actionExecutor.ts`
+
+---
+
 ## [2.6.0] — 2026-06-12
 
 ### Refactorización UI — Sprint 1 completado
