@@ -5,6 +5,21 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.8.0] — 2026-06-14
+
+### Security — Rate Limiting en el proxy Gemini
+
+### Added
+
+- **`express-rate-limit`** añadido a las dependencias del servidor (`package.json`) — v7.5.0.
+- **Rate limiting en `POST /api/gemini`** — `geminiLimiter` configurado a 40 peticiones por minuto por IP. Superar el límite devuelve HTTP 429 con mensaje en español. Cabeceras `RateLimit-*` estándar (RFC 6585) incluidas en cada respuesta (`standardHeaders: true`).
+
+### Resolved (MEJORAS_FUTURAS.md)
+
+- Mejora #17 → ✅ Rate limiting en proxy Gemini implementado
+
+---
+
 ## [2.7.0] — 2026-06-12
 
 ### DX & Consistencia — ghFetch unificado
@@ -52,12 +67,43 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **MEJORAS_FUTURAS.md** unificado: absorbe `OTRAS POSIBLES MEJORAS.md`, añade mejora #14 (autocompletado), tabla de resumen actualizada (9 resueltos / 4 pendientes).
 - **OTRAS POSIBLES MEJORAS.md** eliminado — contenido integrado en `MEJORAS_FUTURAS.md`.
 - **README.md** simplificado: tabla de proveedores alternativos movida a `MEJORAS_FUTURAS.md`.
-- **v2.4_COMPLETION_SUMMARY.md** actualizado: Sprint 2 marcado como completado con SHAs de commit.
 
 ### Resolved (MEJORAS_FUTURAS.md)
 
 - Mejora #8 → ✅ Truncamiento semántico por líneas implementado
 - Mejora #9 → ✅ `crypto.randomUUID()` implementado
+
+---
+
+## [2.4.0] — 2026-06-11
+
+### Calidad de código — generateRepoDocs(), PATCH, AuthContext y tests
+
+### Added
+
+- **`detectPrimaryLanguage(files: RepoFile[]): string`** (`gemini.ts`) — nueva función exportada que analiza las extensiones del árbol de archivos y devuelve el lenguaje dominante (TypeScript, JavaScript, Python, Java, Go, Rust…). Fallback: `'múltiple'`.
+- **`extractJSON(rawText: string)`** (`gemini.ts`) — extractor robusto que maneja JSON plano, JSON dentro de markdown code fences y JSON embebido en texto libre.
+- **Tipos centralizados** — `RepoFile` y `GeneratedDocs` añadidos a `client/src/types/index.ts` como single source of truth. Importables desde cualquier módulo del cliente.
+- **51 tests unitarios** (`client/src/services/gemini.test.ts`) — cobertura de `detectPrimaryLanguage()`, `extractJSON()`, validación de campos obligatorios, truncamiento, `parseGeminiAction()` y flujos de integración completos. Mock de `fetch` y `sessionStorage`.
+
+### Changed
+
+- **`generateRepoDocs()` — nueva firma** (`gemini.ts`):
+  - Antes (v2.3): `generateRepoDocs(repoName, fileTree)` devolvía `{ readme, manualTecnico }`
+  - Ahora (v2.4): `generateRepoDocs(files: RepoFile[]): Promise<GeneratedDocs>` — recibe solo archivos; el nombre del repo se infiere del contenido. `GeneratedDocs` incluye `readme`, `manualTecnico` y campos opcionales `resumen` y `metadatos` (lenguaje detectado, número de archivos).
+- **System prompt de documentación** enriquecido con metadata dinámica: lenguaje primario detectado, nombre de repo y total de archivos analizados.
+- **`App.tsx`** actualizado para usar la nueva firma: convierte la respuesta del github service a `RepoFile[]` antes de llamar a `generateRepoDocs()`.
+
+### Fixed
+
+- **Fix #4 — Soporte PATCH en `executeAction()`** (`actionExecutor.ts`) — añadido `case 'PATCH'` en el switch de métodos HTTP. Habilita actualizaciones parciales de repositorios (descripción, visibilidad, permisos) con la misma estructura de respuesta que POST y PUT.
+- **Fix #11 — AuthContext sin ESLint suppression** (`context/AuthContext.tsx`) — reemplazado el antipatrón `eslint-disable-line react-hooks/exhaustive-deps` por un `useRef` guard (`hasValidated`). Previene doble validación en Strict Mode y declara todas las dependencias del `useEffect` explícitamente.
+
+### Resolved (MEJORAS_FUTURAS.md)
+
+- Mejora #3 → ✅ `generateRepoDocs()` con prompt estructurado y tipos exportados
+- Mejora #4 → ✅ Soporte método HTTP PATCH en `executeAction()`
+- Mejora #11 → ✅ ESLint suppression eliminado en `AuthContext`
 
 ---
 
