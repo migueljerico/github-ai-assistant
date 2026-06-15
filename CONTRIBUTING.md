@@ -24,9 +24,25 @@ El proyecto utiliza **[Vitest](https://vitest.dev/)** junto con **[Testing Libra
 
 ```bash
 cd client
-npm run test:run       # Ejecuta los tests una vez
-npm run test           # Modo watch (se re-ejecutan al guardar cambios)
-npm run test:coverage  # Genera reporte de cobertura
+npm run test:run
+npm run test
+npm run test:coverage
+
+Estructura y prioridades de testing
+Los tests viven junto al código que prueban, en carpetas __tests__/.
+Prioridad
+Qué testar
+Por qué
+🔴 Alta
+AuthContext y AIProviderContext
+Garantizan que NO se usa sessionStorage (Zero-Storage).
+🔴 Alta
+Plugins (/plugins/*.ts)
+Lógica crítica de negocio y ejecución de herramientas.
+🟡 Media
+Parsing de streaming SSE
+Evita regresiones en la UI al recibir respuestas del LLM.
+Ejemplo de test (Zero-Storage)
 
 ---
 Estructura y prioridades de testing
