@@ -21,8 +21,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
-          cache: 'npm'
-          cache-dependency-path: client/package-lock.json
+          # Cache removed to ensure fresh install of new dependencies
 
       - name: Install dependencies
         run: npm install
