@@ -1,4 +1,40 @@
-# 🤖 Asistente de IA para Publicar Repositorios
+# 🤖 GitHub AI Assistant
+
+**Asistente de IA que entiende tu código.** Se conecta a tus repos de GitHub, lee tu codebase, ejecuta herramientas y responde preguntas sobre tu proyecto — todo con una arquitectura Zero-Storage que protege tus credenciales.
+
+> Construido en 30 días por un profesional de negocio sin experiencia previa en programación.
+
+---
+
+## 📊 Métricas del proyecto
+
+| Aspecto | Detalle |
+|---|---|
+| ⏱️ Tiempo de desarrollo | 30 días (desde cero) |
+| 🔌 Plugins activos | 5 herramientas ejecutables (lectura de archivos, búsqueda, ejecución de código, etc.) |
+| 🤖 Modelos soportados | Groq (Llama 3.3) + Gemini 2.0 Flash |
+| ⚡ Latencia media | ~400ms (Groq) / ~1.2s (Gemini) |
+| 🛡️ Seguridad | Zero-Storage: tokens y API keys nunca se guardan en el navegador |
+| 🌍 Deploy | Google Cloud Run (HTTPS, auto-scaling) |
+| 📦 Stack | React + TypeScript + Express + Vite |
+
+---
+
+## 🎯 ¿Qué hace este asistente?
+
+A diferencia de un chatbot convencional, este asistente:
+
+- ✅ **Lee tu código real** de cualquier repo de GitHub (público o privado)
+- ✅ **Ejecuta herramientas** para buscar archivos, analizar estructura, ejecutar código
+- ✅ **Responde con contexto** de tu proyecto, no respuestas genéricas
+- ✅ **Protege tus credenciales** con arquitectura Zero-Storage (anti-XSS)
+- ✅ **Funciona con múltiples modelos** (Groq para velocidad, Gemini para calidad)
+
+### Ejemplo de uso real:
+
+> **Tú:** *"¿Qué archivos manejan la autenticación en este proyecto?"*
+> 
+> **Asistente:** *"Voy a buscar en tu repo... [ejecuta tool: search_files]. He encontrado 3 archivos relevantes: `AuthContext.tsx`, `server/auth.js` y `middleware/auth.js`. El sistema usa OAuth con GitHub y almacena el token en memoria de React (Zero-Storage). ¿Quieres que analice alguno en detalle?"*
 
 ![React](https://img.shields.io/badge/React_18-61DAFB?style=for-the-badge&logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
