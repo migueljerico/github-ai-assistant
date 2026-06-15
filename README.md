@@ -1,5 +1,20 @@
 # 🤖 GitHub AI Assistant
 
+![React](https://img.shields.io/badge/React_18-61DAFB?style=for-the-badge&logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)
+![Express](https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white)
+![GitHub OAuth](https://img.shields.io/badge/GitHub_OAuth-181717?style=for-the-badge&logo=github&logoColor=white)
+![Groq](https://img.shields.io/badge/Groq_Cloud-F55036?style=for-the-badge&logo=groq&logoColor=white)
+![Gemini](https://img.shields.io/badge/Google_Gemini-4285F4?style=for-the-badge&logo=google&logoColor=white)
+![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
+![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
+![Versión](https://img.shields.io/badge/Versión-v3.0-blue?style=for-the-badge)
+![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)
+
+> **Proyecto de portfolio — Curso Análisis de Datos e IA (2025–2026)**
+> Gestiona tus repositorios de GitHub escribiendo en lenguaje natural — con confirmación previa, historial de sesión y documentación automática, impulsado por **Groq Cloud** o **Google Gemini**
+> 
 **Asistente de IA que entiende tu código.** Se conecta a tus repos de GitHub, lee tu codebase, ejecuta herramientas y responde preguntas sobre tu proyecto — todo con una arquitectura Zero-Storage que protege tus credenciales.
 
 > Construido en 30 días por un profesional de negocio sin experiencia previa en programación.
@@ -35,21 +50,6 @@ A diferencia de un chatbot convencional, este asistente:
 > **Tú:** *"¿Qué archivos manejan la autenticación en este proyecto?"*
 > 
 > **Asistente:** *"Voy a buscar en tu repo... [ejecuta tool: search_files]. He encontrado 3 archivos relevantes: `AuthContext.tsx`, `server/auth.js` y `middleware/auth.js`. El sistema usa OAuth con GitHub y almacena el token en memoria de React (Zero-Storage). ¿Quieres que analice alguno en detalle?"*
-
-![React](https://img.shields.io/badge/React_18-61DAFB?style=for-the-badge&logo=react&logoColor=black)
-![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
-![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)
-![Express](https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white)
-![GitHub OAuth](https://img.shields.io/badge/GitHub_OAuth-181717?style=for-the-badge&logo=github&logoColor=white)
-![Groq](https://img.shields.io/badge/Groq_Cloud-F55036?style=for-the-badge&logo=groq&logoColor=white)
-![Gemini](https://img.shields.io/badge/Google_Gemini-4285F4?style=for-the-badge&logo=google&logoColor=white)
-![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
-![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
-![Versión](https://img.shields.io/badge/Versión-v3.0-blue?style=for-the-badge)
-![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)
-
-> **Proyecto de portfolio — Curso Análisis de Datos e IA (2025–2026)**
-> Gestiona tus repositorios de GitHub escribiendo en lenguaje natural — con confirmación previa, historial de sesión y documentación automática, impulsado por **Groq Cloud** o **Google Gemini**
 
 ---
 
