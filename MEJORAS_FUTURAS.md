@@ -1,7 +1,7 @@
 # 🔮 Roadmap de Mejoras — Análisis del Código
 
 > **Estado del código, mejoras pendientes y roadmap del proyecto** \
-> Actualizado a: **v2.9** · Junio 2026
+> Actualizado a: **v3.0** · Junio 2026 (Arquitectura Zero-Storage)
 
 ---
 
@@ -21,7 +21,7 @@
 | 10 | Unificar cliente fetch — `ghFetch()` en `actionExecutor.ts` | `services/github.ts` + `actionExecutor.ts` | v2.7 · `3f55dbf49a` |
 | 11 | Eliminación ESLint suppression en `AuthContext` | `context/AuthContext.tsx` | v2.4 |
 | 12 | Nombre del proveedor IA dinámico en mensajes | `App.tsx` | v2.2.0 |
-| 13 | Advertencia de caducidad de sesión (sessionStorage TTL 8h) | `SessionWarningBanner.tsx` · `AuthContext.tsx` · `AIProviderContext.tsx` | v2.9 · `c77855d5514c` |
+| 13 | Advertencia de caducidad de sesión (Zero-Storage TTL 8h) | `SessionWarningBanner.tsx` · `AuthContext.tsx` · `AIProviderContext.tsx` | v3.0 · `ef8f158` |
 | 17 | Rate limiting en proxy Gemini (40 req/min) | `server/index.js` · `package.json` | v2.8 |
 
 ---
@@ -155,7 +155,7 @@
 <p align="center">
   <sub>
     Análisis inicial: Claude (Anthropic) · Junio 2026 |
-    Actualizado: v2.9 |
+    Actualizado: v3.0 |
     Próxima revisión: v3.0
   </sub>
 </p>
