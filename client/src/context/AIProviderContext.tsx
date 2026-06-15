@@ -14,13 +14,14 @@ export interface AIProviderState {
 const AIProviderContext = createContext<AIProviderState | undefined>(undefined);
 
 const SS_PROVIDER = 'ai_provider';
-const SS_KEY = 'ai_api_key';
-const SS_MODEL = 'ai_model';
+const SS_KEY      = 'ai_api_key';
+const SS_MODEL    = 'ai_model';
+const SS_TS       = 'ai_connected_ts'; // session TTL timestamp (#13)
 
 export function AIProviderContextProvider({ children }: { children: ReactNode }) {
   const [provider, setProvider] = useState<AIProviderType | null>(null);
-  const [apiKey, setApiKey] = useState<string | null>(null);
-  const [model, setModel] = useState<string | null>(null);
+  const [apiKey, setApiKey]     = useState<string | null>(null);
+  const [model, setModel]       = useState<string | null>(null);
 
   // Restore from sessionStorage on mount
   useEffect(() => {
@@ -38,6 +39,8 @@ export function AIProviderContextProvider({ children }: { children: ReactNode })
     sessionStorage.setItem(SS_PROVIDER, p);
     sessionStorage.setItem(SS_KEY, k);
     sessionStorage.setItem(SS_MODEL, m);
+    // Store connection timestamp for session TTL warnings (#13)
+    sessionStorage.setItem(SS_TS, Date.now().toString());
     setProvider(p);
     setApiKey(k);
     setModel(m);
@@ -47,6 +50,7 @@ export function AIProviderContextProvider({ children }: { children: ReactNode })
     sessionStorage.removeItem(SS_PROVIDER);
     sessionStorage.removeItem(SS_KEY);
     sessionStorage.removeItem(SS_MODEL);
+    sessionStorage.removeItem(SS_TS);
     setProvider(null);
     setApiKey(null);
     setModel(null);
