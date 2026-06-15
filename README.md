@@ -11,6 +11,7 @@
 ![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
 ![Versión](https://img.shields.io/badge/Versión-v3.0-blue?style=for-the-badge)
 ![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)
+[![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
 
 > **Proyecto de portfolio — Curso Análisis de Datos e IA (2025–2026)**
 > Gestiona tus repositorios de GitHub escribiendo en lenguaje natural — con confirmación previa, historial de sesión y documentación automática, impulsado por **Groq Cloud** o **Google Gemini**
