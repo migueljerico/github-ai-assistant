@@ -29,3 +29,5 @@ npm run test           # Modo watch (se re-ejecutan al guardar cambios)
 npm run test:coverage  # Genera reporte de cobertura
 
 ---
+Estructura y prioridades de testing
+Los tests viven junto al código que prueban, en carpetas __tests__/.
