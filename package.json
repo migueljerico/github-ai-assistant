@@ -10,7 +10,8 @@
     "dev:client": "cd client && npm run dev",
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "build": "cd client && npm run build",
-    "postinstall": ""
+    "postinstall": "",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
