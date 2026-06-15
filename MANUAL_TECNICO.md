@@ -190,6 +190,85 @@ Descarga en batches de 5 archivos en paralelo
 
 ## 🔐 Autenticación — AuthContext.tsx y server/index.js
 
+### Arquitectura Zero-Storage
+
+La aplicación implementa una **arquitectura de seguridad Zero-Storage** para la gestión de credenciales sensibles (token de GitHub y claves de API de IA).
+
+**Decisión arquitectónica:** El token y las claves de API **viven exclusivamente en el estado de React** (memoria volátil del contexto). **Nunca se escriben en ninguna API de almacenamiento del navegador** (`sessionStorage`, `localStorage`, cookies, etc.).
+
+**Justificación de seguridad:**
+
+- La aplicación requiere el scope `repo` de GitHub, que otorga acceso completo de lectura/escritura a todos los repositorios del usuario (públicos y privados).
+- El vector de ataque más común en aplicaciones web es XSS (Cross-Site Scripting), que permite a un atacante ejecutar JavaScript arbitrario en el contexto de la página.
+- Si el token estuviera en `sessionStorage` o `localStorage`, un script XSS podría leerlo con `sessionStorage.getItem('gh_token')` y exfiltrar las credenciales.
+- Al mantener el token **solo en memoria de React**, un script XSS no puede acceder directamente a las variables de estado de React, eliminando este vector de ataque.
+
+**Trade-off aceptado:**
+
+- Si el usuario recarga la página (F5), la sesión se pierde y debe reautenticarse.
+- Si el usuario cierra la pestaña, todas las credenciales desaparecen instantáneamente.
+- Esto es una **característica de seguridad intencionada**, no un bug.
+
+### Implementación técnica
+
+**AuthContext.tsx (Zero-Storage):**
+
+```typescript
+// El token NUNCA se escribe en sessionStorage
+const fetchUser = useCallback(async (token: string) => {
+  setState(s => ({ ...s, isLoading: true, error: null }));
+  try {
+    const res = await fetch('https://api.github.com/user', {
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' },
+    });
+    if (!res.ok) throw new Error('Invalid token or API error');
+    const user: GitHubUser = await res.json();
+    
+    // ZERO-STORAGE: Token lives ONLY in React state
+    setState({
+      token,
+      user,
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+      connectedAt: Date.now(), // Timestamp en memoria para SessionWarningBanner
+    });
+  } catch (err) {
+    setState({ token: null, user: null, isAuthenticated: false, isLoading: false, error: (err as Error).message, connectedAt: null });
+  }
+}, []);
+```
+
+**AIProviderContext.tsx (Zero-Storage):**
+
+```typescript
+// La clave de IA NUNCA se escribe en sessionStorage
+const connect = (p: AIProviderType, k: string, m: string) => {
+  setProvider(p);
+  setApiKey(k);  // Solo en memoria de React
+  setModel(m);
+  setConnectedAt(Date.now());
+};
+```
+
+**SessionWarningBanner.tsx (adaptado a Zero-Storage):**
+
+```typescript
+// Lee timestamps desde el contexto de React, NO desde sessionStorage
+const { isAuthenticated, connectedAt: ghConnectedAt, initiateOAuth } = useAuth();
+const { isConnected, connectedAt: aiConnectedAt } = useAIProvider();
+
+const checkTTL = useCallback(() => {
+  const now = Date.now();
+  if (isAuthenticated && ghConnectedAt) {
+    const elapsed = now - ghConnectedAt;
+    if (elapsed >= WARN_AFTER) {
+      // Mostrar advertencia
+    }
+  }
+}, [isAuthenticated, ghConnectedAt]);
+```
+
 ### Flujo OAuth completo
 
 ```
@@ -202,7 +281,7 @@ Descarga en batches de 5 archivos en paralelo
 6. GitHub → devuelve access_token
 7. Express → redirect al frontend con token en URL hash
 8. Frontend → extrae token, llama GET /user para validar
-9. Token guardado en sessionStorage['gh_token']
+9. Token guardado SOLO en estado de React (ZERO-STORAGE)
 ```
 
 ### Fix de protocolo para Cloud Run
@@ -254,5 +333,5 @@ Ver [`MEJORAS_FUTURAS.md`](./MEJORAS_FUTURAS.md) para el detalle completo.
 ---
 
 <p align="center">
-  Desarrollado por <a href="https://github.com/migueljerico">@migueljerico</a> con <strong>Claude</strong> (Anthropic) y <strong>Antigravity 2.0</strong> (Google) · 2026
+  Desarrollado por <a href="https://github.com/migueljerico">@migueljerico</a> con <strong>Claude</strong> (Anthropic), <strong>Antigravity 2.0</strong> (Google), <strong>Manus AI</strong> (Refactorización de seguridad Zero-Storage) y <strong>Qwen 3.7-Plus</strong> (Componentes de código) · 2026
 </p>

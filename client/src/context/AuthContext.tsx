@@ -1,36 +1,32 @@
 // ────────────────────────────────────────────────────────────────────────────
-// AuthContext — GitHub authentication state
+// AuthContext — GitHub authentication state (ZERO-STORAGE ARCHITECTURE)
 //
 // DUAL AUTH MODEL:
 // The app supports two ways to authenticate with GitHub:
 //
-//   1. GitHub OAuth (recommended)
-//      - User clicks "Conectar con GitHub"
-//      - Browser navigates to /auth/github (Express)
-//      - Express redirects to GitHub, GitHub returns a code
-//      - Express exchanges the code for an access_token server-side
-//      - Express redirects to the frontend with the token in the URL hash
-//      - AuthGate extracts the token and calls setTokenFromOAuth()
+// 1. GitHub OAuth (recommended)
+// - User clicks "Conectar con GitHub"
+// - Browser navigates to /auth/github (Express)
+// - Express redirects to GitHub, GitHub returns a code
+// - Express exchanges the code for an access_token server-side
+// - Express redirects to the frontend with the token in the URL hash
+// - AuthGate extracts the token and calls setTokenFromOAuth()
 //
-//   2. Personal Access Token (PAT)
-//      - User pastes their PAT directly into the PatInput component
-//      - loginWithPat() validates it immediately against GET /user
+// 2. Personal Access Token (PAT)
+// - User pastes their PAT directly into the PatInput component
+// - loginWithPat() validates it immediately against GET /user
 //
-// TOKEN STORAGE:
-// The token is stored in sessionStorage (key: 'gh_token'), NOT localStorage.
-// sessionStorage is scoped to the browser tab and is cleared when the tab
-// closes, reducing the window of exposure if the device is left unlocked.
+// SECURITY MODEL — ZERO-STORAGE:
+// The token is stored STRICTLY in React state (memory). It is NEVER written
+// to sessionStorage, localStorage, cookies, or any browser storage API.
+// This eliminates the risk of token theft via XSS attacks.
 //
-// SESSION TTL:
-// A timestamp ('gh_token_ts') is stored alongside the token so that
-// SessionWarningBanner can alert the user when the session is aging.
+// TRADE-OFF: If the user reloads the page (F5), the session is lost and
+// they must re-authenticate. This is an intentional security feature, not a bug.
 // ────────────────────────────────────────────────────────────────────────────
 
-import React, { createContext, useContext, useState, useCallback, useRef, type ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
 import type { GitHubUser } from '../types';
-
-const GH_TOKEN_KEY = 'gh_token';
-const GH_TOKEN_TS  = 'gh_token_ts';
 
 /** Full authentication state shape */
 interface AuthState {
@@ -44,6 +40,8 @@ interface AuthState {
   isLoading: boolean;
   /** Error message from the last failed auth attempt, or null */
   error: string | null;
+  /** Timestamp when the token was connected (for session warnings) */
+  connectedAt: number | null;
 }
 
 /** AuthContext value — combines state with action methods */
@@ -77,65 +75,56 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 /**
  * AuthProvider — wraps the app and provides GitHub authentication state.
  *
- * On mount, if a token exists in sessionStorage, it is validated immediately
- * (in case the page was refreshed). If validation fails, the stale token is
- * removed and the user is shown the login screen.
- *
- * Uses a ref-based approach (hasValidated) to guard against double-validation
- * in Strict Mode without suppressing ESLint warnings.
+ * ZERO-STORAGE: The token lives ONLY in React state (memory).
+ * On mount, the app always starts unauthenticated. The user must re-authenticate
+ * after any page reload. This is an intentional security feature.
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
-    token: sessionStorage.getItem(GH_TOKEN_KEY),
+    token: null,
     user: null,
     isAuthenticated: false,
-    // If we have a stored token, start in loading state so we can validate it
-    isLoading: !!sessionStorage.getItem(GH_TOKEN_KEY),
+    isLoading: false,
     error: null,
+    connectedAt: null,
   });
-
-  // Ref-based guard: ensure we validate the stored token only once on mount
-  // This prevents double-validation in Strict Mode without suppressing ESLint
-  const hasValidated = useRef(false);
 
   /**
    * Validate a token by calling `GET https://api.github.com/user`.
-   * On success: stores token + timestamp in sessionStorage and updates state.
-   * On failure: clears sessionStorage and resets state to unauthenticated.
+   * On success: stores token + timestamp in React state ONLY (no browser storage).
+   * On failure: resets state to unauthenticated.
    *
    * @param token - The token to validate (OAuth or PAT)
    */
   const fetchUser = useCallback(async (token: string) => {
     setState(s => ({ ...s, isLoading: true, error: null }));
     try {
-      const res = await fetch('https://api.github.com/user', {
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' },
+      const res = await fetch("https://api.github.com/user", {
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" },
       });
-      if (!res.ok) throw new Error('Invalid token or API error');
+      if (!res.ok) throw new Error("Invalid token or API error");
       const user: GitHubUser = await res.json();
-      sessionStorage.setItem(GH_TOKEN_KEY, token);
-      // Store connection timestamp for session TTL warnings (#13)
-      sessionStorage.setItem(GH_TOKEN_TS, Date.now().toString());
-      setState({ token, user, isAuthenticated: true, isLoading: false, error: null });
+      
+      // ZERO-STORAGE: Token lives ONLY in React state, never in browser storage
+      setState({
+        token,
+        user,
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+        connectedAt: Date.now(),
+      });
     } catch (err) {
-      sessionStorage.removeItem(GH_TOKEN_KEY);
-      sessionStorage.removeItem(GH_TOKEN_TS);
-      setState({ token: null, user: null, isAuthenticated: false, isLoading: false, error: (err as Error).message });
+      setState({
+        token: null,
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: (err as Error).message,
+        connectedAt: null,
+      });
     }
   }, []);
-
-  // On mount: validate any token that survived a page refresh
-  // Using a ref guard instead of an empty dependency array to avoid ESLint suppression
-  React.useEffect(() => {
-    // Skip validation if already done (prevents double-validation in Strict Mode)
-    if (hasValidated.current) return;
-    hasValidated.current = true;
-
-    const stored = sessionStorage.getItem(GH_TOKEN_KEY);
-    if (stored && !state.user) {
-      fetchUser(stored);
-    }
-  }, [state.user, fetchUser]);
 
   const loginWithPat = useCallback(async (pat: string) => {
     await fetchUser(pat);
@@ -147,13 +136,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const initiateOAuth = useCallback(() => {
     // Navigate to the Express OAuth endpoint which starts the GitHub redirect chain
-    window.location.href = '/auth/github';
+    window.location.href = "/auth/github";
   }, []);
 
   const logout = useCallback(() => {
-    sessionStorage.removeItem(GH_TOKEN_KEY);
-    sessionStorage.removeItem(GH_TOKEN_TS);
-    setState({ token: null, user: null, isAuthenticated: false, isLoading: false, error: null });
+    // ZERO-STORAGE: Simply reset React state. No browser storage to clear.
+    setState({
+      token: null,
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: null,
+      connectedAt: null,
+    });
   }, []);
 
   return (
@@ -170,6 +165,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
  */
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used inside AuthProvider');
+  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
   return ctx;
 }

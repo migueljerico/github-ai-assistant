@@ -214,10 +214,37 @@ Usuario (lenguaje natural)
 
 ## 🔒 Modelo de seguridad
 
+### 🛡️ Arquitectura de Seguridad y Privacidad (Zero-Storage)
+
+Esta aplicación implementa una **arquitectura de seguridad Zero-Storage** como protección fundamental contra ataques XSS (Cross-Site Scripting). 
+
+**¿Qué significa Zero-Storage?**
+
+El token de acceso de GitHub (ya sea OAuth o PAT) y tu clave de API de IA **viven exclusivamente en la memoria de React** (estado global del contexto). **Jamás se escriben en ninguna API de almacenamiento del navegador**: ni `sessionStorage`, ni `localStorage`, ni cookies, ni IndexedDB.
+
+**¿Por qué es esto importante?**
+
+La aplicación requiere el scope `repo` de GitHub, que otorga acceso de lectura y escritura a **todos tus repositorios públicos y privados**. Si un atacante lograra inyectar código JavaScript en la aplicación (ataque XSS), podría:
+
+- ❌ **Con almacenamiento en navegador:** Leer el token desde `sessionStorage`/`localStorage` y robar todas tus credenciales en segundos.
+- ✅ **Con Zero-Storage:** El token solo existe en la memoria volátil de React. Un script malicioso no puede acceder a variables de estado de React directamente, haciendo el robo de credenciales extremadamente difícil.
+
+**¿Qué significa esto para ti como usuario?**
+
+- 🔄 **Al recargar la página (F5), perderás tu sesión.** Tendrás que volver a autenticarte con GitHub y reintroducir tu clave de IA.
+- 🔐 **Al cerrar la pestaña del navegador, todas tus credenciales desaparecen** instantáneamente de la memoria.
+- 🛡️ **Tus repositorios están protegidos** contra el vector de ataque más común en aplicaciones web (XSS + robo de tokens desde storage).
+
+**Esto NO es un bug, es una característica de seguridad intencionada.**
+
+Priorizamos la **seguridad absoluta de tus credenciales** por encima de la comodidad de no tener que volver a iniciar sesión. Dado el nivel de acceso que requiere la aplicación (scope `repo`), consideramos que este trade-off es necesario y responsable.
+
+### Modelo de almacenamiento de credenciales
+
 | Elemento | Dónde vive | Cuándo desaparece |
 |---|---|---|
-| Token OAuth de GitHub | `sessionStorage` del navegador | Al cerrar la pestaña |
-| Clave de IA (Groq/Gemini) | `sessionStorage` del navegador | Al cerrar la pestaña |
+| Token OAuth de GitHub | **Solo en memoria de React** (estado) | Al recargar la página o cerrar la pestaña |
+| Clave de IA (Groq/Gemini) | **Solo en memoria de React** (estado) | Al recargar la página o cerrar la pestaña |
 | `GITHUB_CLIENT_SECRET` | Variables de entorno del servidor | Solo en memoria del proceso |
 | Datos del usuario | Ningún servidor externo | No se almacenan |
 | Clave Gemini en tránsito | Cuerpo HTTPS hacia `/api/gemini` | No se persiste en el servidor |
@@ -243,5 +270,5 @@ Este proyecto forma parte del programa de formación en **Análisis de Datos e I
 ---
 
 <p align="center">
-  Desarrollado por <a href="https://github.com/migueljerico">@migueljerico</a> con la asistencia de <strong>Claude</strong> (Anthropic) y <strong>Antigravity 2.0</strong> (Google) · 2026
+  Desarrollado por <a href="https://github.com/migueljerico">@migueljerico</a> con la asistencia de <strong>Claude</strong> (Anthropic), <strong>Antigravity 2.0</strong> (Google), <strong>Manus AI</strong> (Refactorización de seguridad Zero-Storage) y <strong>Qwen 3.7-Plus</strong> (Componentes de código) · 2026
 </p>
