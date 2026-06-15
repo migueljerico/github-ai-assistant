@@ -33,6 +33,8 @@
 | 🛡️ Seguridad | Zero-Storage: tokens y API keys nunca se guardan en el navegador |
 | 🌍 Deploy | Google Cloud Run (HTTPS, auto-scaling) |
 | 📦 Stack | React + TypeScript + Express + Vite |
+| 🔄 CI/CD | GitHub Actions (Tests y Deploy automáticos) |
+| 🧪 Calidad | Tests unitarios y Codecov (Cobertura en tiempo real) |
 
 ---
 
@@ -297,6 +299,24 @@ Ver [`MEJORAS_FUTURAS.md`](./MEJORAS_FUTURAS.md) — Estado actual, sprints y ro
 
 La app soporta actualmente **Groq Cloud** y **Google Gemini**. Para el análisis de proveedores alternativos evaluados (Together AI, OpenRouter, Fireworks AI, Ollama local, DeepInfra), métricas de código y sprints pendientes, consulta [`MEJORAS_FUTURAS.md`](./MEJORAS_FUTURAS.md).
 
+---
+
+## 🧠 El proceso: De los negocios a la Ingeniería de IA
+
+Este proyecto no es solo código; es el resultado de un profesional de **Ciencias Empresariales** adentrándose en el desarrollo de software y la Inteligencia Artificial desde cero en 30 días.
+
+### ¿Por qué este enfoque?
+Al no tener la "mochila" de la formación técnica tradicional, mi enfoque no fue solo "hacer que funcione", sino **construir un producto robusto, seguro y mantenible** aplicando las mejores prácticas de la industria desde el primer día:
+
+- 🛡️ **Seguridad por diseño:** Implementación de arquitectura *Zero-Storage* para proteger credenciales sensibles, priorizando la seguridad del usuario sobre la comodidad.
+- 🔄 **Automatización (CI/CD):** Configuración de pipelines con GitHub Actions para que cada cambio se verifique automáticamente.
+- 🧪 **Calidad garantizada:** Integración de tests unitarios con Vitest y monitorización de cobertura con Codecov.
+- 📚 **Documentación profesional:** Manuales técnicos y guías de contribución (`CONTRIBUTING.md`) siguiendo estándares de la industria.
+
+### La lección principal
+La Inteligencia Artificial y las herramientas modernas (como GitHub Copilot, LLMs y plataformas Cloud) han democratizado la ingeniería. Este proyecto demuestra que **el criterio de negocio, la curiosidad y la obsesión por la calidad** son tan importantes como saber escribir código.
+
+> *"No soy ingeniero de software. Soy un profesional de negocio que ha aprendido a construir productos de IA pensando como un ingeniero."*
 ---
 
 ## 📚 Contexto formativo
