@@ -39,10 +39,8 @@ jobs:
           echo "=== Buscando lcov.info ==="
           find . -name "lcov.info" || echo "No se encontró lcov.info"
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./client/coverage/lcov.info
           fail_ci_if_error: false
-          verbose: true
