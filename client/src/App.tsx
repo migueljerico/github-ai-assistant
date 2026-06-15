@@ -6,6 +6,7 @@ import { callAI, parseGeminiAction, generateRepoDocs } from './services/gemini';
 import { executeAction, executeActionMultiRepo } from './services/actionExecutor';
 import { getFileContents, decodeBase64, fetchRepoTreeRecursive, createOrUpdateFile } from './services/github';
 import Header from './components/layout/Header';
+import SessionWarningBanner from './components/layout/SessionWarningBanner';
 import HistoryPanel from './components/layout/HistoryPanel';
 import TemplatePanel from './components/templates/TemplatePanel';
 import ChatArea from './components/chat/ChatArea';
@@ -273,6 +274,9 @@ export default function App() {
         templatesOpen={templatesOpen}
         historyOpen={historyOpen}
       />
+
+      {/* #13 — Banner de advertencia de caducidad de sesión */}
+      <SessionWarningBanner />
 
       <div className="main-layout">
         <TemplatePanel
