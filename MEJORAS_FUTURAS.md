@@ -1,7 +1,7 @@
 # 🔮 Roadmap de Mejoras — Análisis del Código
 
 > **Estado del código, mejoras pendientes y roadmap del proyecto** \
-> Actualizado a: **v2.8** · Junio 2026
+> Actualizado a: **v2.9** · Junio 2026
 
 ---
 
@@ -21,6 +21,7 @@
 | 10 | Unificar cliente fetch — `ghFetch()` en `actionExecutor.ts` | `services/github.ts` + `actionExecutor.ts` | v2.7 · `3f55dbf49a` |
 | 11 | Eliminación ESLint suppression en `AuthContext` | `context/AuthContext.tsx` | v2.4 |
 | 12 | Nombre del proveedor IA dinámico en mensajes | `App.tsx` | v2.2.0 |
+| 13 | Advertencia de caducidad de sesión (sessionStorage TTL 8h) | `SessionWarningBanner.tsx` · `AuthContext.tsx` · `AIProviderContext.tsx` | v2.9 · `c77855d5514c` |
 | 17 | Rate limiting en proxy Gemini (40 req/min) | `server/index.js` · `package.json` | v2.8 |
 
 ---
@@ -33,12 +34,6 @@
 ---
 
 ### 🔴 Alta Prioridad
-
-#### **#13 — Advertencia de caducidad de sesión (sessionStorage TTL)**
-- **Esfuerzo:** 1–2h
-- Los tokens de GitHub y las claves de IA se guardan en `sessionStorage` sin ninguna indicación de caducidad. Si el token expira silenciosamente, la siguiente acción falla sin contexto claro para el usuario.
-- **Solución:** Guardar timestamp al conectar y mostrar un banner o tooltip cuando el token lleve más de X horas activo. No bloqueo forzado — UX defensiva que informa antes de que falle.
-- **Beneficio:** Elimina una clase entera de errores confusos; señal de madurez en el portfolio.
 
 #### **#14 — Expansión de acciones GitHub: issues, PRs, branches, workflows**
 - **Esfuerzo:** 3–4h
@@ -134,10 +129,10 @@
 
 | Prioridad | Total | ✅ Resueltos | ⏳ Pendientes |
 |-----------|-------|-------------|--------------|
-| 🔴 Alta | 10 | 6 | 4 |
+| 🔴 Alta | 10 | 7 | 3 |
 | 🟡 Media | 9 | 5 | 4 |
 | 🟢 Baja | 5 | 2 | 3 |
-| **TOTAL** | **24** | **13** | **11** |
+| **TOTAL** | **24** | **14** | **10** |
 
 ---
 
@@ -160,7 +155,7 @@
 <p align="center">
   <sub>
     Análisis inicial: Claude (Anthropic) · Junio 2026 |
-    Actualizado: v2.8 |
+    Actualizado: v2.9 |
     Próxima revisión: v3.0
   </sub>
 </p>
