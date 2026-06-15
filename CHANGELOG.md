@@ -5,6 +5,34 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.9.0] — 2026-06-15
+
+### UX / Seguridad — Advertencia de caducidad de sesión (issue #13)
+
+### Added
+
+- **`SessionWarningBanner.tsx`** — nuevo componente en `client/src/components/layout/`. Muestra un banner amber no intrusivo si el token de GitHub o la clave de IA llevan más de **8 horas** activos en `sessionStorage`. Cada aviso es independiente y se puede cerrar individualmente con ✕. El aviso de GitHub incluye botón "Reconectar GitHub" que lanza el flujo OAuth directamente.
+  - Revisión periódica cada 60 segundos via `setInterval`
+  - Optimización de re-renders: compara warnings por valor antes de actualizar estado
+  - Limpia el estado `dismissed` automáticamente cuando un aviso desaparece (ej: usuario reconectó)
+  - `role="alert"` + `aria-live="polite"` para accesibilidad
+
+- **`gh_token_ts`** — timestamp en `sessionStorage` guardado en `AuthContext.tsx` al completar la validación del token (tanto OAuth como PAT). Se elimina en `logout()`.
+
+- **`ai_connected_ts`** — timestamp en `sessionStorage` guardado en `AIProviderContext.tsx` al llamar a `connect()`. Se elimina en `disconnect()`.
+
+- **Estilos** — clases `.session-warning-bar`, `.session-warning-item`, `.session-warning-btn` y `.session-warning-dismiss` añadidas al design system en `index.css`.
+
+### Changed
+
+- **`App.tsx`** — importa y renderiza `<SessionWarningBanner />` entre el `<Header>` y el `<div className="main-layout">`, fuera de cualquier modal o overlay.
+
+### Resolved (MEJORAS_FUTURAS.md)
+
+- Mejora #13 → ✅ SessionWarningBanner implementado en v2.9
+
+---
+
 ## [2.8.0] — 2026-06-14
 
 ### Security — Rate Limiting en el proxy Gemini
