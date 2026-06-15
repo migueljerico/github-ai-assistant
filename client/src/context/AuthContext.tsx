@@ -20,10 +20,17 @@
 // The token is stored in sessionStorage (key: 'gh_token'), NOT localStorage.
 // sessionStorage is scoped to the browser tab and is cleared when the tab
 // closes, reducing the window of exposure if the device is left unlocked.
+//
+// SESSION TTL:
+// A timestamp ('gh_token_ts') is stored alongside the token so that
+// SessionWarningBanner can alert the user when the session is aging.
 // ────────────────────────────────────────────────────────────────────────────
 
 import React, { createContext, useContext, useState, useCallback, useRef, type ReactNode } from 'react';
 import type { GitHubUser } from '../types';
+
+const GH_TOKEN_KEY = 'gh_token';
+const GH_TOKEN_TS  = 'gh_token_ts';
 
 /** Full authentication state shape */
 interface AuthState {
@@ -79,11 +86,11 @@ const AuthContext = createContext<AuthContextValue | null>(null);
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
-    token: sessionStorage.getItem('gh_token'),
+    token: sessionStorage.getItem(GH_TOKEN_KEY),
     user: null,
     isAuthenticated: false,
     // If we have a stored token, start in loading state so we can validate it
-    isLoading: !!sessionStorage.getItem('gh_token'),
+    isLoading: !!sessionStorage.getItem(GH_TOKEN_KEY),
     error: null,
   });
 
@@ -93,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   /**
    * Validate a token by calling `GET https://api.github.com/user`.
-   * On success: stores token in sessionStorage and updates state.
+   * On success: stores token + timestamp in sessionStorage and updates state.
    * On failure: clears sessionStorage and resets state to unauthenticated.
    *
    * @param token - The token to validate (OAuth or PAT)
@@ -106,10 +113,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       if (!res.ok) throw new Error('Invalid token or API error');
       const user: GitHubUser = await res.json();
-      sessionStorage.setItem('gh_token', token);
+      sessionStorage.setItem(GH_TOKEN_KEY, token);
+      // Store connection timestamp for session TTL warnings (#13)
+      sessionStorage.setItem(GH_TOKEN_TS, Date.now().toString());
       setState({ token, user, isAuthenticated: true, isLoading: false, error: null });
     } catch (err) {
-      sessionStorage.removeItem('gh_token');
+      sessionStorage.removeItem(GH_TOKEN_KEY);
+      sessionStorage.removeItem(GH_TOKEN_TS);
       setState({ token: null, user: null, isAuthenticated: false, isLoading: false, error: (err as Error).message });
     }
   }, []);
@@ -121,7 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (hasValidated.current) return;
     hasValidated.current = true;
 
-    const stored = sessionStorage.getItem('gh_token');
+    const stored = sessionStorage.getItem(GH_TOKEN_KEY);
     if (stored && !state.user) {
       fetchUser(stored);
     }
@@ -141,7 +151,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
-    sessionStorage.removeItem('gh_token');
+    sessionStorage.removeItem(GH_TOKEN_KEY);
+    sessionStorage.removeItem(GH_TOKEN_TS);
     setState({ token: null, user: null, isAuthenticated: false, isLoading: false, error: null });
   }, []);
 
