@@ -30,6 +30,15 @@ jobs:
       - name: Run tests with coverage
         run: npm run test:coverage || echo "No coverage script found yet"
 
+      - name: Debug coverage files
+        run: |
+          echo "=== Contenido del directorio ==="
+          ls -la
+          echo "=== Contenido de coverage/ ==="
+          ls -la coverage/ || echo "No existe coverage/"
+          echo "=== Buscando lcov.info ==="
+          find . -name "lcov.info" || echo "No se encontró lcov.info"
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
