@@ -14,6 +14,8 @@ interface ChatInputProps {
   selectedRepos: GitHubRepo[];
   onSelectedReposChange: (repos: GitHubRepo[]) => void;
   onDocumentRepo: (repoName: string) => void;
+  attachedFile?: File | null;
+  onFileAttach?: (file: File | null) => void;
 }
 
 export default function ChatInput({
@@ -27,8 +29,11 @@ export default function ChatInput({
   selectedRepos,
   onSelectedReposChange,
   onDocumentRepo,
+  attachedFile,
+  onFileAttach,
 }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -52,6 +57,21 @@ export default function ChatInput({
           selectedRepos={selectedRepos}
           onChange={onSelectedReposChange}
         />
+      )}
+
+      {/* File Attached Indicator */}
+      {attachedFile && (
+        <div className="file-attached-indicator">
+          <span>📎 Archivo adjunto: <strong>{attachedFile.name}</strong> ({(attachedFile.size / 1024).toFixed(2)} KB)</span>
+          <button
+            onClick={() => onFileAttach?.(null)}
+            disabled={disabled}
+            className="remove-file-btn"
+            title="Eliminar archivo"
+          >
+            ✕
+          </button>
+        </div>
       )}
 
       <div className="chat-input-row">
@@ -91,6 +111,31 @@ export default function ChatInput({
           />
           Aplicar a múltiples repositorios
         </label>
+
+        {/* File Upload Input */}
+        <div className="file-upload-section">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.pbix,.doc,.docx,.txt,.md,.json,.yaml,.yml"
+            onChange={(e) => {
+              const file = e.target.files?.[0] || null;
+              onFileAttach?.(file);
+            }}
+            disabled={disabled}
+            style={{ display: 'none' }}
+            aria-label="Adjuntar archivo"
+          />
+          <button
+            className="file-upload-btn"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={disabled || isLoading}
+            title="Adjuntar PDF, PBIX o documento"
+            aria-label="Adjuntar archivo"
+          >
+            📎 Adjuntar
+          </button>
+        </div>
 
         <DocumentRepoButton
           disabled={disabled}
