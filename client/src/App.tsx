@@ -3,7 +3,13 @@ import { useAuth } from './context/AuthContext';
 import { useAIProvider } from './context/AIProviderContext';
 import { useChat } from './hooks/useChat';
 import { useActions } from './hooks/useActions';
-import { callAI, parseGeminiAction, generateRepoDocs, CHAT_PROMPT, ACTION_PROMPT } from './services/gemini';
+import {
+  callAI,
+  parseGeminiAction,
+  generateRepoDocs,
+  SYSTEM_PROMPT,
+  CONVERSATION_SYSTEM_PROMPT,          // FIX 1: import the new prompt
+} from './services/gemini';
 import { executeAction, executeActionMultiRepo } from './services/actionExecutor';
 import { getFileContents, decodeBase64, fetchRepoTreeRecursive, createOrUpdateFile } from './services/github';
 import Header from './components/layout/Header';
@@ -17,29 +23,36 @@ import DocModal from './components/confirm/DocModal';
 import { formatResultData } from './utils/formatResult';
 import type { ChatMessage, GeminiAction, GitHubRepo, RepoAnalysis, RepoFile } from './types';
 
-// ── Detect conversation requests (opiniones, análisis, consejos) ────────────
+// ── Detect opinion/analysis/conversation requests ───────────────────────────
 function isConversationRequest(message: string): boolean {
-  const keywords = [
-    'opinión', 'opinion', 'qué opinas', 'que opinas', 'piensas',
+  const conversationKeywords = [
+    // Opiniones y análisis
+    'opinión', 'opinion', 'qué opinas', 'que opinas', 'piensas', 'piensas que',
     'consejo', 'recomendación', 'recomendacion', 'recomiendas',
     'crítica', 'critica', 'constructiva', 'constructivo', 'feedback',
     'mejora', 'mejorar', 'propón', 'propon', 'propuesta', 'sugerencia',
     'analiza', 'análisis', 'analisis', 'evalúa', 'evalua', 'valoración',
-    'qué te parece', 'que te parece', 'cómo puedo', 'como puedo',
+    // Preguntas
+    'qué te parece', 'que te parece', 'qué piensas', 'que piensas',
+    'cómo puedo', 'como puedo', 'cómo hacer', 'como hacer',
     'debería', 'deberia', 'es buena', 'es malo', 'es mejor',
     'ventajas', 'desventajas', 'pros', 'contras',
-    'explícame', 'explicame', 'qué es', 'que es', 'cómo funciona',
+    'punto fuerte', 'punto débil', 'punto debil', 'fortalezas', 'debilidades',
+    // Conversación general
+    'explícame', 'explicame', 'explícame', 'explicar',
+    'qué es', 'que es', 'cómo funciona', 'como funciona',
+    'por qué', 'porque', 'cuál es', 'cual es',
     'ayuda', 'help', 'guía', 'guia', 'tutorial',
     'documentación', 'documentacion', 'información', 'informacion'
   ];
   
   const lower = message.toLowerCase();
-  return keywords.some(keyword => lower.includes(keyword));
+  return conversationKeywords.some(keyword => lower.includes(keyword));
 }
 
-// ── Detect action requests (verbos de acción explícitos) ─────────────────────
+// ── Detect explicit action requests ──────────────────────────────────────────
 function isActionRequest(message: string): boolean {
-  const keywords = [
+  const actionKeywords = [
     'lista', 'muéstrame', 'muestra', 'enséñame', 'enseñame', 'ver',
     'lee', 'leer', 'abre', 'abrir', 'carga', 'cargar',
     'crea', 'crear', 'genera', 'generar', 'haz', 'hacer',
@@ -50,11 +63,11 @@ function isActionRequest(message: string): boolean {
     'comenta', 'comentar', 'responde', 'responder',
     'ejecuta', 'ejecutar', 'rerun', 'corre', 'correr',
     'sube', 'subir', 'publica', 'publicar',
-    'descarga', 'descargar', 'clona', 'clonar'
+    'descarga', 'descargar', 'clona', 'clonar',
   ];
   
   const lower = message.toLowerCase();
-  return keywords.some(keyword => lower.includes(keyword));
+  return actionKeywords.some(keyword => lower.includes(keyword));
 }
 
 // ── Main App ──────────────────────────────────────────────────────────────────
@@ -63,7 +76,6 @@ export default function App() {
   const { provider, apiKey, model } = useAIProvider();
   const providerName = provider === 'groq' ? 'Groq Cloud' : 'Google Gemini';
 
-  // Custom hooks
   const {
     messages,
     inputValue,
@@ -91,16 +103,10 @@ export default function App() {
     clearPendingAction,
   } = useActions();
 
-  // Sidebar state
   const [templatesOpen, setTemplatesOpen] = useState(true);
   const [historyOpen, setHistoryOpen] = useState(true);
-
-  // Doc repo state
   const [docAnalysis, setDocAnalysis] = useState<RepoAnalysis | null>(null);
   const [isCommittingDocs, setIsCommittingDocs] = useState(false);
-
-  // 🔥 OPCIÓN D - MODO MANUAL: 'auto' | 'chat' | 'action'
-  const [modeOverride, setModeOverride] = useState<'auto' | 'chat' | 'action'>('auto');
 
   // ── Send message to AI ────────────────────────────────────────────────────
   const handleSend = useCallback(async () => {
@@ -115,75 +121,103 @@ export default function App() {
 
     const newHistory = [...conversationHistory, { role: 'user' as const, content: userText }];
 
-    // 🔥 OPCIÓN D - DETECCIÓN DE MODO
     const isConversation = isConversationRequest(userText);
     const isAction = isActionRequest(userText);
-    
-    // Determinar modo final (manual override o automático)
-    let finalMode: 'chat' | 'action';
-    if (modeOverride === 'auto') {
-      finalMode = isConversation && !isAction ? 'chat' : 'action';
-    } else {
-      finalMode = modeOverride;
-    }
-
-    // 🔥 OPCIÓN D - SELECCIONAR SYSTEM PROMPT SEGÚN MODO
-    const systemPrompt = finalMode === 'chat' ? CHAT_PROMPT : ACTION_PROMPT;
-
-    // 🔥 DEBUG: Log en consola para verificar detección
-    console.log(`[Opción D] Modo detectado: ${finalMode} | Override: ${modeOverride} | Conv: ${isConversation} | Action: ${isAction}`);
 
     try {
-      // 🔥 CRÍTICO: Pasar finalMode como sexto parámetro a callAI
-      const rawResponse = await callAI(
-        provider, 
-        apiKey, 
-        model, 
-        newHistory, 
-        systemPrompt,
-        finalMode  // ← ESTO ES LO NUEVO - Propaga el modo al backend
-      );
+      // ─────────────────────────────────────────────────────────────────────
+      // FIX 1: CORRECCIÓN DEL ERROR TS2322
+      //
+      // PROBLEMA ANTERIOR (no compilaba):
+      //   enhancedHistory = [
+      //     ...newHistory,
+      //     { role: 'system' as const, content: '...' }  // ← TS2322
+      //   ];
+      //   callAI(provider, apiKey, model, enhancedHistory)
+      //
+      // Por qué fallaba:
+      //   - Message.role solo acepta 'user' | 'assistant'
+      //   - 'system' no es asignable a ese tipo → error de compilación
+      //   - Además, el proxy Gemini envía messages[last] como "current turn",
+      //     así que el mensaje 'system' era lo que el modelo recibía, no la
+      //     pregunta del usuario (bug de lógica además del de tipos)
+      //
+      // SOLUCIÓN: pasar CONVERSATION_SYSTEM_PROMPT como 5º argumento de callAI()
+      //   que ya tiene ese parámetro, en lugar de inyectarlo en el array.
+      // ─────────────────────────────────────────────────────────────────────
+      const activeSystemPrompt = (isConversation && !isAction)
+        ? CONVERSATION_SYSTEM_PROMPT
+        : SYSTEM_PROMPT;
 
-      // 🔥 MODO CHAT: Forzar respuesta en texto, bloquear JSON
-      if (finalMode === 'chat') {
+      const rawResponse = await callAI(provider, apiKey, model, newHistory, activeSystemPrompt);
+
+      // ── MODO CONVERSACIÓN ──────────────────────────────────────────────────
+      if (isConversation && !isAction) {
         const action = parseGeminiAction(rawResponse);
-        
-        if (action) {
-          // La IA generó JSON en modo chat - EXTRAER TEXTO Y NO EJECUTAR
-          let textResponse = rawResponse;
-          
-          if (action.accion && action.accion.length > 100) {
-            textResponse = action.accion;
-          } else if (action.endpoint) {
-            textResponse = `💡 **Análisis detectado**: ${action.accion}\n\n${rawResponse}`;
-          }
-          
-          updateMessage(loadingId, { 
-            content: textResponse, 
-            isLoading: false 
-          });
-          addToHistory('assistant', textResponse);
-        } else {
-          // Perfecto - respuesta en Markdown
+
+        if (!action) {
+          // ✅ El modelo respondió en Markdown directamente
           updateMessage(loadingId, { content: rawResponse, isLoading: false });
           addToHistory('assistant', rawResponse);
+          return;
         }
-        setIsChatLoading(false);
-        return; // ⛔ NO EJECUTAR NADA EN MODO CHAT
-      }
 
-      // 🔥 MODO ACCIÓN: Procesar JSON normalmente
-      const action = parseGeminiAction(rawResponse);
+        // El modelo generó JSON a pesar del prompt conversacional.
+        // Solución pragmática: si es GET (lectura segura), ejecutar y pedir opinión.
+        if (action.metodo === 'GET') {
+          try {
+            const histId = logAction('pending', action.accion, action.repo);
+            const result = await executeAction(token, user, action);
+            updateActionLog(histId, result.success ? 'completed' : 'error', result.message);
 
-      if (!action) {
-        // Respuesta en texto (Markdown) en modo acción
-        updateMessage(loadingId, { content: rawResponse, isLoading: false });
-        addToHistory('assistant', rawResponse);
-        setIsChatLoading(false);
+            if (result.success && result.data) {
+              const dataStr = formatResultData(result.data);
+              const opinionHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [
+                ...newHistory,
+                { role: 'assistant', content: `He obtenido los datos:\n\n${dataStr}` },
+                { role: 'user', content: `Basándote en estos datos, ${userText}. Da tu análisis experto en Markdown.` },
+              ];
+              const opinionResponse = await callAI(
+                provider, apiKey, model,
+                opinionHistory,
+                CONVERSATION_SYSTEM_PROMPT,
+              );
+              const finalText = parseGeminiAction(opinionResponse)
+                ? `**Resultado:**\n\n${dataStr}`
+                : opinionResponse;
+              updateMessage(loadingId, { content: finalText, isLoading: false });
+              addToHistory('assistant', finalText);
+            } else {
+              updateMessage(loadingId, {
+                content: `No pude obtener los datos: ${result.message}`,
+                isLoading: false,
+              });
+            }
+          } catch (execErr) {
+            updateMessage(loadingId, {
+              content: `❌ Error al obtener datos: ${(execErr as Error).message}`,
+              isLoading: false,
+            });
+          }
+          return;
+        }
+
+        // El modelo quiere escritura en modo conversación → bloquear
+        const blockedMsg = `Como me pediste una opinión, no ejecutaré acciones de escritura. Si quieres que **${action.accion}**, dímelo directamente.`;
+        updateMessage(loadingId, { content: blockedMsg, isLoading: false });
+        addToHistory('assistant', blockedMsg);
         return;
       }
 
-      // Enriquecer acción con contenido actual si es PUT
+      // ── MODO ACCIÓN (flujo normal) ─────────────────────────────────────────
+      const action = parseGeminiAction(rawResponse);
+
+      if (!action) {
+        updateMessage(loadingId, { content: rawResponse, isLoading: false });
+        addToHistory('assistant', rawResponse);
+        return;
+      }
+
       let enrichedAction = action;
       if (action.metodo === 'PUT' && action.repo && action.archivo && !action.contenidoActual) {
         try {
@@ -195,7 +229,7 @@ export default function App() {
             enrichedAction = { ...action, contenidoActual: decodeBase64(file.content) };
           }
         } catch {
-          // Archivo no existe - es creación
+          // El archivo no existe aún — es una creación
         }
       }
 
@@ -219,13 +253,13 @@ export default function App() {
       }
     } catch (err) {
       updateMessage(loadingId, {
-        content: `❌ Error: ${(err as Error).message}`,
+        content: `❌ Error al contactar con el asistente: ${(err as Error).message}`,
         isLoading: false,
       });
     } finally {
       setIsChatLoading(false);
     }
-  }, [inputValue, token, user, provider, apiKey, model, conversationHistory, multiRepoEnabled, selectedRepos, modeOverride, addMessage, updateMessage, setInputValue, setIsChatLoading, addToHistory, setPendingAction, logAction, updateActionLog]);
+  }, [inputValue, token, user, provider, apiKey, model, conversationHistory, multiRepoEnabled, selectedRepos, addMessage, updateMessage, setInputValue, setIsChatLoading, addToHistory, setPendingAction, logAction, updateActionLog]);
 
   // ── Confirm action ──────────────────────────────────────────────────────
   const handleConfirm = useCallback(async () => {
@@ -259,18 +293,39 @@ export default function App() {
 
   // ── Document repo ──────────────────────────────────────────────────────
   const handleDocumentRepo = useCallback(async (repoName: string) => {
-    if (!token || !user) return;
+    if (!token || !user || !provider || !apiKey || !model) return;
     setIsExecuting(true);
 
     try {
       const [owner, repo] = repoName.includes('/') ? repoName.split('/') : [user.login, repoName];
-      const tree = await fetchRepoTreeRecursive(token, owner, repo);
-      const analysis = await generateRepoDocs(provider, apiKey, model, repoName, tree);
+      const treeResult = await fetchRepoTreeRecursive(token, owner, repo);
+
+      // ─────────────────────────────────────────────────────────────────────
+      // FIX 2: CORRECCIÓN DEL ERROR TS2554
+      //
+      // PROBLEMA ANTERIOR (no compilaba):
+      //   generateRepoDocs(token, owner, repo, tree)
+      //
+      // Por qué fallaba:
+      //   - Firma real: generateRepoDocs(provider, apiKey, model, repoName, files[])
+      //   - Solo se pasaban 4 argumentos en vez de 5 → TS2554
+      //   - token(string) no es asignable a provider(AIProviderType) → TS2345
+      //   - tree(FetchTreeResult) no es string → TS2345
+      //
+      // SOLUCIÓN: pasar los 5 argumentos correctos con sus tipos correctos.
+      // ─────────────────────────────────────────────────────────────────────
+      const analysis = await generateRepoDocs(
+        provider,                    // AIProviderType ✅
+        apiKey,                      // string ✅
+        model,                       // string ✅
+        `${owner}/${repo}`,          // repoName string ✅
+        treeResult.files,            // RepoFile[] ✅ (FetchTreeResult.files is compatible)
+      );
       setDocAnalysis(analysis);
     } catch (err) {
       addMessage({
         role: 'assistant',
-        content: `❌ Error: ${(err as Error).message}`,
+        content: `❌ Error al analizar repositorio: ${(err as Error).message}`,
       });
     } finally {
       setIsExecuting(false);
@@ -283,16 +338,16 @@ export default function App() {
 
     try {
       const [owner, repo] = repoName.includes('/') ? repoName.split('/') : [user.login, repoName];
-      await createOrUpdateFile(token, owner, repo, 'TECHNICAL_DOCS.md', docAnalysis.manualTecnico || docAnalysis.readme || '');
+      await createOrUpdateFile(token, owner, repo, 'TECHNICAL_DOCS.md', docAnalysis.documentation);
       addMessage({
         role: 'assistant',
-        content: `✅ Documentación creada en ${repoName}/TECHNICAL_DOCS.md`,
+        content: `✅ Documentación técnica creada en ${repoName}/TECHNICAL_DOCS.md`,
       });
       setDocAnalysis(null);
     } catch (err) {
       addMessage({
         role: 'assistant',
-        content: `❌ Error: ${(err as Error).message}`,
+        content: `❌ Error al guardar documentación: ${(err as Error).message}`,
       });
     } finally {
       setIsCommittingDocs(false);
@@ -320,8 +375,6 @@ export default function App() {
             selectedRepos={selectedRepos}
             onSelectedReposChange={setSelectedRepos}
             onDocumentRepo={handleDocumentRepo}
-            modeOverride={modeOverride}
-            onModeOverrideChange={setModeOverride}
           />
         </div>
 
