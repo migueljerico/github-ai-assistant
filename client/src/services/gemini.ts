@@ -88,7 +88,7 @@ async function callGroq(
         content: m.content,
       })),
     ],
-    temperature: 0.7,  // ← Aumentado para respuestas más naturales
+    temperature: 0.7,
     max_tokens: 4096,
   };
 
@@ -112,14 +112,12 @@ async function callGroq(
 }
 
 // ── Gemini implementation (Tier 1 - Modo dual, proxiado con 'mode') ───────────
-// 🔥 OPCIÓN D: Ahora acepta 'mode' y lo envía al backend para que configure
-// las tools nativas de Gemini dinámicamente.
 async function callGeminiDirect(
   apiKey: string,
   model: string,
   messages: Message[],
   systemPrompt: string,
-  mode: 'chat' | 'action' = 'chat',  // ← NUEVO: modo por defecto 'chat'
+  mode: 'chat' | 'action' = 'chat',
 ): Promise<string> {
   const res = await fetch('/api/gemini', {
     method: 'POST',
@@ -129,7 +127,7 @@ async function callGeminiDirect(
       model, 
       messages, 
       systemPrompt,
-      mode,  // ← ENVIAR MODO AL BACKEND
+      mode,
     }),
   });
 
@@ -146,31 +144,13 @@ async function callGeminiDirect(
 }
 
 // ── Unified callAI (Opción D - con mode) ──────────────────────────────────────
-/**
- * Call the AI provider with the given messages, system prompt and mode.
- *
- * OPCIÓN D: El parámetro 'mode' controla el comportamiento del modelo:
- * - 'chat': Modo conversacional (Tier 1 - Gemini). El backend NO inyecta tools.
- * - 'action': Modo acción (Tier 1 - Gemini). El backend SÍ inyecta tools nativas.
- *
- * Para Groq (Tier 2), el 'mode' se ignora porque va directo al navegador.
- *
- * @param provider     - 'groq' or 'gemini'
- * @param apiKey       - The provider's API key (from React state, NOT storage)
- * @param model        - The model name (e.g., 'gpt-4', 'gemini-2.5-flash')
- * @param messages     - Chat history
- * @param systemPrompt - System instructions for the model
- * @param mode         - 'chat' | 'action' (solo afecta a Gemini)
- * @returns The model's response text
- * @throws Error if the API call fails
- */
 export async function callAI(
   provider: AIProviderType,
   apiKey: string,
   model: string,
   messages: Message[],
   systemPrompt: string = CHAT_PROMPT,
-  mode: 'chat' | 'action' = 'chat',  // ← NUEVO: modo por defecto 'chat'
+  mode: 'chat' | 'action' = 'chat',
 ): Promise<string> {
   if (provider === 'groq') return callGroq(apiKey, model, messages, systemPrompt);
   return callGeminiDirect(apiKey, model, messages, systemPrompt, mode);
@@ -189,7 +169,6 @@ export async function validateProviderKey(
     if (provider === 'groq') {
       await callGroq(apiKey, model, [{ role: 'user', content: 'Hi' }], 'Reply with one word.');
     } else {
-      // Para validación usamos modo 'chat' (no necesitamos tools)
       await callGeminiDirect(
         apiKey, 
         model, 
@@ -276,4 +255,43 @@ export async function generateRepoDocs(
   const primaryLang = detectPrimaryLanguage(files);
   const filesContext = files
     .slice(0, 20)
-    .map(f => `\n### ${
+    .map(f => `\n### ${f.path}\n\`\`\`\n${f.content?.slice(0, 500) || '(no content)'}\n\`\`\``)
+    .join('\n');
+
+  const docPrompt = `Eres un experto en documentación técnica. Analiza este repositorio y genera README y MANUAL_TECNICO.
+
+Repo: ${repoName}
+Lenguaje: ${primaryLang}
+
+Archivos:
+${filesContext}
+
+Responde SOLO con JSON válido:
+{
+  "readme": "contenido README",
+  "manualTecnico": "contenido MANUAL",
+  "resumen": "resumen 1-2 líneas",
+  "metadatos": { "lenguaje": "${primaryLang}", "archivosAnalizados": ${files.length} }
+}`;
+
+  const response = await callAI(
+    provider, 
+    apiKey, 
+    model, 
+    [{ role: 'user', content: docPrompt }], 
+    ACTION_PROMPT,
+    'action'
+  );
+
+  const parsed = extractJSON(response);
+  return {
+    readme: (parsed.readme as string) || '',
+    manualTecnico: (parsed.manualTecnico as string) || '',
+    resumen: (parsed.resumen as string) || '',
+    metadatos: (parsed.metadatos as Record<string, unknown>) || {},
+  };
+}
+
+export function isMarkdownResponse(rawText: string): boolean {
+  return parseGeminiAction(rawText) === null;
+}
