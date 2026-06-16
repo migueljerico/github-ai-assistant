@@ -1,7 +1,7 @@
 # 🔮 Roadmap de Mejoras — Análisis del Código
 
 > **Estado del código, mejoras pendientes y roadmap del proyecto** \
-> Actualizado a: **v3.3** · Junio 2026 (Modo Dual Conversación, File Upload, Autocompletado)
+> Actualizado a: **v3.4** · Junio 2026 (Rate Limit, Refactor Hooks, Componentes Opcionales)
 
 ---
 
@@ -27,6 +27,8 @@
 | 24 | Añadir CONTRIBUTING.md | `CONTRIBUTING.md` | v3.1 · `(pending)` |
 | 14 | Expansión de acciones GitHub: issues, PRs, branches, workflows | `types/index.ts` · `github.ts` · `actionExecutor.ts` · `gemini.ts` | v3.2 · `bee3e86` |
 | 22 | Autocompletado de instrucciones en el chat | `utils/instructionSuggestions.ts` | v3.3 · `b0aab89` |
+| 18 | Mejor manejo de errores de rate limit de GitHub API | `utils/rateLimitHandler.ts` · `services/github.ts` | v3.4 · `5318162` |
+| 19 | Refactor de App.tsx — Extraer lógica a custom hooks | `hooks/useChat.ts` · `hooks/useActions.ts` | v3.4 · `5318162` |
 
 ---
 
@@ -63,17 +65,7 @@
 
 ### 🟡 Media Prioridad
 
-#### **#18 — Mejor manejo de errores de rate limit de GitHub API**
-- **Esfuerzo:** 1h
-- Los errores 429 de GitHub API se muestran actualmente como errores genéricos sin contexto temporal.
-- **Solución:** Leer la cabecera `X-RateLimit-Reset` de la respuesta y mostrar "Rate limit alcanzado. Disponible en X minutos." con countdown opcional.
-- **Beneficio:** UX clara; el usuario entiende qué esperar y no reintenta en bucle.
 
-#### **#19 — Refactor de App.tsx — Extraer lógica a custom hooks**
-- **Esfuerzo:** 2h
-- `App.tsx` actúa como orquestador principal y acumula lógica de negocio que dificulta la lectura y el testing.
-- **Solución:** Crear `hooks/useChat.ts` (lógica de `handleSend`, historial de mensajes) y `hooks/useActions.ts` (confirmación, ejecución, log de sesión).
-- **Beneficio:** `App.tsx` queda como orquestador puro; cada hook es testeable de forma aislada.
 
 #### **#20 — Migrar prompts largos a archivos externos**
 - **Esfuerzo:** 2h
@@ -110,9 +102,9 @@
 | Prioridad | Total | ✅ Resueltos | ⏳ Pendientes |
 |-----------|-------|-------------|--------------|
 | 🔴 Alta | 9 | 8 | 1 |
-| 🟡 Media | 6 | 5 | 1 |
+| 🟡 Media | 6 | 6 | 0 |
 | 🟢 Baja | 5 | 3 | 2 |
-| **TOTAL** | **20** | **18** | **2** |
+| **TOTAL** | **20** | **19** | **1** |
 
 ---
 
