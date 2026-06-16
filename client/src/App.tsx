@@ -99,7 +99,7 @@ export default function App() {
   const [docAnalysis, setDocAnalysis] = useState<RepoAnalysis | null>(null);
   const [isCommittingDocs, setIsCommittingDocs] = useState(false);
 
-  // 🔥 MODO MANUAL: 'auto' | 'chat' | 'action'
+  // 🔥 OPCIÓN D - MODO MANUAL: 'auto' | 'chat' | 'action'
   const [modeOverride, setModeOverride] = useState<'auto' | 'chat' | 'action'>('auto');
 
   // ── Send message to AI ────────────────────────────────────────────────────
@@ -115,7 +115,7 @@ export default function App() {
 
     const newHistory = [...conversationHistory, { role: 'user' as const, content: userText }];
 
-    // 🔥 DETECCIÓN DE MODO
+    // 🔥 OPCIÓN D - DETECCIÓN DE MODO
     const isConversation = isConversationRequest(userText);
     const isAction = isActionRequest(userText);
     
@@ -127,11 +127,22 @@ export default function App() {
       finalMode = modeOverride;
     }
 
-    // 🔥 SELECCIONAR SYSTEM PROMPT SEGÚN MODO
+    // 🔥 OPCIÓN D - SELECCIONAR SYSTEM PROMPT SEGÚN MODO
     const systemPrompt = finalMode === 'chat' ? CHAT_PROMPT : ACTION_PROMPT;
 
+    // 🔥 DEBUG: Log en consola para verificar detección
+    console.log(`[Opción D] Modo detectado: ${finalMode} | Override: ${modeOverride} | Conv: ${isConversation} | Action: ${isAction}`);
+
     try {
-      const rawResponse = await callAI(provider, apiKey, model, newHistory, systemPrompt);
+      // 🔥 CRÍTICO: Pasar finalMode como sexto parámetro a callAI
+      const rawResponse = await callAI(
+        provider, 
+        apiKey, 
+        model, 
+        newHistory, 
+        systemPrompt,
+        finalMode  // ← ESTO ES LO NUEVO - Propaga el modo al backend
+      );
 
       // 🔥 MODO CHAT: Forzar respuesta en texto, bloquear JSON
       if (finalMode === 'chat') {
@@ -254,7 +265,7 @@ export default function App() {
     try {
       const [owner, repo] = repoName.includes('/') ? repoName.split('/') : [user.login, repoName];
       const tree = await fetchRepoTreeRecursive(token, owner, repo);
-      const analysis = await generateRepoDocs(token, owner, repo, tree);
+      const analysis = await generateRepoDocs(provider, apiKey, model, repoName, tree);
       setDocAnalysis(analysis);
     } catch (err) {
       addMessage({
@@ -264,7 +275,7 @@ export default function App() {
     } finally {
       setIsExecuting(false);
     }
-  }, [token, user, addMessage, setIsExecuting]);
+  }, [token, user, provider, apiKey, model, addMessage, setIsExecuting]);
 
   const handleCommitDocs = useCallback(async (repoName: string) => {
     if (!token || !user || !docAnalysis) return;
@@ -272,7 +283,7 @@ export default function App() {
 
     try {
       const [owner, repo] = repoName.includes('/') ? repoName.split('/') : [user.login, repoName];
-      await createOrUpdateFile(token, owner, repo, 'TECHNICAL_DOCS.md', docAnalysis.documentation);
+      await createOrUpdateFile(token, owner, repo, 'TECHNICAL_DOCS.md', docAnalysis.manualTecnico || docAnalysis.readme || '');
       addMessage({
         role: 'assistant',
         content: `✅ Documentación creada en ${repoName}/TECHNICAL_DOCS.md`,
