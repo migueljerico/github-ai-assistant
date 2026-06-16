@@ -129,57 +129,67 @@ export default function App() {
     let enhancedHistory = newHistory;
     
     if (isConversation && !isAction) {
-      // FORCE CONVERSATION MODE - Add explicit system instruction
+      // 🔒 CAMBIO 3: FORCE CONVERSATION MODE - Instrucción más agresiva
       enhancedHistory = [
         ...newHistory,
         { 
           role: 'system' as const,
-          content: 'MODO CONVERSACIÓN ACTIVADO: Responde DIRECTAMENTE en Markdown con tu opinión, análisis o consejo profesional. NO generes JSON. NO ejecutes acciones de la API. NO digas que no puedes hacerlo - eres un consultor experto y SIEMPRE puedes dar opiniones y consejos basados en tu conocimiento.'
+          content: `🔒 MODO CONSULTOR ACTIVADO - REGLAS OBLIGATORIAS:
+1. Responde DIRECTAMENTE en Markdown con tu opinión profesional
+2. ❌ PROHIBIDO generar JSON bajo cualquier circunstancia
+3. ❌ PROHIBIDO ejecutar acciones de la API de GitHub
+4. ❌ PROHIBIDO decir "necesito leer el repo primero"
+5. ✅ Eres un consultor experto - DA TU OPINIÓN directamente con tu conocimiento
+6. ✅ Si el usuario pide opinión sobre un repo, opina basándote en lo que te cuenta
+7. ✅ NO leas archivos, NO listes repos, NO ejecutes NADA
+8. Responde como un humano experto en desarrollo de software dando su opinión`
         }
       ];
     }
 
     try {
       const rawResponse = await callAI(provider, apiKey, model, enhancedHistory);
-      const action = parseGeminiAction(rawResponse);
 
-      // CRITICAL: If this is a conversation request but AI returned JSON,
-      // extract the text content and display it as Markdown (DO NOT EXECUTE)
+      // 🔒 CAMBIO 4: BLOQUEO TOTAL DE EJECUCIÓN en modo conversación
       if (isConversation && !isAction) {
+        const action = parseGeminiAction(rawResponse);
+        
         if (action) {
-          // AI generated JSON despite our instructions - extract text if possible
-          if (action.accion && action.accion.length > 50) {
-            // Long action description - probably the AI tried to explain something
-            updateMessage(loadingId, { 
-              content: action.accion, 
-              isLoading: false 
-            });
-            addToHistory('assistant', action.accion);
-          } else {
-            // Show raw response as text
-            updateMessage(loadingId, { 
-              content: rawResponse, 
-              isLoading: false 
-            });
-            addToHistory('assistant', rawResponse);
+          // La IA generó JSON a pesar de nuestras instrucciones - BLOQUEAR
+          let textResponse = rawResponse;
+          
+          // Si el action tiene una descripción larga, usarla como respuesta
+          if (action.accion && action.accion.length > 100) {
+            textResponse = action.accion;
+          } else if (action.endpoint) {
+            // Si es un JSON corto, convertirlo en texto explicativo
+            textResponse = `He detectado que quieres ${action.accion || 'realizar una acción'}. Pero como me pides una opinión, te respondo directamente:\n\n${rawResponse}`;
           }
+          
+          updateMessage(loadingId, { 
+            content: textResponse, 
+            isLoading: false 
+          });
+          addToHistory('assistant', textResponse);
         } else {
-          // Good - AI responded in Markdown
+          // Perfecto - La IA respondió en Markdown
           updateMessage(loadingId, { content: rawResponse, isLoading: false });
           addToHistory('assistant', rawResponse);
         }
-        return;
+        return; // ⛔ SALIR - NO EJECUTAR NADA
       }
 
-      // For action requests, proceed with normal JSON handling
+      // Para peticiones de acción, manejo normal de JSON
+      const action = parseGeminiAction(rawResponse);
+
       if (!action) {
-        // AI returned non-JSON — treat as plain response (Markdown mode)
+        // La IA devolvió texto no-JSON — tratar como respuesta normal
         updateMessage(loadingId, { content: rawResponse, isLoading: false });
         addToHistory('assistant', rawResponse);
         return;
       }
 
-      // For file updates, fetch the current content for diff
+      // Para actualizaciones de archivos, obtener contenido actual para diff
       let enrichedAction = action;
       if (action.metodo === 'PUT' && action.repo && action.archivo && !action.contenidoActual) {
         try {
@@ -191,7 +201,7 @@ export default function App() {
             enrichedAction = { ...action, contenidoActual: decodeBase64(file.content) };
           }
         } catch {
-          // File doesn't exist yet — it's a creation
+          // El archivo no existe aún — es una creación
         }
       }
 
@@ -199,11 +209,11 @@ export default function App() {
       addToHistory('assistant', rawResponse);
 
       if (enrichedAction.requiereConfirmacion) {
-        // Show confirmation modal
+        // Mostrar modal de confirmación
         const repos = multiRepoEnabled && selectedRepos.length > 0 ? selectedRepos : [];
         setPendingAction({ action: enrichedAction, targetRepos: repos });
       } else {
-        // Read-only: execute directly
+        // Solo lectura: ejecutar directamente
         const histId = logAction('pending', enrichedAction.accion, enrichedAction.repo);
         const result = await executeAction(token, user, enrichedAction);
         updateActionLog(histId, result.success ? 'completed' : 'error', result.message);
