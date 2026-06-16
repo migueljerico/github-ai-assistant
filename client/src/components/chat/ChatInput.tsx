@@ -18,6 +18,8 @@ interface ChatInputProps {
   onDocumentRepo: (repoName: string) => void;
   attachedFile?: File | null;
   onFileAttach?: (file: File | null) => void;
+  modeOverride: 'auto' | 'chat' | 'action';
+  onModeOverrideChange: (mode: 'auto' | 'chat' | 'action') => void;
 }
 
 export default function ChatInput({
@@ -33,6 +35,8 @@ export default function ChatInput({
   onDocumentRepo,
   attachedFile,
   onFileAttach,
+  modeOverride,
+  onModeOverrideChange,
 }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -67,6 +71,73 @@ export default function ChatInput({
           onChange={onSelectedReposChange}
         />
       )}
+
+      {/* 🔥 Mode Selector Toggle */}
+      <div className="mode-selector" style={{ 
+        display: 'flex', 
+        gap: '12px', 
+        padding: '8px 12px', 
+        marginBottom: '8px',
+        backgroundColor: 'var(--bg-secondary, #f5f5f5)',
+        borderRadius: '6px',
+        border: '1px solid var(--border-color, #e0e0e0)',
+        fontSize: '13px'
+      }}>
+        <label style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '4px', 
+          cursor: 'pointer',
+          fontWeight: modeOverride === 'auto' ? '600' : '400',
+          opacity: modeOverride === 'auto' ? '1' : '0.7'
+        }}>
+          <input
+            type="radio"
+            name="mode-selector"
+            checked={modeOverride === 'auto'}
+            onChange={() => onModeOverrideChange('auto')}
+            disabled={disabled}
+            style={{ margin: 0 }}
+          />
+          🤖 Auto
+        </label>
+        <label style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '4px', 
+          cursor: 'pointer',
+          fontWeight: modeOverride === 'chat' ? '600' : '400',
+          opacity: modeOverride === 'chat' ? '1' : '0.7'
+        }}>
+          <input
+            type="radio"
+            name="mode-selector"
+            checked={modeOverride === 'chat'}
+            onChange={() => onModeOverrideChange('chat')}
+            disabled={disabled}
+            style={{ margin: 0 }}
+          />
+          💬 Opinión
+        </label>
+        <label style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '4px', 
+          cursor: 'pointer',
+          fontWeight: modeOverride === 'action' ? '600' : '400',
+          opacity: modeOverride === 'action' ? '1' : '0.7'
+        }}>
+          <input
+            type="radio"
+            name="mode-selector"
+            checked={modeOverride === 'action'}
+            onChange={() => onModeOverrideChange('action')}
+            disabled={disabled}
+            style={{ margin: 0 }}
+          />
+          ⚙️ Acción
+        </label>
+      </div>
 
       {/* File Attached Indicator */}
       {attachedFile && (
