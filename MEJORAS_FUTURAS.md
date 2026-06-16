@@ -1,7 +1,7 @@
 # 🔮 Roadmap de Mejoras — Análisis del Código
 
 > **Estado del código, mejoras pendientes y roadmap del proyecto** \
-> Actualizado a: **v3.2** · Junio 2026 (Expansión GitHub: Issues, PRs, Branches, Workflows)
+> Actualizado a: **v3.3** · Junio 2026 (Modo Dual Conversación, File Upload, Autocompletado)
 
 ---
 
@@ -26,6 +26,7 @@
 | 17 | Rate limiting en proxy Gemini (40 req/min) | `server/index.js` · `package.json` | v2.8 |
 | 24 | Añadir CONTRIBUTING.md | `CONTRIBUTING.md` | v3.1 · `(pending)` |
 | 14 | Expansión de acciones GitHub: issues, PRs, branches, workflows | `types/index.ts` · `github.ts` · `actionExecutor.ts` · `gemini.ts` | v3.2 · `bee3e86` |
+| 22 | Autocompletado de instrucciones en el chat | `utils/instructionSuggestions.ts` | v3.3 · `b0aab89` |
 
 ---
 
@@ -90,11 +91,7 @@
 
 ### 🟢 Baja Prioridad
 
-#### **#22 — Autocompletado de instrucciones en el chat**
-- **Esfuerzo:** 2–3h
-- Sugerencias de instrucciones frecuentes al escribir en el chat (ej: "crea un repo", "documenta").
-- **Solución:** Datalist HTML o dropdown con instrucciones predefinidas filtradas por input.
-- **Beneficio:** Reduce la curva de aprendizaje para usuarios nuevos.
+
 
 #### **#23 — Mejorar DX y pipeline de despliegue**
 - **Esfuerzo:** 2–3h
@@ -113,9 +110,9 @@
 | Prioridad | Total | ✅ Resueltos | ⏳ Pendientes |
 |-----------|-------|-------------|--------------|
 | 🔴 Alta | 9 | 8 | 1 |
-| 🟡 Media | 7 | 5 | 2 |
-| 🟢 Baja | 5 | 2 | 3 |
-| **TOTAL** | **21** | **17** | **4** |
+| 🟡 Media | 6 | 5 | 1 |
+| 🟢 Baja | 5 | 3 | 2 |
+| **TOTAL** | **20** | **18** | **2** |
 
 ---
 
