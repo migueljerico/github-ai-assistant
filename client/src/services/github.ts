@@ -360,3 +360,304 @@ export async function fetchRepoTreeRecursive(
 
   return { files: results, totalScanned: allFiles.length, truncated };
 }
+
+
+// ── Issues ────────────────────────────────────────────────────────────────────
+
+import type { GitHubIssue, GitHubPullRequest, GitHubBranch, GitHubWorkflow, GitHubWorkflowRun } from '../types';
+
+/**
+ * List all issues in a repository.
+ * 
+ * @param token - GitHub OAuth token or PAT
+ * @param owner - Repository owner
+ * @param repo - Repository name
+ * @param state - Filter by state: 'open', 'closed', or 'all' (default: 'open')
+ * @returns Array of issues
+ */
+export async function listIssues(
+  token: string,
+  owner: string,
+  repo: string,
+  state: 'open' | 'closed' | 'all' = 'open'
+): Promise<GitHubIssue[]> {
+  return ghFetch<GitHubIssue[]>(token, `/repos/${owner}/${repo}/issues?state=${state}&per_page=100`);
+}
+
+/**
+ * Create a new issue in a repository.
+ * 
+ * @param token - GitHub OAuth token or PAT (requires `repo` scope)
+ * @param owner - Repository owner
+ * @param repo - Repository name
+ * @param title - Issue title
+ * @param body - Issue description (markdown)
+ * @param labels - Optional array of label names
+ * @param assignees - Optional array of assignee usernames
+ * @returns The created issue
+ */
+export async function createIssue(
+  token: string,
+  owner: string,
+  repo: string,
+  title: string,
+  body = '',
+  labels: string[] = [],
+  assignees: string[] = []
+): Promise<GitHubIssue> {
+  return ghFetch<GitHubIssue>(token, `/repos/${owner}/${repo}/issues`, {
+    method: 'POST',
+    body: JSON.stringify({ title, body, labels, assignees }),
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+/**
+ * Close or reopen an issue.
+ * 
+ * @param token - GitHub OAuth token or PAT
+ * @param owner - Repository owner
+ * @param repo - Repository name
+ * @param issueNumber - Issue number
+ * @param state - 'open' to reopen, 'closed' to close
+ * @returns The updated issue
+ */
+export async function updateIssueState(
+  token: string,
+  owner: string,
+  repo: string,
+  issueNumber: number,
+  state: 'open' | 'closed'
+): Promise<GitHubIssue> {
+  return ghFetch<GitHubIssue>(token, `/repos/${owner}/${repo}/issues/${issueNumber}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ state }),
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+/**
+ * Add a comment to an issue.
+ * 
+ * @param token - GitHub OAuth token or PAT
+ * @param owner - Repository owner
+ * @param repo - Repository name
+ * @param issueNumber - Issue number
+ * @param body - Comment text (markdown)
+ * @returns The created comment
+ */
+export async function commentOnIssue(
+  token: string,
+  owner: string,
+  repo: string,
+  issueNumber: number,
+  body: string
+): Promise<{ id: number; body: string; created_at: string }> {
+  return ghFetch(token, `/repos/${owner}/${repo}/issues/${issueNumber}/comments`, {
+    method: 'POST',
+    body: JSON.stringify({ body }),
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+// ── Pull Requests ─────────────────────────────────────────────────────────────
+
+/**
+ * List all pull requests in a repository.
+ * 
+ * @param token - GitHub OAuth token or PAT
+ * @param owner - Repository owner
+ * @param repo - Repository name
+ * @param state - Filter by state: 'open', 'closed', or 'all' (default: 'open')
+ * @returns Array of pull requests
+ */
+export async function listPullRequests(
+  token: string,
+  owner: string,
+  repo: string,
+  state: 'open' | 'closed' | 'all' = 'open'
+): Promise<GitHubPullRequest[]> {
+  return ghFetch<GitHubPullRequest[]>(token, `/repos/${owner}/${repo}/pulls?state=${state}&per_page=100`);
+}
+
+/**
+ * Create a new pull request.
+ * 
+ * @param token - GitHub OAuth token or PAT (requires `repo` scope)
+ * @param owner - Repository owner
+ * @param repo - Repository name
+ * @param title - PR title
+ * @param head - Source branch name
+ * @param base - Target branch name (usually 'main' or 'master')
+ * @param body - PR description (markdown)
+ * @param draft - Whether the PR should be marked as draft
+ * @returns The created pull request
+ */
+export async function createPullRequest(
+  token: string,
+  owner: string,
+  repo: string,
+  title: string,
+  head: string,
+  base: string,
+  body = '',
+  draft = false
+): Promise<GitHubPullRequest> {
+  return ghFetch<GitHubPullRequest>(token, `/repos/${owner}/${repo}/pulls`, {
+    method: 'POST',
+    body: JSON.stringify({ title, head, base, body, draft }),
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+/**
+ * Merge a pull request.
+ * 
+ * @param token - GitHub OAuth token or PAT
+ * @param owner - Repository owner
+ * @param repo - Repository name
+ * @param prNumber - Pull request number
+ * @param mergeMethod - 'merge', 'squash', or 'rebase' (default: 'merge')
+ * @param commitTitle - Optional custom commit title
+ * @param commitMessage - Optional custom commit message
+ * @returns Merge result
+ */
+export async function mergePullRequest(
+  token: string,
+  owner: string,
+  repo: string,
+  prNumber: number,
+  mergeMethod: 'merge' | 'squash' | 'rebase' = 'merge',
+  commitTitle?: string,
+  commitMessage?: string
+): Promise<{ sha: string; merged: boolean; message: string }> {
+  return ghFetch(token, `/repos/${owner}/${repo}/pulls/${prNumber}/merge`, {
+    method: 'PUT',
+    body: JSON.stringify({ merge_method: mergeMethod, commit_title: commitTitle, commit_message: commitMessage }),
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+// ── Branches ──────────────────────────────────────────────────────────────────
+
+/**
+ * List all branches in a repository.
+ * 
+ * @param token - GitHub OAuth token or PAT
+ * @param owner - Repository owner
+ * @param repo - Repository name
+ * @returns Array of branches
+ */
+export async function listBranches(
+  token: string,
+  owner: string,
+  repo: string
+): Promise<GitHubBranch[]> {
+  return ghFetch<GitHubBranch[]>(token, `/repos/${owner}/${repo}/branches?per_page=100`);
+}
+
+/**
+ * Create a new branch.
+ * 
+ * @param token - GitHub OAuth token or PAT (requires `repo` scope)
+ * @param owner - Repository owner
+ * @param repo - Repository name
+ * @param branchName - Name for the new branch
+ * @param sha - SHA of the commit to branch from (usually the default branch)
+ * @returns The created branch
+ */
+export async function createBranch(
+  token: string,
+  owner: string,
+  repo: string,
+  branchName: string,
+  sha: string
+): Promise<GitHubBranch> {
+  return ghFetch<GitHubBranch>(token, `/repos/${owner}/${repo}/git/refs`, {
+    method: 'POST',
+    body: JSON.stringify({ ref: `refs/heads/${branchName}`, sha }),
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+/**
+ * Delete a branch.
+ * 
+ * @param token - GitHub OAuth token or PAT (requires `repo` scope)
+ * @param owner - Repository owner
+ * @param repo - Repository name
+ * @param branchName - Name of the branch to delete
+ */
+export async function deleteBranch(
+  token: string,
+  owner: string,
+  repo: string,
+  branchName: string
+): Promise<void> {
+  await ghFetch(token, `/repos/${owner}/${repo}/git/refs/heads/${branchName}`, {
+    method: 'DELETE',
+  });
+}
+
+// ── Workflows ─────────────────────────────────────────────────────────────────
+
+/**
+ * List all workflows in a repository.
+ * 
+ * @param token - GitHub OAuth token or PAT
+ * @param owner - Repository owner
+ * @param repo - Repository name
+ * @returns Array of workflows
+ */
+export async function listWorkflows(
+  token: string,
+  owner: string,
+  repo: string
+): Promise<GitHubWorkflow[]> {
+  const result = await ghFetch<{ workflows: GitHubWorkflow[] }>(token, `/repos/${owner}/${repo}/actions/workflows`);
+  return result.workflows;
+}
+
+/**
+ * List workflow runs for a specific workflow.
+ * 
+ * @param token - GitHub OAuth token or PAT
+ * @param owner - Repository owner
+ * @param repo - Repository name
+ * @param workflowId - Workflow ID or filename
+ * @param status - Filter by status: 'queued', 'in_progress', 'completed', etc.
+ * @returns Array of workflow runs
+ */
+export async function listWorkflowRuns(
+  token: string,
+  owner: string,
+  repo: string,
+  workflowId: number | string,
+  status?: string
+): Promise<GitHubWorkflowRun[]> {
+  let path = `/repos/${owner}/${repo}/actions/workflows/${workflowId}/runs`;
+  if (status) path += `?status=${status}`;
+  const result = await ghFetch<{ workflow_runs: GitHubWorkflowRun[] }>(token, path);
+  return result.workflow_runs;
+}
+
+/**
+ * Trigger a workflow run (re-run a failed workflow).
+ * 
+ * @param token - GitHub OAuth token or PAT (requires `repo` scope)
+ * @param owner - Repository owner
+ * @param repo - Repository name
+ * @param runId - Workflow run ID
+ * @returns Result of the re-run request
+ */
+export async function triggerWorkflowRun(
+  token: string,
+  owner: string,
+  repo: string,
+  runId: number
+): Promise<{ status: number }> {
+  return ghFetch(token, `/repos/${owner}/${repo}/actions/runs/${runId}/rerun`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+}

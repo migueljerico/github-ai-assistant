@@ -37,9 +37,74 @@ export interface GitHubFile {
   download_url?: string | null;
 }
 
+// ── Issues ───────────────────────────────────────────────────────────────────
+export interface GitHubIssue {
+  id: number;
+  number: number;
+  title: string;
+  body: string | null;
+  state: 'open' | 'closed';
+  user: { login: string; avatar_url: string };
+  created_at: string;
+  updated_at: string;
+  html_url: string;
+  labels: Array<{ name: string; color: string }>;
+  assignees: Array<{ login: string }>;
+}
+
+// ── Pull Requests ────────────────────────────────────────────────────────────
+export interface GitHubPullRequest {
+  id: number;
+  number: number;
+  title: string;
+  body: string | null;
+  state: 'open' | 'closed';
+  merged: boolean;
+  head: { ref: string; sha: string };
+  base: { ref: string; sha: string };
+  user: { login: string; avatar_url: string };
+  created_at: string;
+  updated_at: string;
+  html_url: string;
+  draft: boolean;
+}
+
+// ── Branches ─────────────────────────────────────────────────────────────────
+export interface GitHubBranch {
+  name: string;
+  commit: { sha: string; url: string };
+  protected: boolean;
+}
+
+// ── Workflows ────────────────────────────────────────────────────────────────
+export interface GitHubWorkflow {
+  id: number;
+  name: string;
+  path: string;
+  state: 'active' | 'deleted' | 'disabled_fork' | 'disabled_inactivity' | 'disabled_manually';
+  created_at: string;
+  updated_at: string;
+  url: string;
+  html_url: string;
+}
+
+export interface GitHubWorkflowRun {
+  id: number;
+  name: string;
+  head_branch: string;
+  status: 'queued' | 'in_progress' | 'completed';
+  conclusion: 'success' | 'failure' | 'neutral' | 'cancelled' | 'timed_out' | 'action_required' | null;
+  created_at: string;
+  updated_at: string;
+  run_number: number;
+  event: string;
+  html_url: string;
+}
+
 // ── Gemini Action ────────────────────────────────────────────────────────────
-export type ActionType = 'lectura' | 'escritura' | 'creacion' | 'listado';
+export type ActionType = 'lectura' | 'escritura' | 'creacion' | 'listado' | 'borrado';
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+export type ActionTarget = 'file' | 'issue' | 'pr' | 'branch' | 'workflow' | 'repo';
 
 export interface GeminiAction {
   tipo: ActionType;
@@ -52,6 +117,7 @@ export interface GeminiAction {
   contenidoActual?: string | null;
   payload: Record<string, unknown>;
   requiereConfirmacion: boolean;
+  target?: ActionTarget; // Tipo de recurso (file, issue, pr, branch, workflow)
 }
 
 // ── Chat ─────────────────────────────────────────────────────────────────────

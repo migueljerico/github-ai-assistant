@@ -34,8 +34,38 @@ Formato del JSON de respuesta:
   "archivo": "ruta del archivo o null",
   "contenidoPropuesto": "contenido en markdown/texto o null",
   "payload": { "objeto JSON con los parámetros para la API" },
-  "requiereConfirmacion": true
+  "requiereConfirmacion": true,
+  "target": "file|issue|pr|branch|workflow"
 }
+
+=== OPERACIONES SOPORTADAS ===
+
+**ARCHIVOS:**
+- Listar archivos: GET /repos/OWNER/REPO/git/trees/main?recursive=1
+- Leer archivo: GET /repos/OWNER/REPO/contents/RUTA
+- Crear/actualizar: PUT /repos/OWNER/REPO/contents/RUTA
+- Eliminar: DELETE /repos/OWNER/REPO/contents/RUTA
+
+**ISSUES:**
+- Listar: GET /repos/OWNER/REPO/issues?state=open
+- Crear: POST /repos/OWNER/REPO/issues (payload: {title, body, labels, assignees})
+- Cerrar/reabrir: PATCH /repos/OWNER/REPO/issues/NUMBER (payload: {state: "closed" o "open"})
+- Comentar: POST /repos/OWNER/REPO/issues/NUMBER/comments (payload: {body})
+
+**PULL REQUESTS:**
+- Listar: GET /repos/OWNER/REPO/pulls?state=open
+- Crear: POST /repos/OWNER/REPO/pulls (payload: {title, head, base, body, draft})
+- Fusionar: PUT /repos/OWNER/REPO/pulls/NUMBER/merge (payload: {merge_method: "merge"|"squash"|"rebase"})
+
+**BRANCHES:**
+- Listar: GET /repos/OWNER/REPO/branches
+- Crear: POST /repos/OWNER/REPO/git/refs (payload: {ref: "refs/heads/NOMBRE", sha})
+- Eliminar: DELETE /repos/OWNER/REPO/git/refs/heads/NOMBRE
+
+**WORKFLOWS:**
+- Listar workflows: GET /repos/OWNER/REPO/actions/workflows
+- Listar runs: GET /repos/OWNER/REPO/actions/workflows/WORKFLOW_ID/runs
+- Re-ejecutar: POST /repos/OWNER/REPO/actions/runs/RUN_ID/rerun
 
 REGLAS IMPORTANTES PARA LOS ENDPOINTS:
 - Para listar los repos del usuario autenticado: usa SIEMPRE "/user/repos" (NO "/users/{username}/repos")
@@ -43,14 +73,20 @@ REGLAS IMPORTANTES PARA LOS ENDPOINTS:
 - Nunca uses placeholders literales como {username}, {owner}, {repo} — usa el nombre real
 - Para repos de otro usuario: "/users/NOMBRE_REAL/repos" con el nombre real, no un placeholder
 - Para archivos: "/repos/OWNER/REPO/contents/RUTA"
+- Siempre especifica el campo "target" para que el executor sepa qué tipo de recurso estás manipulando
 
 REGLA OBLIGATORIA SOBRE requiereConfirmacion:
-- false → operaciones de SOLO LECTURA que no modifican datos: listar repos, ver archivos,
+- false → operaciones de SOLO LECTURA que no modifican datos: listar repos, ver archivos, listar issues/PRs/branches/workflows
           obtener información del perfil, consultar estadísticas. tipo = "lectura" o "listado"
-- true  → operaciones que CREAN, MODIFICAN O BORRAN datos: subir archivos, crear repos,
-          actualizar contenido, eliminar. tipo = "escritura", "creacion" o "borrado"
-Ejemplo: "lista mis repositorios" → requiereConfirmacion: false
-Ejemplo: "crea un README" → requiereConfirmacion: true
+- true  → operaciones que CREAN, MODIFICAN O BORRAN datos: subir archivos, crear repos, crear issues/PRs/branches,
+          actualizar contenido, eliminar, cerrar issues, fusionar PRs. tipo = "escritura", "creacion" o "borrado"
+
+Ejemplos:
+- "lista mis issues abiertos" → requiereConfirmacion: false, target: "issue"
+- "crea un issue" → requiereConfirmacion: true, target: "issue"
+- "fusiona el PR #5" → requiereConfirmacion: true, target: "pr"
+- "crea una rama" → requiereConfirmacion: true, target: "branch"
+- "lista los workflows" → requiereConfirmacion: false, target: "workflow"
 
 Para operaciones de escritura en archivos existentes, incluye
 "contenidoActual" con el contenido actual del archivo (obtenido

@@ -21,6 +21,19 @@ import {
   decodeBase64,
   listAllRepos,
   ghFetch,
+  listIssues,
+  createIssue,
+  updateIssueState,
+  commentOnIssue,
+  listPullRequests,
+  createPullRequest,
+  mergePullRequest,
+  listBranches,
+  createBranch,
+  deleteBranch,
+  listWorkflows,
+  listWorkflowRuns,
+  triggerWorkflowRun,
 } from './github';
 
 /** Result of a single action execution */
@@ -275,4 +288,129 @@ export async function executeActionMultiRepo(
     results.push(result);
   }
   return results;
+}
+
+/**
+ * Execute issue-specific actions (comment, close, reopen).
+ * 
+ * @param token - GitHub OAuth token or PAT
+ * @param user - Authenticated GitHub user
+ * @param action - The confirmed action
+ * @param targetRepo - Target repository
+ * @returns ExecutionResult
+ */
+export async function executeIssueAction(
+  token: string,
+  user: { login: string },
+  action: GeminiAction,
+  targetRepo: GitHubRepo
+): Promise<ExecutionResult> {
+  const repoTarget = { owner: targetRepo.owner.login, repo: targetRepo.name };
+  const endpoint = resolveEndpoint(action.endpoint, user, repoTarget);
+  
+  try {
+    // Extract issue number from endpoint
+    const issueMatch = endpoint.match(/\/issues\/(\d+)/);
+    if (!issueMatch) throw new Error('No se pudo extraer el número de issue');
+    const issueNumber = parseInt(issueMatch[1], 10);
+    
+    // Comment on issue
+    if (endpoint.includes('/comments')) {
+      const body = (action.payload as { body?: string }).body || '';
+      const comment = await commentOnIssue(token, repoTarget.owner, repoTarget.repo, issueNumber, body);
+      return { success: true, message: 'Comentario añadido correctamente', data: comment };
+    }
+    
+    // Close/reopen issue
+    if (action.metodo === 'PATCH') {
+      const state = (action.payload as { state?: string }).state || 'open';
+      const issue = await updateIssueState(token, repoTarget.owner, repoTarget.repo, issueNumber, state as 'open' | 'closed');
+      return { success: true, message: `Issue ${state === 'closed' ? 'cerrado' : 'reabierto'} correctamente`, data: issue };
+    }
+    
+    return { success: false, message: 'Acción de issue no reconocida' };
+  } catch (err) {
+    return { success: false, message: (err as Error).message };
+  }
+}
+
+/**
+ * Execute PR-specific actions (merge, reopen, etc.).
+ * 
+ * @param token - GitHub OAuth token or PAT
+ * @param user - Authenticated GitHub user
+ * @param action - The confirmed action
+ * @param targetRepo - Target repository
+ * @returns ExecutionResult
+ */
+export async function executePRAction(
+  token: string,
+  user: { login: string },
+  action: GeminiAction,
+  targetRepo: GitHubRepo
+): Promise<ExecutionResult> {
+  const repoTarget = { owner: targetRepo.owner.login, repo: targetRepo.name };
+  const endpoint = resolveEndpoint(action.endpoint, user, repoTarget);
+  
+  try {
+    // Extract PR number from endpoint
+    const prMatch = endpoint.match(/\/pulls\/(\d+)/);
+    if (!prMatch) throw new Error('No se pudo extraer el número de PR');
+    const prNumber = parseInt(prMatch[1], 10);
+    
+    // Merge PR
+    if (endpoint.includes('/merge')) {
+      const payload = action.payload as { merge_method?: string; commit_title?: string; commit_message?: string };
+      const result = await mergePullRequest(
+        token,
+        repoTarget.owner,
+        repoTarget.repo,
+        prNumber,
+        (payload.merge_method as 'merge' | 'squash' | 'rebase') || 'merge',
+        payload.commit_title,
+        payload.commit_message
+      );
+      return { success: true, message: 'Pull Request fusionado correctamente', data: result };
+    }
+    
+    return { success: false, message: 'Acción de PR no reconocida' };
+  } catch (err) {
+    return { success: false, message: (err as Error).message };
+  }
+}
+
+/**
+ * Execute workflow-specific actions (trigger/re-run).
+ * 
+ * @param token - GitHub OAuth token or PAT
+ * @param user - Authenticated GitHub user
+ * @param action - The confirmed action
+ * @param targetRepo - Target repository
+ * @returns ExecutionResult
+ */
+export async function executeWorkflowAction(
+  token: string,
+  user: { login: string },
+  action: GeminiAction,
+  targetRepo: GitHubRepo
+): Promise<ExecutionResult> {
+  const repoTarget = { owner: targetRepo.owner.login, repo: targetRepo.name };
+  const endpoint = resolveEndpoint(action.endpoint, user, repoTarget);
+  
+  try {
+    // Extract run ID from endpoint
+    const runMatch = endpoint.match(/\/runs\/(\d+)/);
+    if (!runMatch) throw new Error('No se pudo extraer el ID del workflow run');
+    const runId = parseInt(runMatch[1], 10);
+    
+    // Re-run workflow
+    if (endpoint.includes('/rerun')) {
+      const result = await triggerWorkflowRun(token, repoTarget.owner, repoTarget.repo, runId);
+      return { success: true, message: 'Workflow re-ejecutado correctamente', data: result };
+    }
+    
+    return { success: false, message: 'Acción de workflow no reconocida' };
+  } catch (err) {
+    return { success: false, message: (err as Error).message };
+  }
 }
