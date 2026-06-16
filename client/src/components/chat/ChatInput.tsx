@@ -1,7 +1,9 @@
 import { useRef, useEffect, useState } from 'react';
 import type { GitHubRepo } from '../../types';
+import type { InstructionTemplate } from '../../utils/instructionSuggestions';
 import MultiRepoSelector from '../multi-repo/RepoSelector';
 import DocumentRepoButton from './DocumentRepoButton';
+import InstructionSuggestions from './InstructionSuggestions';
 
 interface ChatInputProps {
   value: string;
@@ -34,6 +36,7 @@ export default function ChatInput({
 }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -48,6 +51,12 @@ export default function ChatInput({
       e.preventDefault();
       if (!disabled && !isLoading && value.trim()) onSend();
     }
+  };
+
+  const handleSelectTemplate = (template: InstructionTemplate) => {
+    onChange(template.template);
+    setSuggestionsOpen(false);
+    textareaRef.current?.focus();
   };
 
   return (
@@ -76,6 +85,14 @@ export default function ChatInput({
 
       <div className="chat-input-row">
         <div className="chat-textarea-wrap">
+          {/* Instruction Suggestions Dropdown */}
+          <InstructionSuggestions
+            inputValue={value}
+            onSelectTemplate={handleSelectTemplate}
+            isOpen={suggestionsOpen}
+            onOpenChange={setSuggestionsOpen}
+          />
+
           <textarea
             id="chat-textarea"
             ref={textareaRef}
@@ -84,6 +101,7 @@ export default function ChatInput({
             value={value}
             onChange={e => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
+            onFocus={() => setSuggestionsOpen(true)}
             disabled={disabled}
             rows={2}
             aria-label="Instrucción para el asistente"

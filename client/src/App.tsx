@@ -1,7 +1,8 @@
-import { useState, useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useAuth } from './context/AuthContext';
-import { useHistory } from './context/HistoryContext';
 import { useAIProvider } from './context/AIProviderContext';
+import { useChat } from './hooks/useChat';
+import { useActions } from './hooks/useActions';
 import { callAI, parseGeminiAction, generateRepoDocs } from './services/gemini';
 import { executeAction, executeActionMultiRepo } from './services/actionExecutor';
 import { getFileContents, decodeBase64, fetchRepoTreeRecursive, createOrUpdateFile } from './services/github';
@@ -14,76 +15,71 @@ import ChatInput from './components/chat/ChatInput';
 import ConfirmModal from './components/confirm/ConfirmModal';
 import DocModal from './components/confirm/DocModal';
 import { formatResultData } from './utils/formatResult';
-import type { ChatMessage, GeminiAction, GitHubRepo, PendingAction, RepoAnalysis, RepoFile } from './types';
-
-// Use CSPRNG for unique IDs (crypto.randomUUID — UUID v4, guaranteed unique)
-const uid = () => crypto.randomUUID();
-
-
+import type { ChatMessage, GeminiAction, GitHubRepo, RepoAnalysis, RepoFile } from './types';
 
 // ── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
   const { token, user, isAuthenticated } = useAuth();
-  const { addEntry, updateEntry } = useHistory();
-  // Fix #12: read active AI provider to show correct name in status messages
-  const { provider } = useAIProvider();
+  const { provider, apiKey, model } = useAIProvider();
   const providerName = provider === 'groq' ? 'Groq Cloud' : 'Google Gemini';
 
-  // Chat state
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [inputValue, setInputValue] = useState('');
-  const [isChatLoading, setIsChatLoading] = useState(false);
-  const [conversationHistory, setConversationHistory] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
+  // Custom hooks for chat and action management
+  const {
+    messages,
+    inputValue,
+    isChatLoading,
+    conversationHistory,
+    addMessage,
+    updateMessage,
+    setInputValue,
+    setIsChatLoading,
+    addToHistory,
+    clearChat,
+  } = useChat();
+
+  const {
+    pendingAction,
+    isExecuting,
+    selectedRepos,
+    multiRepoEnabled,
+    setPendingAction,
+    setIsExecuting,
+    setSelectedRepos,
+    setMultiRepoEnabled,
+    logAction,
+    updateActionLog,
+    clearPendingAction,
+  } = useActions();
 
   // Sidebar state
   const [templatesOpen, setTemplatesOpen] = useState(true);
   const [historyOpen, setHistoryOpen] = useState(true);
 
-  // Multi-repo state
-  const [multiRepoEnabled, setMultiRepoEnabled] = useState(false);
-  const [selectedRepos, setSelectedRepos] = useState<GitHubRepo[]>([]);
-
-  // Pending action (confirmation modal)
-  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
-  const [isExecuting, setIsExecuting] = useState(false);
-
   // Doc repo state
   const [docAnalysis, setDocAnalysis] = useState<RepoAnalysis | null>(null);
   const [isCommittingDocs, setIsCommittingDocs] = useState(false);
 
-  const addMessage = useCallback((msg: Omit<ChatMessage, 'id' | 'timestamp'>): string => {
-    const id = uid();
-    setMessages(prev => [...prev, { ...msg, id, timestamp: new Date() }]);
-    return id;
-  }, []);
-
-  const updateMessage = useCallback((id: string, update: Partial<ChatMessage>) => {
-    setMessages(prev => prev.map(m => m.id === id ? { ...m, ...update } : m));
-  }, []);
-
   // ── Send message to AI ────────────────────────────────────────────────────
   const handleSend = useCallback(async () => {
-    if (!inputValue.trim() || !token || !user) return;
+    if (!inputValue.trim() || !token || !user || !provider || !apiKey || !model) return;
 
     const userText = inputValue.trim();
     setInputValue('');
     setIsChatLoading(true);
 
     addMessage({ role: 'user', content: userText });
-
-    // Add loading bubble
     const loadingId = addMessage({ role: 'assistant', content: '', isLoading: true });
 
     const newHistory = [...conversationHistory, { role: 'user' as const, content: userText }];
 
     try {
-      const rawResponse = await callAI(newHistory);
+      const rawResponse = await callAI(provider, apiKey, model, newHistory);
       const action = parseGeminiAction(rawResponse);
 
       if (!action) {
-        // AI returned non-JSON — treat as plain response
+        // AI returned non-JSON — treat as plain response (Markdown mode)
         updateMessage(loadingId, { content: rawResponse, isLoading: false });
-        setConversationHistory([...newHistory, { role: 'assistant', content: rawResponse }]);
+        addToHistory('assistant', rawResponse);
         return;
       }
 
@@ -104,7 +100,7 @@ export default function App() {
       }
 
       updateMessage(loadingId, { content: enrichedAction.accion, isLoading: false, action: enrichedAction });
-      setConversationHistory([...newHistory, { role: 'assistant', content: rawResponse }]);
+      addToHistory('assistant', rawResponse);
 
       if (enrichedAction.requiereConfirmacion) {
         // Show confirmation modal
@@ -112,10 +108,9 @@ export default function App() {
         setPendingAction({ action: enrichedAction, targetRepos: repos });
       } else {
         // Read-only: execute directly
-        const histId = addEntry({ status: 'pending', description: enrichedAction.accion, repo: enrichedAction.repo });
-        updateEntry(histId, { status: 'pending' });
+        const histId = logAction('pending', enrichedAction.accion, enrichedAction.repo);
         const result = await executeAction(token, user, enrichedAction);
-        updateEntry(histId, { status: result.success ? 'completed' : 'error', description: result.message });
+        updateActionLog(histId, result.success ? 'completed' : 'error', result.message);
 
         if (result.success && result.data) {
           addMessage({
@@ -132,7 +127,7 @@ export default function App() {
     } finally {
       setIsChatLoading(false);
     }
-  }, [inputValue, token, user, conversationHistory, multiRepoEnabled, selectedRepos, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [inputValue, token, user, provider, apiKey, model, conversationHistory, multiRepoEnabled, selectedRepos, addMessage, updateMessage, setInputValue, setIsChatLoading, addToHistory, setPendingAction, logAction, updateActionLog]);
 
   // ── Confirm action ──────────────────────────────────────────────────────
   const handleConfirm = useCallback(async () => {
@@ -140,20 +135,20 @@ export default function App() {
     setIsExecuting(true);
 
     const { action, targetRepos } = pendingAction;
-    setPendingAction(null);
+    clearPendingAction();
 
     if (targetRepos.length > 1) {
       // Multi-repo
       await executeActionMultiRepo(token, user, action, targetRepos, {
         onProgress: (repo, status, message) => {
-          addEntry({ status, description: message, repo });
+          logAction(status, message, repo);
         },
       });
       addMessage({ role: 'assistant', content: `✅ Acción aplicada a ${targetRepos.length} repositorios` });
     } else {
-      const histId = addEntry({ status: 'pending', description: action.accion, repo: action.repo });
+      const histId = logAction('pending', action.accion, action.repo);
       const result = await executeAction(token, user, action);
-      updateEntry(histId, { status: result.success ? 'completed' : 'error', description: result.message });
+      updateActionLog(histId, result.success ? 'completed' : 'error', result.message);
       addMessage({
         role: 'assistant',
         content: result.success
@@ -163,129 +158,60 @@ export default function App() {
     }
 
     setIsExecuting(false);
-  }, [pendingAction, token, user, addEntry, updateEntry, addMessage]);
+  }, [pendingAction, token, user, clearPendingAction, addMessage, logAction, updateActionLog, setIsExecuting]);
 
-  // ── Cancel action ─────────────────────────────────────────────────────
-  const handleCancel = useCallback(() => {
-    if (pendingAction) {
-      addEntry({ status: 'cancelled', description: `Cancelado: ${pendingAction.action.accion}`, repo: pendingAction.action.repo });
-      addMessage({ role: 'assistant', content: '⏸️ Acción cancelada.' });
-    }
-    setPendingAction(null);
-  }, [pendingAction, addEntry, addMessage]);
-
-  // ── Document repo ───────────────────────────────────────────────────────
-  const handleDocumentRepo = useCallback(async (repoInput: string) => {
+  // ── Document repo ──────────────────────────────────────────────────────
+  const handleDocumentRepo = useCallback(async (repoName: string) => {
     if (!token || !user) return;
-
-    const [owner, repoName] = repoInput.includes('/')
-      ? repoInput.split('/', 2)
-      : [user.login, repoInput];
-
-    setIsChatLoading(true);
-    const loadingId = addMessage({
-      role: 'assistant',
-      content: `📄 Analizando repositorio **${owner}/${repoName}**...`,
-      isLoading: true,
-    });
-    const histId = addEntry({ status: 'pending', description: `Documentando ${owner}/${repoName}`, repo: `${owner}/${repoName}` });
+    setIsExecuting(true);
 
     try {
-      const { files, totalScanned, truncated } = await fetchRepoTreeRecursive(token, owner, repoName);
-
-      // Fix #12: show the active AI provider name instead of hardcoded "Gemini"
-      updateMessage(loadingId, {
-        content: `📄 Analizando ${files.length} archivos de **${owner}/${repoName}**${truncated ? ` (de ${totalScanned} totales)` : ''}... Generando documentación con ${providerName}...`,
-        isLoading: true,
-      });
-
-      // Convert github service files to RepoFile format for generateRepoDocs()
-      const repoFiles: RepoFile[] = files.map(f => ({
-        path: f.path,
-        content: f.content,
-      }));
-
-      const { readme, manualTecnico } = await generateRepoDocs(repoFiles);
-
-      updateMessage(loadingId, {
-        content: `✅ Documentación generada para **${owner}/${repoName}**. Revisa el contenido antes de hacer commit.`,
-        isLoading: false,
-      });
-
-      setDocAnalysis({
-        readme,
-        manualTecnico,
-        filesAnalyzed: files.length,
-        totalFiles: totalScanned,
-        truncated,
-        repoName: `${owner}/${repoName}`,
-      });
-
-      updateEntry(histId, { status: 'pending', description: `Documentación lista — esperando confirmación` });
+      const [owner, repo] = repoName.includes('/') ? repoName.split('/') : [user.login, repoName];
+      const tree = await fetchRepoTreeRecursive(token, owner, repo);
+      const analysis = await generateRepoDocs(token, owner, repo, tree);
+      setDocAnalysis(analysis);
     } catch (err) {
-      updateMessage(loadingId, { content: `❌ Error al documentar: ${(err as Error).message}`, isLoading: false });
-      updateEntry(histId, { status: 'error', description: `Error al documentar ${owner}/${repoName}` });
+      addMessage({
+        role: 'assistant',
+        content: `❌ Error al analizar repositorio: ${(err as Error).message}`,
+      });
     } finally {
-      setIsChatLoading(false);
+      setIsExecuting(false);
     }
-  }, [token, user, providerName, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [token, user, addMessage, setIsExecuting]);
 
-  // ── Commit docs ────────────────────────────────────────────────────────
-  const handleCommitDocs = useCallback(async () => {
-    if (!docAnalysis || !token || !user) return;
+  const handleCommitDocs = useCallback(async (repoName: string) => {
+    if (!token || !user || !docAnalysis) return;
     setIsCommittingDocs(true);
 
-    const [owner, repo] = docAnalysis.repoName.split('/');
-    const histId = addEntry({ status: 'pending', description: `Commiteando documentación en ${docAnalysis.repoName}`, repo: docAnalysis.repoName });
-
     try {
-      // README.md
-      let readmeSha: string | undefined;
-      try {
-        const existing = await getFileContents(token, owner, repo, 'README.md');
-        readmeSha = existing.sha;
-      } catch { /* new file */ }
-      await createOrUpdateFile(token, owner, repo, 'README.md', docAnalysis.readme, 'docs: generate README via Asistente de IA', readmeSha);
-
-      // MANUAL_TECNICO.md
-      let manualSha: string | undefined;
-      try {
-        const existing = await getFileContents(token, owner, repo, 'MANUAL_TECNICO.md');
-        manualSha = existing.sha;
-      } catch { /* new file */ }
-      await createOrUpdateFile(token, owner, repo, 'MANUAL_TECNICO.md', docAnalysis.manualTecnico, 'docs: generate MANUAL_TECNICO via Asistente de IA', manualSha);
-
-      addMessage({ role: 'assistant', content: `✅ README.md y MANUAL_TECNICO.md commiteados en **${docAnalysis.repoName}**` });
-      updateEntry(histId, { status: 'completed', description: `Documentación commiteada en ${docAnalysis.repoName}` });
+      const [owner, repo] = repoName.includes('/') ? repoName.split('/') : [user.login, repoName];
+      await createOrUpdateFile(token, owner, repo, 'TECHNICAL_DOCS.md', docAnalysis.documentation);
+      addMessage({
+        role: 'assistant',
+        content: `✅ Documentación técnica creada en ${repoName}/TECHNICAL_DOCS.md`,
+      });
+      setDocAnalysis(null);
     } catch (err) {
-      addMessage({ role: 'assistant', content: `❌ Error al hacer commit: ${(err as Error).message}` });
-      updateEntry(histId, { status: 'error', description: `Error al commitear documentación` });
+      addMessage({
+        role: 'assistant',
+        content: `❌ Error al guardar documentación: ${(err as Error).message}`,
+      });
     } finally {
       setIsCommittingDocs(false);
-      setDocAnalysis(null);
     }
-  }, [docAnalysis, token, user, addMessage, addEntry, updateEntry]);
+  }, [token, user, docAnalysis, addMessage]);
 
   return (
-    <>
-      <Header
-        onToggleTemplates={() => setTemplatesOpen(v => !v)}
-        onToggleHistory={() => setHistoryOpen(v => !v)}
-        templatesOpen={templatesOpen}
-        historyOpen={historyOpen}
-      />
-
-      {/* #13 — Banner de advertencia de caducidad de sesión */}
+    <div className="app-container">
+      <Header />
       <SessionWarningBanner />
 
-      <div className="main-layout">
-        <TemplatePanel
-          isOpen={templatesOpen}
-          onSelectTemplate={setInputValue}
-        />
+      <div className="app-main">
+        <TemplatePanel isOpen={templatesOpen} onToggle={() => setTemplatesOpen(!templatesOpen)} />
 
-        <div className="chat-container">
-          <ChatArea messages={messages} />
+        <div className="app-center">
+          <ChatArea messages={messages} isLoading={isChatLoading} />
           <ChatInput
             value={inputValue}
             onChange={setInputValue}
@@ -300,28 +226,26 @@ export default function App() {
           />
         </div>
 
-        <HistoryPanel isOpen={historyOpen} />
+        <HistoryPanel isOpen={historyOpen} onToggle={() => setHistoryOpen(!historyOpen)} />
       </div>
 
-      {/* Confirmation modal */}
       {pendingAction && (
         <ConfirmModal
-          pendingAction={pendingAction}
-          onConfirm={handleConfirm}
-          onCancel={handleCancel}
+          action={pendingAction.action}
           isExecuting={isExecuting}
+          onConfirm={handleConfirm}
+          onCancel={clearPendingAction}
         />
       )}
 
-      {/* Documentation modal */}
       {docAnalysis && (
         <DocModal
           analysis={docAnalysis}
-          onConfirm={handleCommitDocs}
-          onCancel={() => setDocAnalysis(null)}
           isCommitting={isCommittingDocs}
+          onCommit={() => handleCommitDocs(pendingAction?.action.repo || '')}
+          onCancel={() => setDocAnalysis(null)}
         />
       )}
-    </>
+    </div>
   );
 }
