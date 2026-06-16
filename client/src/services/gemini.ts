@@ -1,36 +1,50 @@
+// ────────────────────────────────────────────────────────────────────────────
+// Unified AI client — supports Google Gemini and Groq Cloud
+//
+// ARCHITECTURE NOTE (v3.0 — Zero-Storage):
+// This module no longer reads AI provider config from sessionStorage.
+// Instead, it accepts provider, apiKey, and model as function parameters.
+// The caller (typically App.tsx or a component using useAIProvider()) is
+// responsible for passing these values from React context.
+//
+// Gemini calls are proxied through the Express backend (/api/gemini).
+// This is required because the Gemini API blocks direct browser requests from
+// EU regions (EEA). The server is deployed in us-central1 (Cloud Run) where
+// the API is fully accessible. The user's API key is sent in the HTTPS request
+// body and is never stored on the server.
+//
+// Groq calls continue to go directly from the browser — no EU restriction applies.
+// ────────────────────────────────────────────────────────────────────────────
+
 import type { GeminiAction } from '../types';
 import type { AIProviderType } from '../context/AIProviderContext';
 
-// ── SYSTEM PROMPTS SEPARADOS (Opción D) ───────────────────────────────────────
+// ── System prompt — MODO ACCIÓN (default) ────────────────────────────────────
+export const SYSTEM_PROMPT = `Eres un asistente de IA conversacional y experto en desarrollo de software.
 
-export const CHAT_PROMPT = `Eres un desarrollador senior experto en arquitectura de software, GitHub y mejores prácticas.
+Tu comportamiento por defecto es:
+✅ Responder en texto normal (Markdown) como un consultor amigable
+✅ Dar opiniones, consejos y análisis sobre código y arquitectura
+✅ Conversar naturalmente sobre temas técnicos
+✅ Explicar conceptos, mejores prácticas y patrones
 
-Tu comportamiento por defecto es CONVERSAR y DAR OPINIONES en texto normal (Markdown).
+SOLO genera JSON cuando el usuario use EXPLÍCITAMENTE verbos de acción como:
+- "lista" / "muestra" / "enséñame"
+- "crea" / "genera" 
+- "actualiza" / "modifica" / "edita"
+- "borra" / "elimina"
+- "lee" / "abre" (un archivo específico)
+- "fusiona" / "cierra" / "reabre"
 
-✅ Responde directamente con:
-- Opiniones constructivas sobre código y arquitectura
-- Análisis de patrones y mejores prácticas
-- Consejos sobre seguridad, rendimiento y mantenibilidad
-- Explicaciones técnicas detalladas
-- Recomendaciones personalizadas
+EJEMPLOS:
+- "¿Qué opinas de mi código?" → Responde en Markdown
+- "Dame consejos sobre seguridad" → Responde en Markdown
+- "Lista mis repos" → JSON
+- "Crea un issue" → JSON
 
-❌ NUNCA generes JSON en este modo
-❌ NUNCA digas "necesito leer el repo primero"
-❌ NUNCA ejecutes acciones de la API
+Si tienes dudas, SIEMPRE responde en Markdown.
 
-Eres un consultor experto - DA TU OPINIÓN directamente con tu conocimiento.`;
-
-export const ACTION_PROMPT = `Eres un agente experto en la GitHub REST API v3.
-
-SOLO genera JSON cuando el usuario pida EXPLÍCITAMENTE una acción:
-- "lista", "muestra", "enséñame"
-- "crea", "genera"
-- "actualiza", "modifica", "edita"
-- "borra", "elimina"
-- "lee", "abre" (un archivo)
-- "fusiona", "cierra", "reabre"
-
-Formato JSON:
+Formato JSON (SOLO cuando se solicite explícitamente):
 {
   "tipo": "lectura|escritura|creacion|listado|borrado",
   "accion": "descripción",
@@ -44,16 +58,40 @@ Formato JSON:
   "target": "file|issue|pr|branch|workflow"
 }
 
-Endpoints:
-- User repos: GET /user/repos
-- User profile: GET /user
+Endpoints soportados:
 - Archivos: GET/PUT/DELETE /repos/OWNER/REPO/contents/RUTA
 - Issues: GET/POST/PATCH /repos/OWNER/REPO/issues
 - PRs: GET/POST/PUT /repos/OWNER/REPO/pulls
+- User repos: GET /user/repos
+- User profile: GET /user
 
 Reglas:
-- Usa "/user/repos" (NUNCA "/users/{username}/repos")
+- Usa "/user/repos" para listar repos del usuario autenticado
+- Nunca uses placeholders como {username}
 - requiereConfirmacion: false para lectura, true para escritura`;
+
+// ── System prompt — MODO CONVERSACIÓN ────────────────────────────────────────
+// FIX: Este prompt se pasa como 5º argumento a callAI() cuando se detecta
+// intención conversacional, en lugar de inyectar un mensaje role:'system'
+// en el array de mensajes (que causaba TS2322 porque Message solo acepta
+// 'user' | 'assistant', no 'system').
+export const CONVERSATION_SYSTEM_PROMPT = `Eres un consultor senior experto en desarrollo de software y arquitectura.
+
+MODO ACTUAL: CONVERSACIONAL
+
+REGLAS ABSOLUTAS (sin excepciones):
+❌ NUNCA generes JSON en este modo
+❌ NUNCA uses el formato {"tipo":...,"accion":...,"endpoint":...}
+❌ NUNCA digas "necesito acceder al repo primero" — opina con la información disponible
+✅ Responde SIEMPRE en Markdown con análisis, opiniones y recomendaciones claras
+✅ Sé directo como un CTO senior en una code review
+
+Si el usuario pregunta sobre un repo que no puedes ver directamente:
+- Analiza por su nombre, descripción y contexto que te den
+- Aplica patrones y buenas prácticas del sector
+- Da consejos concretos y accionables
+
+Usa headers ##, listas, y bloques de código cuando mejore la legibilidad.`;
 
 // ── Message type ─────────────────────────────────────────────────────────────
 export interface Message {
@@ -70,7 +108,7 @@ export type GeneratedDocs = {
   metadatos?: Record<string, unknown>;
 };
 
-// ── Groq implementation (Tier 2 - Solo acciones, llamada directa) ─────────────
+// ── Groq implementation ───────────────────────────────────────────────────────
 const GROQ_API = 'https://api.groq.com/openai/v1/chat/completions';
 
 async function callGroq(
@@ -111,24 +149,17 @@ async function callGroq(
   return data.choices[0].message.content;
 }
 
-// ── Gemini implementation (Tier 1 - Modo dual, proxiado con 'mode') ───────────
+// ── Gemini implementation (proxied through server) ─────────────────────────────
 async function callGeminiDirect(
   apiKey: string,
   model: string,
   messages: Message[],
   systemPrompt: string,
-  mode: 'chat' | 'action' = 'chat',
 ): Promise<string> {
   const res = await fetch('/api/gemini', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ 
-      apiKey, 
-      model, 
-      messages, 
-      systemPrompt,
-      mode,
-    }),
+    body: JSON.stringify({ apiKey, model, messages, systemPrompt }),
   });
 
   if (!res.ok) {
@@ -143,17 +174,32 @@ async function callGeminiDirect(
   return data.text;
 }
 
-// ── Unified callAI (Opción D - con mode) ──────────────────────────────────────
+// ── Unified callAI (Zero-Storage: parameters passed explicitly) ───────────────
+/**
+ * Call the AI provider with the given messages and system prompt.
+ *
+ * ZERO-STORAGE: This function accepts provider, apiKey, and model as explicit
+ * parameters. It does NOT read from sessionStorage. The caller must obtain
+ * these values from React context (useAIProvider()) and pass them here.
+ *
+ * @param provider     - 'groq' or 'gemini'
+ * @param apiKey       - The provider's API key (from React state, NOT storage)
+ * @param model        - The model name (e.g., 'gpt-4', 'gemini-2.5-flash')
+ * @param messages     - Chat history (role must be 'user' | 'assistant' only)
+ * @param systemPrompt - System instructions. Use CONVERSATION_SYSTEM_PROMPT for
+ *                       conversational mode, SYSTEM_PROMPT for action mode.
+ * @returns The model's response text
+ * @throws Error if the API call fails
+ */
 export async function callAI(
   provider: AIProviderType,
   apiKey: string,
   model: string,
   messages: Message[],
-  systemPrompt: string = CHAT_PROMPT,
-  mode: 'chat' | 'action' = 'chat',
+  systemPrompt: string = SYSTEM_PROMPT,
 ): Promise<string> {
   if (provider === 'groq') return callGroq(apiKey, model, messages, systemPrompt);
-  return callGeminiDirect(apiKey, model, messages, systemPrompt, mode);
+  return callGeminiDirect(apiKey, model, messages, systemPrompt);
 }
 
 /** @deprecated Use callAI() directly with explicit parameters. */
@@ -169,13 +215,7 @@ export async function validateProviderKey(
     if (provider === 'groq') {
       await callGroq(apiKey, model, [{ role: 'user', content: 'Hi' }], 'Reply with one word.');
     } else {
-      await callGeminiDirect(
-        apiKey, 
-        model, 
-        [{ role: 'user', content: 'Hi' }], 
-        'Reply with one word.',
-        'chat'
-      );
+      await callGeminiDirect(apiKey, model, [{ role: 'user', content: 'Hi' }], 'Reply with one word.');
     }
     return { valid: true };
   } catch (err) {
@@ -191,7 +231,7 @@ export async function validateProviderKey(
       };
     }
     if (status === 429 || message.includes('429')) return { valid: true };
-    return { valid: false, error: message || 'Error de conexión' };
+    return { valid: false, error: message || 'Error de conexión con el proveedor de IA' };
   }
 }
 
@@ -241,10 +281,23 @@ function extractJSON(rawText: string): Record<string, unknown> {
   const jsonMatch = rawText.match(/\{[\s\S]*\}/);
   if (jsonMatch) return JSON.parse(jsonMatch[0]);
 
-  throw new Error('No JSON found');
+  throw new Error('No JSON found in response');
 }
 
 // ── Repository documentation generation ───────────────────────────────────────
+/**
+ * Generate comprehensive documentation for a repository using the AI provider.
+ *
+ * FIX: Signature updated to match callAI() — provider, apiKey, model are now
+ * explicit first three params (previously the call in App.tsx was passing token,
+ * owner, repo which caused TS2554: Expected 5 arguments, got 4).
+ *
+ * @param provider  - 'groq' or 'gemini'
+ * @param apiKey    - The provider's API key
+ * @param model     - The model name
+ * @param repoName  - Repository name (e.g. 'owner/repo')
+ * @param files     - Array of repo files with content
+ */
 export async function generateRepoDocs(
   provider: AIProviderType,
   apiKey: string,
@@ -255,33 +308,35 @@ export async function generateRepoDocs(
   const primaryLang = detectPrimaryLanguage(files);
   const filesContext = files
     .slice(0, 20)
-    .map(f => `\n### ${f.path}\n\`\`\`\n${f.content?.slice(0, 500) || '(no content)'}\n\`\`\``)
+    .map(f => `
+### ${f.path}
+\`\`\`
+${f.content?.slice(0, 500) || '(no content)'}
+\`\`\``)
     .join('\n');
 
-  const docPrompt = `Eres un experto en documentación técnica. Analiza este repositorio y genera README y MANUAL_TECNICO.
+  const docPrompt = `Eres un experto en documentación técnica. Analiza este repositorio y genera:
+
+1. Un README.md profesional con descripción, características, instalación y uso.
+2. Un MANUAL_TECNICO.md con arquitectura, componentes y decisiones de diseño.
 
 Repo: ${repoName}
-Lenguaje: ${primaryLang}
+Lenguaje principal: ${primaryLang}
 
-Archivos:
+Archivos analizados:
 ${filesContext}
 
-Responde SOLO con JSON válido:
+Responde SOLO con un JSON válido (sin markdown, sin \`\`\`json):
 {
-  "readme": "contenido README",
-  "manualTecnico": "contenido MANUAL",
-  "resumen": "resumen 1-2 líneas",
+  "readme": "contenido del README en markdown",
+  "manualTecnico": "contenido del MANUAL_TECNICO en markdown",
+  "resumen": "resumen de 1-2 líneas",
   "metadatos": { "lenguaje": "${primaryLang}", "archivosAnalizados": ${files.length} }
 }`;
 
-  const response = await callAI(
-    provider, 
-    apiKey, 
-    model, 
-    [{ role: 'user', content: docPrompt }], 
-    ACTION_PROMPT,
-    'action'
-  );
+  const response = await callAI(provider, apiKey, model, [
+    { role: 'user', content: docPrompt },
+  ]);
 
   const parsed = extractJSON(response);
   return {
@@ -292,6 +347,9 @@ Responde SOLO con JSON válido:
   };
 }
 
+/**
+ * Check if a response is in Markdown/conversation mode (not a JSON action).
+ */
 export function isMarkdownResponse(rawText: string): boolean {
   return parseGeminiAction(rawText) === null;
 }
