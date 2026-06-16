@@ -59,6 +59,7 @@ function isActionRequest(message: string): boolean {
     'ejecuta', 'ejecutar', 'rerun', 'corre', 'correr',
     'sube', 'subir', 'publica', 'publicar',
     'descarga', 'descargar', 'clona', 'clonar'
+    // NOTA: "obtener" ELIMINADO - causa confusión con peticiones de opinión
   ];
   
   const lower = message.toLowerCase();
