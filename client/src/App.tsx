@@ -17,6 +17,26 @@ import DocModal from './components/confirm/DocModal';
 import { formatResultData } from './utils/formatResult';
 import type { ChatMessage, GeminiAction, GitHubRepo, RepoAnalysis, RepoFile } from './types';
 
+// ── Detect opinion/analysis requests ──────────────────────────────────────────
+function isOpinionRequest(message: string): boolean {
+  const opinionKeywords = [
+    'opinión', 'opinion', 'qué opinas', 'que opinas',
+    'consejo', 'recomendación', 'recomendacion',
+    'crítica', 'critica', 'constructiva', 'constructivo',
+    'mejora', 'mejorar', 'propón', 'propon', 'propuesta',
+    'analiza', 'análisis', 'analisis',
+    'qué piensas', 'que piensas', 'qué te parece', 'que te parece',
+    'evalúa', 'evalua', 'valoración', 'valoracion',
+    'feedback', 'comentario', 'sugerencia',
+    'punto fuerte', 'punto débil', 'punto debil',
+    'ventaja', 'desventaja', 'pros', 'contras',
+    'cómo puedo', 'como puedo', 'debería', 'deberia'
+  ];
+  
+  const lower = message.toLowerCase();
+  return opinionKeywords.some(keyword => lower.includes(keyword));
+}
+
 // ── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
   const { token, user, isAuthenticated } = useAuth();
@@ -72,9 +92,27 @@ export default function App() {
 
     const newHistory = [...conversationHistory, { role: 'user' as const, content: userText }];
 
+    // Detect if this is an opinion/analysis request
+    const isOpinion = isOpinionRequest(userText);
+
+    // If opinion request, add explicit instruction to force Markdown response
+    const enhancedHistory = isOpinion
+      ? [...newHistory, { 
+          role: 'user' as const, 
+          content: '(INSTRUCCIÓN DEL SISTEMA: Responde DIRECTAMENTE en Markdown con tu opinión profesional. NO generes JSON. NO leas repositorios. NO ejecutes acciones de la API.)' 
+        }]
+      : newHistory;
+
     try {
-      const rawResponse = await callAI(provider, apiKey, model, newHistory);
+      const rawResponse = await callAI(provider, apiKey, model, enhancedHistory);
       const action = parseGeminiAction(rawResponse);
+
+      // If this is an opinion request but AI returned JSON, force Markdown display
+      if (isOpinion) {
+        updateMessage(loadingId, { content: rawResponse, isLoading: false });
+        addToHistory('assistant', rawResponse);
+        return;
+      }
 
       if (!action) {
         // AI returned non-JSON — treat as plain response (Markdown mode)
