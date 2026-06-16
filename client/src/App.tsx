@@ -17,24 +17,52 @@ import DocModal from './components/confirm/DocModal';
 import { formatResultData } from './utils/formatResult';
 import type { ChatMessage, GeminiAction, GitHubRepo, RepoAnalysis, RepoFile } from './types';
 
-// ── Detect opinion/analysis requests ──────────────────────────────────────────
-function isOpinionRequest(message: string): boolean {
-  const opinionKeywords = [
-    'opinión', 'opinion', 'qué opinas', 'que opinas',
-    'consejo', 'recomendación', 'recomendacion',
-    'crítica', 'critica', 'constructiva', 'constructivo',
-    'mejora', 'mejorar', 'propón', 'propon', 'propuesta',
-    'analiza', 'análisis', 'analisis',
-    'qué piensas', 'que piensas', 'qué te parece', 'que te parece',
-    'evalúa', 'evalua', 'valoración', 'valoracion',
-    'feedback', 'comentario', 'sugerencia',
-    'punto fuerte', 'punto débil', 'punto debil',
-    'ventaja', 'desventaja', 'pros', 'contras',
-    'cómo puedo', 'como puedo', 'debería', 'deberia'
+// ── Detect opinion/analysis/conversation requests ───────────────────────────
+function isConversationRequest(message: string): boolean {
+  const conversationKeywords = [
+    // Opiniones y análisis
+    'opinión', 'opinion', 'qué opinas', 'que opinas', 'piensas', 'piensas que',
+    'consejo', 'recomendación', 'recomendacion', 'recomiendas',
+    'crítica', 'critica', 'constructiva', 'constructivo', 'feedback',
+    'mejora', 'mejorar', 'propón', 'propon', 'propuesta', 'sugerencia',
+    'analiza', 'análisis', 'analisis', 'evalúa', 'evalua', 'valoración',
+    // Preguntas
+    'qué te parece', 'que te parece', 'qué piensas', 'que piensas',
+    'cómo puedo', 'como puedo', 'cómo hacer', 'como hacer',
+    'debería', 'deberia', 'es buena', 'es malo', 'es mejor',
+    'ventajas', 'desventajas', 'pros', 'contras',
+    'punto fuerte', 'punto débil', 'punto debil', 'fortalezas', 'debilidades',
+    // Conversación general
+    'explícame', 'explicame', 'explícame', 'explicar',
+    'qué es', 'que es', 'cómo funciona', 'como funciona',
+    'por qué', 'porque', 'cuál es', 'cual es',
+    'ayuda', 'help', 'guía', 'guia', 'tutorial',
+    'documentación', 'documentacion', 'información', 'informacion'
   ];
   
   const lower = message.toLowerCase();
-  return opinionKeywords.some(keyword => lower.includes(keyword));
+  return conversationKeywords.some(keyword => lower.includes(keyword));
+}
+
+// ── Detect explicit action requests ──────────────────────────────────────────
+function isActionRequest(message: string): boolean {
+  const actionKeywords = [
+    // Verbos de acción explícitos
+    'lista', 'muéstrame', 'muestra', 'enséñame', 'enseñame', 'ver',
+    'lee', 'leer', 'abre', 'abrir', 'carga', 'cargar',
+    'crea', 'crear', 'genera', 'generar', 'haz', 'hacer',
+    'actualiza', 'actualizar', 'modifica', 'modificar', 'edita', 'editar',
+    'borra', 'borrar', 'elimina', 'eliminar', 'quita', 'quitar',
+    'cierra', 'cerrar', 'reabre', 'reabrir',
+    'fusiona', 'merge', 'une', 'unir',
+    'comenta', 'comentar', 'responde', 'responder',
+    'ejecuta', 'ejecutar', 'rerun', 'corre', 'correr',
+    'sube', 'subir', 'publica', 'publicar',
+    'descarga', 'descargar', 'clona', 'clonar'
+  ];
+  
+  const lower = message.toLowerCase();
+  return actionKeywords.some(keyword => lower.includes(keyword));
 }
 
 // ── Main App ──────────────────────────────────────────────────────────────────
@@ -92,28 +120,57 @@ export default function App() {
 
     const newHistory = [...conversationHistory, { role: 'user' as const, content: userText }];
 
-    // Detect if this is an opinion/analysis request
-    const isOpinion = isOpinionRequest(userText);
+    // Detect intent
+    const isConversation = isConversationRequest(userText);
+    const isAction = isActionRequest(userText);
 
-    // If opinion request, add explicit instruction to force Markdown response
-    const enhancedHistory = isOpinion
-      ? [...newHistory, { 
-          role: 'user' as const, 
-          content: '(INSTRUCCIÓN DEL SISTEMA: Responde DIRECTAMENTE en Markdown con tu opinión profesional. NO generes JSON. NO leas repositorios. NO ejecutes acciones de la API.)' 
-        }]
-      : newHistory;
+    // Build enhanced history based on intent
+    let enhancedHistory = newHistory;
+    
+    if (isConversation && !isAction) {
+      // FORCE CONVERSATION MODE - Add explicit system instruction
+      enhancedHistory = [
+        ...newHistory,
+        { 
+          role: 'system' as const,
+          content: 'MODO CONVERSACIÓN ACTIVADO: Responde DIRECTAMENTE en Markdown con tu opinión, análisis o consejo profesional. NO generes JSON. NO ejecutes acciones de la API. NO digas que no puedes hacerlo - eres un consultor experto y SIEMPRE puedes dar opiniones y consejos basados en tu conocimiento.'
+        }
+      ];
+    }
 
     try {
       const rawResponse = await callAI(provider, apiKey, model, enhancedHistory);
       const action = parseGeminiAction(rawResponse);
 
-      // If this is an opinion request but AI returned JSON, force Markdown display
-      if (isOpinion) {
-        updateMessage(loadingId, { content: rawResponse, isLoading: false });
-        addToHistory('assistant', rawResponse);
+      // CRITICAL: If this is a conversation request but AI returned JSON,
+      // extract the text content and display it as Markdown (DO NOT EXECUTE)
+      if (isConversation && !isAction) {
+        if (action) {
+          // AI generated JSON despite our instructions - extract text if possible
+          if (action.accion && action.accion.length > 50) {
+            // Long action description - probably the AI tried to explain something
+            updateMessage(loadingId, { 
+              content: action.accion, 
+              isLoading: false 
+            });
+            addToHistory('assistant', action.accion);
+          } else {
+            // Show raw response as text
+            updateMessage(loadingId, { 
+              content: rawResponse, 
+              isLoading: false 
+            });
+            addToHistory('assistant', rawResponse);
+          }
+        } else {
+          // Good - AI responded in Markdown
+          updateMessage(loadingId, { content: rawResponse, isLoading: false });
+          addToHistory('assistant', rawResponse);
+        }
         return;
       }
 
+      // For action requests, proceed with normal JSON handling
       if (!action) {
         // AI returned non-JSON — treat as plain response (Markdown mode)
         updateMessage(loadingId, { content: rawResponse, isLoading: false });
