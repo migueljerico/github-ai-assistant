@@ -1,12 +1,5 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// GitHub REST API v3 — client wrapper
-//
-// All calls go directly from the browser using the authenticated user's token.
-// No server proxy is involved for GitHub operations.
-// API version: 2022-11-28 (pinned for stability)
-// ─────────────────────────────────────────────────────────────────────────────
-
 import type { GitHubUser, GitHubRepo, GitHubFile } from '../types';
+import { isRateLimitError, enhanceErrorWithRateLimit, parseRateLimitHeaders } from '../utils/rateLimitHandler';
 
 const BASE = 'https://api.github.com';
 
@@ -23,14 +16,29 @@ function headers(token: string): HeadersInit {
 }
 
 /**
+ * Custom error class for GitHub API errors with rate limit context
+ */
+export class GitHubAPIError extends Error {
+  public readonly status: number;
+  public readonly rateLimitInfo?: { resetTime: number; remainingSeconds: number };
+
+  constructor(message: string, status: number, rateLimitInfo?: { resetTime: number; remainingSeconds: number }) {
+    super(message);
+    this.name = 'GitHubAPIError';
+    this.status = status;
+    this.rateLimitInfo = rateLimitInfo;
+  }
+}
+
+/**
  * Shared fetch helper for the GitHub API.
- * Throws an Error with GitHub's error message on non-2xx responses.
+ * Throws a GitHubAPIError with rate limit context on non-2xx responses.
  *
  * @param token  - GitHub OAuth token or PAT
  * @param path   - API path starting with `/` (e.g. `/user/repos`)
  * @param options - Optional fetch init (method, body, headers)
  * @returns Parsed JSON response as type T
- * @throws Error with GitHub's `message` field or a generic HTTP status error
+ * @throws GitHubAPIError with rate limit info if applicable
  */
 export async function ghFetch<T>(token: string, path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
@@ -39,70 +47,17 @@ export async function ghFetch<T>(token: string, path: string, options?: RequestI
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.message || `GitHub API ${res.status}: ${path}`);
-  }
-  return res.json();
-}
-
-// ── User ──────────────────────────────────────────────────────────────────────
-
-/**
- * Fetch the authenticated user's GitHub profile.
- * Uses `GET /user` — requires at minimum the `user` scope.
- *
- * @param token - GitHub OAuth token or PAT
- * @returns The authenticated user's profile
- */
-export async function getUser(token: string): Promise<GitHubUser> {
-  return ghFetch<GitHubUser>(token, '/user');
-}
-
-// ── Repos ─────────────────────────────────────────────────────────────────────
-
-/**
- * Fetch ALL repositories for the authenticated user, paginating automatically.
- *
- * Uses `GET /user/repos?per_page=100&sort=updated` and iterates pages
- * until a page returns fewer than 100 results (indicating the last page).
- *
- * @param token      - GitHub OAuth token or PAT
- * @param onProgress - Optional callback invoked after each page with the
- *                     running total of repos fetched so far
- * @returns Complete flat list of all repos, sorted by last-updated
- */
-export async function listAllRepos(
-  token: string,
-  onProgress?: (count: number) => void
-): Promise<GitHubRepo[]> {
-  const allRepos: GitHubRepo[] = [];
-  let page = 1;
-  while (true) {
-    const page_data = await ghFetch<GitHubRepo[]>(
-      token,
-      `/user/repos?per_page=100&page=${page}&sort=updated`
-    );
-    allRepos.push(...page_data);
-    onProgress?.(allRepos.length);
-    if (page_data.length < 100) break; // last page reached
-    page++;
-  }
-  return allRepos;
-}
-
-/**
- * Create a new repository for the authenticated user.
- * Initializes the repo automatically (creates a default branch and README stub).
- *
- * @param token       - GitHub OAuth token or PAT (requires `repo` scope)
- * @param name        - Repository name (no spaces; use hyphens)
- * @param description - Optional description shown on the repo page
- * @param isPrivate   - Whether the repository should be private (default: false)
- * @returns The newly created repository object
- * @throws Error if the name is already taken or contains invalid characters
- */
-export async function createRepo(
-  token: string,
-  name: string,
+    const errorMessage = body.message || `GitHub API ${res.status}: ${path}`;
+    
+    // Check for rate limit error
+    if (isRateLimitError(res.status)) {
+      const rateLimitInfo = parseRateLimitHeaders(res);
+      const enhancedMessage = enhanceErrorWithRateLimit(res, errorMessage);
+      throw new GitHubAPIError(enhancedMessage, res.status, {
+        resetTime: rateLimitInfo.resetTime,
+        remainingSeconds: rateLimitInfo.remainingSeconds,
+      });
+    }
   description = '',
   isPrivate = false
 ): Promise<GitHubRepo> {
