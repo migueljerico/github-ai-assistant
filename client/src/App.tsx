@@ -3,7 +3,7 @@ import { useAuth } from './context/AuthContext';
 import { useAIProvider } from './context/AIProviderContext';
 import { useChat } from './hooks/useChat';
 import { useActions } from './hooks/useActions';
-import { callAI, parseGeminiAction, generateRepoDocs } from './services/gemini';
+import { callAI, parseGeminiAction, generateRepoDocs, CHAT_PROMPT, ACTION_PROMPT } from './services/gemini';
 import { executeAction, executeActionMultiRepo } from './services/actionExecutor';
 import { getFileContents, decodeBase64, fetchRepoTreeRecursive, createOrUpdateFile } from './services/github';
 import Header from './components/layout/Header';
@@ -17,37 +17,29 @@ import DocModal from './components/confirm/DocModal';
 import { formatResultData } from './utils/formatResult';
 import type { ChatMessage, GeminiAction, GitHubRepo, RepoAnalysis, RepoFile } from './types';
 
-// ── Detect opinion/analysis/conversation requests ───────────────────────────
+// ── Detect conversation requests (opiniones, análisis, consejos) ────────────
 function isConversationRequest(message: string): boolean {
-  const conversationKeywords = [
-    // Opiniones y análisis
-    'opinión', 'opinion', 'qué opinas', 'que opinas', 'piensas', 'piensas que',
+  const keywords = [
+    'opinión', 'opinion', 'qué opinas', 'que opinas', 'piensas',
     'consejo', 'recomendación', 'recomendacion', 'recomiendas',
     'crítica', 'critica', 'constructiva', 'constructivo', 'feedback',
     'mejora', 'mejorar', 'propón', 'propon', 'propuesta', 'sugerencia',
     'analiza', 'análisis', 'analisis', 'evalúa', 'evalua', 'valoración',
-    // Preguntas
-    'qué te parece', 'que te parece', 'qué piensas', 'que piensas',
-    'cómo puedo', 'como puedo', 'cómo hacer', 'como hacer',
+    'qué te parece', 'que te parece', 'cómo puedo', 'como puedo',
     'debería', 'deberia', 'es buena', 'es malo', 'es mejor',
     'ventajas', 'desventajas', 'pros', 'contras',
-    'punto fuerte', 'punto débil', 'punto debil', 'fortalezas', 'debilidades',
-    // Conversación general
-    'explícame', 'explicame', 'explícame', 'explicar',
-    'qué es', 'que es', 'cómo funciona', 'como funciona',
-    'por qué', 'porque', 'cuál es', 'cual es',
+    'explícame', 'explicame', 'qué es', 'que es', 'cómo funciona',
     'ayuda', 'help', 'guía', 'guia', 'tutorial',
     'documentación', 'documentacion', 'información', 'informacion'
   ];
   
   const lower = message.toLowerCase();
-  return conversationKeywords.some(keyword => lower.includes(keyword));
+  return keywords.some(keyword => lower.includes(keyword));
 }
 
-// ── Detect explicit action requests ──────────────────────────────────────────
+// ── Detect action requests (verbos de acción explícitos) ─────────────────────
 function isActionRequest(message: string): boolean {
-  const actionKeywords = [
-    // Verbos de acción explícitos
+  const keywords = [
     'lista', 'muéstrame', 'muestra', 'enséñame', 'enseñame', 'ver',
     'lee', 'leer', 'abre', 'abrir', 'carga', 'cargar',
     'crea', 'crear', 'genera', 'generar', 'haz', 'hacer',
@@ -59,11 +51,10 @@ function isActionRequest(message: string): boolean {
     'ejecuta', 'ejecutar', 'rerun', 'corre', 'correr',
     'sube', 'subir', 'publica', 'publicar',
     'descarga', 'descargar', 'clona', 'clonar'
-    // NOTA: "obtener" ELIMINADO - causa confusión con peticiones de opinión
   ];
   
   const lower = message.toLowerCase();
-  return actionKeywords.some(keyword => lower.includes(keyword));
+  return keywords.some(keyword => lower.includes(keyword));
 }
 
 // ── Main App ──────────────────────────────────────────────────────────────────
@@ -72,7 +63,7 @@ export default function App() {
   const { provider, apiKey, model } = useAIProvider();
   const providerName = provider === 'groq' ? 'Groq Cloud' : 'Google Gemini';
 
-  // Custom hooks for chat and action management
+  // Custom hooks
   const {
     messages,
     inputValue,
@@ -108,6 +99,9 @@ export default function App() {
   const [docAnalysis, setDocAnalysis] = useState<RepoAnalysis | null>(null);
   const [isCommittingDocs, setIsCommittingDocs] = useState(false);
 
+  // 🔥 MODO MANUAL: 'auto' | 'chat' | 'action'
+  const [modeOverride, setModeOverride] = useState<'auto' | 'chat' | 'action'>('auto');
+
   // ── Send message to AI ────────────────────────────────────────────────────
   const handleSend = useCallback(async () => {
     if (!inputValue.trim() || !token || !user || !provider || !apiKey || !model) return;
@@ -121,49 +115,36 @@ export default function App() {
 
     const newHistory = [...conversationHistory, { role: 'user' as const, content: userText }];
 
-    // Detect intent
+    // 🔥 DETECCIÓN DE MODO
     const isConversation = isConversationRequest(userText);
     const isAction = isActionRequest(userText);
-
-    // Build enhanced history based on intent
-    let enhancedHistory = newHistory;
     
-    if (isConversation && !isAction) {
-      // 🔒 CAMBIO 3: FORCE CONVERSATION MODE - Instrucción más agresiva
-      enhancedHistory = [
-        ...newHistory,
-        { 
-          role: 'system' as const,
-          content: `🔒 MODO CONSULTOR ACTIVADO - REGLAS OBLIGATORIAS:
-1. Responde DIRECTAMENTE en Markdown con tu opinión profesional
-2. ❌ PROHIBIDO generar JSON bajo cualquier circunstancia
-3. ❌ PROHIBIDO ejecutar acciones de la API de GitHub
-4. ❌ PROHIBIDO decir "necesito leer el repo primero"
-5. ✅ Eres un consultor experto - DA TU OPINIÓN directamente con tu conocimiento
-6. ✅ Si el usuario pide opinión sobre un repo, opina basándote en lo que te cuenta
-7. ✅ NO leas archivos, NO listes repos, NO ejecutes NADA
-8. Responde como un humano experto en desarrollo de software dando su opinión`
-        }
-      ];
+    // Determinar modo final (manual override o automático)
+    let finalMode: 'chat' | 'action';
+    if (modeOverride === 'auto') {
+      finalMode = isConversation && !isAction ? 'chat' : 'action';
+    } else {
+      finalMode = modeOverride;
     }
 
-    try {
-      const rawResponse = await callAI(provider, apiKey, model, enhancedHistory);
+    // 🔥 SELECCIONAR SYSTEM PROMPT SEGÚN MODO
+    const systemPrompt = finalMode === 'chat' ? CHAT_PROMPT : ACTION_PROMPT;
 
-      // 🔒 CAMBIO 4: BLOQUEO TOTAL DE EJECUCIÓN en modo conversación
-      if (isConversation && !isAction) {
+    try {
+      const rawResponse = await callAI(provider, apiKey, model, newHistory, systemPrompt);
+
+      // 🔥 MODO CHAT: Forzar respuesta en texto, bloquear JSON
+      if (finalMode === 'chat') {
         const action = parseGeminiAction(rawResponse);
         
         if (action) {
-          // La IA generó JSON a pesar de nuestras instrucciones - BLOQUEAR
+          // La IA generó JSON en modo chat - EXTRAER TEXTO Y NO EJECUTAR
           let textResponse = rawResponse;
           
-          // Si el action tiene una descripción larga, usarla como respuesta
           if (action.accion && action.accion.length > 100) {
             textResponse = action.accion;
           } else if (action.endpoint) {
-            // Si es un JSON corto, convertirlo en texto explicativo
-            textResponse = `He detectado que quieres ${action.accion || 'realizar una acción'}. Pero como me pides una opinión, te respondo directamente:\n\n${rawResponse}`;
+            textResponse = `💡 **Análisis detectado**: ${action.accion}\n\n${rawResponse}`;
           }
           
           updateMessage(loadingId, { 
@@ -172,24 +153,26 @@ export default function App() {
           });
           addToHistory('assistant', textResponse);
         } else {
-          // Perfecto - La IA respondió en Markdown
+          // Perfecto - respuesta en Markdown
           updateMessage(loadingId, { content: rawResponse, isLoading: false });
           addToHistory('assistant', rawResponse);
         }
-        return; // ⛔ SALIR - NO EJECUTAR NADA
+        setIsChatLoading(false);
+        return; // ⛔ NO EJECUTAR NADA EN MODO CHAT
       }
 
-      // Para peticiones de acción, manejo normal de JSON
+      // 🔥 MODO ACCIÓN: Procesar JSON normalmente
       const action = parseGeminiAction(rawResponse);
 
       if (!action) {
-        // La IA devolvió texto no-JSON — tratar como respuesta normal
+        // Respuesta en texto (Markdown) en modo acción
         updateMessage(loadingId, { content: rawResponse, isLoading: false });
         addToHistory('assistant', rawResponse);
+        setIsChatLoading(false);
         return;
       }
 
-      // Para actualizaciones de archivos, obtener contenido actual para diff
+      // Enriquecer acción con contenido actual si es PUT
       let enrichedAction = action;
       if (action.metodo === 'PUT' && action.repo && action.archivo && !action.contenidoActual) {
         try {
@@ -201,7 +184,7 @@ export default function App() {
             enrichedAction = { ...action, contenidoActual: decodeBase64(file.content) };
           }
         } catch {
-          // El archivo no existe aún — es una creación
+          // Archivo no existe - es creación
         }
       }
 
@@ -209,11 +192,9 @@ export default function App() {
       addToHistory('assistant', rawResponse);
 
       if (enrichedAction.requiereConfirmacion) {
-        // Mostrar modal de confirmación
         const repos = multiRepoEnabled && selectedRepos.length > 0 ? selectedRepos : [];
         setPendingAction({ action: enrichedAction, targetRepos: repos });
       } else {
-        // Solo lectura: ejecutar directamente
         const histId = logAction('pending', enrichedAction.accion, enrichedAction.repo);
         const result = await executeAction(token, user, enrichedAction);
         updateActionLog(histId, result.success ? 'completed' : 'error', result.message);
@@ -227,13 +208,13 @@ export default function App() {
       }
     } catch (err) {
       updateMessage(loadingId, {
-        content: `❌ Error al contactar con el asistente: ${(err as Error).message}`,
+        content: `❌ Error: ${(err as Error).message}`,
         isLoading: false,
       });
     } finally {
       setIsChatLoading(false);
     }
-  }, [inputValue, token, user, provider, apiKey, model, conversationHistory, multiRepoEnabled, selectedRepos, addMessage, updateMessage, setInputValue, setIsChatLoading, addToHistory, setPendingAction, logAction, updateActionLog]);
+  }, [inputValue, token, user, provider, apiKey, model, conversationHistory, multiRepoEnabled, selectedRepos, modeOverride, addMessage, updateMessage, setInputValue, setIsChatLoading, addToHistory, setPendingAction, logAction, updateActionLog]);
 
   // ── Confirm action ──────────────────────────────────────────────────────
   const handleConfirm = useCallback(async () => {
@@ -244,7 +225,6 @@ export default function App() {
     clearPendingAction();
 
     if (targetRepos.length > 1) {
-      // Multi-repo
       await executeActionMultiRepo(token, user, action, targetRepos, {
         onProgress: (repo, status, message) => {
           logAction(status, message, repo);
@@ -279,7 +259,7 @@ export default function App() {
     } catch (err) {
       addMessage({
         role: 'assistant',
-        content: `❌ Error al analizar repositorio: ${(err as Error).message}`,
+        content: `❌ Error: ${(err as Error).message}`,
       });
     } finally {
       setIsExecuting(false);
@@ -295,13 +275,13 @@ export default function App() {
       await createOrUpdateFile(token, owner, repo, 'TECHNICAL_DOCS.md', docAnalysis.documentation);
       addMessage({
         role: 'assistant',
-        content: `✅ Documentación técnica creada en ${repoName}/TECHNICAL_DOCS.md`,
+        content: `✅ Documentación creada en ${repoName}/TECHNICAL_DOCS.md`,
       });
       setDocAnalysis(null);
     } catch (err) {
       addMessage({
         role: 'assistant',
-        content: `❌ Error al guardar documentación: ${(err as Error).message}`,
+        content: `❌ Error: ${(err as Error).message}`,
       });
     } finally {
       setIsCommittingDocs(false);
@@ -329,6 +309,8 @@ export default function App() {
             selectedRepos={selectedRepos}
             onSelectedReposChange={setSelectedRepos}
             onDocumentRepo={handleDocumentRepo}
+            modeOverride={modeOverride}
+            onModeOverrideChange={setModeOverride}
           />
         </div>
 
