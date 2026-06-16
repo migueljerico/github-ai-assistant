@@ -60,7 +60,7 @@ app.get('/health', (_req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
-// ─── Gemini API Proxy ───────────────────────────────────────────────────────
+// ─── Gemini API Proxy (Opción D - Con soporte para modo chat/acción) ──────────
 // The Gemini API blocks direct browser requests from EU regions (EEA).
 // This proxy routes Gemini calls through the server, which is deployed in
 // us-central1 (Cloud Run) where the API is fully accessible.
@@ -68,12 +68,13 @@ app.get('/health', (_req, res) => {
 // The user's API key travels in the HTTPS request body and is used only for
 // the duration of this call — it is never stored, logged, or cached.
 //
-// Request body: { apiKey, model, messages: [{role, content}], systemPrompt }
+// Request body: { apiKey, model, messages: [{role, content}], systemPrompt, mode?: 'chat'|'action' }
 // Response:     { text }
 //
 // Groq calls are NOT proxied — they go directly from the browser (no EU block).
 app.post('/api/gemini', geminiLimiter, async (req, res) => {
-  const { apiKey, model, messages, systemPrompt } = req.body;
+  // 🔥 OPCIÓN D: Extraemos 'mode' del body (por defecto 'chat' por seguridad)
+  const { apiKey, model, messages, systemPrompt, mode = 'chat' } = req.body;
 
   if (!apiKey || !model || !Array.isArray(messages) || !systemPrompt) {
     return res.status(400).json({
@@ -83,10 +84,26 @@ app.post('/api/gemini', geminiLimiter, async (req, res) => {
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const gemModel = genAI.getGenerativeModel({
+    
+    // 🔥 OPCIÓN D: Configuración dinámica del modelo según el modo
+    const modelConfig = {
       model,
       systemInstruction: systemPrompt,
-    });
+    };
+
+    // Si es modo acción, en el futuro aquí inyectaremos las tools de GitHub.
+    // Por ahora, el systemPrompt hace el trabajo, pero dejamos la estructura lista.
+    if (mode === 'action') {
+      // TODO: En el futuro, inyectar tools nativas de GitHub aquí:
+      // modelConfig.tools = githubTools;
+      // modelConfig.toolConfig = { functionCallingConfig: { mode: "AUTO" } };
+      console.log('🟢 Gemini ejecutando en MODO ACCIÓN');
+    } else {
+      // Modo chat: SIN tools. El modelo se ve obligado a ser conversacional.
+      console.log('💬 Gemini ejecutando en MODO CHAT');
+    }
+
+    const gemModel = genAI.getGenerativeModel(modelConfig);
 
     // Translate from internal Message format → Gemini SDK format.
     // All messages except the last form the chat history.
