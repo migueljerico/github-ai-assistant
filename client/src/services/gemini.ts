@@ -1,18 +1,19 @@
 // ────────────────────────────────────────────────────────────────────────────
 // Unified AI client — supports Google Gemini and Groq Cloud
 //
-// ARCHITECTURE NOTE (v2.1):
-// Gemini calls are now proxied through the Express backend (/api/gemini).
+// ARCHITECTURE NOTE (v3.0 — Zero-Storage):
+// This module no longer reads AI provider config from sessionStorage.
+// Instead, it accepts provider, apiKey, and model as function parameters.
+// The caller (typically App.tsx or a component using useAIProvider()) is
+// responsible for passing these values from React context.
+//
+// Gemini calls are proxied through the Express backend (/api/gemini).
 // This is required because the Gemini API blocks direct browser requests from
 // EU regions (EEA). The server is deployed in us-central1 (Cloud Run) where
 // the API is fully accessible. The user's API key is sent in the HTTPS request
 // body and is never stored on the server.
 //
 // Groq calls continue to go directly from the browser — no EU restriction applies.
-//
-// Provider routing:
-//   sessionStorage['ai_provider'] === 'gemini'  →  POST /api/gemini (server proxy)
-//   sessionStorage['ai_provider'] === 'groq'    →  fetch() to Groq OpenAI endpoint
 // ────────────────────────────────────────────────────────────────────────────
 
 import type { GeminiAction } from '../types';
@@ -74,17 +75,6 @@ export type GeneratedDocs = {
   resumen?: string;
   metadatos?: Record<string, unknown>;
 };
-
-// ── Read provider config from sessionStorage ───────────────────────────────────
-function getConfig(): { provider: AIProviderType; apiKey: string; model: string } {
-  const provider = sessionStorage.getItem('ai_provider') as AIProviderType | null;
-  const apiKey = sessionStorage.getItem('ai_api_key');
-  const model = sessionStorage.getItem('ai_model');
-  if (!provider || !apiKey || !model) {
-    throw new Error('No hay proveedor de IA configurado. Por favor conecta tu cuenta.');
-  }
-  return { provider, apiKey, model };
-}
 
 // ── Groq implementation ───────────────────────────────────────────────────────
 const GROQ_API = 'https://api.groq.com/openai/v1/chat/completions';
@@ -148,25 +138,51 @@ async function callGeminiDirect(
       { status: res.status },
     );
   }
-
   const data = await res.json() as { text: string };
   return data.text;
 }
 
-// ── Unified callAI ───────────────────────────────────────────────────────────
+// ── Unified callAI (Zero-Storage: parameters passed explicitly) ───────────────
+/**
+ * Call the AI provider with the given messages and system prompt.
+ *
+ * ZERO-STORAGE: This function accepts provider, apiKey, and model as explicit
+ * parameters. It does NOT read from sessionStorage. The caller must obtain
+ * these values from React context (useAIProvider()) and pass them here.
+ *
+ * @param provider     - 'groq' or 'gemini'
+ * @param apiKey       - The provider's API key (from React state, NOT storage)
+ * @param model        - The model name (e.g., 'gpt-4', 'gemini-2.5-flash')
+ * @param messages     - Chat history
+ * @param systemPrompt - System instructions for the model
+ * @returns The model's response text
+ * @throws Error if the API call fails
+ */
 export async function callAI(
+  provider: AIProviderType,
+  apiKey: string,
+  model: string,
   messages: Message[],
   systemPrompt: string = SYSTEM_PROMPT,
 ): Promise<string> {
-  const { provider, apiKey, model } = getConfig();
   if (provider === 'groq') return callGroq(apiKey, model, messages, systemPrompt);
   return callGeminiDirect(apiKey, model, messages, systemPrompt);
 }
 
-/** @deprecated Use callAI() directly. */
+/** @deprecated Use callAI() directly with explicit parameters. */
 export const callGemini = callAI;
 
 // ── Key validation ───────────────────────────────────────────────────────────
+/**
+ * Validate that a provider API key is valid by making a test call.
+ *
+ * ZERO-STORAGE: This function accepts credentials as explicit parameters.
+ *
+ * @param provider - 'groq' or 'gemini'
+ * @param apiKey   - The provider's API key
+ * @param model    - The model name
+ * @returns Object with valid flag and optional error message
+ */
 export async function validateProviderKey(
   provider: AIProviderType,
   apiKey: string,
@@ -247,182 +263,75 @@ export function detectPrimaryLanguage(files: RepoFile[]): string {
  * - JSON wrapped in prose
  */
 function extractJSON(rawText: string): Record<string, unknown> {
-  const cleaned = rawText
-    .replace(/^```(?:json)?\s*/i, '')
-    .replace(/\s*```\s*$/i, '')
-    .trim();
+  // Try markdown code fence
+  let match = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  if (match) return JSON.parse(match[1]);
 
-  try {
-    return JSON.parse(cleaned) as Record<string, unknown>;
-  } catch {
-    // Try to find JSON object in the text
-    const match = cleaned.match(/\{[\s\S]*\}/);
-    if (match) {
-      try {
-        return JSON.parse(match[0]) as Record<string, unknown>;
-      } catch {
-        throw new Error(`No se pudo parsear el JSON extraído: ${match[0].slice(0, 100)}...`);
-      }
-    }
-    throw new Error(`No se encontró JSON válido en la respuesta del modelo`);
-  }
+  // Try plain backticks
+  match = rawText.match(/`([\s\S]*?)`/);
+  if (match) return JSON.parse(match[1]);
+
+  // Try to find JSON object in the text
+  const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+  if (jsonMatch) return JSON.parse(jsonMatch[0]);
+
+  throw new Error('No JSON found in response');
 }
 
-// ── Repo documentation generator ────────────────────────────────────────────
+// ── Repository documentation generation ───────────────────────────────────────
 /**
- * Generate README.md and MANUAL_TECNICO.md for a repository.
+ * Generate comprehensive documentation for a repository using the AI provider.
  *
- * @param files Array of RepoFile objects with path and optional content
- * @returns GeneratedDocs with readme, manualTecnico, optional resumen and metadatos
+ * ZERO-STORAGE: This function accepts provider credentials as explicit parameters.
  *
- * Key features (v2.4):
- * - Detects primary programming language from file extensions
- * - Sends full file tree as structural overview
- * - Truncates large files at 80 lines (semantic) with explicit truncation marker
- * - Validates model response for required fields
- * - Extracts JSON from wrapped responses (backticks, markdown)
- * - Handles model errors gracefully with descriptive messages
+ * @param provider       - 'groq' or 'gemini'
+ * @param apiKey         - The provider's API key
+ * @param model          - The model name
+ * @param repoName       - Repository name (for context)
+ * @param files          - Array of repo files with content
+ * @returns GeneratedDocs with readme, manualTecnico, and optional metadata
  */
 export async function generateRepoDocs(
+  provider: AIProviderType,
+  apiKey: string,
+  model: string,
+  repoName: string,
   files: RepoFile[],
 ): Promise<GeneratedDocs> {
-  if (!files.length) {
-    throw new Error('No hay archivos para analizar. Proporciona al menos un archivo.');
-  }
+  const primaryLang = detectPrimaryLanguage(files);
+  const filesContext = files
+    .slice(0, 20)
+    .map(f => `\n### ${f.path}\n\`\`\`\n${f.content?.slice(0, 500) || '(no content)'}\n\`\`\``)
+    .join('\n');
 
-  const primaryLanguage = detectPrimaryLanguage(files);
-  const repoName = files[0].path?.split('/')[0] ?? 'repositorio';
-  const filesCount = files.length;
+  const docPrompt = `Eres un experto en documentación técnica. Analiza este repositorio y genera:
 
-  // ── Rich system prompt with structure template ──────────────────────────────
-  const docSystemPrompt = `Eres un experto en documentación técnica de software de nivel profesional.
-Tu tarea es analizar el código de un repositorio y generar documentación completa, detallada y visualmente atractiva.
-Responde ÚNICAMENTE con un objeto JSON con este formato exacto (sin markdown exterior, sin texto adicional):
+1. Un README.md profesional con descripción, características, instalación y uso.
+2. Un MANUAL_TECNICO.md con arquitectura, componentes y decisiones de diseño.
+
+Repo: ${repoName}
+Lenguaje principal: ${primaryLang}
+
+Archivos analizados:
+${filesContext}
+
+Responde SOLO con un JSON válido (sin markdown, sin \`\`\`json):
 {
-  "readme": "<string: README completo en Markdown>",
-  "manualTecnico": "<string: Manual técnico detallado en Markdown>",
-  "resumen": "<string: breve resumen de 2-3 líneas>",
-  "metadatos": { "lenguaje": "${primaryLanguage}", "filesCount": ${filesCount} }
-}
+  "readme": "contenido del README en markdown",
+  "manualTecnico": "contenido del MANUAL_TECNICO en markdown",
+  "resumen": "resumen de 1-2 líneas",
+  "metadatos": { "lenguaje": "${primaryLang}", "archivosAnalizados": ${files.length} }
+}`;
 
-═══════════════════════════════════════════════════════
-REQUISITOS OBLIGATORIOS PARA EL README.md
-═══════════════════════════════════════════════════════
+  const response = await callAI(provider, apiKey, model, [
+    { role: 'user', content: docPrompt },
+  ]);
 
-1. CABECERA:
-   - Título con emoji descriptivo del proyecto
-   - Fila de badges shields.io (for-the-badge): lenguaje principal, framework/stack,
-     estado (Publicado/En desarrollo), tipo de licencia
-   - Tagline en cursiva describiendo el proyecto en una frase
-
-2. SECCIONES (en este orden, con emojis en los títulos):
-   🔗 Acceso / Demo (si hay URL de despliegue)
-   📋 Descripción (2-3 párrafos explicando el propósito, qué problema resuelve y para quién)
-   ✨ Funcionalidades (tabla con columna Funcionalidad y columna Descripción)
-   ⚙️ Instalación (pasos numerados con bloques de código reales)
-   🚀 Uso (ejemplos de uso con código real extraído del proyecto)
-   📁 Estructura del proyecto (árbol de carpetas formateado en bloque de código)
-   🛠️ Tecnologías (tabla: Herramienta | Versión/Detalle | Uso en el proyecto)
-   📚 Contexto formativo o motivación del proyecto (si aplica)
-   Footer: <p align="center">Desarrollado por @[autor] · [año]</p>
-
-3. CALIDAD:
-   - Usa el contenido REAL del código para las explicaciones (nombres de funciones, rutas, comandos)
-   - Los bloques de código deben contener comandos reales (npm install, python main.py, etc.)
-   - Las tablas deben tener filas con información concreta, no placeholders genéricos
-   - Detecta el lenguaje principal (${primaryLanguage}) y usa badges específicos de ese ecosistema
-
-═══════════════════════════════════════════════════════
-REQUISITOS OBLIGATORIOS PARA EL MANUAL_TECNICO.md
-═══════════════════════════════════════════════════════
-
-1. Arquitectura general con diagrama ASCII de capas o flujo:
-   └── Capa de presentación → Capa de lógica → Capa de datos/API
-
-2. Descripción de cada módulo o componente principal:
-   Para cada archivo/carpeta relevante: nombre, responsabilidad, funciones exportadas clave
-
-3. APIs y endpoints documentados (si aplica):
-   Tabla: Método | Ruta | Descripción | Parámetros
-
-4. Variables de entorno:
-   Tabla: Variable | Valor de ejemplo | Obligatoria | Descripción
-
-5. Guía de despliegue paso a paso para el stack detectado
-
-6. Limitaciones conocidas y posibles mejoras futuras
-
-═══════════════════════════════════════════════════════
-LENGUAJE PRIMARIO DETECTADO: ${primaryLanguage}
-REPOSITORIO: ${repoName}
-TOTAL DE ARCHIVOS ANALIZADOS: ${filesCount}
-═══════════════════════════════════════════════════════
-
-Recuerda: responde SOLO con el JSON.
-No inclujas ningún texto fuera del JSON. No uses bloques de código externos.
-TODAS las claves (readme, manualTecnico, resumen, metadatos) son OBLIGATORIAS.`;
-
-  // ── Build message: tree overview + file contents ─────────────────────────────
-  const treeOverview = files.map(f => f.path).join('\n');
-  const fileContents = files
-    .filter(f => f.content)
-    .map(f => {
-      const content = f.content ?? '';
-      // Semantic truncation: first 80 lines preserves structure better than char-based slice.
-      // Code files show imports + function signatures; markdown files show headings + intro.
-      const MAX_LINES = 80;
-      const lines = content.split('\n');
-      const truncated = lines.length > MAX_LINES;
-      const truncationMarker = truncated
-        ? `\n\n... (truncated — showing first ${MAX_LINES} of ${lines.length} lines)`
-        : '';
-      return `### ${f.path}\n${lines.slice(0, MAX_LINES).join('\n')}${truncationMarker}`;
-    })
-    .join('\n\n---\n\n');
-
-  const userMessage =
-    `Repositorio: ${repoName}\n` +
-    `Lenguaje principal detectado: ${primaryLanguage}\n` +
-    `Archivos analizados: ${filesCount}\n\n` +
-    `ESTRUCTURA DEL PROYECTO:\n\`\`\`\n${treeOverview}\n\`\`\`\n\n` +
-    `CONTENIDO DE ARCHIVOS CLAVE:\n\n${fileContents}`;
-
-  try {
-    const rawText = await callAI(
-      [{ role: 'user', content: userMessage }],
-      docSystemPrompt,
-    );
-
-    // Extract and validate JSON response
-    const parsed = extractJSON(rawText);
-
-    // Check for model errors
-    if (parsed.error) {
-      throw new Error(`Error del modelo: ${parsed.error}`);
-    }
-
-    // Validate required fields
-    if (!parsed.readme || typeof parsed.readme !== 'string') {
-      throw new Error('La IA no devolvió el campo "readme" en el formato esperado');
-    }
-    if (!parsed.manualTecnico || typeof parsed.manualTecnico !== 'string') {
-      throw new Error('La IA no devolvió el campo "manualTecnico" en el formato esperado');
-    }
-
-    // Return GeneratedDocs with optional fields
-    return {
-      readme: parsed.readme,
-      manualTecnico: parsed.manualTecnico,
-      resumen: typeof parsed.resumen === 'string' ? parsed.resumen : undefined,
-      metadatos: typeof parsed.metadatos === 'object' && parsed.metadatos !== null
-        ? (parsed.metadatos as Record<string, unknown>)
-        : { lenguaje: primaryLanguage, filesCount },
-    };
-  } catch (err) {
-    const message = (err as Error).message;
-    if (message.includes('parseRequest') || message.includes('Failed to parse')) {
-      throw new Error(`Error de parseo del modelo: ${message}. Intenta nuevamente.`);
-    }
-    throw err;
-  }
+  const parsed = extractJSON(response);
+  return {
+    readme: (parsed.readme as string) || '',
+    manualTecnico: (parsed.manualTecnico as string) || '',
+    resumen: (parsed.resumen as string) || '',
+    metadatos: (parsed.metadatos as Record<string, unknown>) || {},
+  };
 }

@@ -1,7 +1,7 @@
 # 🔮 Roadmap de Mejoras — Análisis del Código
 
 > **Estado del código, mejoras pendientes y roadmap del proyecto** \
-> Actualizado a: **v3.0** · Junio 2026 (Arquitectura Zero-Storage)
+> Actualizado a: **v3.1** · Junio 2026 (Tests + CONTRIBUTING + Refactor Zero-Storage)
 
 ---
 
@@ -22,7 +22,9 @@
 | 11 | Eliminación ESLint suppression en `AuthContext` | `context/AuthContext.tsx` | v2.4 |
 | 12 | Nombre del proveedor IA dinámico en mensajes | `App.tsx` | v2.2.0 |
 | 13 | Advertencia de caducidad de sesión (Zero-Storage TTL 8h) | `SessionWarningBanner.tsx` · `AuthContext.tsx` · `AIProviderContext.tsx` | v3.0 · `ef8f158` |
+| 16 | Añadir tests unitarios con Vitest | `client/src/**/__tests__/` · `client/package.json` | v3.1 · `(pending)` |
 | 17 | Rate limiting en proxy Gemini (40 req/min) | `server/index.js` · `package.json` | v2.8 |
+| 24 | Añadir CONTRIBUTING.md | `CONTRIBUTING.md` | v3.1 · `(pending)` |
 
 ---
 
@@ -61,16 +63,7 @@
 - **Arquitectura sugerida:** Groq → Together AI → Gemini como cadena de fallback con selector de prioridad en el panel de IA.
 - **Beneficio:** Resiliencia ante cortes de servicio; diferenciador claro frente a apps mono-proveedor.
 
-#### **#16 — Añadir tests unitarios con Vitest**
-- **Esfuerzo:** 2–3h
-- Vitest ya está disponible en el ecosistema Vite sin configuración adicional.
-- **Targets prioritarios:**
-  - `parseGeminiAction()` — parseo de JSON desde respuesta del modelo
-  - `detectPrimaryLanguage()` — detección de lenguaje de archivos del repo
-  - `extractJSON()` — extracción robusta de bloques JSON en texto libre
-  - `formatResultData()` — ya extraído como utilidad pura, ideal para empezar
-  - Proxy `/api/gemini` — tests de integración con supertest
-- **Beneficio:** Seguridad ante refactors futuros; requisito implícito en cualquier oferta de trabajo técnica.
+
 
 ---
 
@@ -118,10 +111,7 @@
   - Healthcheck extendido en `/health` (versión, uptime, estado de variables de entorno)
   - Script `deploy.sh` automatizado para Cloud Run con validación previa de variables
 
-#### **#24 — Añadir CONTRIBUTING.md**
-- **Esfuerzo:** 1h
-- Documento estándar para proyectos open-source: configuración del entorno local, convenciones de commits, cómo abrir PRs.
-- **Beneficio:** Señal de madurez del proyecto en el portfolio; GitHub lo enlaza automáticamente al abrir issues y PRs.
+
 
 ---
 
@@ -130,9 +120,9 @@
 | Prioridad | Total | ✅ Resueltos | ⏳ Pendientes |
 |-----------|-------|-------------|--------------|
 | 🔴 Alta | 10 | 7 | 3 |
-| 🟡 Media | 9 | 5 | 4 |
+| 🟡 Media | 7 | 5 | 2 |
 | 🟢 Baja | 5 | 2 | 3 |
-| **TOTAL** | **24** | **14** | **10** |
+| **TOTAL** | **22** | **16** | **6** |
 
 ---
 
