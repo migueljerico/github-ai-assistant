@@ -1,7 +1,7 @@
 # 🔮 Roadmap de Mejoras — Análisis del Código
 
 > **Estado del código, mejoras pendientes y roadmap del proyecto** \
-> Actualizado a: **v3.1** · Junio 2026 (Tests + CONTRIBUTING + Refactor Zero-Storage)
+> Actualizado a: **v3.2** · Junio 2026 (Expansión GitHub: Issues, PRs, Branches, Workflows)
 
 ---
 
@@ -25,6 +25,7 @@
 | 16 | Añadir tests unitarios con Vitest | `client/src/**/__tests__/` · `client/package.json` | v3.1 · `(pending)` |
 | 17 | Rate limiting en proxy Gemini (40 req/min) | `server/index.js` · `package.json` | v2.8 |
 | 24 | Añadir CONTRIBUTING.md | `CONTRIBUTING.md` | v3.1 · `(pending)` |
+| 14 | Expansión de acciones GitHub: issues, PRs, branches, workflows | `types/index.ts` · `github.ts` · `actionExecutor.ts` · `gemini.ts` | v3.2 · `bee3e86` |
 
 ---
 
@@ -37,15 +38,7 @@
 
 ### 🔴 Alta Prioridad
 
-#### **#14 — Expansión de acciones GitHub: issues, PRs, branches, workflows**
-- **Esfuerzo:** 3–4h
-- La app opera principalmente sobre contenido de archivos y metadatos de repos. Añadir soporte para el resto de la API de GitHub la convierte en un gestor de proyecto completo.
-- **Acciones a añadir (por orden de impacto):**
-  1. **Issues:** crear, cerrar, comentar, listar
-  2. **Branches:** crear, borrar, listar, proteger rama main
-  3. **Pull Requests:** crear, listar, merge básico
-  4. **Workflows:** listar y relanzar un workflow fallido
-- **Beneficio:** El mayor salto funcional posible con el stack actual; multiplica el valor del portfolio.
+
 
 #### **#15 — Soporte multi-proveedor con fallback (Together AI / OpenRouter / Ollama)**
 - **Esfuerzo:** 3–4h
@@ -119,10 +112,10 @@
 
 | Prioridad | Total | ✅ Resueltos | ⏳ Pendientes |
 |-----------|-------|-------------|--------------|
-| 🔴 Alta | 10 | 7 | 3 |
+| 🔴 Alta | 9 | 8 | 1 |
 | 🟡 Media | 7 | 5 | 2 |
 | 🟢 Baja | 5 | 2 | 3 |
-| **TOTAL** | **22** | **16** | **6** |
+| **TOTAL** | **21** | **17** | **4** |
 
 ---
 
