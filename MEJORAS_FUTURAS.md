@@ -1,7 +1,7 @@
 # 🔮 Roadmap de Mejoras — Análisis del Código
 
 > **Estado del código, mejoras pendientes y roadmap del proyecto** \
-> Actualizado a: **v3.4** · Junio 2026 (Rate Limit, Refactor Hooks, Componentes Opcionales)
+> Actualizado a: **v3.5** · Junio 2026 (Integración Completa, Tests, PDF Avanzado)
 
 ---
 
@@ -27,8 +27,8 @@
 | 24 | Añadir CONTRIBUTING.md | `CONTRIBUTING.md` | v3.1 · `(pending)` |
 | 14 | Expansión de acciones GitHub: issues, PRs, branches, workflows | `types/index.ts` · `github.ts` · `actionExecutor.ts` · `gemini.ts` | v3.2 · `bee3e86` |
 | 22 | Autocompletado de instrucciones en el chat | `utils/instructionSuggestions.ts` | v3.3 · `b0aab89` |
-| 18 | Mejor manejo de errores de rate limit de GitHub API | `utils/rateLimitHandler.ts` · `services/github.ts` | v3.4 · `5318162` |
-| 19 | Refactor de App.tsx — Extraer lógica a custom hooks | `hooks/useChat.ts` · `hooks/useActions.ts` | v3.4 · `5318162` |
+| 18 | Mejor manejo de errores de rate limit de GitHub API | `utils/rateLimitHandler.ts` · `services/github.ts` | v3.5 · `e233791` |
+| 19 | Refactor de App.tsx — Extraer lógica a custom hooks | `hooks/useChat.ts` · `hooks/useActions.ts` | v3.5 · `e233791` |
 
 ---
 
@@ -101,10 +101,10 @@
 
 | Prioridad | Total | ✅ Resueltos | ⏳ Pendientes |
 |-----------|-------|-------------|--------------|
-| 🔴 Alta | 9 | 8 | 1 |
+| 🔴 Alta | 9 | 9 | 0 |
 | 🟡 Media | 6 | 6 | 0 |
 | 🟢 Baja | 5 | 3 | 2 |
-| **TOTAL** | **20** | **19** | **1** |
+| **TOTAL** | **20** | **18** | **2** |
 
 ---
 
