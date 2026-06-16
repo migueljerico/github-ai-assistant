@@ -196,17 +196,17 @@ async function callGroq(
   systemPrompt: string,
 ): Promise<string> {
   const body = {
-    model,
-    messages: [
-      { role: 'system', content: systemPrompt },
-      ...messages.map(m => ({
-        role: m.role === 'assistant' ? 'assistant' : 'user',
-        content: m.content,
-      })),
-    ],
-    temperature: 0.1,
-    max_tokens: 4096,
-  };
+  model,
+  messages: [
+    { role: 'system', content: systemPrompt },
+    ...messages.map(m => ({
+      role: m.role === 'assistant' ? 'assistant' : 'user',
+      content: m.content,
+    })),
+  ],
+  temperature: 0.7,  // ← Cambiar de 0.1 a 0.7
+  max_tokens: 4096,
+};
 
   const res = await fetch(GROQ_API, {
     method: 'POST',
