@@ -10,9 +10,13 @@
 //
 // Groq calls continue to go directly from the browser — no EU restriction applies.
 //
+// ZERO-STORAGE ARCHITECTURE (v2.1.0+):
+// API keys live ONLY in React state (AIProviderContext), NEVER in sessionStorage.
+// They are read from the context via useAIProvider() hook.
+//
 // Provider routing:
-//   sessionStorage['ai_provider'] === 'gemini'  →  POST /api/gemini (server proxy)
-//   sessionStorage['ai_provider'] === 'groq'    →  fetch() to Groq OpenAI endpoint
+//   useAIProvider().provider === 'gemini'  →  POST /api/gemini (server proxy)
+//   useAIProvider().provider === 'groq'    →  fetch() to Groq OpenAI endpoint
 //
 // OPCIÓN D - Modo dual:
 //   callAI ahora acepta un tercer parámetro opcional 'mode':
@@ -106,17 +110,6 @@ export type GeneratedDocs = {
   metadatos?: Record<string, unknown>;
 };
 
-// ── Read provider config from sessionStorage ──────────────────────────────────
-function getConfig(): { provider: AIProviderType; apiKey: string; model: string } {
-  const provider = sessionStorage.getItem('ai_provider') as AIProviderType | null;
-  const apiKey = sessionStorage.getItem('ai_api_key');
-  const model = sessionStorage.getItem('ai_model');
-  if (!provider || !apiKey || !model) {
-    throw new Error('No hay proveedor de IA configurado. Por favor conecta tu cuenta.');
-  }
-  return { provider, apiKey, model };
-}
-
 // ── Groq implementation ───────────────────────────────────────────────────────
 const GROQ_API = 'https://api.groq.com/openai/v1/chat/completions';
 
@@ -198,14 +191,17 @@ async function callGeminiDirect(
   return data.text;
 }
 
-// ── Unified callAI (Opción D - con mode opcional) ─────────────────────────────
+// ── Unified callAI (Zero-Storage + Opción D) ──────────────────────────────────
+// 🔥 ZERO-STORAGE: Recibe provider, apiKey, model del contexto (NO de sessionStorage)
 // 🔥 OPCIÓN D: Tercer parámetro 'mode' es opcional (retrocompatible)
 export async function callAI(
   messages: Message[],
   systemPrompt: string = SYSTEM_PROMPT,
+  provider: AIProviderType,
+  apiKey: string,
+  model: string,
   mode?: 'chat' | 'action',  // ← NUEVO: modo opcional
 ): Promise<string> {
-  const { provider, apiKey, model } = getConfig();
   if (provider === 'groq') return callGroq(apiKey, model, messages, systemPrompt);
   return callGeminiDirect(apiKey, model, messages, systemPrompt, mode);
 }
