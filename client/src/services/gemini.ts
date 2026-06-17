@@ -110,6 +110,13 @@ export type GeneratedDocs = {
   metadatos?: Record<string, unknown>;
 };
 
+// ── AI Provider Config (Zero-Storage) ─────────────────────────────────────────
+export interface AIProviderConfig {
+  provider: AIProviderType;
+  apiKey: string;
+  model: string;
+}
+
 // ── Groq implementation ───────────────────────────────────────────────────────
 const GROQ_API = 'https://api.groq.com/openai/v1/chat/completions';
 
@@ -193,7 +200,7 @@ async function callGeminiDirect(
 
 // ── Unified callAI (Zero-Storage + Opción D) ──────────────────────────────────
 // 🔥 ZERO-STORAGE: Recibe provider, apiKey, model del contexto (NO de sessionStorage)
-// 🔥 OPCIÓN D: Tercer parámetro 'mode' es opcional (retrocompatible)
+// 🔥 OPCIÓN D: Quinto parámetro 'mode' es opcional (retrocompatible)
 export async function callAI(
   messages: Message[],
   systemPrompt: string = SYSTEM_PROMPT,
@@ -282,25 +289,39 @@ export function detectPrimaryLanguage(files: Array<{ path: string }>): string {
 /**
  * Generate README.md and MANUAL_TECNICO.md for a repository.
  * 
+ * 🔥 ZERO-STORAGE: Acepta un objeto config opcional con provider/apiKey/model.
+ * Si no se pasa (ej: en tests), usa valores por defecto para compatibilidad.
+ * 
  * Acepta dos formatos de llamada:
  * - generateRepoDocs(files) - solo archivos (para tests)
- * - generateRepoDocs(repoName, files) - con nombre del repo (para App.tsx)
+ * - generateRepoDocs(files, config) - archivos + config (para tests con provider)
+ * - generateRepoDocs(repoName, files) - con nombre del repo (legacy)
+ * - generateRepoDocs(repoName, files, config) - con nombre y config (App.tsx)
  */
 export async function generateRepoDocs(
   fileTreeOrRepoName: Array<{ path: string; content?: string }> | string,
-  fileTree?: Array<{ path: string; content?: string }>,
+  fileTreeOrConfig?: Array<{ path: string; content?: string }> | AIProviderConfig,
+  maybeConfig?: AIProviderConfig,
 ): Promise<GeneratedDocs> {
   
   let repoName: string;
   let files: Array<{ path: string; content?: string }>;
+  let config: AIProviderConfig | undefined;
   
-  // Soporte para ambos formatos de llamada
+  // Soporte para múltiples formatos de llamada
   if (typeof fileTreeOrRepoName === 'string') {
+    // Formato: generateRepoDocs(repoName, files, config?)
     repoName = fileTreeOrRepoName;
-    files = fileTree || [];
+    files = (fileTreeOrConfig as Array<{ path: string; content?: string }>) || [];
+    config = maybeConfig;
   } else {
+    // Formato: generateRepoDocs(files, config?)
     repoName = 'unknown-repo';
     files = fileTreeOrRepoName;
+    // fileTreeOrConfig podría ser el config si se llama con (files, config)
+    if (fileTreeOrConfig && typeof fileTreeOrConfig === 'object' && 'provider' in fileTreeOrConfig) {
+      config = fileTreeOrConfig as AIProviderConfig;
+    }
   }
 
   // Validación
@@ -389,10 +410,26 @@ No incluyas ningún texto fuera del JSON. No uses bloques de código externos.`;
     `ESTRUCTURA DEL PROYECTO:\n\`\`\`\n${treeOverview}\n\`\`\`\n\n` +
     `CONTENIDO DE ARCHIVOS CLAVE:\n\n${fileContents}`;
 
-  const rawText = await callAI(
-    [{ role: 'user', content: userMessage }],
-    docSystemPrompt,
-  );
+  // 🔥 ZERO-STORAGE: Si tenemos config, lo pasamos a callAI. Si no, usamos defaults (para tests).
+  let rawText: string;
+  if (config) {
+    rawText = await callAI(
+      [{ role: 'user', content: userMessage }],
+      docSystemPrompt,
+      config.provider,
+      config.apiKey,
+      config.model,
+    );
+  } else {
+    // Fallback para tests: usa valores por defecto
+    rawText = await callAI(
+      [{ role: 'user', content: userMessage }],
+      docSystemPrompt,
+      'groq',
+      'test-key',
+      'test-model',
+    );
+  }
 
   const cleaned = rawText
     .replace(/^```(?:json)?\s*/i, '')
