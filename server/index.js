@@ -188,7 +188,7 @@ app.use(express.static(clientDistPath));
 // Catch-all: serve index.html for SPA routing
 app.get('*', (req, res) => {
   if (req.path.startsWith('/api/') || req.path.startsWith('/auth/')) {
-    return res.status(404).json({ error: 'Not found' };
+    return res.status(404).json({ error: 'Not found' });
   }
   res.sendFile(join(clientDistPath, 'index.html'));
 });
