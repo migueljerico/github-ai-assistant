@@ -46,10 +46,10 @@ A diferencia de un chatbot convencional, este asistente:
 - ✅ **Funciona con múltiples modelos** (Groq para velocidad, Gemini para calidad)
 - ✅ **Documenta repositorios completos** generando README + MANUAL_TECNICO automáticamente
 
-### Ejemplo de uso real:
+### Ejemplo de uso real
 
 > **Tú:** *"Lista mis repositorios privados"*
-> 
+>
 > **Asistente:** *"Voy a consultar la API de GitHub... He encontrado 5 repositorios privados. ¿Quieres que te muestre los detalles de alguno en particular?"*
 
 ---
@@ -111,12 +111,10 @@ Claude también revisó el plan de implementación generado por Antigravity y de
 La construcción del código se realizó con **Antigravity 2.0** (plataforma de desarrollo agéntico de Google, presentada en I/O 2026), usando **Claude** como modelo subyacente del agente. A partir del prompt maestro diseñado en la Fase 2, Antigravity generó la estructura completa del proyecto:
 
 ```
-
 github-ai-assistant/
-├── client/ # React 18 + TypeScript + Vite (36 archivos)
-├── server/ # Express.js OAuth (1 archivo, ~120 líneas)
-└── Dockerfile # Multi-stage build para Cloud Run
-
+├── client/     # React 18 + TypeScript + Vite (36 archivos)
+├── server/     # Express.js OAuth (1 archivo, ~120 líneas)
+└── Dockerfile  # Multi-stage build para Cloud Run
 ```
 
 El agente de Antigravity generó los 15 componentes planificados incluyendo servicios, contextos y el sistema de tipos TypeScript completo.
@@ -124,6 +122,7 @@ El agente de Antigravity generó los 15 componentes planificados incluyendo serv
 ### Fase 4 — Corrección de errores y ajustes
 
 Durante las pruebas locales surgieron errores de compilación típicos de código generado por IA:
+
 - Caracteres Unicode (`→`, comillas invertidas) dentro de bloques JSDoc que el compilador esbuild interpretaba como código
 - La secuencia `*/` en comentarios con rutas de URL (`/users/*/repos`) que cerraba prematuramente los bloques de comentario
 
@@ -147,7 +146,7 @@ git commit -m "feat: v2 completa — OAuth, Groq/Gemini, historial, plantillas, 
 git push -u origin main
 ```
 
-Fase 6 — Despliegue en Google Cloud Run
+### Fase 6 — Despliegue en Google Cloud Run
 
 ```bash
 gcloud run deploy github-ai-assistant \
@@ -159,35 +158,35 @@ gcloud run deploy github-ai-assistant \
 
 ---
 
-⚙️ Configuración local
+## ⚙️ Configuración local
 
-Prerrequisitos
+### Prerrequisitos
 
-· Node.js 20+
-· Git
-· Una GitHub OAuth App (crear aquí):
-  · Homepage URL: http://localhost:5173
-  · Callback URL: http://localhost:3001/auth/callback
-· Una API key de Groq Cloud (console.groq.com) o Google Gemini (aistudio.google.com/apikey)
+- Node.js 20+
+- Git
+- Una GitHub OAuth App ([crear aquí](https://github.com/settings/developers)):
+  - Homepage URL: `http://localhost:5173`
+  - Callback URL: `http://localhost:3001/auth/callback`
+- Una API key de [Groq Cloud](https://console.groq.com) o [Google Gemini](https://aistudio.google.com/apikey)
 
-Variables de entorno
+### Variables de entorno
 
 ```bash
 cp .env.example .env
 ```
 
-Edita .env con tus valores:
+Edita `.env` con tus valores:
 
-```
+```env
 GITHUB_CLIENT_ID=       # Client ID de tu GitHub OAuth App
 GITHUB_CLIENT_SECRET=   # Client Secret de tu GitHub OAuth App
 SESSION_SECRET=         # Cadena aleatoria larga (ej: openssl rand -hex 32)
 PORT=3001
 ```
 
-La clave de IA no va en el .env — cada usuario la introduce directamente en la app.
+> La clave de IA no va en el `.env` — cada usuario la introduce directamente en la app.
 
-Arrancar en desarrollo
+### Arrancar en desarrollo
 
 ```bash
 npm install
@@ -195,11 +194,11 @@ cd client && npm install && cd ..
 npm run dev
 ```
 
-Abre http://localhost:5173
+Abre [http://localhost:5173](http://localhost:5173)
 
 ---
 
-🏗️ Arquitectura
+## 🏗️ Arquitectura
 
 ```
 Usuario (lenguaje natural)
@@ -227,100 +226,106 @@ Usuario (lenguaje natural)
 └──────────────────────┘  └───────────────────────────────┘
 ```
 
-Decisión arquitectónica clave: el backend Express es intencionalmente mínimo. Gestiona el intercambio de secretos OAuth y actúa como proxy para la API de Gemini — necesario porque Google bloquea las llamadas directas desde navegadores en la UE/EEA. Las llamadas a GitHub y a Groq se realizan directamente desde el navegador del usuario, con su propio token y su propia clave de IA.
+**Decisión arquitectónica clave:** el backend Express es intencionalmente mínimo. Gestiona el intercambio de secretos OAuth y actúa como proxy para la API de Gemini — necesario porque Google bloquea las llamadas directas desde navegadores en la UE/EEA. Las llamadas a GitHub y a Groq se realizan directamente desde el navegador del usuario, con su propio token y su propia clave de IA.
 
 ---
 
-🛠️ Stack tecnológico
+## 🛠️ Stack tecnológico
 
-Herramienta Uso Coste
-React 18 + TypeScript Interfaz de usuario, estado, contextos Gratuito
-Vite Bundler y dev server del frontend Gratuito
-Express.js Backend thin — OAuth + proxy Gemini Gratuito
-GitHub REST API v3 Todas las operaciones sobre repositorios Gratuito
-Groq Cloud Inferencia de IA ultrarrápida (Llama 3.3) Tier gratuito
-Google Gemini Modelo de IA alternativo (gemini-2.5-flash) Tier gratuito
-Google Cloud Run Despliegue serverless (us-central1) Pay-per-use
-Antigravity 2.0 Entorno de desarrollo agéntico (construcción del código) —
-Claude (Anthropic) Arquitectura, revisión y documentación —
+| Herramienta | Uso | Coste |
+|---|---|---|
+| React 18 + TypeScript | Interfaz de usuario, estado, contextos | Gratuito |
+| Vite | Bundler y dev server del frontend | Gratuito |
+| Express.js | Backend thin — OAuth + proxy Gemini | Gratuito |
+| GitHub REST API v3 | Todas las operaciones sobre repositorios | Gratuito |
+| Groq Cloud | Inferencia de IA ultrarrápida (Llama 3.3) | Tier gratuito |
+| Google Gemini | Modelo de IA alternativo (gemini-2.5-flash) | Tier gratuito |
+| Google Cloud Run | Despliegue serverless (us-central1) | Pay-per-use |
+| Antigravity 2.0 | Entorno de desarrollo agéntico (construcción del código) | — |
+| Claude (Anthropic) | Arquitectura, revisión y documentación | — |
 
 ---
 
-🔒 Modelo de seguridad
+## 🔒 Modelo de seguridad
 
-🛡️ Arquitectura de Seguridad
+### 🛡️ Arquitectura de Seguridad
 
 Esta aplicación implementa medidas de seguridad fundamentales para proteger las credenciales del usuario.
 
-Token de GitHub — Memoria React:
+**Token de GitHub — Memoria React:**
+
 El token de acceso de GitHub (ya sea OAuth o PAT) vive exclusivamente en la memoria de React (estado global del contexto). Jamás se escribe en ninguna API de almacenamiento del navegador: ni sessionStorage, ni localStorage, ni cookies, ni IndexedDB.
 
-¿Por qué es esto importante?
-La aplicación requiere el scope repo de GitHub, que otorga acceso de lectura y escritura a todos tus repositorios públicos y privados. Si un atacante lograra inyectar código JavaScript en la aplicación (ataque XSS), podría:
+**¿Por qué es esto importante?**
 
-· ❌ Con almacenamiento en navegador: Leer el token desde sessionStorage/localStorage y robar todas tus credenciales en segundos.
-· ✅ Con memoria React: El token solo existe en la memoria volátil de React. Un script malicioso no puede acceder a variables de estado de React directamente, haciendo el robo de credenciales extremadamente difícil.
+La aplicación requiere el scope `repo` de GitHub, que otorga acceso de lectura y escritura a todos tus repositorios públicos y privados. Si un atacante lograra inyectar código JavaScript en la aplicación (ataque XSS), podría:
 
-Claves de IA — sessionStorage:
-Las claves de API de IA (Groq/Gemini) se almacenan en sessionStorage del navegador por conveniencia, para que el usuario no tenga que reintroducirlas al recargar la página. Una implementación Zero-Storage completa (solo memoria React) está planificada para futuras versiones.
+- ❌ **Con almacenamiento en navegador:** Leer el token desde `sessionStorage`/`localStorage` y robar todas tus credenciales en segundos.
+- ✅ **Con memoria React:** El token solo existe en la memoria volátil de React. Un script malicioso no puede acceder a variables de estado de React directamente, haciendo el robo de credenciales extremadamente difícil.
 
-¿Qué significa esto para ti como usuario?
+**Claves de IA — sessionStorage:**
 
-· 🔄 Al recargar la página (F5), perderás tu sesión de GitHub. Tendrás que volver a autenticarte con GitHub.
-· 🔐 Las claves de IA se mantienen al recargar la página (sessionStorage), pero desaparecen al cerrar la pestaña.
-· 🛡️ Tu token de GitHub está protegido contra el vector de ataque más común en aplicaciones web (XSS + robo de tokens desde storage).
+Las claves de API de IA (Groq/Gemini) se almacenan en `sessionStorage` del navegador por conveniencia, para que el usuario no tenga que reintroducirlas al recargar la página. Una implementación Zero-Storage completa (solo memoria React) está planificada para futuras versiones.
 
-Esto NO es un bug, es una característica de seguridad intencionada.
+**¿Qué significa esto para ti como usuario?**
 
-Priorizamos la seguridad del token de GitHub (el activo más crítico) por encima de la comodidad de no tener que volver a iniciar sesión. Dado el nivel de acceso que requiere la aplicación (scope repo), consideramos que este trade-off es necesario y responsable.
+- 🔄 Al recargar la página (F5), perderás tu sesión de GitHub. Tendrás que volver a autenticarte con GitHub.
+- 🔐 Las claves de IA se mantienen al recargar la página (sessionStorage), pero desaparecen al cerrar la pestaña.
+- 🛡️ Tu token de GitHub está protegido contra el vector de ataque más común en aplicaciones web (XSS + robo de tokens desde storage).
 
-Modelo de almacenamiento de credenciales
+> **Esto NO es un bug, es una característica de seguridad intencionada.**
+>
+> Priorizamos la seguridad del token de GitHub (el activo más crítico) por encima de la comodidad de no tener que volver a iniciar sesión. Dado el nivel de acceso que requiere la aplicación (scope `repo`), consideramos que este trade-off es necesario y responsable.
 
-Elemento Dónde vive Cuándo desaparece
-Token OAuth de GitHub Solo en memoria de React (estado) Al recargar la página o cerrar la pestaña
-Clave de IA (Groq/Gemini) sessionStorage del navegador Al cerrar la pestaña del navegador
-GITHUB_CLIENT_SECRET Variables de entorno del servidor Solo en memoria del proceso
-Datos del usuario Ningún servidor externo No se almacenan
-Clave Gemini en tránsito Cuerpo HTTPS hacia /api/gemini No se persiste en el servidor
+### Modelo de almacenamiento de credenciales
 
----
-
-🔮 Mejoras futuras
-
-Ver MEJORAS_FUTURAS.md — Estado actual, sprints y roadmap completo.
+| Elemento | Dónde vive | Cuándo desaparece |
+|---|---|---|
+| Token OAuth de GitHub | Solo en memoria de React (estado) | Al recargar la página o cerrar la pestaña |
+| Clave de IA (Groq/Gemini) | sessionStorage del navegador | Al cerrar la pestaña del navegador |
+| GITHUB_CLIENT_SECRET | Variables de entorno del servidor | Solo en memoria del proceso |
+| Datos del usuario | Ningún servidor externo | No se almacenan |
+| Clave Gemini en tránsito | Cuerpo HTTPS hacia /api/gemini | No se persiste en el servidor |
 
 ---
 
-🔌 Proveedores de IA soportados y roadmap
+## 🔮 Mejoras futuras
 
-La app soporta actualmente Groq Cloud y Google Gemini. Para el análisis de proveedores alternativos evaluados (Together AI, OpenRouter, Fireworks AI, Ollama local, DeepInfra), métricas de código y sprints pendientes, consulta MEJORAS_FUTURAS.md.
+Ver [MEJORAS_FUTURAS.md](./MEJORAS_FUTURAS.md) — Estado actual, sprints y roadmap completo.
 
 ---
 
-🧠 El proceso: De los negocios a la Ingeniería de IA
+## 🔌 Proveedores de IA soportados y roadmap
+
+La app soporta actualmente Groq Cloud y Google Gemini. Para el análisis de proveedores alternativos evaluados (Together AI, OpenRouter, Fireworks AI, Ollama local, DeepInfra), métricas de código y sprints pendientes, consulta [MEJORAS_FUTURAS.md](./MEJORAS_FUTURAS.md).
+
+---
+
+## 🧠 El proceso: De los negocios a la Ingeniería de IA
 
 Este proyecto no es solo código; es el resultado de un profesional de Ciencias Empresariales adentrándose en el desarrollo de software y la Inteligencia Artificial desde cero en 30 días.
 
-¿Por qué este enfoque?
+### ¿Por qué este enfoque?
 
 Al no tener la "mochila" de la formación técnica tradicional, mi enfoque no fue solo "hacer que funcione", sino construir un producto robusto, seguro y mantenible aplicando las mejores prácticas de la industria desde el primer día:
 
-· 🛡️ Seguridad por diseño: Implementación de arquitectura de memoria React para proteger el token de GitHub, priorizando la seguridad del usuario sobre la comodidad.
-· 📚 Documentación profesional: Manuales técnicos y roadmap de mejoras siguiendo estándares de la industria.
+- 🛡️ **Seguridad por diseño:** Implementación de arquitectura de memoria React para proteger el token de GitHub, priorizando la seguridad del usuario sobre la comodidad.
+- 📚 **Documentación profesional:** Manuales técnicos y roadmap de mejoras siguiendo estándares de la industria.
 
-La lección principal
+### La lección principal
 
 La Inteligencia Artificial y las herramientas modernas (como GitHub Copilot, LLMs y plataformas Cloud) han democratizado la ingeniería. Este proyecto demuestra que el criterio de negocio, la curiosidad y la obsesión por la calidad son tan importantes como saber escribir código.
 
-"No soy ingeniero de software. Soy un profesional de negocio que ha aprendido a construir productos de IA pensando como un ingeniero."
+> *"No soy ingeniero de software. Soy un profesional de negocio que ha aprendido a construir productos de IA pensando como un ingeniero."*
 
 ---
 
-📚 Contexto formativo
+## 📚 Contexto formativo
 
 Este proyecto forma parte del programa de formación en Análisis de Datos e Inteligencia Artificial (INAEM, 2025–2026). El objetivo fue explorar el desarrollo de aplicaciones full-stack asistido por agentes de IA, desde la arquitectura hasta el despliegue en producción, integrando múltiples servicios de IA y APIs REST en un flujo de trabajo completamente agéntico.
+
+---
 
 <p align="center">
 Desarrollado por <a href="https://github.com/migueljerico">@migueljerico</a> con la asistencia de <strong>Claude</strong> (Anthropic), <strong>Antigravity 2.0</strong> (Google) y <strong>Qwen 3.7-Plus</strong> (Componentes de código) · 2026
 </p>
-```
