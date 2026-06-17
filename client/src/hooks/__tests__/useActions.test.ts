@@ -91,7 +91,7 @@ describe('useActions Hook', () => {
   it('should log an action', () => {
     const { result } = renderHook(() => useActions());
 
-    let logId: string;
+    let logId: string = '';
     act(() => {
       logId = result.current.logAction('pending', 'Creating file', 'my-repo');
     });
