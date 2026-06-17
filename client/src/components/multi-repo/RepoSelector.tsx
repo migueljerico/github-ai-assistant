@@ -12,13 +12,12 @@ export default function RepoSelector({ selectedRepos, onChange }: RepoSelectorPr
   const { token } = useAuth();
   const [allRepos, setAllRepos] = useState<GitHubRepo[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingCount, setLoadingCount] = useState(0);
   const [filter, setFilter] = useState('');
 
   useEffect(() => {
     if (!token) return;
     setIsLoading(true);
-    listAllRepos(token, (count) => setLoadingCount(count))
+    listAllRepos(token)
       .then(repos => {
         setAllRepos(repos);
         setIsLoading(false);
@@ -59,7 +58,7 @@ export default function RepoSelector({ selectedRepos, onChange }: RepoSelectorPr
         {isLoading ? (
           <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
             <span className="spinner spinner-sm" />
-            {loadingCount} cargados...
+            Cargando...
           </span>
         ) : (
           <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
