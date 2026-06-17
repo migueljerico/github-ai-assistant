@@ -97,6 +97,15 @@ export interface Message {
   content: string;
 }
 
+// ── Types for repo documentation generation (exportados para tests) ───────────
+export type RepoFile = { path: string; content?: string };
+export type GeneratedDocs = {
+  readme: string;
+  manualTecnico: string;
+  resumen?: string;
+  metadatos?: Record<string, unknown>;
+};
+
 // ── Read provider config from sessionStorage ──────────────────────────────────
 function getConfig(): { provider: AIProviderType; apiKey: string; model: string } {
   const provider = sessionStorage.getItem('ai_provider') as AIProviderType | null;
@@ -254,7 +263,7 @@ export function parseGeminiAction(rawText: string): GeminiAction | null {
  * Infers the primary programming language of a repo from file extension counts.
  * Used to provide language-specific context to the documentation generator.
  */
-function detectPrimaryLanguage(files: Array<{ path: string }>): string {
+export function detectPrimaryLanguage(files: Array<{ path: string }>): string {
   const extMap: Record<string, string> = {
     '.ts': 'TypeScript', '.tsx': 'TypeScript',
     '.js': 'JavaScript', '.jsx': 'JavaScript',
@@ -288,7 +297,7 @@ function detectPrimaryLanguage(files: Array<{ path: string }>): string {
 export async function generateRepoDocs(
   repoName: string,
   fileTree: Array<{ path: string; content: string }>,
-): Promise<{ readme: string; manualTecnico: string }> {
+): Promise<GeneratedDocs> {
 
   const primaryLanguage = detectPrimaryLanguage(fileTree);
 
@@ -384,5 +393,15 @@ No incluyas ningún texto fuera del JSON. No uses bloques de código externos.`;
   if (!parsed.readme || !parsed.manualTecnico) {
     throw new Error('La IA no devolvió el formato esperado { readme, manualTecnico }');
   }
-  return { readme: parsed.readme, manualTecnico: parsed.manualTecnico };
+  
+  // 🔥 Añadido: resumen y metadatos para compatibilidad con tests
+  return {
+    readme: parsed.readme,
+    manualTecnico: parsed.manualTecnico,
+    resumen: `Documentación generada para ${repoName} en ${primaryLanguage}`,
+    metadatos: {
+      lenguaje: primaryLanguage,
+      archivosAnalizados: fileTree.length,
+    },
+  };
 }
