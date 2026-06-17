@@ -1,133 +1,199 @@
 # 🔮 Roadmap de Mejoras — Análisis del Código
 
-> **Estado del código, mejoras pendientes y roadmap del proyecto** \
-> Actualizado a: **v3.5** · Junio 2026 (Integración Completa, Tests, PDF Avanzado)
+Estado del código, mejoras pendientes y roadmap del proyecto.
+
+**Actualizado a:** v2.1.0 · Junio 2026
 
 ---
 
 ## ✅ Resueltos
 
 | # | Punto | Archivo | Versión |
-|---|-------|---------|---------|
-| 1 | Verificación OAuth state (CSRF) | `server/index.js` | v2.0.1 |
-| 2 | SESSION_SECRET obligatorio en producción | `server/index.js` | v2.0.1 |
-| 3 | Calidad `generateRepoDocs()` — prompt estructurado y tipos exportados | `services/gemini.ts` | v2.4 |
-| 4 | Soporte método HTTP PATCH en `executeAction()` | `services/actionExecutor.ts` | v2.4 |
-| 5 | Extraer `DocModal` a componente propio | `components/confirm/DocModal.tsx` | v2.6 · `8287ebc476` |
-| 6 | Extraer `formatResultData` a utilidad pura | `utils/formatResult.ts` | v2.6 · `c7cf86211b` |
-| 7 | Modelos Groq cargados dinámicamente desde API | `AIProviderPanel.tsx` | v2.2.0 |
-| 8 | Truncamiento semántico por líneas (80 líneas) | `services/gemini.ts` | v2.5 · `c2553e92be` |
-| 9 | `crypto.randomUUID()` en lugar de `Math.random()` | `App.tsx` | v2.5 · `87aa5c5b15` |
-| 10 | Unificar cliente fetch — `ghFetch()` en `actionExecutor.ts` | `services/github.ts` + `actionExecutor.ts` | v2.7 · `3f55dbf49a` |
-| 11 | Eliminación ESLint suppression en `AuthContext` | `context/AuthContext.tsx` | v2.4 |
-| 12 | Nombre del proveedor IA dinámico en mensajes | `App.tsx` | v2.2.0 |
-| 13 | Advertencia de caducidad de sesión (Zero-Storage TTL 8h) | `SessionWarningBanner.tsx` · `AuthContext.tsx` · `AIProviderContext.tsx` | v3.0 · `ef8f158` |
-| 16 | Añadir tests unitarios con Vitest | `client/src/**/__tests__/` · `client/package.json` | v3.1 · `(pending)` |
-| 17 | Rate limiting en proxy Gemini (40 req/min) | `server/index.js` · `package.json` | v2.8 |
-| 24 | Añadir CONTRIBUTING.md | `CONTRIBUTING.md` | v3.1 · `(pending)` |
-| 14 | Expansión de acciones GitHub: issues, PRs, branches, workflows | `types/index.ts` · `github.ts` · `actionExecutor.ts` · `gemini.ts` | v3.2 · `bee3e86` |
-| 22 | Autocompletado de instrucciones en el chat | `utils/instructionSuggestions.ts` | v3.3 · `b0aab89` |
-| 18 | Mejor manejo de errores de rate limit de GitHub API | `utils/rateLimitHandler.ts` · `services/github.ts` | v3.5 · `e233791` |
-| 19 | Refactor de App.tsx — Extraer lógica a custom hooks | `hooks/useChat.ts` · `hooks/useActions.ts` | v3.5 · `e233791` |
+|---|---|---|---|
+| 1 | Verificación OAuth state (CSRF) | server/index.js | v2.0.1 |
+| 2 | SESSION_SECRET obligatorio en producción | server/index.js | v2.0.1 |
+| 12 | Nombre del proveedor IA dinámico en mensajes | App.tsx | v2.1.0 |
 
 ---
 
 ## ⏳ Pendientes
 
-> Los issues están numerados y ordenados por **prioridad descendente** dentro de cada bloque.
-> Al resolver un punto, moverlo a la tabla ✅ con versión y SHA de commit.
-
----
+Los issues están numerados y ordenados por prioridad descendente dentro de cada bloque. Al resolver un punto, moverlo a la tabla ✅ con versión y SHA de commit.
 
 ### 🔴 Alta Prioridad
 
+#### #13 — Zero-Storage real para claves de IA
+**Esfuerzo:** 2–3h
 
+**Problema actual:** Las claves de IA (Groq/Gemini) se almacenan en `sessionStorage` del navegador. Esto las expone a ataques XSS que puedan leer `sessionStorage.getItem('ai_api_key')`.
 
-#### **#15 — Soporte multi-proveedor con fallback (Together AI / OpenRouter / Ollama)**
-- **Esfuerzo:** 3–4h
-- **Proveedores evaluados:**
+**Solución propuesta:** Mover las claves de IA al estado de React (memoria volátil), igual que el token de GitHub. Las claves vivirían solo en `AIProviderContext` y se perderían al recargar la página.
+
+**Trade-off:** El usuario tendría que reintroducir su clave de IA al recargar la página (igual que ya ocurre con el token de GitHub).
+
+**Beneficio:** Seguridad consistente — todas las credenciales sensibles (token GitHub + claves IA) protegidas contra XSS.
+
+---
+
+#### #14 — Rate limiting en proxy Gemini
+**Esfuerzo:** 1h
+
+**Problema actual:** El endpoint `/api/gemini` no tiene protección contra abuso. Un usuario malintencionado podría hacer miles de peticiones y agotar la cuota de la API key.
+
+**Solución propuesta:** Añadir `express-rate-limit` con límite de 40 peticiones por minuto por IP.
+
+**Beneficio:** Prevención de abuso y protección de cuotas de API.
+
+---
+
+#### #15 — Soporte multi-proveedor con fallback (Together AI / OpenRouter / Ollama)
+**Esfuerzo:** 3–4h
+
+**Proveedores evaluados:**
 
 | Proveedor | Ventajas | Tier gratuito | Prioridad |
-|-----------|----------|---------------|-----------|
-| **Together AI** | Llama 3.1, Qwen2.5, DeepSeek, Mistral | Generoso | ⭐ Alta |
-| **OpenRouter** | Router a decenas de modelos, incluyendo gratuitos | Free credits + pay-per-use | ⭐ Alta |
-| **Ollama (local)** | 100% privado, sin red, sin límites | Ilimitado (hardware propio) | ⭐ Alta (portfolio) |
-| **Fireworks AI** | Muy rápido en modelos grandes | Buen free tier | Media |
-| **DeepInfra** | Barato y rápido | Tier gratuito | Media |
-| **Hugging Face** | Miles de modelos para tareas específicas | Free tier | Baja |
+|---|---|---|---|
+| Together AI | Llama 3.1, Qwen2.5, DeepSeek, Mistral | Generoso | ⭐ Alta |
+| OpenRouter | Router a decenas de modelos, incluyendo gratuitos | Free credits + pay-per-use | ⭐ Alta |
+| Ollama (local) | 100% privado, sin red, sin límites | Ilimitado (hardware propio) | ⭐ Alta (portfolio) |
+| Fireworks AI | Muy rápido en modelos grandes | Buen free tier | Media |
+| DeepInfra | Barato y rápido | Tier gratuito | Media |
 
-- **Arquitectura sugerida:** Groq → Together AI → Gemini como cadena de fallback con selector de prioridad en el panel de IA.
-- **Beneficio:** Resiliencia ante cortes de servicio; diferenciador claro frente a apps mono-proveedor.
+**Arquitectura sugerida:** Groq → Together AI → Gemini como cadena de fallback con selector de prioridad en el panel de IA.
 
-
+**Beneficio:** Resiliencia ante cortes de servicio; diferenciador claro frente a apps mono-proveedor.
 
 ---
 
 ### 🟡 Media Prioridad
 
+#### #16 — Extraer DocModal a componente propio
+**Esfuerzo:** 1h
 
+**Problema actual:** `DocModal` está embebido en `App.tsx` (~80 líneas de JSX), dificultando el mantenimiento.
 
-#### **#20 — Migrar prompts largos a archivos externos**
-- **Esfuerzo:** 2h
-- Los system prompts están incrustados como template literals en los archivos `.ts`, dificultando su edición y lectura.
-- **Solución:** Mover todos los prompts a `client/src/prompts/` como archivos `.md` y cargarlos en runtime con `import ... as text`.
-- **Beneficio:** Edición sin tocar código TypeScript; base para futura internacionalización de prompts.
+**Solución propuesta:** Mover `DocModal` a `client/src/components/confirm/DocModal.tsx` con props tipadas.
 
-#### **#21 — Internacionalización (i18n) con i18next**
-- **Esfuerzo:** 3–4h · **Milestone:** [Sprint 3](https://github.com/migueljerico/github-ai-assistant/milestone/3)
-- La app es 100% en español. Añadir soporte EN mínimo con `i18next` + `react-i18next`.
-- **Alcance:** strings de UI, system prompts adaptados al idioma, selector en header.
-- **Dependencia:** Recomendable completar #20 antes — facilita la i18n de prompts.
+**Beneficio:** `App.tsx` pasa de ~450 a ~370 líneas; mejor separación de responsabilidades.
 
 ---
 
-### 🟢 Baja Prioridad
+#### #17 — Extraer formatResultData a utilidad pura
+**Esfuerzo:** 1h
 
+**Problema actual:** `formatResultData()` y la interfaz `GitHubRepoItem` están embebidas en `App.tsx`, dificultando testing unitario.
 
+**Solución propuesta:** Mover a `client/src/utils/formatResult.ts` como utilidad pura sin dependencias React.
 
-#### **#23 — Mejorar DX y pipeline de despliegue**
-- **Esfuerzo:** 2–3h
-- **Tareas:**
-  - **GitHub Actions CI** — lint + build en cada push/PR a main (badge en README)
-  - Logs estructurados en el servidor (JSON con timestamp, level, requestId)
-  - Healthcheck extendido en `/health` (versión, uptime, estado de variables de entorno)
-  - Script `deploy.sh` automatizado para Cloud Run con validación previa de variables
+**Beneficio:** Facilita testing en aislamiento; reutilización en otros módulos.
 
+---
 
+#### #18 — crypto.randomUUID() en lugar de Math.random()
+**Esfuerzo:** 30min
+
+**Problema actual:** La función `uid()` usa `Math.random()` para generar IDs de mensajes, lo que puede producir colisiones en sesiones largas.
+
+**Solución propuesta:** Reemplazar por `crypto.randomUUID()` (UUID v4 nativo del navegador, CSPRNG).
+
+**Beneficio:** IDs garantizadamente únicos; mejor práctica de seguridad.
+
+---
+
+#### #19 — Soporte método HTTP PATCH en executeAction()
+**Esfuerzo:** 1h
+
+**Problema actual:** `actionExecutor.ts` no soporta el método `PATCH`, limitando las operaciones de actualización parcial de repositorios.
+
+**Solución propuesta:** Añadir `case 'PATCH'` en el switch de métodos HTTP con la misma estructura de respuesta que POST y PUT.
+
+**Beneficio:** Habilita actualizaciones parciales de repositorios (descripción, visibilidad, permisos).
+
+---
+
+#### #20 — Truncamiento semántico por líneas en generateRepoDocs()
+**Esfuerzo:** 2h
+
+**Problema actual:** `generateRepoDocs()` trunca archivos a 2000 caracteres, cortando código a mitad de función.
+
+**Solución propuesta:** Truncar a 80 líneas preservando imports y firmas de funciones. Los Markdown conservan encabezados e introducción.
+
+**Beneficio:** Documentación más coherente y útil; contexto preservado.
+
+---
+
+#### #21 — Unificar cliente fetch — ghFetch() en actionExecutor.ts
+**Esfuerzo:** 2h
+
+**Problema actual:** `actionExecutor.ts` tiene 3 bloques `fetch()` directos con headers de `Authorization` duplicados (GET genérico, POST genérico, PATCH).
+
+**Solución propuesta:** Exportar `ghFetch()` de `github.ts` y sustituir los 3 bloques por llamadas a `ghFetch()`.
+
+**Beneficio:** Un único punto de verdad para gestión de headers; facilita futuros cambios (retry logic, rate-limit handling).
+
+---
+
+#### #22 — SessionWarningBanner — Advertencia de caducidad de sesión
+**Esfuerzo:** 3h
+
+**Problema actual:** El usuario no recibe advertencia cuando su token de GitHub o clave de IA llevan muchas horas activos.
+
+**Solución propuesta:** Nuevo componente `SessionWarningBanner.tsx` que muestra banner amber si las credenciales llevan >8h activas. Revisión cada 60s.
+
+**Dependencia:** Requiere Zero-Storage real (#13) para funcionar correctamente.
+
+**Beneficio:** Mejor UX; seguridad proactiva.
+
+---
+
+###  Baja Prioridad
+
+#### #23 — Migrar prompts largos a archivos externos
+**Esfuerzo:** 2h
+
+**Problema actual:** Los system prompts están incrustados como template literals en los archivos `.ts`, dificultando su edición y lectura.
+
+**Solución propuesta:** Mover todos los prompts a `client/src/prompts/` como archivos `.md` y cargarlos en runtime con `import ... as text`.
+
+**Beneficio:** Edición sin tocar código TypeScript; base para futura internacionalización de prompts.
+
+---
+
+#### #24 — Internacionalización (i18n) con i18next
+**Esfuerzo:** 3–4h
+
+**Problema actual:** La app es 100% en español.
+
+**Solución propuesta:** Añadir soporte EN mínimo con `i18next` + `react-i18next`. Strings de UI, system prompts adaptados al idioma, selector en header.
+
+**Dependencia:** Recomendable completar #23 antes — facilita la i18n de prompts.
+
+---
+
+#### #25 — Mejorar DX y pipeline de despliegue
+**Esfuerzo:** 2–3h
+
+**Tareas:**
+- GitHub Actions CI — lint + build en cada push/PR a main (badge en README)
+- Logs estructurados en el servidor (JSON con timestamp, level, requestId)
+- Healthcheck extendido en `/health` (versión, uptime, estado de variables de entorno)
+- Script `deploy.sh` automatizado para Cloud Run con validación previa de variables
 
 ---
 
 ## 📊 Resumen
 
 | Prioridad | Total | ✅ Resueltos | ⏳ Pendientes |
-|-----------|-------|-------------|--------------|
-| 🔴 Alta | 9 | 9 | 0 |
-| 🟡 Media | 6 | 6 | 0 |
-| 🟢 Baja | 5 | 3 | 2 |
-| **TOTAL** | **20** | **18** | **2** |
-
----
-
-## 🔗 Documentación relacionada
-
-- **[CHANGELOG.md](./CHANGELOG.md)** — Historial de versiones
-- **[MANUAL_TECNICO.md](./MANUAL_TECNICO.md)** — Arquitectura completa
-- **[README.md](./README.md)** — Descripción general y stack
+|---|---|---|---|
+| 🔴 Alta | 3 | 0 | 3 |
+|  Media | 7 | 0 | 7 |
+| 🟢 Baja | 3 | 0 | 3 |
+| **TOTAL** | **13** | **0** | **13** |
 
 ---
 
 ## 📝 Convenciones
 
-1. Al resolver un punto → moverlo a la tabla ✅ con versión y SHA de commit
-2. Issues pendientes ordenados por prioridad dentro de cada bloque 🔴 / 🟡 / 🟢
-3. Crear commit: `docs: mark issue #X as resolved in vX.Y`
-
----
-
-<p align="center">
-  <sub>
-    Análisis inicial: Claude (Anthropic) · Junio 2026 |
-    Actualizado: v3.0 |
-    Próxima revisión: v3.0
-  </sub>
-</p>
+- Al resolver un punto → moverlo a la tabla ✅ con versión y SHA de commit
+- Issues pendientes ordenados por prioridad dentro de cada bloque 🔴 /  / 🟢
+- Crear commit: `docs: mark issue #X as resolved in vX.Y`
