@@ -4,13 +4,11 @@ import session from 'express-session';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import crypto from 'crypto';
-import rateLimit from 'express-rate-limit';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// ── Fix #2: Fail loudly if SESSION_SECRET is missing in production ────────────
+// ── Fix #2: Fail loudly if SESSION_SECRET is missing in production ───────────
 if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
   console.error('FATAL: SESSION_SECRET must be set in production. Exiting.');
   process.exit(1);
@@ -27,7 +25,7 @@ const {
   FRONTEND_URL = 'https://github-ai-assistant-748914382449.us-central1.run.app/',
 } = process.env;
 
-// ─── Middleware ─────────────────────────────────────────────────────────
+// ─── Middleware ──────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '4mb' }));
 app.use(cors({
   origin: FRONTEND_URL,
@@ -44,23 +42,12 @@ app.use(session({
   },
 }));
 
-// ─── Rate Limiting para Gemini Proxy ─────────────────────────────────────────
-const geminiLimiter = rateLimit({
-  windowMs: 60 * 1000,        // 1 minuto
-  max: 40,                    // máximo 40 peticiones por minuto por IP
-  message: {
-    error: 'Demasiadas solicitudes al proxy de Gemini. Espera un momento e inténtalo de nuevo.'
-  },
-  standardHeaders: true,      // informa de los límites en las cabeceras
-  legacyHeaders: false,
-});
-
 // ─── Health Check (required for Cloud Run) ────────────────────────────────────
 app.get('/health', (_req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
-// ─── Gemini API Proxy (Opción D - Con soporte para modo chat/acción) ──────────
+// ─── Gemini API Proxy (Opción D - Acepta 'mode' opcional) ─────────────────────
 // The Gemini API blocks direct browser requests from EU regions (EEA).
 // This proxy routes Gemini calls through the server, which is deployed in
 // us-central1 (Cloud Run) where the API is fully accessible.
@@ -72,9 +59,9 @@ app.get('/health', (_req, res) => {
 // Response:     { text }
 //
 // Groq calls are NOT proxied — they go directly from the browser (no EU block).
-app.post('/api/gemini', geminiLimiter, async (req, res) => {
-  // 🔥 OPCIÓN D: Extraemos 'mode' del body (por defecto 'chat' por seguridad)
-  const { apiKey, model, messages, systemPrompt, mode = 'chat' } = req.body;
+app.post('/api/gemini', async (req, res) => {
+  // 🔥 OPCIÓN D: Extraemos 'mode' opcional del body
+  const { apiKey, model, messages, systemPrompt, mode } = req.body;
 
   if (!apiKey || !model || !Array.isArray(messages) || !systemPrompt) {
     return res.status(400).json({
@@ -84,26 +71,15 @@ app.post('/api/gemini', geminiLimiter, async (req, res) => {
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    
-    // 🔥 OPCIÓN D: Configuración dinámica del modelo según el modo
-    const modelConfig = {
+    const gemModel = genAI.getGenerativeModel({
       model,
       systemInstruction: systemPrompt,
-    };
+    });
 
-    // Si es modo acción, en el futuro aquí inyectaremos las tools de GitHub.
-    // Por ahora, el systemPrompt hace el trabajo, pero dejamos la estructura lista.
-    if (mode === 'action') {
-      // TODO: En el futuro, inyectar tools nativas de GitHub aquí:
-      // modelConfig.tools = githubTools;
-      // modelConfig.toolConfig = { functionCallingConfig: { mode: "AUTO" } };
-      console.log('🟢 Gemini ejecutando en MODO ACCIÓN');
-    } else {
-      // Modo chat: SIN tools. El modelo se ve obligado a ser conversacional.
-      console.log('💬 Gemini ejecutando en MODO CHAT');
+    // 🔥 OPCIÓN D: Log para ver el modo en Cloud Run (útil para debugging)
+    if (mode) {
+      console.log(`[Opción D] Gemini proxy received mode: ${mode}`);
     }
-
-    const gemModel = genAI.getGenerativeModel(modelConfig);
 
     // Translate from internal Message format → Gemini SDK format.
     // All messages except the last form the chat history.
@@ -130,7 +106,7 @@ app.post('/api/gemini', geminiLimiter, async (req, res) => {
   }
 });
 
-// ─── GitHub OAuth ────────────────────────────────────────────────────────
+// ─── GitHub OAuth ─────────────────────────────────────────────────────────────
 app.get('/auth/github', (req, res) => {
   if (!GITHUB_CLIENT_ID) {
     return res.status(500).json({ error: 'GITHUB_CLIENT_ID not configured' });
@@ -139,7 +115,7 @@ app.get('/auth/github', (req, res) => {
   // Fix #1: Generate a random state, store it in the session, and send it to
   // GitHub. The callback will verify it matches before exchanging the code.
   // This prevents CSRF attacks on the OAuth flow.
-  const state = crypto.randomUUID();
+  const state = Math.random().toString(36).substring(2) + Date.now().toString(36);
   req.session.oauthState = state;
 
   // BALA DE PLATA: Si el host contiene 'run.app', forzamos el https sí o sí
@@ -212,12 +188,12 @@ app.use(express.static(clientDistPath));
 // Catch-all: serve index.html for SPA routing
 app.get('*', (req, res) => {
   if (req.path.startsWith('/api/') || req.path.startsWith('/auth/')) {
-    return res.status(404).json({ error: 'Not found' });
+    return res.status(404).json({ error: 'Not found' };
   }
   res.sendFile(join(clientDistPath, 'index.html'));
 });
 
-// ─── Start ──────────────────────────────────────────────────────────
+// ─── Start ────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`\n🚀 Asistente de IA para Publicar Repositorios`);
   console.log(`   Server:  http://localhost:${PORT}`);
