@@ -42,7 +42,7 @@ export function useActions(): UseActionsState & UseActionsActions {
     description: string,
     repo?: string
   ): string => {
-    return addEntry({ status, description, repo });
+    return addEntry({ status, description, repo: repo || null });
   }, [addEntry]);
 
   const updateActionLog = useCallback((
