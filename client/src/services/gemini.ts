@@ -285,27 +285,40 @@ export function detectPrimaryLanguage(files: Array<{ path: string }>): string {
 // ── Repo documentation generator ──────────────────────────────────────────────
 /**
  * Generate README.md and MANUAL_TECNICO.md for a repository.
- *
- * Improvements over v1 (fix #3):
- * - Detects the primary programming language from file extensions
- * - Sends the full file tree as a structural overview before the content
- * - Uses a rich, prescriptive few-shot system prompt that enforces
- *   badge rows, emoji section headers, tables, code examples, and
- *   ASCII architecture diagrams — resulting in professional output
- *   regardless of whether Groq or Gemini is the active provider.
+ * 
+ * Acepta dos formatos de llamada:
+ * - generateRepoDocs(files) - solo archivos (para tests)
+ * - generateRepoDocs(repoName, files) - con nombre del repo (para App.tsx)
  */
 export async function generateRepoDocs(
-  repoName: string,
-  fileTree: Array<{ path: string; content: string }>,
+  fileTreeOrRepoName: Array<{ path: string; content?: string }> | string,
+  fileTree?: Array<{ path: string; content?: string }>,
 ): Promise<GeneratedDocs> {
+  
+  let repoName: string;
+  let files: Array<{ path: string; content?: string }>;
+  
+  // Soporte para ambos formatos de llamada
+  if (typeof fileTreeOrRepoName === 'string') {
+    repoName = fileTreeOrRepoName;
+    files = fileTree || [];
+  } else {
+    repoName = 'unknown-repo';
+    files = fileTreeOrRepoName;
+  }
 
-  const primaryLanguage = detectPrimaryLanguage(fileTree);
+  // Validación
+  if (!files || files.length === 0) {
+    throw new Error('No hay archivos para analizar');
+  }
+
+  const primaryLanguage = detectPrimaryLanguage(files);
 
   // ── Rich system prompt with structure template ────────────────────────────
   const docSystemPrompt = `Eres un experto en documentación técnica de software de nivel profesional.
 Tu tarea es analizar el código de un repositorio y generar documentación completa, detallada y visualmente atractiva.
 Responde ÚNICAMENTE con un objeto JSON con este formato exacto (sin markdown exterior, sin texto adicional):
-{ "readme": "...", "manualTecnico": "..." }
+{ "readme": "...", "manualTecnico": "...", "resumen": "...", "metadatos": {...} }
 
 ═══════════════════════════════════════════════════════
 REQUISITOS OBLIGATORIOS PARA EL README.md
@@ -359,23 +372,24 @@ LENGUAJE PRIMARIO DETECTADO: ${primaryLanguage}
 REPOSITORIO: ${repoName}
 ═══════════════════════════════════════════════════════
 
-Recuerda: responde SOLO con el JSON { "readme": "...", "manualTecnico": "..." }.
+Recuerda: responde SOLO con el JSON { "readme": "...", "manualTecnico": "...", "resumen": "...", "metadatos": {...} }.
 No incluyas ningún texto fuera del JSON. No uses bloques de código externos.`;
 
   // ── Build message: tree overview + file contents ──────────────────────────
-  const treeOverview = fileTree.map(f => f.path).join('\n');
-  const fileContents = fileTree
+  const treeOverview = files.map(f => f.path).join('\n');
+  const fileContents = files
+    .filter(f => f.content) // Solo archivos con contenido
     .map(f =>
       `### ${f.path}\n` +
-      f.content.slice(0, 2000) +
-      (f.content.length > 2000 ? '\n[... truncado a 2000 chars ...]' : '')
+      (f.content || '').slice(0, 2000) +
+      ((f.content || '').length > 2000 ? '\n[... truncado a 2000 chars ...]' : '')
     )
     .join('\n\n---\n\n');
 
   const userMessage =
     `Repositorio: ${repoName}\n` +
     `Lenguaje principal detectado: ${primaryLanguage}\n` +
-    `Archivos analizados: ${fileTree.length}\n\n` +
+    `Archivos analizados: ${files.length}\n\n` +
     `ESTRUCTURA DEL PROYECTO:\n\`\`\`\n${treeOverview}\n\`\`\`\n\n` +
     `CONTENIDO DE ARCHIVOS CLAVE:\n\n${fileContents}`;
 
@@ -389,19 +403,36 @@ No incluyas ningún texto fuera del JSON. No uses bloques de código externos.`;
     .replace(/\s*```\s*$/, '')
     .trim();
 
-  const parsed = JSON.parse(cleaned) as { readme: string; manualTecnico: string };
-  if (!parsed.readme || !parsed.manualTecnico) {
-    throw new Error('La IA no devolvió el formato esperado { readme, manualTecnico }');
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {
+    throw new Error('La IA no devolvió JSON válido');
+  }
+
+  // Validación de campos requeridos
+  if (!parsed.readme || typeof parsed.readme !== 'string') {
+    throw new Error('La IA no devolvió el campo "readme" en el formato esperado');
+  }
+  if (!parsed.manualTecnico || typeof parsed.manualTecnico !== 'string') {
+    throw new Error('La IA no devolvió el campo "manualTecnico" en el formato esperado');
+  }
+
+  // Manejo de errores del modelo
+  if (parsed.error) {
+    throw new Error(`Error del modelo: ${parsed.error}`);
   }
   
-  // 🔥 Añadido: resumen y metadatos para compatibilidad con tests
+  // Construir metadatos por defecto si no están en la respuesta
+  const defaultMetadatos = {
+    lenguaje: primaryLanguage,
+    filesCount: files.length,
+  };
+
   return {
-    readme: parsed.readme,
-    manualTecnico: parsed.manualTecnico,
-    resumen: `Documentación generada para ${repoName} en ${primaryLanguage}`,
-    metadatos: {
-      lenguaje: primaryLanguage,
-      archivosAnalizados: fileTree.length,
-    },
+    readme: parsed.readme as string,
+    manualTecnico: parsed.manualTecnico as string,
+    resumen: (parsed.resumen as string) || `Documentación generada para ${repoName}`,
+    metadatos: (parsed.metadatos as Record<string, unknown>) || defaultMetadatos,
   };
 }
