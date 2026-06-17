@@ -1,9 +1,7 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect } from 'react';
 import type { GitHubRepo } from '../../types';
-import type { InstructionTemplate } from '../../utils/instructionSuggestions';
 import MultiRepoSelector from '../multi-repo/RepoSelector';
 import DocumentRepoButton from './DocumentRepoButton';
-import InstructionSuggestions from './InstructionSuggestions';
 
 interface ChatInputProps {
   value: string;
@@ -16,10 +14,9 @@ interface ChatInputProps {
   selectedRepos: GitHubRepo[];
   onSelectedReposChange: (repos: GitHubRepo[]) => void;
   onDocumentRepo: (repoName: string) => void;
-  attachedFile?: File | null;
-  onFileAttach?: (file: File | null) => void;
-  modeOverride: 'auto' | 'chat' | 'action';
-  onModeOverrideChange: (mode: 'auto' | 'chat' | 'action') => void;
+  // 🔥 OPCIÓN D - Props para el selector de modo (opcionales para retrocompatibilidad)
+  modeOverride?: 'auto' | 'chat' | 'action';
+  onModeOverrideChange?: (mode: 'auto' | 'chat' | 'action') => void;
 }
 
 export default function ChatInput({
@@ -33,14 +30,10 @@ export default function ChatInput({
   selectedRepos,
   onSelectedReposChange,
   onDocumentRepo,
-  attachedFile,
-  onFileAttach,
-  modeOverride,
+  modeOverride = 'auto',
   onModeOverrideChange,
 }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -57,10 +50,17 @@ export default function ChatInput({
     }
   };
 
-  const handleSelectTemplate = (template: InstructionTemplate) => {
-    onChange(template.template);
-    setSuggestionsOpen(false);
-    textareaRef.current?.focus();
+  const handleModeChange = (newMode: 'auto' | 'chat' | 'action') => {
+    if (onModeOverrideChange) {
+      onModeOverrideChange(newMode);
+    }
+  };
+
+  const getPlaceholder = () => {
+    if (disabled) return 'Conecta con GitHub para empezar…';
+    if (modeOverride === 'chat') return 'Pide una opinión, consejo o análisis...';
+    if (modeOverride === 'action') return 'Escribe una acción (ej: crea un archivo, lista mis repos)...';
+    return 'Escribe una instrucción… (Enter para enviar, Shift+Enter para nueva línea)';
   };
 
   return (
@@ -72,107 +72,44 @@ export default function ChatInput({
         />
       )}
 
-      {/* 🔥 Mode Selector Toggle */}
-      <div className="mode-selector" style={{ 
-        display: 'flex', 
-        gap: '12px', 
-        padding: '8px 12px', 
-        marginBottom: '8px',
-        backgroundColor: 'var(--bg-secondary, #f5f5f5)',
-        borderRadius: '6px',
-        border: '1px solid var(--border-color, #e0e0e0)',
-        fontSize: '13px'
-      }}>
-        <label style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '4px', 
-          cursor: 'pointer',
-          fontWeight: modeOverride === 'auto' ? '600' : '400',
-          opacity: modeOverride === 'auto' ? '1' : '0.7'
-        }}>
-          <input
-            type="radio"
-            name="mode-selector"
-            checked={modeOverride === 'auto'}
-            onChange={() => onModeOverrideChange('auto')}
-            disabled={disabled}
-            style={{ margin: 0 }}
-          />
-          🤖 Auto
-        </label>
-        <label style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '4px', 
-          cursor: 'pointer',
-          fontWeight: modeOverride === 'chat' ? '600' : '400',
-          opacity: modeOverride === 'chat' ? '1' : '0.7'
-        }}>
-          <input
-            type="radio"
-            name="mode-selector"
-            checked={modeOverride === 'chat'}
-            onChange={() => onModeOverrideChange('chat')}
-            disabled={disabled}
-            style={{ margin: 0 }}
-          />
-          💬 Opinión
-        </label>
-        <label style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '4px', 
-          cursor: 'pointer',
-          fontWeight: modeOverride === 'action' ? '600' : '400',
-          opacity: modeOverride === 'action' ? '1' : '0.7'
-        }}>
-          <input
-            type="radio"
-            name="mode-selector"
-            checked={modeOverride === 'action'}
-            onChange={() => onModeOverrideChange('action')}
-            disabled={disabled}
-            style={{ margin: 0 }}
-          />
-          ⚙️ Acción
-        </label>
-      </div>
-
-      {/* File Attached Indicator */}
-      {attachedFile && (
-        <div className="file-attached-indicator">
-          <span>📎 Archivo adjunto: <strong>{attachedFile.name}</strong> ({(attachedFile.size / 1024).toFixed(2)} KB)</span>
-          <button
-            onClick={() => onFileAttach?.(null)}
-            disabled={disabled}
-            className="remove-file-btn"
-            title="Eliminar archivo"
-          >
-            ✕
-          </button>
+      {/* 🔥 OPCIÓN D - Selector visual de modo */}
+      {onModeOverrideChange && (
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', fontSize: '0.85rem' }}>
+          {(['auto', 'chat', 'action'] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => handleModeChange(mode)}
+              disabled={disabled}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '16px',
+                border: '1px solid',
+                borderColor: modeOverride === mode ? 'var(--primary-color, #007bff)' : 'var(--border-color, #ccc)',
+                backgroundColor: modeOverride === mode ? 'var(--primary-color, #007bff)' : 'transparent',
+                color: modeOverride === mode ? 'white' : 'var(--text-color, #333)',
+                cursor: 'pointer',
+                opacity: disabled ? 0.5 : 1,
+                fontWeight: modeOverride === mode ? 'bold' : 'normal',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              {mode === 'auto' ? '🤖 Auto' : mode === 'chat' ? '💬 Opinión' : '️ Acción'}
+            </button>
+          ))}
         </div>
       )}
 
       <div className="chat-input-row">
         <div className="chat-textarea-wrap">
-          {/* Instruction Suggestions Dropdown */}
-          <InstructionSuggestions
-            inputValue={value}
-            onSelectTemplate={handleSelectTemplate}
-            isOpen={suggestionsOpen}
-            onOpenChange={setSuggestionsOpen}
-          />
-
           <textarea
             id="chat-textarea"
             ref={textareaRef}
             className="chat-textarea"
-            placeholder={disabled ? 'Conecta con GitHub para empezar…' : 'Escribe una instrucción… (Enter para enviar, Shift+Enter para nueva línea)'}
+            placeholder={getPlaceholder()}
             value={value}
             onChange={e => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            onFocus={() => setSuggestionsOpen(true)}
             disabled={disabled}
             rows={2}
             aria-label="Instrucción para el asistente"
@@ -200,31 +137,6 @@ export default function ChatInput({
           />
           Aplicar a múltiples repositorios
         </label>
-
-        {/* File Upload Input */}
-        <div className="file-upload-section">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf,.pbix,.doc,.docx,.txt,.md,.json,.yaml,.yml"
-            onChange={(e) => {
-              const file = e.target.files?.[0] || null;
-              onFileAttach?.(file);
-            }}
-            disabled={disabled}
-            style={{ display: 'none' }}
-            aria-label="Adjuntar archivo"
-          />
-          <button
-            className="file-upload-btn"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={disabled || isLoading}
-            title="Adjuntar PDF, PBIX o documento"
-            aria-label="Adjuntar archivo"
-          >
-            📎 Adjuntar
-          </button>
-        </div>
 
         <DocumentRepoButton
           disabled={disabled}
