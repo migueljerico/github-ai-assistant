@@ -140,7 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
-    // ZERO-STORAGE: Simply reset React state. No browser storage to clear.
+    // ZERO-STORAGE: Clear React state
     setState({
       token: null,
       user: null,
@@ -149,6 +149,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       error: null,
       connectedAt: null,
     });
+    
+    // 🔥 FIX: Redirect to GitHub logout to clear GitHub session
+    // This ensures the user is fully logged out from both the app AND GitHub
+    window.location.href = `https://github.com/logout?return_to=${encodeURIComponent(window.location.origin)}`;
   }, []);
 
   return (
