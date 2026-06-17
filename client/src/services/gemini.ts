@@ -1,112 +1,112 @@
-// ────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 // Unified AI client — supports Google Gemini and Groq Cloud
 //
-// ARCHITECTURE NOTE (v3.0 — Zero-Storage):
-// This module no longer reads AI provider config from sessionStorage.
-// Instead, it accepts provider, apiKey, and model as function parameters.
-// The caller (typically App.tsx or a component using useAIProvider()) is
-// responsible for passing these values from React context.
-//
-// Gemini calls are proxied through the Express backend (/api/gemini).
+// ARCHITECTURE NOTE (v2.2 - Opción D):
+// Gemini calls are now proxied through the Express backend (/api/gemini).
 // This is required because the Gemini API blocks direct browser requests from
 // EU regions (EEA). The server is deployed in us-central1 (Cloud Run) where
 // the API is fully accessible. The user's API key is sent in the HTTPS request
 // body and is never stored on the server.
 //
 // Groq calls continue to go directly from the browser — no EU restriction applies.
-// ────────────────────────────────────────────────────────────────────────────
+//
+// Provider routing:
+//   sessionStorage['ai_provider'] === 'gemini'  →  POST /api/gemini (server proxy)
+//   sessionStorage['ai_provider'] === 'groq'    →  fetch() to Groq OpenAI endpoint
+//
+// OPCIÓN D - Modo dual:
+//   callAI ahora acepta un tercer parámetro opcional 'mode':
+//   - 'chat': Modo conversacional (consultor experto)
+//   - 'action': Modo acción (agente GitHub)
+//   - undefined: Usa SYSTEM_PROMPT por defecto (retrocompatible)
+// ─────────────────────────────────────────────────────────────────────────────
 
 import type { GeminiAction } from '../types';
 import type { AIProviderType } from '../context/AIProviderContext';
 
-// ── System prompt — MODO ACCIÓN (default) ────────────────────────────────────
-export const SYSTEM_PROMPT = `Eres un asistente de IA conversacional y experto en desarrollo de software.
+// ── System prompts (Opción D - Tres modos) ────────────────────────────────────
 
-Tu comportamiento por defecto es:
-✅ Responder en texto normal (Markdown) como un consultor amigable
-✅ Dar opiniones, consejos y análisis sobre código y arquitectura
-✅ Conversar naturalmente sobre temas técnicos
-✅ Explicar conceptos, mejores prácticas y patrones
+// Prompt por defecto (retrocompatible - modo acción)
+export const SYSTEM_PROMPT = `Eres un agente experto en la GitHub REST API v3.
+Cuando el usuario te dé una instrucción en lenguaje natural, responde
+ÚNICAMENTE con un JSON que describa la acción a tomar, antes de ejecutarla.
 
-SOLO genera JSON cuando el usuario use EXPLÍCITAMENTE verbos de acción como:
-- "lista" / "muestra" / "enséñame"
-- "crea" / "genera" 
-- "actualiza" / "modifica" / "edita"
-- "borra" / "elimina"
-- "lee" / "abre" (un archivo específico)
-- "fusiona" / "cierra" / "reabre"
-
-EJEMPLOS:
-- "¿Qué opinas de mi código?" → Responde en Markdown
-- "Dame consejos sobre seguridad" → Responde en Markdown
-- "Lista mis repos" → JSON
-- "Crea un issue" → JSON
-
-Si tienes dudas, SIEMPRE responde en Markdown.
-
-Formato JSON (SOLO cuando se solicite explícitamente):
+Formato del JSON de respuesta:
 {
   "tipo": "lectura|escritura|creacion|listado|borrado",
-  "accion": "descripción",
-  "endpoint": "endpoint exacto",
+  "accion": "descripción breve en lenguaje natural de lo que harás",
+  "endpoint": "el endpoint exacto de la GitHub API (sin parámetros de plantilla)",
   "metodo": "GET|POST|PUT|PATCH|DELETE",
-  "repo": "nombre o null",
-  "archivo": "ruta o null",
-  "contenidoPropuesto": "contenido o null",
-  "payload": {},
-  "requiereConfirmacion": true,
-  "target": "file|issue|pr|branch|workflow"
+  "repo": "nombre del repo (solo el nombre, sin owner) o null",
+  "archivo": "ruta del archivo o null",
+  "contenidoPropuesto": "contenido en markdown/texto o null",
+  "payload": { "objeto JSON con los parámetros para la API" },
+  "requiereConfirmacion": true
 }
 
-Endpoints soportados:
-- Archivos: GET/PUT/DELETE /repos/OWNER/REPO/contents/RUTA
-- Issues: GET/POST/PATCH /repos/OWNER/REPO/issues
-- PRs: GET/POST/PUT /repos/OWNER/REPO/pulls
-- User repos: GET /user/repos
-- User profile: GET /user
+REGLAS IMPORTANTES PARA LOS ENDPOINTS:
+- Para listar los repos del usuario autenticado: usa SIEMPRE "/user/repos" (NO "/users/{username}/repos")
+- Para el perfil del usuario autenticado: usa "/user" (NO "/users/{username}")
+- Nunca uses placeholders literales como {username}, {owner}, {repo} — usa el nombre real
+- Para repos de otro usuario: "/users/NOMBRE_REAL/repos" con el nombre real, no un placeholder
+- Para archivos: "/repos/OWNER/REPO/contents/RUTA"
 
-Reglas:
-- Usa "/user/repos" para listar repos del usuario autenticado
-- Nunca uses placeholders como {username}
-- requiereConfirmacion: false para lectura, true para escritura`;
+REGLA OBLIGATORIA SOBRE requiereConfirmacion:
+- false → operaciones de SOLO LECTURA que no modifican datos: listar repos, ver archivos,
+          obtener información del perfil, consultar estadísticas. tipo = "lectura" o "listado"
+- true  → operaciones que CREAN, MODIFICAN O BORRAN datos: subir archivos, crear repos,
+          actualizar contenido, eliminar. tipo = "escritura", "creacion" o "borrado"
+Ejemplo: "lista mis repositorios" → requiereConfirmacion: false
+Ejemplo: "crea un README" → requiereConfirmacion: true
 
-// ── System prompt — MODO CONVERSACIÓN ────────────────────────────────────────
-// FIX: Este prompt se pasa como 5º argumento a callAI() cuando se detecta
-// intención conversacional, en lugar de inyectar un mensaje role:'system'
-// en el array de mensajes (que causaba TS2322 porque Message solo acepta
-// 'user' | 'assistant', no 'system').
-export const CONVERSATION_SYSTEM_PROMPT = `Eres un consultor senior experto en desarrollo de software y arquitectura.
+Para operaciones de escritura en archivos existentes, incluye
+"contenidoActual" con el contenido actual del archivo (obtenido
+previamente con GET) para permitir mostrar el diff.
 
-MODO ACTUAL: CONVERSACIONAL
+Nunca ejecutes directamente — solo genera el JSON descriptivo.
+El frontend se encargará de la confirmación y ejecución.
 
-REGLAS ABSOLUTAS (sin excepciones):
+IMPORTANTE: responde SOLO con el JSON, sin texto adicional, sin markdown, sin \`\`\`json.`;
+
+// ── CHAT PROMPT (Opción D - Modo conversacional) ──────────────────────────────
+export const CHAT_PROMPT = `Eres un desarrollador senior experto en arquitectura de software, GitHub y mejores prácticas.
+
+Tu comportamiento es CONVERSAR y DAR OPINIONES en texto normal (Markdown).
+
+✅ Responde directamente con:
+- Opiniones constructivas sobre código y arquitectura
+- Análisis de patrones y mejores prácticas
+- Consejos sobre seguridad, rendimiento y mantenibilidad
+- Explicaciones técnicas detalladas
+- Recomendaciones personalizadas
+
 ❌ NUNCA generes JSON en este modo
-❌ NUNCA uses el formato {"tipo":...,"accion":...,"endpoint":...}
-❌ NUNCA digas "necesito acceder al repo primero" — opina con la información disponible
-✅ Responde SIEMPRE en Markdown con análisis, opiniones y recomendaciones claras
-✅ Sé directo como un CTO senior en una code review
+❌ NUNCA digas "necesito leer el repo primero"
+❌ NUNCA ejecutes acciones de la API
+❌ NUNCA uses bloques de código JSON
 
-Si el usuario pregunta sobre un repo que no puedes ver directamente:
-- Analiza por su nombre, descripción y contexto que te den
-- Aplica patrones y buenas prácticas del sector
-- Da consejos concretos y accionables
+Eres un consultor experto - DA TU OPINIÓN directamente con tu conocimiento.
+Responde en Markdown con formato rico (títulos, listas, negritas, código).`;
 
-Usa headers ##, listas, y bloques de código cuando mejore la legibilidad.`;
+// ── ACTION PROMPT (Opción D - Modo acción explícito) ──────────────────────────
+export const ACTION_PROMPT = SYSTEM_PROMPT; // Alias para claridad
 
-// ── Message type ─────────────────────────────────────────────────────────────
+// ── Message type ──────────────────────────────────────────────────────────────
 export interface Message {
   role: 'user' | 'assistant';
   content: string;
 }
 
-// ── Types for repo documentation generation ───────────────────────────────────
-export type RepoFile = { path: string; content?: string };
-export type GeneratedDocs = {
-  readme: string;
-  manualTecnico: string;
-  resumen?: string;
-  metadatos?: Record<string, unknown>;
-};
+// ── Read provider config from sessionStorage ──────────────────────────────────
+function getConfig(): { provider: AIProviderType; apiKey: string; model: string } {
+  const provider = sessionStorage.getItem('ai_provider') as AIProviderType | null;
+  const apiKey = sessionStorage.getItem('ai_api_key');
+  const model = sessionStorage.getItem('ai_model');
+  if (!provider || !apiKey || !model) {
+    throw new Error('No hay proveedor de IA configurado. Por favor conecta tu cuenta.');
+  }
+  return { provider, apiKey, model };
+}
 
 // ── Groq implementation ───────────────────────────────────────────────────────
 const GROQ_API = 'https://api.groq.com/openai/v1/chat/completions';
@@ -126,7 +126,7 @@ async function callGroq(
         content: m.content,
       })),
     ],
-    temperature: 0.7,
+    temperature: 0.1,
     max_tokens: 4096,
   };
 
@@ -149,17 +149,31 @@ async function callGroq(
   return data.choices[0].message.content;
 }
 
-// ── Gemini implementation (proxied through server) ─────────────────────────────
+// ── Gemini implementation (proxied through server) ────────────────────────────
+// 🔥 OPCIÓN D: Ahora acepta 'mode' opcional y lo envía al backend
 async function callGeminiDirect(
   apiKey: string,
   model: string,
   messages: Message[],
   systemPrompt: string,
+  mode?: 'chat' | 'action',  // ← NUEVO: modo opcional
 ): Promise<string> {
+  const body: Record<string, unknown> = { 
+    apiKey, 
+    model, 
+    messages, 
+    systemPrompt 
+  };
+  
+  // Solo añadir mode si está definido (retrocompatible)
+  if (mode) {
+    body.mode = mode;
+  }
+
   const res = await fetch('/api/gemini', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ apiKey, model, messages, systemPrompt }),
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) {
@@ -170,42 +184,27 @@ async function callGeminiDirect(
       { status: res.status },
     );
   }
+
   const data = await res.json() as { text: string };
   return data.text;
 }
 
-// ── Unified callAI (Zero-Storage: parameters passed explicitly) ───────────────
-/**
- * Call the AI provider with the given messages and system prompt.
- *
- * ZERO-STORAGE: This function accepts provider, apiKey, and model as explicit
- * parameters. It does NOT read from sessionStorage. The caller must obtain
- * these values from React context (useAIProvider()) and pass them here.
- *
- * @param provider     - 'groq' or 'gemini'
- * @param apiKey       - The provider's API key (from React state, NOT storage)
- * @param model        - The model name (e.g., 'gpt-4', 'gemini-2.5-flash')
- * @param messages     - Chat history (role must be 'user' | 'assistant' only)
- * @param systemPrompt - System instructions. Use CONVERSATION_SYSTEM_PROMPT for
- *                       conversational mode, SYSTEM_PROMPT for action mode.
- * @returns The model's response text
- * @throws Error if the API call fails
- */
+// ── Unified callAI (Opción D - con mode opcional) ─────────────────────────────
+// 🔥 OPCIÓN D: Tercer parámetro 'mode' es opcional (retrocompatible)
 export async function callAI(
-  provider: AIProviderType,
-  apiKey: string,
-  model: string,
   messages: Message[],
   systemPrompt: string = SYSTEM_PROMPT,
+  mode?: 'chat' | 'action',  // ← NUEVO: modo opcional
 ): Promise<string> {
+  const { provider, apiKey, model } = getConfig();
   if (provider === 'groq') return callGroq(apiKey, model, messages, systemPrompt);
-  return callGeminiDirect(apiKey, model, messages, systemPrompt);
+  return callGeminiDirect(apiKey, model, messages, systemPrompt, mode);
 }
 
-/** @deprecated Use callAI() directly with explicit parameters. */
+/** @deprecated Use callAI() directly. */
 export const callGemini = callAI;
 
-// ── Key validation ───────────────────────────────────────────────────────────
+// ── Key validation ────────────────────────────────────────────────────────────
 export async function validateProviderKey(
   provider: AIProviderType,
   apiKey: string,
@@ -235,7 +234,7 @@ export async function validateProviderKey(
   }
 }
 
-// ── Response parsing ────────────────────────────────────────────────────────
+// ── Response parsing ──────────────────────────────────────────────────────────
 export function parseGeminiAction(rawText: string): GeminiAction | null {
   try {
     const cleaned = rawText
@@ -250,8 +249,12 @@ export function parseGeminiAction(rawText: string): GeminiAction | null {
   }
 }
 
-// ── Primary language detector ───────────────────────────────────────────────
-export function detectPrimaryLanguage(files: RepoFile[]): string {
+// ── Primary language detector ─────────────────────────────────────────────────
+/**
+ * Infers the primary programming language of a repo from file extension counts.
+ * Used to provide language-specific context to the documentation generator.
+ */
+function detectPrimaryLanguage(files: Array<{ path: string }>): string {
   const extMap: Record<string, string> = {
     '.ts': 'TypeScript', '.tsx': 'TypeScript',
     '.js': 'JavaScript', '.jsx': 'JavaScript',
@@ -270,86 +273,116 @@ export function detectPrimaryLanguage(files: RepoFile[]): string {
   return top ? extMap[top[0]] : 'múltiple';
 }
 
-// ── Extract JSON from model response ────────────────────────────────────────
-function extractJSON(rawText: string): Record<string, unknown> {
-  let match = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-  if (match) return JSON.parse(match[1]);
-
-  match = rawText.match(/`([\s\S]*?)`/);
-  if (match) return JSON.parse(match[1]);
-
-  const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-  if (jsonMatch) return JSON.parse(jsonMatch[0]);
-
-  throw new Error('No JSON found in response');
-}
-
-// ── Repository documentation generation ───────────────────────────────────────
+// ── Repo documentation generator ──────────────────────────────────────────────
 /**
- * Generate comprehensive documentation for a repository using the AI provider.
+ * Generate README.md and MANUAL_TECNICO.md for a repository.
  *
- * FIX: Signature updated to match callAI() — provider, apiKey, model are now
- * explicit first three params (previously the call in App.tsx was passing token,
- * owner, repo which caused TS2554: Expected 5 arguments, got 4).
- *
- * @param provider  - 'groq' or 'gemini'
- * @param apiKey    - The provider's API key
- * @param model     - The model name
- * @param repoName  - Repository name (e.g. 'owner/repo')
- * @param files     - Array of repo files with content
+ * Improvements over v1 (fix #3):
+ * - Detects the primary programming language from file extensions
+ * - Sends the full file tree as a structural overview before the content
+ * - Uses a rich, prescriptive few-shot system prompt that enforces
+ *   badge rows, emoji section headers, tables, code examples, and
+ *   ASCII architecture diagrams — resulting in professional output
+ *   regardless of whether Groq or Gemini is the active provider.
  */
 export async function generateRepoDocs(
-  provider: AIProviderType,
-  apiKey: string,
-  model: string,
   repoName: string,
-  files: RepoFile[],
-): Promise<GeneratedDocs> {
-  const primaryLang = detectPrimaryLanguage(files);
-  const filesContext = files
-    .slice(0, 20)
-    .map(f => `
-### ${f.path}
-\`\`\`
-${f.content?.slice(0, 500) || '(no content)'}
-\`\`\``)
-    .join('\n');
+  fileTree: Array<{ path: string; content: string }>,
+): Promise<{ readme: string; manualTecnico: string }> {
 
-  const docPrompt = `Eres un experto en documentación técnica. Analiza este repositorio y genera:
+  const primaryLanguage = detectPrimaryLanguage(fileTree);
 
-1. Un README.md profesional con descripción, características, instalación y uso.
-2. Un MANUAL_TECNICO.md con arquitectura, componentes y decisiones de diseño.
+  // ── Rich system prompt with structure template ────────────────────────────
+  const docSystemPrompt = `Eres un experto en documentación técnica de software de nivel profesional.
+Tu tarea es analizar el código de un repositorio y generar documentación completa, detallada y visualmente atractiva.
+Responde ÚNICAMENTE con un objeto JSON con este formato exacto (sin markdown exterior, sin texto adicional):
+{ "readme": "...", "manualTecnico": "..." }
 
-Repo: ${repoName}
-Lenguaje principal: ${primaryLang}
+═══════════════════════════════════════════════════════
+REQUISITOS OBLIGATORIOS PARA EL README.md
+═══════════════════════════════════════════════════════
 
-Archivos analizados:
-${filesContext}
+1. CABECERA:
+   - Título con emoji descriptivo del proyecto
+   - Fila de badges shields.io (for-the-badge): lenguaje principal, framework/stack,
+     estado (Publicado/En desarrollo), tipo de licencia
+   - Tagline en cursiva describiendo el proyecto en una frase
 
-Responde SOLO con un JSON válido (sin markdown, sin \`\`\`json):
-{
-  "readme": "contenido del README en markdown",
-  "manualTecnico": "contenido del MANUAL_TECNICO en markdown",
-  "resumen": "resumen de 1-2 líneas",
-  "metadatos": { "lenguaje": "${primaryLang}", "archivosAnalizados": ${files.length} }
-}`;
+2. SECCIONES (en este orden, con emojis en los títulos):
+   🔗 Acceso / Demo (si hay URL de despliegue)
+   📋 Descripción (2-3 párrafos explicando el propósito, qué problema resuelve y para quién)
+   ✨ Funcionalidades (tabla con columna Funcionalidad y columna Descripción)
+   ⚙️ Instalación (pasos numerados con bloques de código reales)
+   🚀 Uso (ejemplos de uso con código real extraído del proyecto)
+   📁 Estructura del proyecto (árbol de carpetas formateado en bloque de código)
+   🛠️ Tecnologías (tabla: Herramienta | Versión/Detalle | Uso en el proyecto)
+   📚 Contexto formativo o motivación del proyecto (si aplica)
+   Footer: <p align="center">Desarrollado por @[autor] · [año]</p>
 
-  const response = await callAI(provider, apiKey, model, [
-    { role: 'user', content: docPrompt },
-  ]);
+3. CALIDAD:
+   - Usa el contenido REAL del código para las explicaciones (nombres de funciones, rutas, comandos)
+   - Los bloques de código deben contener comandos reales (npm install, python main.py, etc.)
+   - Las tablas deben tener filas con información concreta, no placeholders genéricos
+   - Detecta el lenguaje principal y usa badges específicos de ese ecosistema
 
-  const parsed = extractJSON(response);
-  return {
-    readme: (parsed.readme as string) || '',
-    manualTecnico: (parsed.manualTecnico as string) || '',
-    resumen: (parsed.resumen as string) || '',
-    metadatos: (parsed.metadatos as Record<string, unknown>) || {},
-  };
-}
+═══════════════════════════════════════════════════════
+REQUISITOS OBLIGATORIOS PARA EL MANUAL_TECNICO.md
+═══════════════════════════════════════════════════════
 
-/**
- * Check if a response is in Markdown/conversation mode (not a JSON action).
- */
-export function isMarkdownResponse(rawText: string): boolean {
-  return parseGeminiAction(rawText) === null;
+1. Arquitectura general con diagrama ASCII de capas o flujo:
+   └── Capa de presentación → Capa de lógica → Capa de datos/API
+
+2. Descripción de cada módulo o componente principal:
+   Para cada archivo/carpeta relevante: nombre, responsabilidad, funciones exportadas clave
+
+3. APIs y endpoints documentados (si aplica):
+   Tabla: Método | Ruta | Descripción | Parámetros
+
+4. Variables de entorno:
+   Tabla: Variable | Valor de ejemplo | Obligatoria | Descripción
+
+5. Guía de despliegue paso a paso para el stack detectado
+
+6. Limitaciones conocidas y posibles mejoras futuras
+
+═══════════════════════════════════════════════════════
+LENGUAJE PRIMARIO DETECTADO: ${primaryLanguage}
+REPOSITORIO: ${repoName}
+═══════════════════════════════════════════════════════
+
+Recuerda: responde SOLO con el JSON { "readme": "...", "manualTecnico": "..." }.
+No incluyas ningún texto fuera del JSON. No uses bloques de código externos.`;
+
+  // ── Build message: tree overview + file contents ──────────────────────────
+  const treeOverview = fileTree.map(f => f.path).join('\n');
+  const fileContents = fileTree
+    .map(f =>
+      `### ${f.path}\n` +
+      f.content.slice(0, 2000) +
+      (f.content.length > 2000 ? '\n[... truncado a 2000 chars ...]' : '')
+    )
+    .join('\n\n---\n\n');
+
+  const userMessage =
+    `Repositorio: ${repoName}\n` +
+    `Lenguaje principal detectado: ${primaryLanguage}\n` +
+    `Archivos analizados: ${fileTree.length}\n\n` +
+    `ESTRUCTURA DEL PROYECTO:\n\`\`\`\n${treeOverview}\n\`\`\`\n\n` +
+    `CONTENIDO DE ARCHIVOS CLAVE:\n\n${fileContents}`;
+
+  const rawText = await callAI(
+    [{ role: 'user', content: userMessage }],
+    docSystemPrompt,
+  );
+
+  const cleaned = rawText
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```\s*$/, '')
+    .trim();
+
+  const parsed = JSON.parse(cleaned) as { readme: string; manualTecnico: string };
+  if (!parsed.readme || !parsed.manualTecnico) {
+    throw new Error('La IA no devolvió el formato esperado { readme, manualTecnico }');
+  }
+  return { readme: parsed.readme, manualTecnico: parsed.manualTecnico };
 }
