@@ -1,58 +1,43 @@
-import { useCallback, useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useAuth } from './context/AuthContext';
+import { useHistory } from './context/HistoryContext';
 import { useAIProvider } from './context/AIProviderContext';
-import { useChat } from './hooks/useChat';
-import { useActions } from './hooks/useActions';
-import {
-  callAI,
-  parseGeminiAction,
-  generateRepoDocs,
-  SYSTEM_PROMPT,
-  CONVERSATION_SYSTEM_PROMPT,          // FIX 1: import the new prompt
-} from './services/gemini';
+import { callAI, parseGeminiAction, generateRepoDocs, CHAT_PROMPT, ACTION_PROMPT } from './services/gemini';
 import { executeAction, executeActionMultiRepo } from './services/actionExecutor';
 import { getFileContents, decodeBase64, fetchRepoTreeRecursive, createOrUpdateFile } from './services/github';
 import Header from './components/layout/Header';
-import SessionWarningBanner from './components/layout/SessionWarningBanner';
 import HistoryPanel from './components/layout/HistoryPanel';
 import TemplatePanel from './components/templates/TemplatePanel';
 import ChatArea from './components/chat/ChatArea';
 import ChatInput from './components/chat/ChatInput';
 import ConfirmModal from './components/confirm/ConfirmModal';
-import DocModal from './components/confirm/DocModal';
-import { formatResultData } from './utils/formatResult';
-import type { ChatMessage, GeminiAction, GitHubRepo, RepoAnalysis, RepoFile } from './types';
+import type { ChatMessage, GeminiAction, GitHubRepo, PendingAction, RepoAnalysis } from './types';
 
-// ── Detect opinion/analysis/conversation requests ───────────────────────────
+// Generate a simple unique ID
+const uid = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
+// ─ Detect conversation requests (opiniones, análisis, consejos) ─────────────
 function isConversationRequest(message: string): boolean {
-  const conversationKeywords = [
-    // Opiniones y análisis
-    'opinión', 'opinion', 'qué opinas', 'que opinas', 'piensas', 'piensas que',
+  const keywords = [
+    'opinión', 'opinion', 'qué opinas', 'que opinas', 'piensas',
     'consejo', 'recomendación', 'recomendacion', 'recomiendas',
     'crítica', 'critica', 'constructiva', 'constructivo', 'feedback',
     'mejora', 'mejorar', 'propón', 'propon', 'propuesta', 'sugerencia',
     'analiza', 'análisis', 'analisis', 'evalúa', 'evalua', 'valoración',
-    // Preguntas
-    'qué te parece', 'que te parece', 'qué piensas', 'que piensas',
-    'cómo puedo', 'como puedo', 'cómo hacer', 'como hacer',
+    'qué te parece', 'que te parece', 'cómo puedo', 'como puedo',
     'debería', 'deberia', 'es buena', 'es malo', 'es mejor',
     'ventajas', 'desventajas', 'pros', 'contras',
-    'punto fuerte', 'punto débil', 'punto debil', 'fortalezas', 'debilidades',
-    // Conversación general
-    'explícame', 'explicame', 'explícame', 'explicar',
-    'qué es', 'que es', 'cómo funciona', 'como funciona',
-    'por qué', 'porque', 'cuál es', 'cual es',
+    'explícame', 'explicame', 'qué es', 'que es', 'cómo funciona',
     'ayuda', 'help', 'guía', 'guia', 'tutorial',
     'documentación', 'documentacion', 'información', 'informacion'
   ];
-  
   const lower = message.toLowerCase();
-  return conversationKeywords.some(keyword => lower.includes(keyword));
+  return keywords.some(keyword => lower.includes(keyword));
 }
 
-// ── Detect explicit action requests ──────────────────────────────────────────
+// ── Detect action requests (verbos de acción explícitos) ─────────────────────
 function isActionRequest(message: string): boolean {
-  const actionKeywords = [
+  const keywords = [
     'lista', 'muéstrame', 'muestra', 'enséñame', 'enseñame', 'ver',
     'lee', 'leer', 'abre', 'abrir', 'carga', 'cargar',
     'crea', 'crear', 'genera', 'generar', 'haz', 'hacer',
@@ -63,161 +48,271 @@ function isActionRequest(message: string): boolean {
     'comenta', 'comentar', 'responde', 'responder',
     'ejecuta', 'ejecutar', 'rerun', 'corre', 'correr',
     'sube', 'subir', 'publica', 'publicar',
-    'descarga', 'descargar', 'clona', 'clonar',
+    'descarga', 'descargar', 'clona', 'clonar'
   ];
-  
   const lower = message.toLowerCase();
-  return actionKeywords.some(keyword => lower.includes(keyword));
+  return keywords.some(keyword => lower.includes(keyword));
 }
 
-// ── Main App ──────────────────────────────────────────────────────────────────
+// ── Documentation Modal ────────────────────────────────────────────────────────
+function DocModal({
+  analysis,
+  onConfirm,
+  onCancel,
+  isCommitting,
+}: {
+  analysis: RepoAnalysis;
+  onConfirm: () => void;
+  onCancel: () => void;
+  isCommitting: boolean;
+}) {
+  const [activeTab, setActiveTab] = useState<'readme' | 'manual'>('readme');
+
+  return (
+    <div className="overlay" role="dialog" aria-modal="true">
+      <div className="modal doc-repo-modal">
+        <div className="modal-header">
+          <span className="modal-icon"></span>
+          <div>
+            <div className="modal-title">Documentación generada para {analysis.repoName}</div>
+            <div className="modal-subtitle">
+              Analicé {analysis.filesAnalyzed} archivo{analysis.filesAnalyzed !== 1 ? 's' : ''}.
+              Revisa el contenido antes de hacer commit.
+            </div>
+          </div>
+          <button id="doc-modal-close-btn" className="btn btn-ghost btn-icon" onClick={onCancel} style={{ marginLeft: 'auto' }}>✕</button>
+        </div>
+        <div className="modal-body">
+          {analysis.truncated && (
+            <div className="warning-banner">
+              ⚠️ Repo muy grande — analizando los primeros {analysis.filesAnalyzed} archivos
+            </div>
+          )}
+          <div className="doc-preview-tabs">
+            <button id="doc-tab-readme" className={`doc-preview-tab ${activeTab === 'readme' ? 'active' : ''}`} onClick={() => setActiveTab('readme')}>
+              📖 README.md
+            </button>
+            <button id="doc-tab-manual" className={`doc-preview-tab ${activeTab === 'manual' ? 'active' : ''}`} onClick={() => setActiveTab('manual')}>
+              🔧 MANUAL_TECNICO.md
+            </button>
+          </div>
+          <div className="doc-preview-content">
+            {activeTab === 'readme' ? analysis.readme : analysis.manualTecnico}
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button id="doc-cancel-btn" className="btn btn-danger" onClick={onCancel} disabled={isCommitting}>❌ Cancelar</button>
+          <button id="doc-confirm-btn" className="btn btn-success" onClick={onConfirm} disabled={isCommitting}>
+            {isCommitting ? <><span className="spinner spinner-sm" /> Haciendo commit...</> : '✅ Hacer commit de ambos archivos'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Smart result formatter ────────────────────────────────────────────────────
+// Turns GitHub API responses into readable text rather than raw JSON dumps
+
+interface GitHubRepoItem {
+  name: string;
+  full_name: string;
+  description?: string | null;
+  private: boolean;
+  html_url: string;
+  stargazers_count?: number;
+  language?: string | null;
+  updated_at?: string;
+  fork?: boolean;
+}
+
+function formatResultData(data: unknown): string {
+  // ── Array of repos ──────────────────────────────────────────────────────────
+  if (Array.isArray(data) && data.length > 0 && (data[0] as GitHubRepoItem)?.full_name) {
+    const repos = data as GitHubRepoItem[];
+    const lines: string[] = [];
+    for (const r of repos) {
+      const visibility = r.private ? ' Privado' : '🌐 Público';
+      const stars = r.stargazers_count ? ` ⭐ ${r.stargazers_count}` : '';
+      const lang = r.language ? ` · ${r.language}` : '';
+      const fork = r.fork ? ' · 🍴 Fork' : '';
+      const desc = r.description ? `\n   ${r.description}` : '';
+      const updated = r.updated_at
+        ? ` · actualizado ${new Date(r.updated_at).toLocaleDateString('es-ES')}`
+        : '';
+      lines.push(`**${r.name}** — ${visibility}${stars}${lang}${fork}${updated}${desc}`);
+    }
+    return lines.join('\n\n');
+  }
+
+  // ─ Empty array ─────────────────────────────────────────────────────────────
+  if (Array.isArray(data) && data.length === 0) {
+    return '_No se encontraron resultados._';
+  }
+
+  // ── Single repo object ──────────────────────────────────────────────────────
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    const r = data as Record<string, unknown>;
+    if (r.full_name && r.html_url) {
+      const repo = r as unknown as GitHubRepoItem;
+      const lines = [
+        ` **${repo.full_name}** — ${repo.private ? '🔒 Privado' : ' Público'}`,
+        repo.description ? `> ${repo.description}` : '',
+        `🔗 ${repo.html_url}`,
+        repo.language ? ` Lenguaje: ${repo.language}` : '',
+        repo.stargazers_count !== undefined ? `⭐ Estrellas: ${repo.stargazers_count}` : '',
+      ].filter(Boolean);
+      return lines.join('\n');
+    }
+
+    // ── File content (GitHub contents API) ───────────────────────────────────
+    if (typeof r.content === 'string' && r.encoding === 'base64') {
+      return '_Contenido del archivo obtenido. Usa la información en tu siguiente instrucción._';
+    }
+
+    // ── Generic object: compact key-value ───────────────────────────────────
+    const entries = Object.entries(r)
+      .filter(([, v]) => typeof v !== 'object' && v !== null && v !== '')
+      .slice(0, 12)
+      .map(([k, v]) => `**${k}**: ${String(v)}`);
+    if (entries.length > 0) return entries.join('\n');
+  }
+
+  // ── Plain string ────────────────────────────────────────────────────────────
+  if (typeof data === 'string') {
+    const trimmed = data.slice(0, 1500);
+    return `\`\`\`\n${trimmed}${data.length > 1500 ? '\n...' : ''}\n\`\`\``;
+  }
+
+  // ── Fallback: compact JSON (capped) ─────────────────────────────────────────
+  const json = JSON.stringify(data, null, 2);
+  const capped = json.slice(0, 1200);
+  return `\`\`\`json\n${capped}${json.length > 1200 ? '\n...' : ''}\n\`\`\``;
+}
+
+// ── Main App ───────────────────────────────────────────────────────────────────
 export default function App() {
   const { token, user, isAuthenticated } = useAuth();
-  const { provider, apiKey, model } = useAIProvider();
+  const { addEntry, updateEntry } = useHistory();
+  // Fix #12: read active AI provider to show correct name in status messages
+  const { provider } = useAIProvider();
   const providerName = provider === 'groq' ? 'Groq Cloud' : 'Google Gemini';
 
-  const {
-    messages,
-    inputValue,
-    isChatLoading,
-    conversationHistory,
-    addMessage,
-    updateMessage,
-    setInputValue,
-    setIsChatLoading,
-    addToHistory,
-    clearChat,
-  } = useChat();
+  // Chat state
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [inputValue, setInputValue] = useState('');
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const [conversationHistory, setConversationHistory] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
 
-  const {
-    pendingAction,
-    isExecuting,
-    selectedRepos,
-    multiRepoEnabled,
-    setPendingAction,
-    setIsExecuting,
-    setSelectedRepos,
-    setMultiRepoEnabled,
-    logAction,
-    updateActionLog,
-    clearPendingAction,
-  } = useActions();
-
+  // Sidebar state
   const [templatesOpen, setTemplatesOpen] = useState(true);
   const [historyOpen, setHistoryOpen] = useState(true);
+
+  // Multi-repo state
+  const [multiRepoEnabled, setMultiRepoEnabled] = useState(false);
+  const [selectedRepos, setSelectedRepos] = useState<GitHubRepo[]>([]);
+
+  // Pending action (confirmation modal)
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const [isExecuting, setIsExecuting] = useState(false);
+
+  // Doc repo state
   const [docAnalysis, setDocAnalysis] = useState<RepoAnalysis | null>(null);
   const [isCommittingDocs, setIsCommittingDocs] = useState(false);
 
-  // ── Send message to AI ────────────────────────────────────────────────────
+  // 🔥 OPCIÓN D - Modo override: 'auto' | 'chat' | 'action'
+  const [modeOverride, setModeOverride] = useState<'auto' | 'chat' | 'action'>('auto');
+
+  const addMessage = useCallback((msg: Omit<ChatMessage, 'id' | 'timestamp'>): string => {
+    const id = uid();
+    setMessages(prev => [...prev, { ...msg, id, timestamp: new Date() }]);
+    return id;
+  }, []);
+
+  const updateMessage = useCallback((id: string, update: Partial<ChatMessage>) => {
+    setMessages(prev => prev.map(m => m.id === id ? { ...m, ...update } : m));
+  }, []);
+
+  // ── Send message to AI (Opción D - con detección de modo) ──────────────────
   const handleSend = useCallback(async () => {
-    if (!inputValue.trim() || !token || !user || !provider || !apiKey || !model) return;
+    if (!inputValue.trim() || !token || !user) return;
 
     const userText = inputValue.trim();
     setInputValue('');
     setIsChatLoading(true);
 
     addMessage({ role: 'user', content: userText });
+
+    // Add loading bubble
     const loadingId = addMessage({ role: 'assistant', content: '', isLoading: true });
 
     const newHistory = [...conversationHistory, { role: 'user' as const, content: userText }];
 
+    // 🔥 OPCIÓN D - DETECCIÓN DE MODO
     const isConversation = isConversationRequest(userText);
     const isAction = isActionRequest(userText);
+    
+    // Determinar modo final (manual override o automático)
+    let finalMode: 'chat' | 'action';
+    if (modeOverride === 'auto') {
+      // Auto: si parece conversación Y no parece acción → chat, sino → action
+      finalMode = isConversation && !isAction ? 'chat' : 'action';
+    } else {
+      finalMode = modeOverride;
+    }
+
+    // 🔥 OPCIÓN D - SELECCIONAR SYSTEM PROMPT SEGÚN MODO
+    const systemPrompt = finalMode === 'chat' ? CHAT_PROMPT : ACTION_PROMPT;
+
+    // 🔥 DEBUG: Log en consola para verificar detección
+    console.log(`[Opción D] Modo: ${finalMode} | Override: ${modeOverride} | Conv: ${isConversation} | Action: ${isAction}`);
 
     try {
-      // ─────────────────────────────────────────────────────────────────────
-      // FIX 1: CORRECCIÓN DEL ERROR TS2322
-      //
-      // PROBLEMA ANTERIOR (no compilaba):
-      //   enhancedHistory = [
-      //     ...newHistory,
-      //     { role: 'system' as const, content: '...' }  // ← TS2322
-      //   ];
-      //   callAI(provider, apiKey, model, enhancedHistory)
-      //
-      // Por qué fallaba:
-      //   - Message.role solo acepta 'user' | 'assistant'
-      //   - 'system' no es asignable a ese tipo → error de compilación
-      //   - Además, el proxy Gemini envía messages[last] como "current turn",
-      //     así que el mensaje 'system' era lo que el modelo recibía, no la
-      //     pregunta del usuario (bug de lógica además del de tipos)
-      //
-      // SOLUCIÓN: pasar CONVERSATION_SYSTEM_PROMPT como 5º argumento de callAI()
-      //   que ya tiene ese parámetro, en lugar de inyectarlo en el array.
-      // ─────────────────────────────────────────────────────────────────────
-      const activeSystemPrompt = (isConversation && !isAction)
-        ? CONVERSATION_SYSTEM_PROMPT
-        : SYSTEM_PROMPT;
+      // 🔥 OPCIÓN D - Pasar mode a callAI
+      const rawResponse = await callAI(newHistory, systemPrompt, finalMode);
 
-      const rawResponse = await callAI(provider, apiKey, model, newHistory, activeSystemPrompt);
-
-      // ── MODO CONVERSACIÓN ──────────────────────────────────────────────────
-      if (isConversation && !isAction) {
+      // 🔥 OPCIÓN D - MODO CHAT: Forzar respuesta en texto, bloquear JSON
+      if (finalMode === 'chat') {
         const action = parseGeminiAction(rawResponse);
-
-        if (!action) {
-          // ✅ El modelo respondió en Markdown directamente
-          updateMessage(loadingId, { content: rawResponse, isLoading: false });
-          addToHistory('assistant', rawResponse);
-          return;
-        }
-
-        // El modelo generó JSON a pesar del prompt conversacional.
-        // Solución pragmática: si es GET (lectura segura), ejecutar y pedir opinión.
-        if (action.metodo === 'GET') {
-          try {
-            const histId = logAction('pending', action.accion, action.repo);
-            const result = await executeAction(token, user, action);
-            updateActionLog(histId, result.success ? 'completed' : 'error', result.message);
-
-            if (result.success && result.data) {
-              const dataStr = formatResultData(result.data);
-              const opinionHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [
-                ...newHistory,
-                { role: 'assistant', content: `He obtenido los datos:\n\n${dataStr}` },
-                { role: 'user', content: `Basándote en estos datos, ${userText}. Da tu análisis experto en Markdown.` },
-              ];
-              const opinionResponse = await callAI(
-                provider, apiKey, model,
-                opinionHistory,
-                CONVERSATION_SYSTEM_PROMPT,
-              );
-              const finalText = parseGeminiAction(opinionResponse)
-                ? `**Resultado:**\n\n${dataStr}`
-                : opinionResponse;
-              updateMessage(loadingId, { content: finalText, isLoading: false });
-              addToHistory('assistant', finalText);
-            } else {
-              updateMessage(loadingId, {
-                content: `No pude obtener los datos: ${result.message}`,
-                isLoading: false,
-              });
-            }
-          } catch (execErr) {
-            updateMessage(loadingId, {
-              content: `❌ Error al obtener datos: ${(execErr as Error).message}`,
-              isLoading: false,
-            });
+        
+        if (action) {
+          // La IA generó JSON en modo chat - EXTRAER TEXTO Y NO EJECUTAR
+          let textResponse = rawResponse;
+          
+          // Intentar extraer algo útil del JSON para mostrar como texto
+          if (action.accion && action.accion.length > 50) {
+            textResponse = action.accion;
+          } else if (action.endpoint) {
+            textResponse = `💡 **Análisis detectado**: ${action.accion}\n\nEntiendo que quieres información sobre tu repositorio. Aquí tienes mi opinión como consultor:\n\n${rawResponse}`;
+          } else {
+            textResponse = rawResponse;
           }
+          
+          updateMessage(loadingId, { content: textResponse, isLoading: false });
+          setConversationHistory([...newHistory, { role: 'assistant', content: textResponse }]);
+          setIsChatLoading(false);
+          return; // ⛔ NO EJECUTAR NADA EN MODO CHAT
+        } else {
+          // Perfecto - respuesta en Markdown
+          updateMessage(loadingId, { content: rawResponse, isLoading: false });
+          setConversationHistory([...newHistory, { role: 'assistant', content: rawResponse }]);
+          setIsChatLoading(false);
           return;
         }
-
-        // El modelo quiere escritura en modo conversación → bloquear
-        const blockedMsg = `Como me pediste una opinión, no ejecutaré acciones de escritura. Si quieres que **${action.accion}**, dímelo directamente.`;
-        updateMessage(loadingId, { content: blockedMsg, isLoading: false });
-        addToHistory('assistant', blockedMsg);
-        return;
       }
 
-      // ── MODO ACCIÓN (flujo normal) ─────────────────────────────────────────
+      // 🔥 MODO ACCIÓN: Procesar JSON normalmente (comportamiento original)
       const action = parseGeminiAction(rawResponse);
 
       if (!action) {
+        // AI returned non-JSON — treat as plain response
         updateMessage(loadingId, { content: rawResponse, isLoading: false });
-        addToHistory('assistant', rawResponse);
+        setConversationHistory([...newHistory, { role: 'assistant', content: rawResponse }]);
+        setIsChatLoading(false);
         return;
       }
 
+      // For file updates, fetch the current content for diff
       let enrichedAction = action;
       if (action.metodo === 'PUT' && action.repo && action.archivo && !action.contenidoActual) {
         try {
@@ -229,20 +324,23 @@ export default function App() {
             enrichedAction = { ...action, contenidoActual: decodeBase64(file.content) };
           }
         } catch {
-          // El archivo no existe aún — es una creación
+          // File doesn't exist yet — it's a creation
         }
       }
 
       updateMessage(loadingId, { content: enrichedAction.accion, isLoading: false, action: enrichedAction });
-      addToHistory('assistant', rawResponse);
+      setConversationHistory([...newHistory, { role: 'assistant', content: rawResponse }]);
 
       if (enrichedAction.requiereConfirmacion) {
+        // Show confirmation modal
         const repos = multiRepoEnabled && selectedRepos.length > 0 ? selectedRepos : [];
         setPendingAction({ action: enrichedAction, targetRepos: repos });
       } else {
-        const histId = logAction('pending', enrichedAction.accion, enrichedAction.repo);
+        // Read-only: execute directly
+        const histId = addEntry({ status: 'pending', description: enrichedAction.accion, repo: enrichedAction.repo });
+        updateEntry(histId, { status: 'pending' });
         const result = await executeAction(token, user, enrichedAction);
-        updateActionLog(histId, result.success ? 'completed' : 'error', result.message);
+        updateEntry(histId, { status: result.success ? 'completed' : 'error', description: result.message });
 
         if (result.success && result.data) {
           addMessage({
@@ -253,33 +351,34 @@ export default function App() {
       }
     } catch (err) {
       updateMessage(loadingId, {
-        content: `❌ Error al contactar con el asistente: ${(err as Error).message}`,
+        content: ` Error al contactar con el asistente: ${(err as Error).message}`,
         isLoading: false,
       });
     } finally {
       setIsChatLoading(false);
     }
-  }, [inputValue, token, user, provider, apiKey, model, conversationHistory, multiRepoEnabled, selectedRepos, addMessage, updateMessage, setInputValue, setIsChatLoading, addToHistory, setPendingAction, logAction, updateActionLog]);
+  }, [inputValue, token, user, conversationHistory, multiRepoEnabled, selectedRepos, modeOverride, addMessage, updateMessage, addEntry, updateEntry]);
 
-  // ── Confirm action ──────────────────────────────────────────────────────
+  // ── Confirm action ─────────────────────────────────────────────────────────
   const handleConfirm = useCallback(async () => {
     if (!pendingAction || !token || !user) return;
     setIsExecuting(true);
 
     const { action, targetRepos } = pendingAction;
-    clearPendingAction();
+    setPendingAction(null);
 
     if (targetRepos.length > 1) {
+      // Multi-repo
       await executeActionMultiRepo(token, user, action, targetRepos, {
         onProgress: (repo, status, message) => {
-          logAction(status, message, repo);
+          addEntry({ status, description: message, repo });
         },
       });
       addMessage({ role: 'assistant', content: `✅ Acción aplicada a ${targetRepos.length} repositorios` });
     } else {
-      const histId = logAction('pending', action.accion, action.repo);
+      const histId = addEntry({ status: 'pending', description: action.accion, repo: action.repo });
       const result = await executeAction(token, user, action);
-      updateActionLog(histId, result.success ? 'completed' : 'error', result.message);
+      updateEntry(histId, { status: result.success ? 'completed' : 'error', description: result.message });
       addMessage({
         role: 'assistant',
         content: result.success
@@ -289,81 +388,120 @@ export default function App() {
     }
 
     setIsExecuting(false);
-  }, [pendingAction, token, user, clearPendingAction, addMessage, logAction, updateActionLog, setIsExecuting]);
+  }, [pendingAction, token, user, addEntry, updateEntry, addMessage]);
 
-  // ── Document repo ──────────────────────────────────────────────────────
-  const handleDocumentRepo = useCallback(async (repoName: string) => {
-    if (!token || !user || !provider || !apiKey || !model) return;
-    setIsExecuting(true);
+  // ── Cancel action ──────────────────────────────────────────────────────────
+  const handleCancel = useCallback(() => {
+    if (pendingAction) {
+      addEntry({ status: 'cancelled', description: `Cancelado: ${pendingAction.action.accion}`, repo: pendingAction.action.repo });
+      addMessage({ role: 'assistant', content: '⏸️ Acción cancelada.' });
+    }
+    setPendingAction(null);
+  }, [pendingAction, addEntry, addMessage]);
+
+  // ── Document repo ──────────────────────────────────────────────────────────
+  const handleDocumentRepo = useCallback(async (repoInput: string) => {
+    if (!token || !user) return;
+
+    const [owner, repoName] = repoInput.includes('/')
+      ? repoInput.split('/', 2)
+      : [user.login, repoInput];
+
+    setIsChatLoading(true);
+    const loadingId = addMessage({
+      role: 'assistant',
+      content: ` Analizando repositorio **${owner}/${repoName}**...`,
+      isLoading: true,
+    });
+    const histId = addEntry({ status: 'pending', description: `Documentando ${owner}/${repoName}`, repo: `${owner}/${repoName}` });
 
     try {
-      const [owner, repo] = repoName.includes('/') ? repoName.split('/') : [user.login, repoName];
-      const treeResult = await fetchRepoTreeRecursive(token, owner, repo);
+      const { files, totalScanned, truncated } = await fetchRepoTreeRecursive(token, owner, repoName);
 
-      // ─────────────────────────────────────────────────────────────────────
-      // FIX 2: CORRECCIÓN DEL ERROR TS2554
-      //
-      // PROBLEMA ANTERIOR (no compilaba):
-      //   generateRepoDocs(token, owner, repo, tree)
-      //
-      // Por qué fallaba:
-      //   - Firma real: generateRepoDocs(provider, apiKey, model, repoName, files[])
-      //   - Solo se pasaban 4 argumentos en vez de 5 → TS2554
-      //   - token(string) no es asignable a provider(AIProviderType) → TS2345
-      //   - tree(FetchTreeResult) no es string → TS2345
-      //
-      // SOLUCIÓN: pasar los 5 argumentos correctos con sus tipos correctos.
-      // ─────────────────────────────────────────────────────────────────────
-      const analysis = await generateRepoDocs(
-        provider,                    // AIProviderType ✅
-        apiKey,                      // string ✅
-        model,                       // string ✅
-        `${owner}/${repo}`,          // repoName string ✅
-        treeResult.files,            // RepoFile[] ✅ (FetchTreeResult.files is compatible)
-      );
-      setDocAnalysis(analysis);
-    } catch (err) {
-      addMessage({
-        role: 'assistant',
-        content: `❌ Error al analizar repositorio: ${(err as Error).message}`,
+      // Fix #12: show the active AI provider name instead of hardcoded "Gemini"
+      updateMessage(loadingId, {
+        content: `📄 Analizando ${files.length} archivos de **${owner}/${repoName}**${truncated ? ` (de ${totalScanned} totales)` : ''}... Generando documentación con ${providerName}...`,
+        isLoading: true,
       });
-    } finally {
-      setIsExecuting(false);
-    }
-  }, [token, user, provider, apiKey, model, addMessage, setIsExecuting]);
 
-  const handleCommitDocs = useCallback(async (repoName: string) => {
-    if (!token || !user || !docAnalysis) return;
+      const { readme, manualTecnico } = await generateRepoDocs(`${owner}/${repoName}`, files);
+
+      updateMessage(loadingId, {
+        content: `✅ Documentación generada para **${owner}/${repoName}**. Revisa el contenido antes de hacer commit.`,
+        isLoading: false,
+      });
+
+      setDocAnalysis({
+        readme,
+        manualTecnico,
+        filesAnalyzed: files.length,
+        totalFiles: totalScanned,
+        truncated,
+        repoName: `${owner}/${repoName}`,
+      });
+
+      updateEntry(histId, { status: 'pending', description: `Documentación lista — esperando confirmación` });
+    } catch (err) {
+      updateMessage(loadingId, { content: `❌ Error al documentar: ${(err as Error).message}`, isLoading: false });
+      updateEntry(histId, { status: 'error', description: `Error al documentar ${owner}/${repoName}` });
+    } finally {
+      setIsChatLoading(false);
+    }
+  }, [token, user, providerName, addMessage, updateMessage, addEntry, updateEntry]);
+
+  // ── Commit docs ────────────────────────────────────────────────────────────
+  const handleCommitDocs = useCallback(async () => {
+    if (!docAnalysis || !token || !user) return;
     setIsCommittingDocs(true);
 
+    const [owner, repo] = docAnalysis.repoName.split('/');
+    const histId = addEntry({ status: 'pending', description: `Commiteando documentación en ${docAnalysis.repoName}`, repo: docAnalysis.repoName });
+
     try {
-      const [owner, repo] = repoName.includes('/') ? repoName.split('/') : [user.login, repoName];
-      await createOrUpdateFile(token, owner, repo, 'TECHNICAL_DOCS.md', docAnalysis.documentation);
-      addMessage({
-        role: 'assistant',
-        content: `✅ Documentación técnica creada en ${repoName}/TECHNICAL_DOCS.md`,
-      });
-      setDocAnalysis(null);
+      // README.md
+      let readmeSha: string | undefined;
+      try {
+        const existing = await getFileContents(token, owner, repo, 'README.md');
+        readmeSha = existing.sha;
+      } catch { /* new file */ }
+      await createOrUpdateFile(token, owner, repo, 'README.md', docAnalysis.readme, 'docs: generate README via Asistente de IA', readmeSha);
+
+      // MANUAL_TECNICO.md
+      let manualSha: string | undefined;
+      try {
+        const existing = await getFileContents(token, owner, repo, 'MANUAL_TECNICO.md');
+        manualSha = existing.sha;
+      } catch { /* new file */ }
+      await createOrUpdateFile(token, owner, repo, 'MANUAL_TECNICO.md', docAnalysis.manualTecnico, 'docs: generate MANUAL_TECNICO via Asistente de IA', manualSha);
+
+      addMessage({ role: 'assistant', content: `✅ README.md y MANUAL_TECNICO.md commiteados en **${docAnalysis.repoName}**` });
+      updateEntry(histId, { status: 'completed', description: `Documentación commiteada en ${docAnalysis.repoName}` });
     } catch (err) {
-      addMessage({
-        role: 'assistant',
-        content: `❌ Error al guardar documentación: ${(err as Error).message}`,
-      });
+      addMessage({ role: 'assistant', content: `❌ Error al hacer commit: ${(err as Error).message}` });
+      updateEntry(histId, { status: 'error', description: `Error al commitear documentación` });
     } finally {
       setIsCommittingDocs(false);
+      setDocAnalysis(null);
     }
-  }, [token, user, docAnalysis, addMessage]);
+  }, [docAnalysis, token, user, addMessage, addEntry, updateEntry]);
 
   return (
-    <div className="app-container">
-      <Header />
-      <SessionWarningBanner />
+    <>
+      <Header
+        onToggleTemplates={() => setTemplatesOpen(v => !v)}
+        onToggleHistory={() => setHistoryOpen(v => !v)}
+        templatesOpen={templatesOpen}
+        historyOpen={historyOpen}
+      />
 
-      <div className="app-main">
-        <TemplatePanel isOpen={templatesOpen} onToggle={() => setTemplatesOpen(!templatesOpen)} />
+      <div className="main-layout">
+        <TemplatePanel
+          isOpen={templatesOpen}
+          onSelectTemplate={setInputValue}
+        />
 
-        <div className="app-center">
-          <ChatArea messages={messages} isLoading={isChatLoading} />
+        <div className="chat-container">
+          <ChatArea messages={messages} />
           <ChatInput
             value={inputValue}
             onChange={setInputValue}
@@ -378,26 +516,28 @@ export default function App() {
           />
         </div>
 
-        <HistoryPanel isOpen={historyOpen} onToggle={() => setHistoryOpen(!historyOpen)} />
+        <HistoryPanel isOpen={historyOpen} />
       </div>
 
+      {/* Confirmation modal */}
       {pendingAction && (
         <ConfirmModal
-          action={pendingAction.action}
-          isExecuting={isExecuting}
+          pendingAction={pendingAction}
           onConfirm={handleConfirm}
-          onCancel={clearPendingAction}
+          onCancel={handleCancel}
+          isExecuting={isExecuting}
         />
       )}
 
+      {/* Documentation modal */}
       {docAnalysis && (
         <DocModal
           analysis={docAnalysis}
-          isCommitting={isCommittingDocs}
-          onCommit={() => handleCommitDocs(pendingAction?.action.repo || '')}
+          onConfirm={handleCommitDocs}
           onCancel={() => setDocAnalysis(null)}
+          isCommitting={isCommittingDocs}
         />
       )}
-    </div>
+    </>
   );
 }
