@@ -23,7 +23,7 @@ beforeEach(() => {
   mockSessionStorage.set('ai_model', 'mixtral-8x7b-32768');
 
   // Mock global fetch and sessionStorage
-  global.fetch = mockFetch;
+  (globalThis as any).fetch = mockFetch;
   Object.defineProperty(window, 'sessionStorage', {
     value: {
       getItem: (key: string) => mockSessionStorage.get(key) ?? null,
