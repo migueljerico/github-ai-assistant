@@ -20,9 +20,10 @@ FROM node:20-alpine AS production
 
 WORKDIR /app
 
-# Install only production dependencies (--omit=dev replaces deprecated --production)
+# 🔥 FIX: Usar npm install en lugar de npm ci para tolerar desincronizaciones
+# del package-lock.json (faltaba express-rate-limit@7.5.1)
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm install --omit=dev
 
 # Copy Express server
 COPY server/ server/
