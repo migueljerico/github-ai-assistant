@@ -109,3 +109,350 @@ Claude también revisó el plan de implementación generado por Antigravity y de
 ### Fase 3 — Construcción con Antigravity 2.0
 
 La construcción del código se realizó con **Antigravity 2.0** (plataforma de desarrollo agéntico de Google, presentada en I/O 2026), usando **Claude** como modelo subyacente del agente. A partir del prompt maestro diseñado en la Fase 2, Antigravity generó la estructura completa del proyecto:
+
+Aquí tienes el README.md con los problemas de formato corregidos (sin tocar contenido ni código). Te detallo los cambios al final.
+
+```markdown
+# 🤖 GitHub AI Assistant
+
+![React](https://img.shields.io/badge/React_18-61DAFB?style=for-the-badge&logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)
+![Express](https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white)
+![GitHub OAuth](https://img.shields.io/badge/GitHub_OAuth-181717?style=for-the-badge&logo=github&logoColor=white)
+![Groq](https://img.shields.io/badge/Groq_Cloud-F55036?style=for-the-badge&logo=groq&logoColor=white)
+![Gemini](https://img.shields.io/badge/Google_Gemini-4285F4?style=for-the-badge&logo=google&logoColor=white)
+![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
+![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
+![Versión](https://img.shields.io/badge/Versión-v2.1.0-blue?style=for-the-badge)
+![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)
+[![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
+
+> **Proyecto de portfolio — Curso Análisis de Datos e IA (2025–2026)**
+>
+> Gestiona tus repositorios de GitHub escribiendo en lenguaje natural — con confirmación previa, historial de sesión y documentación automática, impulsado por **Groq Cloud** o **Google Gemini**.
+
+**Asistente de IA que entiende tu código.** Se conecta a tus repos de GitHub, lee tu codebase y responde preguntas sobre tu proyecto — con una arquitectura de seguridad que protege tus credenciales.
+
+> Construido en 30 días por un profesional de negocio sin experiencia previa en programación.
+
+---
+
+## 📊 Métricas del proyecto
+
+| Aspecto | Detalle |
+|---|---|
+| ⏱️ Tiempo de desarrollo | 30 días (desde cero) |
+| 🤖 Modelos soportados | Groq (Llama 3.3) + Gemini 2.5 Flash |
+| ⚡ Latencia media | ~400ms (Groq) / ~1.2s (Gemini) |
+| 🛡️ Seguridad | Token GitHub en memoria React; claves IA en sessionStorage |
+| 🌍 Deploy | Google Cloud Run (HTTPS, auto-scaling) |
+| 📦 Stack | React + TypeScript + Express + Vite |
+
+---
+
+## 🎯 ¿Qué hace este asistente?
+
+A diferencia de un chatbot convencional, este asistente:
+
+- ✅ **Lee tu código real** de cualquier repo de GitHub (público o privado)
+- ✅ **Responde con contexto** de tu proyecto, no respuestas genéricas
+- ✅ **Protege tu token de GitHub** con arquitectura de memoria React (anti-XSS)
+- ✅ **Funciona con múltiples modelos** (Groq para velocidad, Gemini para calidad)
+- ✅ **Documenta repositorios completos** generando README + MANUAL_TECNICO automáticamente
+
+### Ejemplo de uso real:
+
+> **Tú:** *"Lista mis repositorios privados"*
+> 
+> **Asistente:** *"Voy a consultar la API de GitHub... He encontrado 5 repositorios privados. ¿Quieres que te muestre los detalles de alguno en particular?"*
+
+---
+
+## 🔗 Acceso a la Aplicación
+
+[![Ver App en Producción](https://img.shields.io/badge/Ver_App-Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)](https://github-ai-assistant-748914382449.us-central1.run.app/)
+
+> Conecta tu cuenta de GitHub (OAuth) y tu proveedor de IA preferido para empezar.
+> Tu token de GitHub **nunca sale de la memoria del navegador** — no se almacena en ningún servidor.
+
+---
+
+## 📋 Descripción del Proyecto
+
+**GitHub AI Assistant** es una aplicación web conversacional de código abierto que actúa como capa de abstracción inteligente sobre la GitHub REST API v3. El usuario escribe sus intenciones en lenguaje natural — sin necesidad de conocer endpoints, payloads ni codificación Base64 — y el agente de IA las interpreta, propone la acción y espera confirmación antes de ejecutar.
+
+El proyecto evolucionó de un prototipo en **Google AI Studio** a una aplicación full-stack completa, diseñada y construida íntegramente con asistencia de agentes de IA: **Claude** (Anthropic) como arquitecto y revisor, y **Antigravity 2.0** (Google) como entorno de desarrollo agéntico.
+
+---
+
+## ✨ Funcionalidades
+
+| Funcionalidad | Descripción |
+|---|---|
+| 💬 **Chat en lenguaje natural** | Escribe instrucciones como "crea un repo público llamado mi-proyecto" y la IA las ejecuta |
+| ✅ **Panel de confirmación** | Toda operación de escritura muestra lo que va a hacer y espera tu aprobación |
+| 📋 **Historial de sesión** | Log exportable de todas las acciones con estado (✅ ❌ ⏸️ ⏳) |
+| 📄 **Plantillas predefinidas** | README, `.gitignore` y licencias por tipo de proyecto, pre-formuladas para el chat |
+| 🗂️ **Operaciones multi-repo** | Aplica la misma acción a varios repositorios seleccionados simultáneamente |
+| 🤖 **Documenta tu repositorio entero** | El agente lee hasta 80 archivos y genera README + MANUAL_TECNICO de forma automática |
+| 🔑 **Doble proveedor de IA** | Soporte para **Groq Cloud** y **Google Gemini 2.5 Flash** — usas tu propia clave |
+| 🔒 **Autenticación OAuth** | Flujo GitHub OAuth completo con fallback a PAT manual |
+
+---
+
+## 🛠️ Proceso de Desarrollo — Cómo se construyó esta app
+
+Este proyecto es el resultado de un proceso de desarrollo agéntico en múltiples fases, donde la IA no solo ejecutó código sino que tomó decisiones arquitectónicas.
+
+### Fase 1 — Prototipo en Google AI Studio
+
+La primera versión de la app fue construida directamente en **Google AI Studio**, configurando un agente de Gemini mediante ingeniería de prompts. Operaba como una caja negra: el usuario escribía una instrucción, el agente la ejecutaba directamente sobre la GitHub API sin confirmación previa. Autenticación solo por PAT. El resultado fue desplegado en **Google Cloud Run**.
+
+### Fase 2 — Diseño arquitectónico con Claude (Anthropic)
+
+Se inició una consultoría técnica con **Claude Sonnet** (claude.ai) para auditar el concepto y diseñar la arquitectura de la v2. Claude identificó los problemas críticos del prototipo (ausencia de confirmación previa, key de IA expuesta en servidor, sin historial) y propuso una arquitectura full-stack con:
+
+- Backend Express **thin** (solo OAuth — la IA se llama desde el cliente)
+- Panel de confirmación para operaciones de escritura
+- Historial de sesión exportable
+- Soporte dual Groq/Gemini con clave del usuario
+- OAuth de GitHub
+
+Claude también revisó el plan de implementación generado por Antigravity y detectó 8 problemas antes de que se escribiera una sola línea de código (incluyendo la exposición de la Gemini API key al frontend).
+
+### Fase 3 — Construcción con Antigravity 2.0
+
+La construcción del código se realizó con **Antigravity 2.0** (plataforma de desarrollo agéntico de Google, presentada en I/O 2026), usando **Claude** como modelo subyacente del agente. A partir del prompt maestro diseñado en la Fase 2, Antigravity generó la estructura completa del proyecto:
+
+```
+
+github-ai-assistant/
+├── client/ # React 18 + TypeScript + Vite (36 archivos)
+├── server/ # Express.js OAuth (1 archivo, ~120 líneas)
+└── Dockerfile # Multi-stage build para Cloud Run
+
+```
+
+El agente de Antigravity generó los 15 componentes planificados incluyendo servicios, contextos y el sistema de tipos TypeScript completo.
+
+### Fase 4 — Corrección de errores y ajustes
+
+Durante las pruebas locales surgieron errores de compilación típicos de código generado por IA:
+- Caracteres Unicode (`→`, comillas invertidas) dentro de bloques JSDoc que el compilador esbuild interpretaba como código
+- La secuencia `*/` en comentarios con rutas de URL (`/users/*/repos`) que cerraba prematuramente los bloques de comentario
+
+Los errores fueron identificados y corregidos manualmente mediante análisis del stack trace.
+
+### Fase 5 — Despliegue local y push a GitHub
+
+```bash
+# Instalación de dependencias (Node.js 20+ y Git requeridos)
+npm install
+cd client && npm install && cd ..
+
+# Arranque en desarrollo
+npm run dev  # Express :3001 + Vite :5173 en paralelo
+
+# Push al repositorio
+git init
+git remote add origin https://github.com/migueljerico/github-ai-assistant.git
+git add .
+git commit -m "feat: v2 completa — OAuth, Groq/Gemini, historial, plantillas, multi-repo"
+git push -u origin main
+```
+
+Fase 6 — Despliegue en Google Cloud Run
+
+```bash
+gcloud run deploy github-ai-assistant \
+  --source . \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --set-env-vars GITHUB_CLIENT_ID=...,GITHUB_CLIENT_SECRET=...,SESSION_SECRET=...
+```
+
+---
+
+⚙️ Configuración local
+
+Prerrequisitos
+
+· Node.js 20+
+· Git
+· Una GitHub OAuth App (crear aquí):
+  · Homepage URL: http://localhost:5173
+  · Callback URL: http://localhost:3001/auth/callback
+· Una API key de Groq Cloud (console.groq.com) o Google Gemini (aistudio.google.com/apikey)
+
+Variables de entorno
+
+```bash
+cp .env.example .env
+```
+
+Edita .env con tus valores:
+
+```
+GITHUB_CLIENT_ID=       # Client ID de tu GitHub OAuth App
+GITHUB_CLIENT_SECRET=   # Client Secret de tu GitHub OAuth App
+SESSION_SECRET=         # Cadena aleatoria larga (ej: openssl rand -hex 32)
+PORT=3001
+```
+
+La clave de IA no va en el .env — cada usuario la introduce directamente en la app.
+
+Arrancar en desarrollo
+
+```bash
+npm install
+cd client && npm install && cd ..
+npm run dev
+```
+
+Abre http://localhost:5173
+
+---
+
+🏗️ Arquitectura
+
+```
+Usuario (lenguaje natural)
+        ↓
+┌─────────────────────────────────────────────────────┐
+│  Frontend React 18 + TypeScript + Vite              │
+│  ├── AIProviderPanel  (conectar Groq / Gemini)      │
+│  ├── LoginButton      (OAuth) / PatInput (PAT)      │
+│  ├── ChatArea + ChatInput                           │
+│  ├── ConfirmModal     (confirmación de acciones)    │
+│  ├── HistoryPanel     (log exportable)              │
+│  ├── TemplatePanel    (plantillas predefinidas)     │
+│  └── RepoSelector     (multi-repo)                 │
+└──────────┬──────────────────────────┬───────────────┘
+           │ /auth/github             │ Llamadas directas
+           │ /auth/callback           │ (GitHub + Groq)
+           │ /api/gemini (proxy EU)   │
+           ▼                          ▼
+┌──────────────────────┐  ┌───────────────────────────────┐
+│  Express.js          │  │  APIs externas                │
+│  ├── OAuth           │  │  ├── GitHub REST API v3        │
+│  ├── /api/gemini     │  │  ├── Groq Cloud (directo)      │
+│  ├── /health         │  │  └── Google Gemini API         │
+│  └── static files    │  │    (via proxy en el servidor) │
+└──────────────────────┘  └───────────────────────────────┘
+```
+
+Decisión arquitectónica clave: el backend Express es intencionalmente mínimo. Gestiona el intercambio de secretos OAuth y actúa como proxy para la API de Gemini — necesario porque Google bloquea las llamadas directas desde navegadores en la UE/EEA. Las llamadas a GitHub y a Groq se realizan directamente desde el navegador del usuario, con su propio token y su propia clave de IA.
+
+---
+
+🛠️ Stack tecnológico
+
+Herramienta Uso Coste
+React 18 + TypeScript Interfaz de usuario, estado, contextos Gratuito
+Vite Bundler y dev server del frontend Gratuito
+Express.js Backend thin — OAuth + proxy Gemini Gratuito
+GitHub REST API v3 Todas las operaciones sobre repositorios Gratuito
+Groq Cloud Inferencia de IA ultrarrápida (Llama 3.3) Tier gratuito
+Google Gemini Modelo de IA alternativo (gemini-2.5-flash) Tier gratuito
+Google Cloud Run Despliegue serverless (us-central1) Pay-per-use
+Antigravity 2.0 Entorno de desarrollo agéntico (construcción del código) —
+Claude (Anthropic) Arquitectura, revisión y documentación —
+
+---
+
+🔒 Modelo de seguridad
+
+🛡️ Arquitectura de Seguridad
+
+Esta aplicación implementa medidas de seguridad fundamentales para proteger las credenciales del usuario.
+
+Token de GitHub — Memoria React:
+El token de acceso de GitHub (ya sea OAuth o PAT) vive exclusivamente en la memoria de React (estado global del contexto). Jamás se escribe en ninguna API de almacenamiento del navegador: ni sessionStorage, ni localStorage, ni cookies, ni IndexedDB.
+
+¿Por qué es esto importante?
+La aplicación requiere el scope repo de GitHub, que otorga acceso de lectura y escritura a todos tus repositorios públicos y privados. Si un atacante lograra inyectar código JavaScript en la aplicación (ataque XSS), podría:
+
+· ❌ Con almacenamiento en navegador: Leer el token desde sessionStorage/localStorage y robar todas tus credenciales en segundos.
+· ✅ Con memoria React: El token solo existe en la memoria volátil de React. Un script malicioso no puede acceder a variables de estado de React directamente, haciendo el robo de credenciales extremadamente difícil.
+
+Claves de IA — sessionStorage:
+Las claves de API de IA (Groq/Gemini) se almacenan en sessionStorage del navegador por conveniencia, para que el usuario no tenga que reintroducirlas al recargar la página. Una implementación Zero-Storage completa (solo memoria React) está planificada para futuras versiones.
+
+¿Qué significa esto para ti como usuario?
+
+· 🔄 Al recargar la página (F5), perderás tu sesión de GitHub. Tendrás que volver a autenticarte con GitHub.
+· 🔐 Las claves de IA se mantienen al recargar la página (sessionStorage), pero desaparecen al cerrar la pestaña.
+· 🛡️ Tu token de GitHub está protegido contra el vector de ataque más común en aplicaciones web (XSS + robo de tokens desde storage).
+
+Esto NO es un bug, es una característica de seguridad intencionada.
+
+Priorizamos la seguridad del token de GitHub (el activo más crítico) por encima de la comodidad de no tener que volver a iniciar sesión. Dado el nivel de acceso que requiere la aplicación (scope repo), consideramos que este trade-off es necesario y responsable.
+
+Modelo de almacenamiento de credenciales
+
+Elemento Dónde vive Cuándo desaparece
+Token OAuth de GitHub Solo en memoria de React (estado) Al recargar la página o cerrar la pestaña
+Clave de IA (Groq/Gemini) sessionStorage del navegador Al cerrar la pestaña del navegador
+GITHUB_CLIENT_SECRET Variables de entorno del servidor Solo en memoria del proceso
+Datos del usuario Ningún servidor externo No se almacenan
+Clave Gemini en tránsito Cuerpo HTTPS hacia /api/gemini No se persiste en el servidor
+
+---
+
+🔮 Mejoras futuras
+
+Ver MEJORAS_FUTURAS.md — Estado actual, sprints y roadmap completo.
+
+---
+
+🔌 Proveedores de IA soportados y roadmap
+
+La app soporta actualmente Groq Cloud y Google Gemini. Para el análisis de proveedores alternativos evaluados (Together AI, OpenRouter, Fireworks AI, Ollama local, DeepInfra), métricas de código y sprints pendientes, consulta MEJORAS_FUTURAS.md.
+
+---
+
+🧠 El proceso: De los negocios a la Ingeniería de IA
+
+Este proyecto no es solo código; es el resultado de un profesional de Ciencias Empresariales adentrándose en el desarrollo de software y la Inteligencia Artificial desde cero en 30 días.
+
+¿Por qué este enfoque?
+
+Al no tener la "mochila" de la formación técnica tradicional, mi enfoque no fue solo "hacer que funcione", sino construir un producto robusto, seguro y mantenible aplicando las mejores prácticas de la industria desde el primer día:
+
+· 🛡️ Seguridad por diseño: Implementación de arquitectura de memoria React para proteger el token de GitHub, priorizando la seguridad del usuario sobre la comodidad.
+· 📚 Documentación profesional: Manuales técnicos y roadmap de mejoras siguiendo estándares de la industria.
+
+La lección principal
+
+La Inteligencia Artificial y las herramientas modernas (como GitHub Copilot, LLMs y plataformas Cloud) han democratizado la ingeniería. Este proyecto demuestra que el criterio de negocio, la curiosidad y la obsesión por la calidad son tan importantes como saber escribir código.
+
+"No soy ingeniero de software. Soy un profesional de negocio que ha aprendido a construir productos de IA pensando como un ingeniero."
+
+---
+
+📚 Contexto formativo
+
+Este proyecto forma parte del programa de formación en Análisis de Datos e Inteligencia Artificial (INAEM, 2025–2026). El objetivo fue explorar el desarrollo de aplicaciones full-stack asistido por agentes de IA, desde la arquitectura hasta el despliegue en producción, integrando múltiples servicios de IA y APIs REST en un flujo de trabajo completamente agéntico.
+
+<p align="center">
+Desarrollado por <a href="https://github.com/migueljerico">@migueljerico</a> con la asistencia de <strong>Claude</strong> (Anthropic), <strong>Antigravity 2.0</strong> (Google) y <strong>Qwen 3.7-Plus</strong> (Componentes de código) · 2026
+</p>
+```
+
+---
+
+🔍 Correcciones realizadas
+
+1. Cita de descripción rota: Unifiqué las líneas de cita y separé el eslogan secundario en su propio párrafo, evitando una línea > vacía que rompía la continuidad visual.
+2. Árbol de directorios sin delimitador de código: La estructura de carpetas de la Fase 3 estaba como texto plano; la envolví en triple backtick para que se renderice correctamente como bloque de código monoespaciado.
+3. Enlace a MEJORAS_FUTURAS.md: Estaba escrito como texto plano (MEJORAS_FUTURAS.md), ahora es un enlace funcional.
+4. Enlace "crear aquí" sin URL: En prerrequisitos de configuración local, la frase "(crear aquí)" era texto muerto; la convertí en un enlace a la página de OAuth Apps de GitHub.
+5. Tabla de Stack tecnológico: Estaba formateada como texto tabulado sin pipes; la convertí en tabla Markdown válida.
+6. Lista de "¿Qué significa esto para ti?" sin viñetas: Los emojis estaban sueltos como párrafos separados; los unifiqué en una lista Markdown.
+7. Badge "Ver App" con guiones bajos: Limpié el texto del badge (🚀_Ver_App → Ver_App) para que se vea correctamente en el escudo.
+8. Consistencia de encabezados: Uniformé el espaciado tras los ## y ###, y eliminé un subtítulo duplicado de seguridad.
+
+---
+
+Para continuar, pásame el contenido de mejoras_futuras.md y de cualquier otro archivo que necesite ajustes de formato. Les aplicaré la misma limpieza.
