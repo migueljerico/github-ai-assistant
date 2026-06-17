@@ -146,7 +146,32 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 ---
 
-###  Baja Prioridad
+#### #26 — Mantener y expandir cobertura de tests con Codecov
+**Esfuerzo:** Continuo (2-4h por sprint)
+
+**Estado actual:** El proyecto ya tiene infraestructura de tests con Vitest y Codecov configurado (badge en README). Existen tests unitarios para `gemini.ts` (language detection, JSON extraction, validation).
+
+**Problema:** La cobertura de tests es parcial. Muchos módulos críticos no tienen tests:
+- `AuthContext.tsx` — Flujo de autenticación
+- `AIProviderContext.tsx` — Gestión de proveedores IA
+- `actionExecutor.ts` — Ejecutor de acciones
+- `github.ts` — Wrapper de GitHub API
+- Componentes React — `ConfirmModal`, `ChatInput`, `RepoSelector`
+
+**Solución propuesta:**
+1. Mantener cobertura actual de `gemini.ts` y actualizarla cuando se modifique
+2. Añadir tests para `AuthContext.tsx` (login, logout, OAuth flow)
+3. Añadir tests para `actionExecutor.ts` (cada método HTTP)
+4. Añadir tests para componentes críticos con React Testing Library
+5. Mantener badge de Codecov en README y asegurar que CI falle si cobertura < 70%
+
+**Beneficio:** Mayor confianza en cambios futuros; detección temprana de regresiones; documentación viva del comportamiento esperado.
+
+**Nota:** Esta mejora es transversal — cada vez que se resuelva otra mejora (#13, #16, #17, etc.), se deben añadir tests correspondientes.
+
+---
+
+### 🟢 Baja Prioridad
 
 #### #23 — Migrar prompts largos a archivos externos
 **Esfuerzo:** 2h
@@ -186,14 +211,15 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 | Prioridad | Total | ✅ Resueltos | ⏳ Pendientes |
 |---|---|---|---|
 | 🔴 Alta | 3 | 0 | 3 |
-|  Media | 7 | 0 | 7 |
-| 🟢 Baja | 3 | 0 | 3 |
-| **TOTAL** | **13** | **0** | **13** |
+| 🟡 Media | 8 | 0 | 8 |
+|  Baja | 3 | 0 | 3 |
+| **TOTAL** | **14** | **0** | **14** |
 
 ---
 
 ## 📝 Convenciones
 
 - Al resolver un punto → moverlo a la tabla ✅ con versión y SHA de commit
-- Issues pendientes ordenados por prioridad dentro de cada bloque 🔴 /  / 🟢
+- Issues pendientes ordenados por prioridad dentro de cada bloque 🔴 / 🟡 / 🟢
 - Crear commit: `docs: mark issue #X as resolved in vX.Y`
+- Cada mejora debe incluir tests correspondientes (ver #26)
