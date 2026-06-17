@@ -15,7 +15,7 @@ describe('useChat Hook', () => {
   it('should add a message with unique ID and timestamp', () => {
     const { result } = renderHook(() => useChat());
 
-    let messageId: string;
+    let messageId: string = '';
     act(() => {
       messageId = result.current.addMessage({
         role: 'user',
@@ -33,7 +33,7 @@ describe('useChat Hook', () => {
   it('should update a message by ID', () => {
     const { result } = renderHook(() => useChat());
 
-    let messageId: string;
+    let messageId: string = '';
     act(() => {
       messageId = result.current.addMessage({
         role: 'assistant',
@@ -56,7 +56,7 @@ describe('useChat Hook', () => {
   it('should delete a message by ID', () => {
     const { result } = renderHook(() => useChat());
 
-    let messageId: string;
+    let messageId: string = '';
     act(() => {
       messageId = result.current.addMessage({
         role: 'user',
