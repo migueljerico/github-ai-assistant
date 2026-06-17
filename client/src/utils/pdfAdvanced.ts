@@ -15,7 +15,7 @@
 export async function readPDFAdvanced(file: File): Promise<string> {
   try {
     // Try to use pdfjs-dist if available
-    const pdfjsLib = await import('pdfjs-dist');
+    const pdfjsLib = await import('pdfjs-dist' as string);
     return await extractWithPDFJS(file, pdfjsLib);
   } catch {
     // Fallback to basic extraction
@@ -119,7 +119,7 @@ export async function getPDFMetadata(file: File): Promise<{
   fileSize: number;
 }> {
   try {
-    const pdfjsLib = await import('pdfjs-dist');
+    const pdfjsLib = await import('pdfjs-dist' as string);
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     const metadata = await pdf.getMetadata();
