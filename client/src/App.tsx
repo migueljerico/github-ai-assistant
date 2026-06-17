@@ -194,8 +194,8 @@ function formatResultData(data: unknown): string {
 export default function App() {
   const { token, user, isAuthenticated } = useAuth();
   const { addEntry, updateEntry } = useHistory();
-  // Fix #12: read active AI provider to show correct name in status messages
-  const { provider } = useAIProvider();
+  // 🔥 ZERO-STORAGE: Extraemos provider, apiKey Y model del contexto (no de sessionStorage)
+  const { provider, apiKey, model } = useAIProvider();
   const providerName = provider === 'groq' ? 'Groq Cloud' : 'Google Gemini';
 
   // Chat state
@@ -235,7 +235,8 @@ export default function App() {
 
   // ── Send message to AI (Opción D - con detección de modo) ──────────────────
   const handleSend = useCallback(async () => {
-    if (!inputValue.trim() || !token || !user) return;
+    // 🔥 ZERO-STORAGE: Verificar que tenemos provider, apiKey y model del contexto
+    if (!inputValue.trim() || !token || !user || !provider || !apiKey || !model) return;
 
     const userText = inputValue.trim();
     setInputValue('');
@@ -268,8 +269,8 @@ export default function App() {
     console.log(`[Opción D] Modo: ${finalMode} | Override: ${modeOverride} | Conv: ${isConversation} | Action: ${isAction}`);
 
     try {
-      // 🔥 OPCIÓN D - Pasar mode a callAI
-      const rawResponse = await callAI(newHistory, systemPrompt, finalMode);
+      // 🔥 ZERO-STORAGE + OPCIÓN D: Pasar provider, apiKey, model desde el contexto
+      const rawResponse = await callAI(newHistory, systemPrompt, provider, apiKey, model, finalMode);
 
       // 🔥 OPCIÓN D - MODO CHAT: Forzar respuesta en texto, bloquear JSON
       if (finalMode === 'chat') {
@@ -357,7 +358,7 @@ export default function App() {
     } finally {
       setIsChatLoading(false);
     }
-  }, [inputValue, token, user, conversationHistory, multiRepoEnabled, selectedRepos, modeOverride, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [inputValue, token, user, provider, apiKey, model, conversationHistory, multiRepoEnabled, selectedRepos, modeOverride, addMessage, updateMessage, addEntry, updateEntry]);
 
   // ── Confirm action ─────────────────────────────────────────────────────────
   const handleConfirm = useCallback(async () => {
@@ -401,7 +402,8 @@ export default function App() {
 
   // ── Document repo ──────────────────────────────────────────────────────────
   const handleDocumentRepo = useCallback(async (repoInput: string) => {
-    if (!token || !user) return;
+    // 🔥 ZERO-STORAGE: Verificar que tenemos provider, apiKey y model del contexto
+    if (!token || !user || !provider || !apiKey || !model) return;
 
     const [owner, repoName] = repoInput.includes('/')
       ? repoInput.split('/', 2)
@@ -424,7 +426,12 @@ export default function App() {
         isLoading: true,
       });
 
-      const { readme, manualTecnico } = await generateRepoDocs(`${owner}/${repoName}`, files);
+      // 🔥 ZERO-STORAGE: Pasar provider, apiKey, model desde el contexto
+      const { readme, manualTecnico } = await generateRepoDocs(
+        `${owner}/${repoName}`,
+        files,
+        { provider, apiKey, model }
+      );
 
       updateMessage(loadingId, {
         content: `✅ Documentación generada para **${owner}/${repoName}**. Revisa el contenido antes de hacer commit.`,
@@ -447,7 +454,7 @@ export default function App() {
     } finally {
       setIsChatLoading(false);
     }
-  }, [token, user, providerName, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [token, user, provider, apiKey, model, providerName, addMessage, updateMessage, addEntry, updateEntry]);
 
   // ── Commit docs ────────────────────────────────────────────────────────────
   const handleCommitDocs = useCallback(async () => {
