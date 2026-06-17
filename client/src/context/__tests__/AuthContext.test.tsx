@@ -3,7 +3,7 @@ import { AuthProvider, useAuth } from '../AuthContext';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Mock de fetch para simular la API de GitHub
-global.fetch = vi.fn();
+(globalThis as any).fetch = vi.fn();
 
 describe('AuthContext - Zero-Storage Architecture', () => {
   beforeEach(() => {
@@ -41,7 +41,7 @@ describe('AuthContext - Zero-Storage Architecture', () => {
 
   it('debería autenticar con un token válido', async () => {
     // Mock de la respuesta de GitHub API
-    (global.fetch as any).mockResolvedValueOnce({
+    ((globalThis as any).fetch as any).mockResolvedValueOnce({
       ok: true,
       json: async () => ({
         login: 'testuser',
@@ -66,7 +66,7 @@ describe('AuthContext - Zero-Storage Architecture', () => {
 
   it('debería hacer logout y limpiar el estado', async () => {
     // Primero autenticamos
-    (global.fetch as any).mockResolvedValueOnce({
+    ((globalThis as any).fetch as any).mockResolvedValueOnce({
       ok: true,
       json: async () => ({ login: 'testuser', id: 123, avatar_url: '', name: '' }),
     });
