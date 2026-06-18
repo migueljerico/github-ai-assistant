@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { ChatMessage, GeminiAction, GitHubUser } from '../index';
+import type { ChatMessage, GeminiAction, GitHubUser } from '../types';
 
 describe('Types - Validación de tipos', () => {
   it('debería permitir crear un ChatMessage válido', () => {
