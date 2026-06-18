@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { parseGeminiAction, detectPrimaryLanguage } from '../gemini';
+import { parseGeminiAction, detectPrimaryLanguage } from './gemini';
 
 describe('gemini.ts - Utilidades', () => {
   describe('parseGeminiAction', () => {
