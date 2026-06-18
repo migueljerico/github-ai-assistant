@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import ChatArea from '../ChatArea';
 import type { ChatMessage } from '../../../types';
 
@@ -11,6 +11,11 @@ vi.mock('../ChatMessage', () => ({
     </div>
   ),
 }));
+
+// Mock de scrollIntoView
+beforeEach(() => {
+  Element.prototype.scrollIntoView = vi.fn();
+});
 
 describe('ChatArea', () => {
   it('debería mostrar mensaje de bienvenida cuando no hay mensajes', () => {
