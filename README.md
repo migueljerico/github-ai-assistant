@@ -257,9 +257,20 @@ npm run test          # Tests en modo watch
 npm run test:run      # Tests una sola vez
 npm run test:coverage # Tests con reporte de cobertura
 
+```
+
+Cobertura actual
+Cobertura total: 30%
+Módulos testeados: AuthContext, AIProviderContext, actionExecutor, github, gemini, ChatArea, ChatInput, ConfirmModal, Header
+Badge: [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
+
+Estrategia de testing
+Tests unitarios para servicios y utilidades
+Tests de integración para contextos de React
+Tests de componentes con React Testing Library
+Mock de APIs externas (GitHub API, proveedores IA)
+CI/CD ejecuta tests automáticamente en cada push
 ---
-
-
 ## 🔒 Modelo de seguridad
 
 ### 🛡️ Arquitectura de Seguridad
