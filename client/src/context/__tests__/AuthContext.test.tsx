@@ -1,13 +1,23 @@
 import { renderHook, act } from '@testing-library/react';
 import { AuthProvider, useAuth } from '../AuthContext';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 
 // Mock de fetch para simular la API de GitHub
 (globalThis as any).fetch = vi.fn();
 
 describe('AuthContext - Zero-Storage Architecture', () => {
+  const originalLocation = window.location;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    
+    // Mock de window.location para el logout
+    delete (window as any).location;
+    (window as any).location = {
+      href: '',
+      origin: 'http://localhost:5173',
+    };
+    
     // Mock de sessionStorage para verificar que NO se usa
     Object.defineProperty(window, 'sessionStorage', {
       value: {
@@ -15,7 +25,12 @@ describe('AuthContext - Zero-Storage Architecture', () => {
         setItem: vi.fn(),
         removeItem: vi.fn(),
       },
+      writable: true,
     });
+  });
+
+  afterEach(() => {
+    window.location = originalLocation;
   });
 
   it('debería iniciar desautenticado por defecto', () => {
@@ -64,7 +79,7 @@ describe('AuthContext - Zero-Storage Architecture', () => {
     expect(result.current.user?.login).toBe('testuser');
   });
 
-  it('debería hacer logout y limpiar el estado', async () => {
+  it('debería hacer logout, limpiar estado y redirigir a GitHub logout', async () => {
     // Primero autenticamos
     ((globalThis as any).fetch as any).mockResolvedValueOnce({
       ok: true,
@@ -86,8 +101,68 @@ describe('AuthContext - Zero-Storage Architecture', () => {
       result.current.logout();
     });
 
+    // Verificar que el estado se limpió
     expect(result.current.isAuthenticated).toBe(false);
     expect(result.current.token).toBeNull();
     expect(result.current.user).toBeNull();
+    
+    // Verificar que redirigió a GitHub logout
+    expect(window.location.href).toContain('https://github.com/logout');
+    expect(window.location.href).toContain('return_to=');
+  });
+
+  it('debería iniciar OAuth redirigiendo a /auth/github', () => {
+    const { result } = renderHook(() => useAuth(), {
+      wrapper: AuthProvider,
+    });
+
+    act(() => {
+      result.current.initiateOAuth();
+    });
+
+    expect(window.location.href).toBe('/auth/github');
+  });
+
+  it('debería manejar token de OAuth correctamente', async () => {
+    ((globalThis as any).fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        login: 'oauthuser',
+        id: 456,
+        avatar_url: 'https://example.com/oauth.png',
+        name: 'OAuth User',
+      }),
+    });
+
+    const { result } = renderHook(() => useAuth(), {
+      wrapper: AuthProvider,
+    });
+
+    await act(async () => {
+      await result.current.setTokenFromOAuth('oauth-token-xyz');
+    });
+
+    expect(result.current.isAuthenticated).toBe(true);
+    expect(result.current.token).toBe('oauth-token-xyz');
+    expect(result.current.user?.login).toBe('oauthuser');
+  });
+
+  it('debería manejar error de token inválido', async () => {
+    ((globalThis as any).fetch as any).mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+    });
+
+    const { result } = renderHook(() => useAuth(), {
+      wrapper: AuthProvider,
+    });
+
+    await act(async () => {
+      await result.current.loginWithPat('invalid-token');
+    });
+
+    expect(result.current.isAuthenticated).toBe(false);
+    expect(result.current.token).toBeNull();
+    expect(result.current.error).toBeTruthy();
   });
 });
