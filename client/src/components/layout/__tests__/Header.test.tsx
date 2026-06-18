@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import Header from '../Header';
 
 // Mock de contexts y componentes hijos
@@ -71,7 +71,7 @@ describe('Header', () => {
     vi.mocked(useAuth).mockReturnValue({
       isAuthenticated: true,
       token: 'test-token',
-      user: { login: 'testuser', id: 123, avatar_url: '', name: '' },
+      user: { login: 'testuser', avatar_url: 'https://example.com/avatar.png' } as any,
       isLoading: false,
       error: null,
       connectedAt: Date.now(),
@@ -90,7 +90,7 @@ describe('Header', () => {
     vi.mocked(useAuth).mockReturnValue({
       isAuthenticated: true,
       token: 'test-token',
-      user: { login: 'testuser', id: 123, avatar_url: '', name: '' },
+      user: { login: 'testuser', avatar_url: 'https://example.com/avatar.png' } as any,
       isLoading: false,
       error: null,
       connectedAt: Date.now(),
