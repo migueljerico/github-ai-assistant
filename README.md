@@ -264,9 +264,9 @@ npm run test:coverage # Tests con reporte de cobertura
 
 ### Cobertura actual
 
-- **Cobertura total:** 30%
 - **Módulos testeados:** AuthContext, AIProviderContext, actionExecutor, github, gemini, ChatArea, ChatInput, ConfirmModal, Header
-- **Badge:** [![codecov]
+- **Badge con cobertura actual:** [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
+  
 ### Estrategia de testing
 
 - Tests unitarios para servicios y utilidades
