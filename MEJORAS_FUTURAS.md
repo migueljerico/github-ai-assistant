@@ -146,11 +146,6 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 ---
 
-#### #2
-## 2. MEJORAS_FUTURAS.md (actualizar punto #26)
-
-Reemplaza el punto #26 con esto:
-
 #### #26 — Mantener y expandir cobertura de tests con Codecov
 **Esfuerzo:** Continuo (2-4h por sprint)
 
