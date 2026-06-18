@@ -258,6 +258,8 @@ npm run test:run      # Tests una sola vez
 npm run test:coverage # Tests con reporte de cobertura
 
 ---
+
+
 ## 🔒 Modelo de seguridad
 
 ### 🛡️ Arquitectura de Seguridad
