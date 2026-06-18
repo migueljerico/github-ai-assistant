@@ -53,7 +53,9 @@ describe('ConfirmModal', () => {
     
     expect(screen.getByText(/actualizar archivo/i)).toBeInTheDocument();
     expect(screen.getByText(/PUT/i)).toBeInTheDocument();
-    expect(screen.getByText(/README.md/i)).toBeInTheDocument();
+    // Usar getAllByText porque hay múltiples elementos con README.md
+    const readmeElements = screen.getAllByText(/README\.md/i);
+    expect(readmeElements.length).toBeGreaterThan(0);
   });
 
   it('debería llamar onConfirm al hacer clic en confirmar', () => {
@@ -123,8 +125,9 @@ describe('ConfirmModal', () => {
       />
     );
     
-    expect(screen.getByText(/📄 Contenido del nuevo archivo:/i)).toBeInTheDocument();
-    expect(screen.getByText(/Contenido del nuevo archivo/i)).toBeInTheDocument();
+    // Usar getAllByText porque hay múltiples elementos
+    const contentElements = screen.getAllByText(/Contenido del nuevo archivo/i);
+    expect(contentElements.length).toBeGreaterThan(0);
   });
 
   it('debería mostrar tabs de repositorios cuando hay múltiples repos', () => {
