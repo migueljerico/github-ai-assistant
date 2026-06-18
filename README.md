@@ -9,7 +9,7 @@
 ![Gemini](https://img.shields.io/badge/Google_Gemini-4285F4?style=for-the-badge&logo=google&logoColor=white)
 ![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
 ![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
-![Versión](https://img.shields.io/badge/Versión-v2.1.0-blue?style=for-the-badge)
+![Versión](https://img.shields.io/badge/Versión-v2.2.0-blue?style=for-the-badge)
 ![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)
 [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
 
@@ -245,7 +245,19 @@ Usuario (lenguaje natural)
 | Claude (Anthropic) | Arquitectura, revisión y documentación | — |
 
 ---
+## 🧪 Testing y Calidad
 
+El proyecto utiliza **Vitest** para testing unitario e integración, con **Codecov** para monitorización de cobertura.
+
+### Ejecutar tests
+
+```bash
+cd client
+npm run test          # Tests en modo watch
+npm run test:run      # Tests una sola vez
+npm run test:coverage # Tests con reporte de cobertura
+
+---
 ## 🔒 Modelo de seguridad
 
 ### 🛡️ Arquitectura de Seguridad
