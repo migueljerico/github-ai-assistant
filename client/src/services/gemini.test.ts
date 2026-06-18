@@ -73,7 +73,7 @@ describe('gemini.ts - Utilidades', () => {
       expect(result).toBe('Python');
     });
 
-    it('debería devolver múltiple si hay mezcla', () => {
+    it('debería devolver el primer lenguaje cuando hay empate', () => {
       const files = [
         { path: 'app.ts' },
         { path: 'script.py' },
@@ -82,12 +82,27 @@ describe('gemini.ts - Utilidades', () => {
       ];
 
       const result = detectPrimaryLanguage(files);
-      expect(result).toBe('múltiple');
+      // Cuando hay empate (1 archivo cada uno), devuelve el primero encontrado
+      expect(result).toBe('TypeScript');
     });
 
     it('debería manejar array vacío', () => {
       const result = detectPrimaryLanguage([]);
       expect(result).toBe('múltiple');
+    });
+
+    it('debería detectar lenguaje dominante con mayoría clara', () => {
+      const files = [
+        { path: 'app.py' },
+        { path: 'utils.py' },
+        { path: 'main.py' },
+        { path: 'config.py' },
+        { path: 'README.md' },
+        { path: 'style.css' },
+      ];
+
+      const result = detectPrimaryLanguage(files);
+      expect(result).toBe('Python');
     });
   });
 });
