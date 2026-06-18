@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v2.1.0 · Junio 2026
+**Actualizado a:** v2.2.0 · Junio 2026
 
 ---
 
@@ -146,24 +146,37 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 ---
 
+#### #2
+## 2. MEJORAS_FUTURAS.md (actualizar punto #26)
+
+Reemplaza el punto #26 con esto:
+
 #### #26 — Mantener y expandir cobertura de tests con Codecov
 **Esfuerzo:** Continuo (2-4h por sprint)
 
-**Estado actual:** El proyecto ya tiene infraestructura de tests con Vitest y Codecov configurado (badge en README). Existen tests unitarios para `gemini.ts` (language detection, JSON extraction, validation).
+**Estado actual (v2.2.0):** ✅ Infraestructura completa implementada
 
-**Problema:** La cobertura de tests es parcial. Muchos módulos críticos no tienen tests:
-- `AuthContext.tsx` — Flujo de autenticación
-- `AIProviderContext.tsx` — Gestión de proveedores IA
-- `actionExecutor.ts` — Ejecutor de acciones
-- `github.ts` — Wrapper de GitHub API
-- Componentes React — `ConfirmModal`, `ChatInput`, `RepoSelector`
+**Progreso realizado:**
+- ✅ Configuración de Vitest + Codecov
+- ✅ CI/CD con GitHub Actions ejecutando tests automáticamente
+- ✅ Badge de Codecov en README
+- ✅ Cobertura actual: **30%**
+- ✅ Tests implementados para:
+  - `AuthContext.tsx` (login, logout, OAuth flow, Zero-Storage)
+  - `AIProviderContext.tsx` (conexión/desconexión de proveedores)
+  - `actionExecutor.ts` (ejecutor de acciones GitHub)
+  - `github.ts` (wrapper de GitHub API, decodeBase64, encodeBase64)
+  - `gemini.ts` (parseGeminiAction, detectPrimaryLanguage)
+  - Componentes React: `ChatArea`, `ChatInput`, `ConfirmModal`, `Header`
 
-**Solución propuesta:**
-1. Mantener cobertura actual de `gemini.ts` y actualizarla cuando se modifique
-2. Añadir tests para `AuthContext.tsx` (login, logout, OAuth flow)
-3. Añadir tests para `actionExecutor.ts` (cada método HTTP)
-4. Añadir tests para componentes críticos con React Testing Library
-5. Mantener badge de Codecov en README y asegurar que CI falle si cobertura < 70%
+**Pendiente:**
+- Aumentar cobertura del 30% al 70% objetivo
+- Añadir tests para módulos no cubiertos:
+  - `HistoryContext.tsx`
+  - `TemplatePanel` y `RepoSelector`
+  - `DiffViewer`
+  - Edge cases y errores en servicios existentes
+- Configurar umbral mínimo de cobertura en CI (fail si < 70%)
 
 **Beneficio:** Mayor confianza en cambios futuros; detección temprana de regresiones; documentación viva del comportamiento esperado.
 
