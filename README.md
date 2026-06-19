@@ -9,7 +9,7 @@
 ![Gemini](https://img.shields.io/badge/Google_Gemini-4285F4?style=for-the-badge&logo=google&logoColor=white)
 ![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
 ![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
-![Versión](https://img.shields.io/badge/Versión-v2.2.0-blue?style=for-the-badge)
+![Versión](https://img.shields.io/badge/Versión-v2.3.0-blue?style=for-the-badge)
 ![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)
 [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
 
@@ -30,7 +30,7 @@
 | ⏱️ Tiempo de desarrollo | 30 días (desde cero) |
 | 🤖 Modelos soportados | Groq (Llama 3.3) + Gemini 2.5 Flash |
 | ⚡ Latencia media | ~400ms (Groq) / ~1.2s (Gemini) |
-| 🛡️ Seguridad | Token GitHub en memoria React; claves IA en sessionStorage |
+| 🛡️ Seguridad | Zero-Storage completo: token GitHub + claves IA en memoria React |
 | 🌍 Deploy | Google Cloud Run (HTTPS, auto-scaling) |
 | 📦 Stack | React + TypeScript + Express + Vite |
 
@@ -42,7 +42,7 @@ A diferencia de un chatbot convencional, este asistente:
 
 - ✅ **Lee tu código real** de cualquier repo de GitHub (público o privado)
 - ✅ **Responde con contexto** de tu proyecto, no respuestas genéricas
-- ✅ **Protege tu token de GitHub** con arquitectura de memoria React (anti-XSS)
+- ✅ **Protege tus credenciales** con arquitectura Zero-Storage (anti-XSS)
 - ✅ **Funciona con múltiples modelos** (Groq para velocidad, Gemini para calidad)
 - ✅ **Documenta repositorios completos** generando README + MANUAL_TECNICO automáticamente
 
@@ -59,7 +59,7 @@ A diferencia de un chatbot convencional, este asistente:
 [![Ver App en Producción](https://img.shields.io/badge/Ver_App-Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)](https://github-ai-assistant-748914382449.us-central1.run.app/)
 
 > Conecta tu cuenta de GitHub (OAuth) y tu proveedor de IA preferido para empezar.
-> Tu token de GitHub **nunca sale de la memoria del navegador** — no se almacena en ningún servidor.
+> Tu token de GitHub y tus claves de IA **nunca salen de la memoria del navegador** — no se almacenan en ningún servidor ni en storage del navegador.
 
 ---
 
@@ -83,6 +83,7 @@ El proyecto evolucionó de un prototipo en **Google AI Studio** a una aplicació
 | 🤖 **Documenta tu repositorio entero** | El agente lee hasta 80 archivos y genera README + MANUAL_TECNICO de forma automática |
 | 🔑 **Doble proveedor de IA** | Soporte para **Groq Cloud** y **Google Gemini 2.5 Flash** — usas tu propia clave |
 | 🔒 **Autenticación OAuth** | Flujo GitHub OAuth completo con fallback a PAT manual |
+| 🛡️ **Rate limiting** | Protección contra abuso en el proxy de Gemini (40 req/min por IP) |
 
 ---
 
@@ -221,8 +222,9 @@ Usuario (lenguaje natural)
 │  Express.js          │  │  APIs externas                │
 │  ├── OAuth           │  │  ├── GitHub REST API v3        │
 │  ├── /api/gemini     │  │  ├── Groq Cloud (directo)      │
-│  ├── /health         │  │  └── Google Gemini API         │
-│  └── static files    │  │    (via proxy en el servidor) │
+│  │   (rate limited)  │  │  └── Google Gemini API         │
+│  ├── /health         │  │    (via proxy en el servidor) │
+│  └── static files    │  │                               │
 └──────────────────────┘  └───────────────────────────────┘
 ```
 
@@ -245,9 +247,6 @@ Usuario (lenguaje natural)
 | Claude (Anthropic) | Arquitectura, revisión y documentación | — |
 
 ---
-## 🧪 Testing y Calidad
-
-El proyecto utiliza **Vitest** para testing unitario e integración, con **Codecov** para monitorización de cobertura.
 
 ## 🧪 Testing y Calidad
 
@@ -264,9 +263,10 @@ npm run test:coverage # Tests con reporte de cobertura
 
 ### Cobertura actual
 
-- **Módulos testeados:** AuthContext, AIProviderContext, actionExecutor, github, gemini, ChatArea, ChatInput, ConfirmModal, Header
+- **Cobertura total:** 32%
+- **Módulos testeados:** AuthContext, AIProviderContext, actionExecutor, github, gemini, formatResult, ChatArea, ChatInput, ConfirmModal, Header
 - **Badge con cobertura actual:** [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
-  
+
 ### Estrategia de testing
 
 - Tests unitarios para servicios y utilidades
@@ -274,16 +274,22 @@ npm run test:coverage # Tests con reporte de cobertura
 - Tests de componentes con React Testing Library
 - Mock de APIs externas (GitHub API, proveedores IA)
 - CI/CD ejecuta tests automáticamente en cada push
+
 ---
+
 ## 🔒 Modelo de seguridad
 
-### 🛡️ Arquitectura de Seguridad
+### 🛡️ Arquitectura Zero-Storage
 
-Esta aplicación implementa medidas de seguridad fundamentales para proteger las credenciales del usuario.
+Esta aplicación implementa una arquitectura **Zero-Storage** completa: ninguna credencial del usuario se almacena en el navegador (ni sessionStorage, ni localStorage, ni cookies, ni IndexedDB).
 
 **Token de GitHub — Memoria React:**
 
-El token de acceso de GitHub (ya sea OAuth o PAT) vive exclusivamente en la memoria de React (estado global del contexto). Jamás se escribe en ninguna API de almacenamiento del navegador: ni sessionStorage, ni localStorage, ni cookies, ni IndexedDB.
+El token de acceso de GitHub (ya sea OAuth o PAT) vive exclusivamente en la memoria de React (estado global del contexto). Jamás se escribe en ninguna API de almacenamiento del navegador.
+
+**Claves de IA — Memoria React:**
+
+Las claves de API de IA (Groq/Gemini) también viven exclusivamente en la memoria de React, dentro del `AIProviderContext`. No se almacenan en ningún sitio.
 
 **¿Por qué es esto importante?**
 
@@ -292,29 +298,31 @@ La aplicación requiere el scope `repo` de GitHub, que otorga acceso de lectura 
 - ❌ **Con almacenamiento en navegador:** Leer el token desde `sessionStorage`/`localStorage` y robar todas tus credenciales en segundos.
 - ✅ **Con memoria React:** El token solo existe en la memoria volátil de React. Un script malicioso no puede acceder a variables de estado de React directamente, haciendo el robo de credenciales extremadamente difícil.
 
-**Claves de IA — sessionStorage:**
-
-Las claves de API de IA (Groq/Gemini) se almacenan en `sessionStorage` del navegador por conveniencia, para que el usuario no tenga que reintroducirlas al recargar la página. Una implementación Zero-Storage completa (solo memoria React) está planificada para futuras versiones.
-
 **¿Qué significa esto para ti como usuario?**
 
-- 🔄 Al recargar la página (F5), perderás tu sesión de GitHub. Tendrás que volver a autenticarte con GitHub.
-- 🔐 Las claves de IA se mantienen al recargar la página (sessionStorage), pero desaparecen al cerrar la pestaña.
-- 🛡️ Tu token de GitHub está protegido contra el vector de ataque más común en aplicaciones web (XSS + robo de tokens desde storage).
+- 🔄 Al recargar la página (F5), perderás tu sesión de GitHub y tus claves de IA. Tendrás que volver a conectarte.
+- 🛡️ Tanto tu token de GitHub como tus claves de IA están protegidos contra el vector de ataque más común en aplicaciones web (XSS + robo de tokens desde storage).
+- 🔐 El logout cierra tu sesión tanto en la app como en GitHub.com.
 
 > **Esto NO es un bug, es una característica de seguridad intencionada.**
 >
-> Priorizamos la seguridad del token de GitHub (el activo más crítico) por encima de la comodidad de no tener que volver a iniciar sesión. Dado el nivel de acceso que requiere la aplicación (scope `repo`), consideramos que este trade-off es necesario y responsable.
+> Priorizamos la seguridad de tus credenciales (el activo más crítico) por encima de la comodidad de no tener que volver a iniciar sesión. Dado el nivel de acceso que requiere la aplicación (scope `repo`), consideramos que este trade-off es necesario y responsable.
 
 ### Modelo de almacenamiento de credenciales
 
 | Elemento | Dónde vive | Cuándo desaparece |
 |---|---|---|
 | Token OAuth de GitHub | Solo en memoria de React (estado) | Al recargar la página o cerrar la pestaña |
-| Clave de IA (Groq/Gemini) | sessionStorage del navegador | Al cerrar la pestaña del navegador |
+| Clave de IA (Groq/Gemini) | Solo en memoria de React (estado) | Al recargar la página o cerrar la pestaña |
 | GITHUB_CLIENT_SECRET | Variables de entorno del servidor | Solo en memoria del proceso |
 | Datos del usuario | Ningún servidor externo | No se almacenan |
 | Clave Gemini en tránsito | Cuerpo HTTPS hacia /api/gemini | No se persiste en el servidor |
+
+### Protección contra abuso
+
+- **Rate limiting en proxy Gemini:** 40 peticiones por minuto por IP, usando `express-rate-limit`. Previene que un atacante agote la cuota de la API key.
+- **Verificación de estado OAuth:** Se genera un `state` aleatorio en cada flujo OAuth para prevenir ataques CSRF.
+- **IDs únicos seguros:** Los mensajes del chat usan `crypto.randomUUID()` (CSPRNG) en lugar de `Math.random()`.
 
 ---
 
@@ -338,8 +346,9 @@ Este proyecto no es solo código; es el resultado de un profesional de Ciencias 
 
 Al no tener la "mochila" de la formación técnica tradicional, mi enfoque no fue solo "hacer que funcione", sino construir un producto robusto, seguro y mantenible aplicando las mejores prácticas de la industria desde el primer día:
 
-- 🛡️ **Seguridad por diseño:** Implementación de arquitectura de memoria React para proteger el token de GitHub, priorizando la seguridad del usuario sobre la comodidad.
+- 🛡️ **Seguridad por diseño:** Implementación de arquitectura Zero-Storage para proteger todas las credenciales del usuario, priorizando la seguridad sobre la comodidad.
 - 📚 **Documentación profesional:** Manuales técnicos y roadmap de mejoras siguiendo estándares de la industria.
+- 🧪 **Testing continuo:** Infraestructura de tests con Codecov y CI/CD automatizado.
 
 ### La lección principal
 
