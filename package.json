@@ -1,6 +1,6 @@
 {
   "name": "github-ai-assistant",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "Asistente de IA para Publicar Repositorios",
   "type": "module",
   "main": "server/index.js",
