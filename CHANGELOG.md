@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] — 2026-06-19
+
+### Added
+- **Rate limiting en proxy Gemini (#14)** — 40 peticiones/minuto por IP con `express-rate-limit`
+- **Utilidad `formatResultData` extraída (#17)** — Movida a `client/src/utils/formatResult.ts` con tests unitarios
+- **`crypto.randomUUID()` (#18)** — Reemplazado `Math.random()` para generación de IDs seguros
+
+### Changed
+- `App.tsx` — Importa `formatResultData` desde utils (reducción de ~60 líneas)
+- `server/index.js` — Rate limiter aplicado al endpoint `/api/gemini`
+
+### Security
+- IDs de mensajes ahora usan CSPRNG (UUID v4) en lugar de `Math.random()`
+- Proxy Gemini protegido contra abuso con rate limiting
+
+### Testing
+- Tests añadidos para `formatResultData` (7 casos)
+- Cobertura Codecov: 30% → 32%
+
 ## [2.2.0] — 2026-06-18
 
 ### Added
