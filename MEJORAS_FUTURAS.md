@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v2.2.0 · Junio 2026
+**Actualizado a:** v2.3.0 · Junio 2026
 
 ---
 
@@ -13,6 +13,12 @@ Estado del código, mejoras pendientes y roadmap del proyecto.
 | 1 | Verificación OAuth state (CSRF) | server/index.js | v2.0.1 |
 | 2 | SESSION_SECRET obligatorio en producción | server/index.js | v2.0.1 |
 | 12 | Nombre del proveedor IA dinámico en mensajes | App.tsx | v2.1.0 |
+| 13 | Zero-Storage real para claves de IA | AIProviderContext.tsx, App.tsx, gemini.ts | v2.2.0 |
+| 14 | Rate limiting en proxy Gemini | server/index.js | v2.3.0 |
+| 17 | Extraer formatResultData a utilidad pura | client/src/utils/formatResult.ts | v2.3.0 |
+| 18 | crypto.randomUUID() en lugar de Math.random() | client/src/App.tsx | v2.3.0 |
+| 19 | Soporte método HTTP PATCH en executeAction() | client/src/services/actionExecutor.ts | v2.1.0 |
+| 21 | Unificar cliente fetch — ghFetch() en actionExecutor.ts | client/src/services/actionExecutor.ts | v2.1.0 |
 
 ---
 
@@ -21,30 +27,6 @@ Estado del código, mejoras pendientes y roadmap del proyecto.
 Los issues están numerados y ordenados por prioridad descendente dentro de cada bloque. Al resolver un punto, moverlo a la tabla ✅ con versión y SHA de commit.
 
 ### 🔴 Alta Prioridad
-
-#### #13 — Zero-Storage real para claves de IA
-**Esfuerzo:** 2–3h
-
-**Problema actual:** Las claves de IA (Groq/Gemini) se almacenan en `sessionStorage` del navegador. Esto las expone a ataques XSS que puedan leer `sessionStorage.getItem('ai_api_key')`.
-
-**Solución propuesta:** Mover las claves de IA al estado de React (memoria volátil), igual que el token de GitHub. Las claves vivirían solo en `AIProviderContext` y se perderían al recargar la página.
-
-**Trade-off:** El usuario tendría que reintroducir su clave de IA al recargar la página (igual que ya ocurre con el token de GitHub).
-
-**Beneficio:** Seguridad consistente — todas las credenciales sensibles (token GitHub + claves IA) protegidas contra XSS.
-
----
-
-#### #14 — Rate limiting en proxy Gemini
-**Esfuerzo:** 1h
-
-**Problema actual:** El endpoint `/api/gemini` no tiene protección contra abuso. Un usuario malintencionado podría hacer miles de peticiones y agotar la cuota de la API key.
-
-**Solución propuesta:** Añadir `express-rate-limit` con límite de 40 peticiones por minuto por IP.
-
-**Beneficio:** Prevención de abuso y protección de cuotas de API.
-
----
 
 #### #15 — Soporte multi-proveedor con fallback (Together AI / OpenRouter / Ollama)
 **Esfuerzo:** 3–4h
@@ -78,39 +60,6 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 ---
 
-#### #17 — Extraer formatResultData a utilidad pura
-**Esfuerzo:** 1h
-
-**Problema actual:** `formatResultData()` y la interfaz `GitHubRepoItem` están embebidas en `App.tsx`, dificultando testing unitario.
-
-**Solución propuesta:** Mover a `client/src/utils/formatResult.ts` como utilidad pura sin dependencias React.
-
-**Beneficio:** Facilita testing en aislamiento; reutilización en otros módulos.
-
----
-
-#### #18 — crypto.randomUUID() en lugar de Math.random()
-**Esfuerzo:** 30min
-
-**Problema actual:** La función `uid()` usa `Math.random()` para generar IDs de mensajes, lo que puede producir colisiones en sesiones largas.
-
-**Solución propuesta:** Reemplazar por `crypto.randomUUID()` (UUID v4 nativo del navegador, CSPRNG).
-
-**Beneficio:** IDs garantizadamente únicos; mejor práctica de seguridad.
-
----
-
-#### #19 — Soporte método HTTP PATCH en executeAction()
-**Esfuerzo:** 1h
-
-**Problema actual:** `actionExecutor.ts` no soporta el método `PATCH`, limitando las operaciones de actualización parcial de repositorios.
-
-**Solución propuesta:** Añadir `case 'PATCH'` en el switch de métodos HTTP con la misma estructura de respuesta que POST y PUT.
-
-**Beneficio:** Habilita actualizaciones parciales de repositorios (descripción, visibilidad, permisos).
-
----
-
 #### #20 — Truncamiento semántico por líneas en generateRepoDocs()
 **Esfuerzo:** 2h
 
@@ -122,17 +71,6 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 ---
 
-#### #21 — Unificar cliente fetch — ghFetch() en actionExecutor.ts
-**Esfuerzo:** 2h
-
-**Problema actual:** `actionExecutor.ts` tiene 3 bloques `fetch()` directos con headers de `Authorization` duplicados (GET genérico, POST genérico, PATCH).
-
-**Solución propuesta:** Exportar `ghFetch()` de `github.ts` y sustituir los 3 bloques por llamadas a `ghFetch()`.
-
-**Beneficio:** Un único punto de verdad para gestión de headers; facilita futuros cambios (retry logic, rate-limit handling).
-
----
-
 #### #22 — SessionWarningBanner — Advertencia de caducidad de sesión
 **Esfuerzo:** 3h
 
@@ -140,7 +78,7 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 **Solución propuesta:** Nuevo componente `SessionWarningBanner.tsx` que muestra banner amber si las credenciales llevan >8h activas. Revisión cada 60s.
 
-**Dependencia:** Requiere Zero-Storage real (#13) para funcionar correctamente.
+**Dependencia:** Requiere Zero-Storage real (#13) para funcionar correctamente. ✅ Ya implementado.
 
 **Beneficio:** Mejor UX; seguridad proactiva.
 
@@ -149,23 +87,24 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 #### #26 — Mantener y expandir cobertura de tests con Codecov
 **Esfuerzo:** Continuo (2-4h por sprint)
 
-**Estado actual (v2.2.0):** ✅ Infraestructura completa implementada
+**Estado actual (v2.3.0):** ✅ Infraestructura completa implementada
 
 **Progreso realizado:**
 - ✅ Configuración de Vitest + Codecov
 - ✅ CI/CD con GitHub Actions ejecutando tests automáticamente
 - ✅ Badge de Codecov en README
-- ✅ Cobertura actual: **30%**
+- ✅ Cobertura actual: **32%**
 - ✅ Tests implementados para:
   - `AuthContext.tsx` (login, logout, OAuth flow, Zero-Storage)
   - `AIProviderContext.tsx` (conexión/desconexión de proveedores)
   - `actionExecutor.ts` (ejecutor de acciones GitHub)
   - `github.ts` (wrapper de GitHub API, decodeBase64, encodeBase64)
   - `gemini.ts` (parseGeminiAction, detectPrimaryLanguage)
+  - `formatResult.ts` (formateo de resultados de API)
   - Componentes React: `ChatArea`, `ChatInput`, `ConfirmModal`, `Header`
 
 **Pendiente:**
-- Aumentar cobertura del 30% al 70% objetivo
+- Aumentar cobertura del 32% al 70% objetivo
 - Añadir tests para módulos no cubiertos:
   - `HistoryContext.tsx`
   - `TemplatePanel` y `RepoSelector`
@@ -175,7 +114,7 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 **Beneficio:** Mayor confianza en cambios futuros; detección temprana de regresiones; documentación viva del comportamiento esperado.
 
-**Nota:** Esta mejora es transversal — cada vez que se resuelva otra mejora (#13, #16, #17, etc.), se deben añadir tests correspondientes.
+**Nota:** Esta mejora es transversal — cada vez que se resuelva otra mejora (#16, #20, #22, etc.), se deben añadir tests correspondientes.
 
 ---
 
@@ -218,10 +157,10 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 | Prioridad | Total | ✅ Resueltos | ⏳ Pendientes |
 |---|---|---|---|
-| 🔴 Alta | 3 | 0 | 3 |
-| 🟡 Media | 8 | 0 | 8 |
-|  Baja | 3 | 0 | 3 |
-| **TOTAL** | **14** | **0** | **14** |
+| 🔴 Alta | 3 | 2 (#13, #14) | 1 (#15) |
+| 🟡 Media | 8 | 4 (#17, #18, #19, #21) | 4 (#16, #20, #22, #26) |
+| 🟢 Baja | 3 | 0 | 3 (#23, #24, #25) |
+| **TOTAL** | **14** | **6** | **8** |
 
 ---
 
