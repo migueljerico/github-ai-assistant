@@ -14,7 +14,7 @@ import ConfirmModal from './components/confirm/ConfirmModal';
 import type { ChatMessage, GeminiAction, GitHubRepo, PendingAction, RepoAnalysis } from './types';
 
 // Generate a simple unique ID
-const uid = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+const uid = () => crypto.randomUUID();
 
 // ─ Detect conversation requests (opiniones, análisis, consejos) ─────────────
 function isConversationRequest(message: string): boolean {
