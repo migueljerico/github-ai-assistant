@@ -1,6 +1,6 @@
 # 📖 Manual Técnico — GitHub AI Assistant
 
-**Versión:** v2.1.0 · Junio 2026
+**Versión:** v2.3.0 · Junio 2026
 
 ---
 
@@ -11,7 +11,7 @@ La aplicación sigue una arquitectura de **backend thin** deliberada: el servido
 ```
 ┌────────────────────────────────────────────────────────────────┐
 │  FRONTEND (cliente)                                            │
-│  React 18 · TypeScript · Vite · sessionStorage                 │
+│  React 18 · TypeScript · Vite · memoria React (Zero-Storage)   │
 │                                                                │
 │  ┌─────────────────┐  ┌───────────────┐  ┌─────────────────┐  │
 │  │  Autenticación  │  │   Chat + IA   │  │   UI Auxiliar   │  │
@@ -28,7 +28,7 @@ La aplicación sigue una arquitectura de **backend thin** deliberada: el servido
 │  └────────────────────────────────────────────────────────┘   │
 └──────────────┬────────────────────────────────────┬───────────┘
                │ /auth/github · /auth/callback      │ fetch()
-               │ /api/gemini (proxy)                │
+               │ /api/gemini (proxy + rate limit)   │
                ▼                                    ▼
 ┌──────────────────────────┐  ┌────────────────────────────────┐
 │  Backend Express.js      │  │  APIs Externas                 │
@@ -37,12 +37,12 @@ La aplicación sigue una arquitectura de **backend thin** deliberada: el servido
 │  ├── GET /auth/github    │  │  api.github.com                │
 │  ├── GET /auth/callback  │  │                                │
 │  ├── POST /api/gemini    │  │  Groq Cloud                    │
-│  └── Static (prod)       │  │  api.groq.com/openai/v1        │
-│                          │  │                                │
-│  Solo en memoria:        │  │  Google Gemini                 │
-│  GITHUB_CLIENT_SECRET    │  │  generativelanguage.googleapis │
-└──────────────────────────┘  │  (via proxy en el servidor)    │
-                               └────────────────────────────────┘
+│  │   (rate limited)     │  │  api.groq.com/openai/v1        │
+│  └── Static (prod)       │  │                                │
+│                          │  │  Google Gemini                 │
+│  Solo en memoria:        │  │  generativelanguage.googleapis │
+│  GITHUB_CLIENT_SECRET    │  │  (via proxy en el servidor)    │
+└──────────────────────────┘  └────────────────────────────────┘
 ```
 
 ---
@@ -62,16 +62,18 @@ github-ai-assistant/
 │       │   ├── multi-repo/  # RepoSelector
 │       │   └── templates/   # TemplatePanel + templateData.ts
 │       ├── context/
-│       │   ├── AuthContext.tsx      # Token GitHub, usuario, OAuth/PAT
-│       │   ├── AIProviderContext.tsx # Proveedor IA activo (Groq/Gemini)
+│       │   ├── AuthContext.tsx      # Token GitHub, usuario, OAuth/PAT (Zero-Storage)
+│       │   ├── AIProviderContext.tsx # Proveedor IA activo (Zero-Storage)
 │       │   └── HistoryContext.tsx   # Log de sesión + exportación
 │       ├── services/
 │       │   ├── github.ts           # Wrapper GitHub REST API v3
 │       │   ├── gemini.ts           # Cliente unificado Groq + Gemini
 │       │   └── actionExecutor.ts   # Ejecutor de acciones confirmadas
+│       ├── utils/
+│       │   └── formatResult.ts     # Formateador de resultados de API
 │       └── types/index.ts          # Tipos compartidos TypeScript
 ├── server/
-│   └── index.js              # Express: OAuth + proxy Gemini + health + static
+│   └── index.js              # Express: OAuth + proxy Gemini + rate limit + static
 ├── Dockerfile                # Multi-stage build (Node 20 Alpine)
 ├── .env.example              # Plantilla de variables de entorno
 └── .gitignore
@@ -86,7 +88,7 @@ Usuario escribe en el chat "Crea un repositorio público llamado mi-proyecto"
 ↓
 App.tsx → handleSend()
   Construye el historial de conversación
-  Llama a callAI(messages) → gemini.ts
+  Llama a callAI(messages, provider, apiKey, model) → gemini.ts
 ↓
 gemini.ts → callGroq() o callGeminiDirect()
   Envía el SYSTEM_PROMPT + historial al modelo
@@ -131,12 +133,12 @@ El system prompt (`SYSTEM_PROMPT`) está diseñado con cuatro objetivos explíci
 ### Routing entre proveedores
 
 ```typescript
-// sessionStorage['ai_provider'] === 'groq'   → callGroq()
-// sessionStorage['ai_provider'] === 'gemini' → callGeminiDirect()
-export async function callAI(messages, systemPrompt): Promise<string>
+// provider === 'groq'   → callGroq()
+// provider === 'gemini' → callGeminiDirect()
+export async function callAI(messages, systemPrompt, provider, apiKey, model): Promise<string>
 ```
 
-Las claves de API se leen de sessionStorage en cada llamada y nunca pasan por el servidor (excepto la clave de Gemini que viaja en el body HTTPS hacia el proxy).
+Las claves de API se leen del `AIProviderContext` (memoria React) en cada llamada y nunca pasan por el servidor (excepto la clave de Gemini que viaja en el body HTTPS hacia el proxy).
 
 ### Groq vs. Gemini — Diferencias de implementación
 
@@ -149,7 +151,7 @@ Las claves de API se leen de sessionStorage en cada llamada y nunca pasan por el
 | Max tokens | 4096 | 1024 (SDK default) |
 | Restricciones geográficas | Ninguna | Bloqueado en UE/EEA (requiere proxy) |
 
-### Proxy de Gemini
+### Proxy de Gemini con Rate Limiting
 
 La API de Gemini bloquea las peticiones directas desde navegadores en la región europea (EEA). Para solucionar esto, el servidor Express actúa como proxy:
 
@@ -157,12 +159,12 @@ La API de Gemini bloquea las peticiones directas desde navegadores en la región
 Frontend → POST /api/gemini
 Body: { apiKey, model, messages, systemPrompt }
   ↓
-Server → SDK de Gemini (desde us-central1, sin restricciones)
+Server → Rate limiter (40 req/min por IP) → SDK de Gemini (desde us-central1)
   ↓
 Server → { text } → Frontend
 ```
 
-> La API key viaja en el body HTTPS y no se almacena en el servidor.
+> La API key viaja en el body HTTPS y no se almacena en el servidor. El rate limiter (`express-rate-limit`) protege contra abuso con un límite de 40 peticiones por minuto por IP.
 
 ---
 
@@ -208,21 +210,19 @@ Descarga en batches de 5 archivos en paralelo (respeto a los rate limits de GitH
 
 ## 🔐 Autenticación — AuthContext.tsx y server/index.js
 
-### Arquitectura de Seguridad
+### Arquitectura Zero-Storage Completa
 
-La aplicación implementa una arquitectura de seguridad diferenciada para las dos credenciales críticas:
+La aplicación implementa una arquitectura **Zero-Storage** completa: ninguna credencial del usuario se almacena en el navegador (ni sessionStorage, ni localStorage, ni cookies, ni IndexedDB).
 
-**Token de GitHub — Memoria React (Zero-Storage):**
+**Token de GitHub — Memoria React:**
 
-El token de acceso de GitHub vive exclusivamente en el estado de React (memoria volátil del contexto). Nunca se escribe en ninguna API de almacenamiento del navegador (sessionStorage, localStorage, cookies, etc.).
+El token de acceso de GitHub vive exclusivamente en el estado de React (memoria volátil del contexto). Nunca se escribe en ninguna API de almacenamiento del navegador.
 
-Justificación de seguridad: La aplicación requiere el scope `repo` de GitHub, que otorga acceso completo de lectura/escritura a todos los repositorios del usuario (públicos y privados). El vector de ataque más común en aplicaciones web es XSS (Cross-Site Scripting), que permite a un atacante ejecutar JavaScript arbitrario en el contexto de la página. Si el token estuviera en sessionStorage o localStorage, un script XSS podría leerlo con `sessionStorage.getItem('gh_token')` y exfiltrar las credenciales. Al mantener el token solo en memoria de React, un script XSS no puede acceder directamente a las variables de estado de React, eliminando este vector de ataque.
+**Claves de IA — Memoria React:**
 
-**Claves de IA — sessionStorage:**
+Las claves de API de IA (Groq/Gemini) también viven exclusivamente en la memoria de React, dentro del `AIProviderContext`. No se almacenan en ningún sitio.
 
-Las claves de API de IA (Groq/Gemini) se almacenan en sessionStorage del navegador por conveniencia, para que el usuario no tenga que reintroducirlas al recargar la página.
-
-Trade-off aceptado: Si el usuario recarga la página (F5), pierde la sesión de GitHub y debe reautenticarse. Las claves de IA se mantienen al recargar la página (sessionStorage), pero desaparecen al cerrar la pestaña. Esto es una característica de seguridad intencionada, no un bug.
+**Justificación de seguridad:** La aplicación requiere el scope `repo` de GitHub, que otorga acceso completo de lectura/escritura a todos los repositorios del usuario (públicos y privados). El vector de ataque más común en aplicaciones web es XSS (Cross-Site Scripting), que permite a un atacante ejecutar JavaScript arbitrario en el contexto de la página. Si las credenciales estuvieran en sessionStorage o localStorage, un script XSS podría leerlas y exfiltrarlas. Al mantener todo solo en memoria de React, un script XSS no puede acceder directamente a las variables de estado de React, eliminando este vector de ataque.
 
 ### Implementación técnica
 
@@ -244,35 +244,31 @@ const fetchUser = useCallback(async (token: string) => {
     setState({ token: null, user: null, isAuthenticated: false, isLoading: false, error: (err as Error).message });
   }
 }, []);
+
+// Logout: limpia estado React Y cierra sesión en GitHub.com
+const logout = useCallback(() => {
+  setState({ token: null, user: null, isAuthenticated: false, isLoading: false, error: null, connectedAt: null });
+  window.location.href = `https://github.com/logout?return_to=${encodeURIComponent(window.location.origin)}`;
+}, []);
 ```
 
-#### AIProviderContext.tsx (sessionStorage para claves IA)
+#### AIProviderContext.tsx (Zero-Storage para claves IA)
 
 ```typescript
-// Las claves de IA se guardan en sessionStorage
+// Las claves de IA viven SOLO en memoria React (no en sessionStorage)
 export function AIProviderProvider({ children }: { children: React.ReactNode }) {
-  const [provider, setProvider] = useState<AIProviderType | null>(
-    () => (sessionStorage.getItem('ai_provider') as AIProviderType) || null
-  );
-  const [apiKey, setApiKey] = useState<string | null>(
-    () => sessionStorage.getItem('ai_api_key')
-  );
-  const [model, setModel] = useState<string | null>(
-    () => sessionStorage.getItem('ai_model')
-  );
+  const [provider, setProvider] = useState<AIProviderType | null>(null);
+  const [apiKey, setApiKey] = useState<string | null>(null);
+  const [model, setModel] = useState<string | null>(null);
 
   const connect = (p: AIProviderType, k: string, m: string) => {
     setProvider(p); setApiKey(k); setModel(m);
-    sessionStorage.setItem('ai_provider', p);
-    sessionStorage.setItem('ai_api_key', k);
-    sessionStorage.setItem('ai_model', m);
+    // ZERO-STORAGE: No se guarda en sessionStorage
   };
 
   const disconnect = () => {
     setProvider(null); setApiKey(null); setModel(null);
-    sessionStorage.removeItem('ai_provider');
-    sessionStorage.removeItem('ai_api_key');
-    sessionStorage.removeItem('ai_model');
+    // ZERO-STORAGE: No hay nada que borrar de sessionStorage
   };
 ```
 
@@ -290,9 +286,48 @@ export function AIProviderProvider({ children }: { children: React.ReactNode }) 
 10. Frontend → extrae token, llama `GET /user` para validar
 11. Token guardado **SOLO** en estado de React (ZERO-STORAGE)
 
+### Logout completo
+
+Cuando el usuario hace clic en "Cerrar sesión":
+1. Se limpia el estado de React (token GitHub desaparece de memoria)
+2. Se redirige a `https://github.com/logout?return_to=...`
+3. GitHub cierra la sesión del usuario en github.com
+4. GitHub redirige de vuelta a la app
+5. El usuario está completamente deslogueado de ambos sitios
+
 ### Fix de protocolo para Cloud Run
 
 El servidor detecta si el host contiene `run.app` y fuerza el protocolo `https://` en el callback URL, evitando redirecciones HTTP en producción que GitHub rechaza.
+
+---
+
+## 🛡️ Seguridad y Protección
+
+### Rate Limiting
+
+El endpoint `/api/gemini` está protegido con `express-rate-limit`:
+
+```javascript
+const geminiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minuto
+  max: 40,             // 40 peticiones por ventana
+  message: { error: 'Demasiadas peticiones a Gemini. Por favor espera un minuto.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+```
+
+Esto previene que un atacante agote la cuota de la API key del usuario.
+
+### IDs Únicos Seguros
+
+Los mensajes del chat usan `crypto.randomUUID()` (UUID v4, CSPRNG) en lugar de `Math.random()`:
+
+```typescript
+const uid = () => crypto.randomUUID();
+```
+
+Esto garantiza IDs únicos y protege contra posibles colisiones en sesiones largas.
 
 ---
 
@@ -319,17 +354,57 @@ El servidor detecta si el host contiene `run.app` y fuerza el protocolo `https:/
 
 ---
 
+## 🧪 Testing y Calidad
+
+### Infraestructura
+
+- **Framework:** Vitest + React Testing Library
+- **Cobertura:** Codecov (badge en README)
+- **CI/CD:** GitHub Actions ejecuta tests en cada push/PR a main
+- **Cobertura actual:** 32%
+
+### Módulos testeados
+
+| Módulo | Tests | Cobertura |
+|---|---|---|
+| `AuthContext.tsx` | Login, logout, OAuth, Zero-Storage | ✅ |
+| `AIProviderContext.tsx` | Connect/disconnect, Zero-Storage | ✅ |
+| `actionExecutor.ts` | GET, POST, PUT, DELETE, PATCH, multi-repo | ✅ |
+| `github.ts` | Base64, ghFetch, getUser, createRepo, etc. | ✅ |
+| `gemini.ts` | parseGeminiAction, detectPrimaryLanguage | ✅ |
+| `formatResult.ts` | Arrays, objetos, strings, JSON | ✅ |
+| Componentes React | ChatArea, ChatInput, ConfirmModal, Header | ✅ |
+
+### Ejecutar tests localmente
+
+```bash
+cd client
+npm run test:coverage
+```
+
+---
+
 ## ⚠️ Limitaciones conocidas
 
 Ver [MEJORAS_FUTURAS.md](./MEJORAS_FUTURAS.md) para el detalle completo.
 
 | Limitación | Impacto | Solución planificada |
 |---|---|---|
-| Claves de IA en sessionStorage | Exposición a XSS | Zero-Storage real (#13) |
-| Sin rate limiting en proxy Gemini | Riesgo de abuso | `express-rate-limit` (#14) |
 | DocModal embebido en App.tsx | Dificulta el mantenimiento | Extraer a componente (#16) |
-| `formatResultData` embebida en App.tsx | Dificulta testing | Extraer a utilidad (#17) |
-| `uid()` usa `Math.random()` | Posibles colisiones | `crypto.randomUUID()` (#18) |
-| Sin soporte PATCH en executor | Limita operaciones | Añadir `case PATCH` (#19) |
 | Truncamiento por caracteres (2000) | Corta código a mitad | Truncamiento por líneas (#20) |
-| `fetch()` duplicado en actionExecutor | Código repetido | Unificar con `ghFetch()` (#21) |
+| Soporte limitado de proveedores IA | Sin fallback ante cortes | Multi-proveedor con fallback (#15) |
+| SessionWarningBanner no implementado | Sin aviso de caducidad | Banner de advertencia (#22) |
+| Prompts incrustados en código | Dificulta edición/i18n | Migrar a archivos .md (#23) |
+| App solo en español | Limita audiencia | i18n con i18next (#24) |
+| Sin healthcheck extendido | Menos visibilidad | Logs + health mejorado (#25) |
+
+### Limitaciones resueltas en v2.3.0
+
+| Limitación | Solución aplicada | Versión |
+|---|---|---|
+| ~~Claves de IA en sessionStorage~~ | Zero-Storage completo | v2.2.0 |
+| ~~Sin rate limiting en proxy Gemini~~ | `express-rate-limit` (40 req/min) | v2.3.0 |
+| ~~`formatResultData` embebida en App.tsx~~ | Extraída a `utils/formatResult.ts` | v2.3.0 |
+| ~~`uid()` usa `Math.random()`~~ | `crypto.randomUUID()` | v2.3.0 |
+| ~~Sin soporte PATCH en executor~~ | `case 'PATCH'` añadido | v2.1.0 |
+| ~~`fetch()` duplicado en actionExecutor~~ | Unificado con `ghFetch()` | v2.1.0 |
