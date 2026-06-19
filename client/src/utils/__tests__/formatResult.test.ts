@@ -1,0 +1,78 @@
+import { describe, it, expect } from 'vitest';
+import { formatResultData } from '../formatResult';
+
+describe('formatResultData', () => {
+  it('debería formatear array de repositorios', () => {
+    const repos = [
+      {
+        name: 'repo1',
+        full_name: 'user/repo1',
+        description: 'Test repo',
+        private: false,
+        html_url: 'https://github.com/user/repo1',
+        stargazers_count: 10,
+        language: 'TypeScript',
+        updated_at: '2026-01-15T00:00:00Z',
+        fork: false,
+      },
+    ];
+
+    const result = formatResultData(repos);
+    expect(result).toContain('**repo1**');
+    expect(result).toContain('🌐 Público');
+    expect(result).toContain('⭐ 10');
+    expect(result).toContain('TypeScript');
+  });
+
+  it('debería manejar array vacío', () => {
+    const result = formatResultData([]);
+    expect(result).toBe('_No se encontraron resultados._');
+  });
+
+  it('debería formatear objeto de repositorio único', () => {
+    const repo = {
+      name: 'myrepo',
+      full_name: 'user/myrepo',
+      description: 'My project',
+      private: true,
+      html_url: 'https://github.com/user/myrepo',
+      stargazers_count: 5,
+      language: 'JavaScript',
+    };
+
+    const result = formatResultData(repo);
+    expect(result).toContain('**user/myrepo**');
+    expect(result).toContain('🔒 Privado');
+    expect(result).toContain('⭐ Estrellas: 5');
+  });
+
+  it('debería manejar contenido de archivo', () => {
+    const fileContent = {
+      content: 'SGVsbG8gV29ybGQ=',
+      encoding: 'base64',
+    };
+
+    const result = formatResultData(fileContent);
+    expect(result).toContain('Contenido del archivo obtenido');
+  });
+
+  it('debería manejar string plano', () => {
+    const result = formatResultData('Hello World');
+    expect(result).toContain('```');
+    expect(result).toContain('Hello World');
+  });
+
+  it('debería manejar objeto genérico', () => {
+    const obj = { foo: 'bar', baz: 123 };
+    const result = formatResultData(obj);
+    expect(result).toContain('**foo**: bar');
+    expect(result).toContain('**baz**: 123');
+  });
+
+  it('debería manejar JSON fallback', () => {
+    const complex = { nested: { deep: { value: 42 } } };
+    const result = formatResultData(complex);
+    expect(result).toContain('```json');
+    expect(result).toContain('"nested"');
+  });
+});
