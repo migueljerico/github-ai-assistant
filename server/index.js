@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import session from 'express-session';
+import rateLimit from 'express-rate-limit';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -47,6 +48,18 @@ app.get('/health', (_req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
+// ─── Rate Limiting para Gemini Proxy (#14) ────────────────────────────────────
+// Previene abuso del endpoint de Gemini (40 peticiones por minuto por IP)
+const geminiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minuto
+  max: 40, // 40 peticiones por ventana
+  message: {
+    error: 'Demasiadas peticiones a Gemini. Por favor espera un minuto.',
+  },
+  standardHeaders: true, // Devuelve headers RateLimit-*
+  legacyHeaders: false, // Desactiva headers X-RateLimit-*
+});
+
 // ─── Gemini API Proxy (Opción D - Acepta 'mode' opcional) ─────────────────────
 // The Gemini API blocks direct browser requests from EU regions (EEA).
 // This proxy routes Gemini calls through the server, which is deployed in
@@ -59,7 +72,7 @@ app.get('/health', (_req, res) => {
 // Response:     { text }
 //
 // Groq calls are NOT proxied — they go directly from the browser (no EU block).
-app.post('/api/gemini', async (req, res) => {
+app.post('/api/gemini', geminiLimiter, async (req, res) => {
   // 🔥 OPCIÓN D: Extraemos 'mode' opcional del body
   const { apiKey, model, messages, systemPrompt, mode } = req.body;
 
@@ -200,6 +213,7 @@ app.listen(PORT, () => {
   console.log(`   Health:  http://localhost:${PORT}/health`);
   console.log(`   OAuth:   http://localhost:${PORT}/auth/github`);
   console.log(`   Proxy:   POST http://localhost:${PORT}/api/gemini`);
+  console.log(`   🛡️  Rate Limit: 40 req/min en /api/gemini`);
   console.log(`\n   ℹ️  Groq  → llamadas directas desde el navegador`);
   console.log(`   ℹ️  Gemini → proxiado via /api/gemini (elude bloqueo EU)\n`);
 });
