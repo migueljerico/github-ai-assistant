@@ -263,8 +263,8 @@ npm run test:coverage # Tests con reporte de cobertura
 
 ### Cobertura actual
 
-- **Cobertura total:** 42%
-- **Módulos testeados:** AuthContext, AIProviderContext, actionExecutor, github, gemini, formatResult, releaseGenerator, pdfReader, pdfAdvanced, useChat, useActions, ChatArea, ChatInput, ConfirmModal, Header, TemplatePanel
+- **Cobertura total:** 48%
+- **Módulos testeados:** AuthContext, AIProviderContext, actionExecutor, github, gemini, formatResult, releaseGenerator, pdfReader, pdfAdvanced, useChat, useActions, ChatArea, ChatInput, ConfirmModal, Header, TemplatePanel, AIProviderPanel, AIProviderBadge — más los tests del servidor (rate limiter)
 - **Badge con cobertura actual:** [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
 
 ### Estrategia de testing
@@ -273,7 +273,8 @@ npm run test:coverage # Tests con reporte de cobertura
 - Tests de integración para contextos de React
 - Tests de componentes con React Testing Library
 - Mock de APIs externas (GitHub API, proveedores IA)
-- CI/CD ejecuta tests automáticamente en cada push
+- **CI** (GitHub Actions): lint + tests del cliente con cobertura + tests del servidor, en cada push/PR a `main`
+- **CD** (Cloud Build): build del Dockerfile + despliegue automático a Cloud Run en cada push a `main`
 
 ---
 

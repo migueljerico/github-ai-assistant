@@ -331,10 +331,11 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 **Esfuerzo:** 2–3h
 
 **Tareas:**
-- GitHub Actions CI — lint + build en cada push/PR a main (badge en README)
-- Logs estructurados en el servidor (JSON con timestamp, level, requestId)
-- Healthcheck extendido en `/health` (versión, uptime, estado de variables de entorno)
-- Script `deploy.sh` automatizado para Cloud Run con validación previa de variables
+- ✅ GitHub Actions CI — lint + tests (cliente + servidor) con cobertura en cada push/PR a main (badge en README) — *implementado en v2.4.0*
+- ✅ Despliegue continuo (CD) — activador de Cloud Build que construye y despliega `main` a Cloud Run en cada push (Build → Push → Deploy) — *ya operativo*
+- ⏳ Logs estructurados en el servidor (JSON con timestamp, level, requestId)
+- ⏳ Healthcheck extendido en `/health` (versión, uptime, estado de variables de entorno)
+- ⏳ Script `deploy.sh` automatizado para Cloud Run con validación previa de variables (alternativa al deploy manual; el flujo habitual ya es automático vía Cloud Build)
 
 ---
 
