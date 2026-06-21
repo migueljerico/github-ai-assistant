@@ -65,6 +65,22 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 ---
 
+#### #43 — Modo "Agente Autónomo" asíncrono vía GitHub Actions
+**Esfuerzo:** 10–14h (feature v3.0, aspiracional)
+
+**Problema actual:** Las tareas largas (análisis exhaustivo, generación masiva) se ejecutan de forma síncrona desde el navegador → riesgo de timeout en Cloud Run o en el propio navegador.
+
+**Solución propuesta:**
+- Externalizar el trabajo pesado a **GitHub Actions**: el backend hace `workflow_dispatch` (`POST /repos/{owner}/{repo}/actions/workflows/{id}/dispatches`).
+- El Action ejecuta la tarea en la infraestructura de GitHub (sin coste en Cloud Run).
+- El frontend sigue el progreso por **polling** a los check-runs (`/repos/{owner}/{repo}/actions/runs`).
+
+**Beneficio:** Tareas largas sin timeouts ni coste de cómputo en Cloud Run; demuestra dominio de orquestación cloud.
+
+**Nota:** ítem aspiracional v3.0 — el grueso del esfuerzo es definir el *runtime de agente* dentro del Action; el `dispatch` en sí es trivial. Respeta Zero-Storage (el token viaja en la petición, no se almacena).
+
+---
+
 ### 🟡 Media Prioridad
 
 #### #16 — Extraer DocModal a componente propio
@@ -208,6 +224,47 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 ---
 
+#### #44 — Dashboard de "Salud del Código" (Recharts)
+**Esfuerzo:** 6–8h
+
+**Problema actual:** El asistente responde en texto, pero algunas métricas de un repo se entienden mucho mejor visualmente.
+
+**Solución propuesta:** Vista de visualización de datos en el frontend React (Recharts o Chart.js):
+- Frecuencia de commits (línea temporal) — API de commits de GitHub.
+- Deuda técnica: conteo de `TODO`/`FIXME` extraídos del árbol de archivos (reutiliza `fetchRepoTreeRecursive` de `github.ts`).
+- Distribución de lenguajes (donut chart) — reutiliza `detectPrimaryLanguage` (`gemini.ts`).
+
+**Beneficio:** Demostrar skills de Análisis de Datos aplicados a DevOps; aprovechar la experiencia previa con Power BI para diseñar dashboards en web.
+
+---
+
+#### #45 — Generación de documentación vía Draft PR
+**Esfuerzo:** 4–5h
+
+**Problema actual:** La documentación generada se entrega en el chat, obligando al usuario a copiar/pegar a mano.
+
+**Solución propuesta:** Extender el flujo `handleDocumentRepo`/`handleCommitDocs` (`App.tsx`): crear un branch `docs/auto-{timestamp}`, subir los archivos y abrir un **Draft Pull Request**. Reutiliza funciones ya existentes en `github.ts`: `createBranch` y `createPullRequest`.
+
+**Beneficio:** Entregable tangible — el usuario recibe un PR listo para revisar y mergear, automatizando el flujo completo. Alto ROI (casi toda la infraestructura ya existe).
+
+---
+
+#### #46 — Exportar/importar conversación (memoria entre sesiones, Zero-Storage)
+**Esfuerzo:** 4–5h
+
+**Problema actual:** Al recargar la página (F5), se pierde el historial de conversación por la arquitectura Zero-Storage.
+
+**Solución propuesta (compatible con Zero-Storage):**
+- Botón **"Exportar conversación"** → descarga un JSON con el historial (y, opcionalmente, el repo de contexto activo de #41).
+- Botón **"Importar"** → restaura ese estado en una sesión nueva.
+- **Nada se auto-persiste** en el navegador (ni IndexedDB ni localStorage): el usuario controla el fichero.
+
+**Beneficio:** Recuperar el contexto de sesiones anteriores ("¿qué estábamos haciendo con este repo?") sin romper Zero-Storage.
+
+**Nota:** reemplaza la propuesta original (IndexedDB + cifrado con clave derivada del `access_token`), descartada porque (1) contradice el modelo Zero-Storage del README ("ni IndexedDB") y (2) no funcionaría entre sesiones, ya que el token cambia en cada sesión y la clave de descifrado dejaría de coincidir.
+
+---
+
 ### 🟢 Baja Prioridad
 
 #### #31 — Sistema de feedback del usuario (👍/👎)
@@ -343,14 +400,36 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 ---
 
+#### #47 — Preparación WAF (Google Cloud Armor)
+**Esfuerzo:** 2h (documentación + configuración)
+
+**Problema actual:** Cloud Run escala automáticamente, pero un ataque DDoS o de fuerza bruta al endpoint OAuth podría disparar costes de facturación.
+
+**Solución propuesta:** Documentar en `README`/`MANUAL_TECNICO` la preparación para integrar **Google Cloud Armor**. Matiz técnico: Cloud Run no tiene Load Balancer por defecto; Cloud Armor requiere ponerlo detrás de un **Load Balancer HTTP(S) externo** (setup y coste adicionales). Mitiga ataques en el edge sin latencia cruzada.
+
+**Beneficio:** Seguridad de edge y preparación para entornos productivos reales.
+
+---
+
+#### #48 — Revisión bajo demanda de cambios recientes ("Sync Repo Status")
+**Esfuerzo:** 3–4h
+
+**Problema actual:** Una revisión proactiva con webhooks no es fiable porque Cloud Run escala a cero (los webhooks en frío pueden fallar).
+
+**Solución propuesta:** Botón **"Sync Repo Status"** en la UI. Al pulsarlo, el frontend pide al backend los últimos commits y diffs recientes (nuevos wrappers `listCommits`/`getCommit` en `github.ts`), y la IA los analiza en el momento para sugerir mejoras o detectar errores. Modelo **pull** (bajo demanda), no webhooks.
+
+**Beneficio:** Simular revisión de código proactiva sin necesidad de mantener servidores siempre activos.
+
+---
+
 ## 📊 Resumen
 
 | Prioridad | Total | ✅ Resueltos | ⏳ Pendientes |
 |---|---|---|---|
-| 🔴 Alta | 7 | 5 (#1, #2, #13, #14, #27) | 2 (#15, #28) |
-| 🟡 Media | 16 | 7 (#12, #17, #18, #19, #21, #37, #41) | 9 (#16, #20, #22, #26, #29, #30, #38, #39, #42) |
-| 🟢 Baja | 10 | 0 | 10 (#23, #24, #25, #31, #32, #33, #34, #35, #36, #40) |
-| **TOTAL** | **33** | **12** | **21** |
+| 🔴 Alta | 8 | 5 (#1, #2, #13, #14, #27) | 3 (#15, #28, #43) |
+| 🟡 Media | 19 | 7 (#12, #17, #18, #19, #21, #37, #41) | 12 (#16, #20, #22, #26, #29, #30, #38, #39, #42, #44, #45, #46) |
+| 🟢 Baja | 12 | 0 | 12 (#23, #24, #25, #31, #32, #33, #34, #35, #36, #40, #47, #48) |
+| **TOTAL** | **39** | **12** | **27** |
 
 ---
 
