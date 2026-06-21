@@ -191,6 +191,33 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 ---
 
+#### #41 — Opiniones de chat fundamentadas en el repo
+**Esfuerzo:** 4–5h
+
+**Problema actual:** El modo chat (`CHAT_PROMPT` en `gemini.ts`) está diseñado para opinar **desde conocimiento general, sin leer el repositorio** ("NUNCA digas 'necesito leer el repo primero'… DA TU OPINIÓN directamente"). Resultado: respuestas genéricas que no encajan con el proyecto real (p. ej. recomendar Jest/Mocha cuando ya se usa Vitest, o decir "documentación básica" cuando hay README + MANUAL_TECNICO + CONTRIBUTING).
+
+**Solución propuesta:**
+- Inyectar contexto del repo en el prompt de chat reutilizando `fetchRepoTreeRecursive()` (`services/github.ts`, ya existente): árbol de archivos + contenido de los archivos clave priorizados.
+- Cuando el usuario pida una opinión sobre un repo concreto, anteponer ese contexto al `CHAT_PROMPT` para que las respuestas sean específicas.
+- Respetar los límites ya definidos (máx. archivos, exclusión de binarios, truncado).
+
+**Beneficio:** Opiniones concretas y accionables sobre *tu* código en vez de plantillas genéricas; diferenciador claro frente a un chatbot normal.
+
+---
+
+#### #42 — Refactor y cobertura de `App.tsx`
+**Esfuerzo:** 5–6h
+
+**Problema actual:** `App.tsx` (~473 líneas, **0% de cobertura**) concentra la orquestación del chat, la detección de modo, los modales y el flujo multi-repo. Es el mayor bloque sin testear del proyecto y el principal foco de mantenibilidad.
+
+**Solución propuesta:**
+- Extraer lógica a hooks ya existentes (`useChat`, `useActions`) y a componentes propios (relacionado con #16 — extraer `DocModal`).
+- Añadir tests para la lógica extraída (detección de modo, manejo de confirmación/ejecución).
+
+**Beneficio:** Mejor mantenibilidad y separación de responsabilidades; sube de forma significativa la cobertura global (es el bloque dominante a 0%).
+
+---
+
 ### 🟢 Baja Prioridad
 
 #### #31 — Sistema de feedback del usuario (👍/👎)
@@ -330,9 +357,9 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 | Prioridad | Total | ✅ Resueltos | ⏳ Pendientes |
 |---|---|---|---|
 | 🔴 Alta | 7 | 5 (#1, #2, #13, #14, #27) | 2 (#15, #28) |
-| 🟡 Media | 14 | 6 (#12, #17, #18, #19, #21, #37) | 8 (#16, #20, #22, #26, #29, #30, #38, #39) |
+| 🟡 Media | 16 | 6 (#12, #17, #18, #19, #21, #37) | 10 (#16, #20, #22, #26, #29, #30, #38, #39, #41, #42) |
 | 🟢 Baja | 10 | 0 | 10 (#23, #24, #25, #31, #32, #33, #34, #35, #36, #40) |
-| **TOTAL** | **31** | **11** | **20** |
+| **TOTAL** | **33** | **11** | **22** |
 
 ---
 

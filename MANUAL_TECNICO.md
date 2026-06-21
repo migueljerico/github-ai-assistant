@@ -352,16 +352,45 @@ Esto garantiza IDs únicos y protege contra posibles colisiones en sesiones larg
 | `PORT` | Cloud Run lo inyecta | Puerto de escucha (default: 8080) |
 | `NODE_ENV` | Auto en Dockerfile | `production` activa cookies `secure: true` |
 
+### Pipeline CI/CD
+
+El proyecto tiene **dos sistemas separados** (es importante no confundirlos):
+
+- **CI — GitHub Actions** (`.github/workflows/ci.yml`): en cada push/PR a `main`
+  ejecuta lint, tests del cliente con cobertura (→ Codecov) y los tests del
+  servidor. **No despliega**; solo valida el código.
+- **CD — Activador de Cloud Build**: conectado al repo de GitHub, en cada push a
+  `main` ejecuta automáticamente **Build** (Dockerfile multi-stage) → **Push** a
+  Artifact Registry (`us-central1-docker.pkg.dev/.../github-ai-assistant`) →
+  **Deploy** de una nueva revisión en Cloud Run (que pasa a servir el 100% del
+  tráfico). Es decir, **cada merge a `main` llega solo a producción** en ~2 min.
+
+> Compilar (CI, en servidores de GitHub) y desplegar (CD, en Cloud Build) son
+> procesos distintos: que el CI esté verde no actualiza la app en vivo; de eso se
+> encarga el activador de Cloud Build.
+
+**Despliegue manual** (alternativa puntual, p. ej. para un rollback o sin pasar
+por `main`):
+
+```bash
+gcloud run deploy github-ai-assistant \
+  --source . \
+  --region us-central1 \
+  --allow-unauthenticated
+```
+
 ---
 
 ## 🧪 Testing y Calidad
 
 ### Infraestructura
 
-- **Framework:** Vitest + React Testing Library
+- **Framework:** Vitest + React Testing Library (jsdom)
 - **Cobertura:** Codecov (badge en README)
-- **CI/CD:** GitHub Actions ejecuta tests en cada push/PR a main
-- **Cobertura actual:** 32%
+- **CI:** GitHub Actions (`.github/workflows/ci.yml`) ejecuta en cada push/PR a `main`
+  el lint, los tests del cliente con cobertura y los tests del servidor
+  (job `server-test`). Ver "Pipeline CI/CD" en la sección de despliegue.
+- **Cobertura actual:** 42%
 
 ### Módulos testeados
 
@@ -371,9 +400,13 @@ Esto garantiza IDs únicos y protege contra posibles colisiones en sesiones larg
 | `AIProviderContext.tsx` | Connect/disconnect, Zero-Storage | ✅ |
 | `actionExecutor.ts` | GET, POST, PUT, DELETE, PATCH, multi-repo | ✅ |
 | `github.ts` | Base64, ghFetch, getUser, createRepo, etc. | ✅ |
-| `gemini.ts` | parseGeminiAction, detectPrimaryLanguage | ✅ |
+| `gemini.ts` | parseGeminiAction, detectPrimaryLanguage, temperatura Groq por modo | ✅ |
 | `formatResult.ts` | Arrays, objetos, strings, JSON | ✅ |
-| Componentes React | ChatArea, ChatInput, ConfirmModal, Header | ✅ |
+| `releaseGenerator.ts` | createGitHubRelease, notas, suggestNextVersion | ✅ |
+| `pdfReader.ts` / `pdfAdvanced.ts` | Extracción/limpieza de texto, fallback | ✅ |
+| Hooks | `useChat`, `useActions` | ✅ |
+| Componentes React | ChatArea, ChatInput, ConfirmModal, Header, TemplatePanel, AIProviderPanel | ✅ |
+| Servidor | `rateLimit.test.js` (rate limiter del proxy) | ✅ |
 
 ### Ejecutar tests localmente
 
