@@ -5,7 +5,7 @@ import type { PendingAction, GeminiAction } from '../../../types';
 
 // Mock de DiffViewer
 vi.mock('../DiffViewer', () => ({
-  default: ({ filename, oldContent, newContent }: any) => (
+  default: ({ filename }: any) => (
     <div data-testid="diff-viewer">
       DiffViewer: {filename}
     </div>

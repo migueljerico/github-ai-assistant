@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Infrastructure
 - **CI ejecuta los tests del servidor (#37)** — Nuevo job `server-test` en `.github/workflows/ci.yml`; añadidas devDependencies `vitest` y `supertest` y script `test:server` en la raíz
+- **ESLint operativo (flat config)** — Añadido `client/eslint.config.js` para ESLint v9 (faltaba el fichero de configuración); el lint vuelve a ejecutarse y se integra como paso del CI. Limpieza de código muerto detectado por el linter (imports/variables sin usar)
 - **Tests reorganizados** — Todos los `*.test.ts(x)` movidos a carpetas `__tests__/` para una estructura uniforme (`services/` y `example.test.ts`)
 
 ### Testing

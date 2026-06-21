@@ -31,6 +31,8 @@ export async function readPDFAdvanced(file: File): Promise<string> {
  * @param pdfjsLib - pdfjs-dist module
  * @returns Extracted text
  */
+// pdfjs-dist no expone tipos estables aquí; interop deliberada con `any`.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function extractWithPDFJS(file: File, pdfjsLib: any): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -46,6 +48,7 @@ async function extractWithPDFJS(file: File, pdfjsLib: any): Promise<string> {
           const page = await pdf.getPage(i);
           const textContent = await page.getTextContent();
           const pageText = textContent.items
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             .map((item: any) => item.str)
             .join(' ');
           fullText += pageText + '\n';
@@ -86,6 +89,7 @@ function readPDFBasic(file: File): Promise<string> {
         }
 
         text = text
+          // eslint-disable-next-line no-control-regex -- elimina bytes nulos del texto PDF
           .replace(/\x00/g, '')
           .replace(/BT\s+.*?\s+ET/gs, '')
           .replace(/\/F\d+\s+[\d.]+\s+Tf/g, '')

@@ -1,11 +1,11 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useActions } from '../useActions';
 
 // Mock the HistoryContext
 vi.mock('../../context/HistoryContext', () => ({
   useHistory: () => ({
-    addEntry: vi.fn((entry) => 'mock-id-' + Math.random()),
+    addEntry: vi.fn(() => 'mock-id-' + Math.random()),
     updateEntry: vi.fn(),
   }),
 }));

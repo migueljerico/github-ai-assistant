@@ -33,10 +33,6 @@ import {
   getFileContents,
   listAllRepos,
   ghFetch,
-  commentOnIssue,
-  updateIssueState,
-  mergePullRequest,
-  triggerWorkflowRun,
 } from '../github';
 
 describe('actionExecutor.ts', () => {

@@ -12,7 +12,7 @@ import TemplatePanel from './components/templates/TemplatePanel';
 import ChatArea from './components/chat/ChatArea';
 import ChatInput from './components/chat/ChatInput';
 import ConfirmModal from './components/confirm/ConfirmModal';
-import type { ChatMessage, GeminiAction, GitHubRepo, PendingAction, RepoAnalysis } from './types';
+import type { ChatMessage, GitHubRepo, PendingAction, RepoAnalysis } from './types';
 
 // Generate a simple unique ID
 const uid = () => crypto.randomUUID();
@@ -143,7 +143,8 @@ export default function App() {
   const [isCommittingDocs, setIsCommittingDocs] = useState(false);
 
   // 🔥 OPCIÓN D - Modo override: 'auto' | 'chat' | 'action'
-  const [modeOverride, setModeOverride] = useState<'auto' | 'chat' | 'action'>('auto');
+  // El setter aún no está cableado a la UI; de momento queda fijado en 'auto'.
+  const [modeOverride] = useState<'auto' | 'chat' | 'action'>('auto');
 
   const addMessage = useCallback((msg: Omit<ChatMessage, 'id' | 'timestamp'>): string => {
     const id = uid();

@@ -55,6 +55,7 @@ function extractTextFromPDF(arrayBuffer: ArrayBuffer): string {
     
     // Clean up common PDF artifacts
     text = text
+      // eslint-disable-next-line no-control-regex -- elimina bytes nulos del texto PDF
       .replace(/\x00/g, '') // Remove null bytes
       .replace(/BT\s+.*?\s+ET/gs, '') // Remove PDF text operators
       .replace(/\/F\d+\s+[\d.]+\s+Tf/g, '') // Remove font commands
