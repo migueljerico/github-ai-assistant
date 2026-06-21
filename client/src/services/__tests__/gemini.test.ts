@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { parseGeminiAction, detectPrimaryLanguage } from './gemini';
+import { parseGeminiAction, detectPrimaryLanguage, callAI } from '../gemini';
 
 describe('gemini.ts - Utilidades', () => {
   describe('parseGeminiAction', () => {
@@ -104,5 +104,64 @@ describe('gemini.ts - Utilidades', () => {
       const result = detectPrimaryLanguage(files);
       expect(result).toBe('Python');
     });
+  });
+});
+
+describe('callAI - Groq temperatura según modo (Opción D / #27)', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /** Mockea fetch y devuelve el body JSON enviado a Groq en la última llamada */
+  function mockGroqFetch() {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: 'respuesta' } }] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    return fetchMock;
+  }
+
+  function lastBody(fetchMock: ReturnType<typeof vi.fn>) {
+    const [, init] = fetchMock.mock.calls[fetchMock.mock.calls.length - 1];
+    return JSON.parse((init as RequestInit).body as string);
+  }
+
+  it("debería usar temperatura 0.7 en modo 'chat'", async () => {
+    const fetchMock = mockGroqFetch();
+    await callAI(
+      [{ role: 'user', content: 'Hola' }],
+      'system',
+      'groq',
+      'key',
+      'llama-3.1',
+      'chat',
+    );
+    expect(lastBody(fetchMock).temperature).toBe(0.7);
+  });
+
+  it("debería usar temperatura 0.1 en modo 'action'", async () => {
+    const fetchMock = mockGroqFetch();
+    await callAI(
+      [{ role: 'user', content: 'Crea un repo' }],
+      'system',
+      'groq',
+      'key',
+      'llama-3.1',
+      'action',
+    );
+    expect(lastBody(fetchMock).temperature).toBe(0.1);
+  });
+
+  it('debería usar temperatura 0.1 por defecto (sin modo)', async () => {
+    const fetchMock = mockGroqFetch();
+    await callAI(
+      [{ role: 'user', content: 'Lista mis repos' }],
+      'system',
+      'groq',
+      'key',
+      'llama-3.1',
+    );
+    expect(lastBody(fetchMock).temperature).toBe(0.1);
   });
 });

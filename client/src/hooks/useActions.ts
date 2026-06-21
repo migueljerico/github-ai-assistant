@@ -9,7 +9,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import type { GeminiAction, GitHubRepo, PendingAction } from '../types';
+import type { GitHubRepo, PendingAction } from '../types';
 import { useHistory } from '../context/HistoryContext';
 
 export interface UseActionsState {

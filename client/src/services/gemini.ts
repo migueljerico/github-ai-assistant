@@ -125,7 +125,13 @@ async function callGroq(
   model: string,
   messages: Message[],
   systemPrompt: string,
+  mode?: 'chat' | 'action',  // ← OPCIÓN D: ajusta la temperatura según el modo
 ): Promise<string> {
+  // Modo chat necesita más creatividad (0.7); modo acción debe ser determinista
+  // para producir JSON estable (0.1). Por defecto se mantiene el comportamiento
+  // determinista previo.
+  const temperature = mode === 'chat' ? 0.7 : 0.1;
+
   const body = {
     model,
     messages: [
@@ -135,7 +141,7 @@ async function callGroq(
         content: m.content,
       })),
     ],
-    temperature: 0.1,
+    temperature,
     max_tokens: 4096,
   };
 
@@ -209,7 +215,7 @@ export async function callAI(
   model: string,
   mode?: 'chat' | 'action',  // ← NUEVO: modo opcional
 ): Promise<string> {
-  if (provider === 'groq') return callGroq(apiKey, model, messages, systemPrompt);
+  if (provider === 'groq') return callGroq(apiKey, model, messages, systemPrompt, mode);
   return callGeminiDirect(apiKey, model, messages, systemPrompt, mode);
 }
 

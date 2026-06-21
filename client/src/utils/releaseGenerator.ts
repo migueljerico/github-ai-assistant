@@ -2,8 +2,6 @@
  * Release Generator Utility — Create GitHub releases with documentation
  */
 
-import type { GitHubRepo } from '../types';
-
 export interface ReleaseOptions {
   version: string;
   title: string;
@@ -65,9 +63,6 @@ export function generateReleaseNotesFromDocument(
   documentContent: string,
   repoName: string
 ): string {
-  // Extract key sections from document
-  const lines = documentContent.split('\n').filter(line => line.trim().length > 0);
-  
   let releaseNotes = `# Release Notes - ${repoName}\n\n`;
   releaseNotes += `## 📋 Documentación Adjunta\n\n`;
   releaseNotes += `### Contenido del Documento\n\n`;

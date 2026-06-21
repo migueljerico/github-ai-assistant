@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { executeAction, executeActionMultiRepo } from './actionExecutor';
-import type { GeminiAction, GitHubRepo } from '../types';
+import { executeAction, executeActionMultiRepo } from '../actionExecutor';
+import type { GeminiAction, GitHubRepo } from '../../types';
 
 // Mock de todas las funciones de github.ts
-vi.mock('./github', () => ({
+vi.mock('../github', () => ({
   createRepo: vi.fn(),
   createOrUpdateFile: vi.fn(),
   deleteFile: vi.fn(),
@@ -33,11 +33,7 @@ import {
   getFileContents,
   listAllRepos,
   ghFetch,
-  commentOnIssue,
-  updateIssueState,
-  mergePullRequest,
-  triggerWorkflowRun,
-} from './github';
+} from '../github';
 
 describe('actionExecutor.ts', () => {
   beforeEach(() => {

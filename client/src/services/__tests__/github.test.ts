@@ -9,7 +9,7 @@ import {
   deleteFile,
   ghFetch,
   GitHubAPIError,
-} from './github';
+} from '../github';
 
 // Mock de fetch global
 (globalThis as any).fetch = vi.fn();
