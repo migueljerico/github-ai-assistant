@@ -1,6 +1,6 @@
 # 📖 Manual Técnico — GitHub AI Assistant
 
-**Versión:** v2.3.0 · Junio 2026
+**Versión:** v2.5.0 · Junio 2026
 
 ---
 
@@ -390,7 +390,7 @@ gcloud run deploy github-ai-assistant \
 - **CI:** GitHub Actions (`.github/workflows/ci.yml`) ejecuta en cada push/PR a `main`
   el lint, los tests del cliente con cobertura y los tests del servidor
   (job `server-test`). Ver "Pipeline CI/CD" en la sección de despliegue.
-- **Cobertura actual:** 42%
+- **Cobertura actual:** 49%
 
 ### Módulos testeados
 
@@ -400,12 +400,12 @@ gcloud run deploy github-ai-assistant \
 | `AIProviderContext.tsx` | Connect/disconnect, Zero-Storage | ✅ |
 | `actionExecutor.ts` | GET, POST, PUT, DELETE, PATCH, multi-repo | ✅ |
 | `github.ts` | Base64, ghFetch, getUser, createRepo, etc. | ✅ |
-| `gemini.ts` | parseGeminiAction, detectPrimaryLanguage, temperatura Groq por modo | ✅ |
+| `gemini.ts` | parseGeminiAction, detectPrimaryLanguage, temperatura Groq por modo, contexto de repo (#41) | ✅ |
 | `formatResult.ts` | Arrays, objetos, strings, JSON | ✅ |
 | `releaseGenerator.ts` | createGitHubRelease, notas, suggestNextVersion | ✅ |
 | `pdfReader.ts` / `pdfAdvanced.ts` | Extracción/limpieza de texto, fallback | ✅ |
 | Hooks | `useChat`, `useActions` | ✅ |
-| Componentes React | ChatArea, ChatInput, ConfirmModal, Header, TemplatePanel, AIProviderPanel | ✅ |
+| Componentes React | ChatArea, ChatInput, ConfirmModal, Header, TemplatePanel, AIProviderPanel, AIProviderBadge, RepoContextButton | ✅ |
 | Servidor | `rateLimit.test.js` (rate limiter del proxy) | ✅ |
 
 ### Ejecutar tests localmente

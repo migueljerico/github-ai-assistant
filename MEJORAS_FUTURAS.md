@@ -134,27 +134,30 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 #### #26 — Mantener y expandir cobertura de tests con Codecov
 **Esfuerzo:** Continuo (2-4h por sprint)
 
-**Estado actual (v2.3.0):** ✅ Infraestructura completa implementada
+**Estado actual (v2.5.0):** ✅ Infraestructura completa implementada
 
 **Progreso realizado:**
 - ✅ Configuración de Vitest + Codecov
-- ✅ CI/CD con GitHub Actions ejecutando tests automáticamente
+- ✅ CI con GitHub Actions ejecutando tests (cliente + servidor) automáticamente
 - ✅ Badge de Codecov en README
-- ✅ Cobertura actual: **32%**
+- ✅ Cobertura actual: **49%**
 - ✅ Tests implementados para:
   - `AuthContext.tsx` (login, logout, OAuth flow, Zero-Storage)
   - `AIProviderContext.tsx` (conexión/desconexión de proveedores)
   - `actionExecutor.ts` (ejecutor de acciones GitHub)
   - `github.ts` (wrapper de GitHub API, decodeBase64, encodeBase64)
-  - `gemini.ts` (parseGeminiAction, detectPrimaryLanguage)
-  - `formatResult.ts` (formateo de resultados de API)
-  - Componentes React: `ChatArea`, `ChatInput`, `ConfirmModal`, `Header`
+  - `gemini.ts` (parseGeminiAction, detectPrimaryLanguage, temperatura Groq por modo, contexto de repo #41)
+  - `formatResult.ts`, `releaseGenerator.ts`, `pdfReader.ts`, `pdfAdvanced.ts`
+  - Hooks: `useChat`, `useActions`
+  - Componentes React: `ChatArea`, `ChatInput`, `ConfirmModal`, `Header`, `TemplatePanel`, `AIProviderPanel`, `AIProviderBadge`, `RepoContextButton`
+  - Servidor: `rateLimit.test.js`
 
 **Pendiente:**
-- Aumentar cobertura del 32% al 70% objetivo
+- Aumentar cobertura del 49% al 70% objetivo
 - Añadir tests para módulos no cubiertos:
+  - `App.tsx` (~0%, el mayor bloque — ver #42)
   - `HistoryContext.tsx`
-  - `TemplatePanel` y `RepoSelector`
+  - `RepoSelector`
   - `DiffViewer`
   - Edge cases y errores en servicios existentes
 - Configurar umbral mínimo de cobertura en CI (fail si < 70%)
