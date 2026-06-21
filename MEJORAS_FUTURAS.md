@@ -65,22 +65,6 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 ---
 
-#### #43 — Modo "Agente Autónomo" asíncrono vía GitHub Actions
-**Esfuerzo:** 10–14h (feature v3.0, aspiracional)
-
-**Problema actual:** Las tareas largas (análisis exhaustivo, generación masiva) se ejecutan de forma síncrona desde el navegador → riesgo de timeout en Cloud Run o en el propio navegador.
-
-**Solución propuesta:**
-- Externalizar el trabajo pesado a **GitHub Actions**: el backend hace `workflow_dispatch` (`POST /repos/{owner}/{repo}/actions/workflows/{id}/dispatches`).
-- El Action ejecuta la tarea en la infraestructura de GitHub (sin coste en Cloud Run).
-- El frontend sigue el progreso por **polling** a los check-runs (`/repos/{owner}/{repo}/actions/runs`).
-
-**Beneficio:** Tareas largas sin timeouts ni coste de cómputo en Cloud Run; demuestra dominio de orquestación cloud.
-
-**Nota:** ítem aspiracional v3.0 — el grueso del esfuerzo es definir el *runtime de agente* dentro del Action; el `dispatch` en sí es trivial. Respeta Zero-Storage (el token viaja en la petición, no se almacena).
-
----
-
 ### 🟡 Media Prioridad
 
 #### #16 — Extraer DocModal a componente propio
@@ -400,17 +384,6 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 ---
 
-#### #47 — Preparación WAF (Google Cloud Armor)
-**Esfuerzo:** 2h (documentación + configuración)
-
-**Problema actual:** Cloud Run escala automáticamente, pero un ataque DDoS o de fuerza bruta al endpoint OAuth podría disparar costes de facturación.
-
-**Solución propuesta:** Documentar en `README`/`MANUAL_TECNICO` la preparación para integrar **Google Cloud Armor**. Matiz técnico: Cloud Run no tiene Load Balancer por defecto; Cloud Armor requiere ponerlo detrás de un **Load Balancer HTTP(S) externo** (setup y coste adicionales). Mitiga ataques en el edge sin latencia cruzada.
-
-**Beneficio:** Seguridad de edge y preparación para entornos productivos reales.
-
----
-
 #### #48 — Revisión bajo demanda de cambios recientes ("Sync Repo Status")
 **Esfuerzo:** 3–4h
 
@@ -426,10 +399,10 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 | Prioridad | Total | ✅ Resueltos | ⏳ Pendientes |
 |---|---|---|---|
-| 🔴 Alta | 8 | 5 (#1, #2, #13, #14, #27) | 3 (#15, #28, #43) |
+| 🔴 Alta | 7 | 5 (#1, #2, #13, #14, #27) | 2 (#15, #28) |
 | 🟡 Media | 19 | 7 (#12, #17, #18, #19, #21, #37, #41) | 12 (#16, #20, #22, #26, #29, #30, #38, #39, #42, #44, #45, #46) |
-| 🟢 Baja | 12 | 0 | 12 (#23, #24, #25, #31, #32, #33, #34, #35, #36, #40, #47, #48) |
-| **TOTAL** | **39** | **12** | **27** |
+| 🟢 Baja | 11 | 0 | 11 (#23, #24, #25, #31, #32, #33, #34, #35, #36, #40, #48) |
+| **TOTAL** | **37** | **12** | **25** |
 
 ---
 

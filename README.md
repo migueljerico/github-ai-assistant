@@ -359,6 +359,24 @@ La Inteligencia Artificial y las herramientas modernas (como GitHub Copilot, LLM
 
 ---
 
+## 🤝 Asistencia de IA y validación cruzada
+
+Este proyecto se ha construido con ayuda de varias IAs, pero bajo un principio: **ninguna salida de una IA se toma como verdad absoluta**. Cada propuesta —de arquitectura, código o roadmap— se contrasta con otras fuentes y se revisa críticamente antes de aplicarse, descartando o reformulando lo que no encaja con la arquitectura o el modelo de seguridad del proyecto.
+
+| IA / Herramienta | Rol en el proyecto |
+|---|---|
+| **Claude** / **Claude Code** (Anthropic) | Arquitectura, revisión crítica, implementación agéntica y documentación |
+| **Antigravity 2.0** (Google) | Entorno de desarrollo agéntico — construcción inicial de la v2 |
+| **Qwen** | Generación de componentes de código |
+| **Manus** | Ideas y propuestas; algunas implementaciones introdujeron regresiones que hubo que corregir |
+| **DeepSeek** · **GLM 5.2** | Propuestas para el roadmap, filtradas y curadas antes de incorporarse |
+
+**Validación en acción:** por ejemplo, una propuesta de "memoria persistente con IndexedDB" se **rechazó** por contradecir la arquitectura Zero-Storage (y porque no funcionaba entre sesiones), reformulándose a export/import de fichero. Otras propuestas se ajustaron o descartaron tras revisarlas contra el código real.
+
+> El valor no está en aceptar lo que dice una IA, sino en **saber preguntar a varias, contrastar y decidir con criterio**.
+
+---
+
 ## 📚 Contexto formativo
 
 Este proyecto forma parte del programa de formación en Análisis de Datos e Inteligencia Artificial (INAEM, 2025–2026). El objetivo fue explorar el desarrollo de aplicaciones full-stack asistido por agentes de IA, desde la arquitectura hasta el despliegue en producción, integrando múltiples servicios de IA y APIs REST en un flujo de trabajo completamente agéntico.
@@ -366,5 +384,5 @@ Este proyecto forma parte del programa de formación en Análisis de Datos e Int
 ---
 
 <p align="center">
-Desarrollado por <a href="https://github.com/migueljerico">@migueljerico</a> con la asistencia de <strong>Claude</strong> (Anthropic), <strong>Antigravity 2.0</strong> (Google) y <strong>Qwen 3.7-Plus</strong> (Componentes de código) · 2026
+Desarrollado por <a href="https://github.com/migueljerico">@migueljerico</a> con la asistencia de <strong>Claude / Claude Code</strong> (Anthropic), <strong>Antigravity 2.0</strong> (Google), <strong>Qwen</strong>, <strong>Manus</strong>, <strong>DeepSeek</strong> y <strong>GLM 5.2</strong> — con validación cruzada y revisión crítica · 2026
 </p>
