@@ -2,6 +2,7 @@ import { useRef, useEffect } from 'react';
 import type { GitHubRepo } from '../../types';
 import MultiRepoSelector from '../multi-repo/RepoSelector';
 import DocumentRepoButton from './DocumentRepoButton';
+import RepoContextButton from './RepoContextButton';
 
 interface ChatInputProps {
   value: string;
@@ -14,6 +15,10 @@ interface ChatInputProps {
   selectedRepos: GitHubRepo[];
   onSelectedReposChange: (repos: GitHubRepo[]) => void;
   onDocumentRepo: (repoName: string) => void;
+  // #41 - Contexto de repo para opiniones fundamentadas
+  repoContextName: string | null;
+  onLoadRepoContext: (repoName: string) => void;
+  onClearRepoContext: () => void;
   // 🔥 OPCIÓN D - Props para el selector de modo (opcionales para retrocompatibilidad)
   modeOverride?: 'auto' | 'chat' | 'action';
   onModeOverrideChange?: (mode: 'auto' | 'chat' | 'action') => void;
@@ -30,6 +35,9 @@ export default function ChatInput({
   selectedRepos,
   onSelectedReposChange,
   onDocumentRepo,
+  repoContextName,
+  onLoadRepoContext,
+  onClearRepoContext,
   modeOverride = 'auto',
   onModeOverrideChange,
 }: ChatInputProps) {
@@ -141,6 +149,13 @@ export default function ChatInput({
         <DocumentRepoButton
           disabled={disabled}
           onDocumentRepo={onDocumentRepo}
+        />
+
+        <RepoContextButton
+          disabled={disabled}
+          activeContext={repoContextName}
+          onLoadContext={onLoadRepoContext}
+          onClearContext={onClearRepoContext}
         />
       </div>
     </div>

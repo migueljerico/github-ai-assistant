@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v2.4.0 · Junio 2026
+**Actualizado a:** v2.5.0 · Junio 2026
 
 ---
 
@@ -21,6 +21,7 @@ Estado del código, mejoras pendientes y roadmap del proyecto.
 | 21 | Unificar cliente fetch — ghFetch() en actionExecutor.ts | client/src/services/actionExecutor.ts | v2.1.0 |
 | 27 | Calidad de respuestas Groq (temperatura por modo) | client/src/services/gemini.ts | v2.4.0 |
 | 37 | CI ejecuta también los tests del servidor | .github/workflows/ci.yml, package.json | v2.4.0 |
+| 41 | Opiniones de chat fundamentadas en el contexto del repo | gemini.ts, App.tsx, RepoContextButton.tsx | v2.5.0 |
 
 ---
 
@@ -191,20 +192,6 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 ---
 
-#### #41 — Opiniones de chat fundamentadas en el repo
-**Esfuerzo:** 4–5h
-
-**Problema actual:** El modo chat (`CHAT_PROMPT` en `gemini.ts`) está diseñado para opinar **desde conocimiento general, sin leer el repositorio** ("NUNCA digas 'necesito leer el repo primero'… DA TU OPINIÓN directamente"). Resultado: respuestas genéricas que no encajan con el proyecto real (p. ej. recomendar Jest/Mocha cuando ya se usa Vitest, o decir "documentación básica" cuando hay README + MANUAL_TECNICO + CONTRIBUTING).
-
-**Solución propuesta:**
-- Inyectar contexto del repo en el prompt de chat reutilizando `fetchRepoTreeRecursive()` (`services/github.ts`, ya existente): árbol de archivos + contenido de los archivos clave priorizados.
-- Cuando el usuario pida una opinión sobre un repo concreto, anteponer ese contexto al `CHAT_PROMPT` para que las respuestas sean específicas.
-- Respetar los límites ya definidos (máx. archivos, exclusión de binarios, truncado).
-
-**Beneficio:** Opiniones concretas y accionables sobre *tu* código en vez de plantillas genéricas; diferenciador claro frente a un chatbot normal.
-
----
-
 #### #42 — Refactor y cobertura de `App.tsx`
 **Esfuerzo:** 5–6h
 
@@ -358,9 +345,9 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 | Prioridad | Total | ✅ Resueltos | ⏳ Pendientes |
 |---|---|---|---|
 | 🔴 Alta | 7 | 5 (#1, #2, #13, #14, #27) | 2 (#15, #28) |
-| 🟡 Media | 16 | 6 (#12, #17, #18, #19, #21, #37) | 10 (#16, #20, #22, #26, #29, #30, #38, #39, #41, #42) |
+| 🟡 Media | 16 | 7 (#12, #17, #18, #19, #21, #37, #41) | 9 (#16, #20, #22, #26, #29, #30, #38, #39, #42) |
 | 🟢 Baja | 10 | 0 | 10 (#23, #24, #25, #31, #32, #33, #34, #35, #36, #40) |
-| **TOTAL** | **33** | **11** | **22** |
+| **TOTAL** | **33** | **12** | **21** |
 
 ---
 
