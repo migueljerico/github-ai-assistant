@@ -1,0 +1,77 @@
+import { describe, it, expect } from 'vitest';
+import {
+  readPDFAsText,
+  readTextFile,
+  readFileContent,
+  formatFileContentForAI,
+} from '../pdfReader';
+
+/** Crea un File a partir de una cadena UTF-8. */
+function fileFrom(text: string, name: string): File {
+  return new File([new TextEncoder().encode(text)], name);
+}
+
+describe('pdfReader', () => {
+  describe('formatFileContentForAI', () => {
+    it('envuelve el contenido con la extensión del archivo', () => {
+      const out = formatFileContentForAI('notas.md', 'hola mundo');
+      expect(out).toContain('notas.md');
+      expect(out).toContain('```md');
+      expect(out).toContain('hola mundo');
+    });
+
+    it('usa el nombre como lenguaje si no hay punto, y "txt" si el nombre está vacío', () => {
+      // Sin punto: pop() devuelve el nombre completo en minúsculas
+      expect(formatFileContentForAI('LICENSE', 'texto')).toContain('```license');
+      // Nombre vacío: cae al valor por defecto "txt"
+      expect(formatFileContentForAI('', 'texto')).toContain('```txt');
+    });
+
+    it('trunca el contenido que excede el máximo', () => {
+      const out = formatFileContentForAI('big.txt', 'a'.repeat(5000));
+      expect(out).toContain('[... contenido truncado ...]');
+    });
+
+    it('no trunca contenido corto', () => {
+      const out = formatFileContentForAI('small.txt', 'corto');
+      expect(out).not.toContain('truncado');
+    });
+  });
+
+  describe('readTextFile', () => {
+    it('lee el contenido de un archivo de texto', async () => {
+      const content = await readTextFile(fileFrom('contenido plano', 'a.txt'));
+      expect(content).toBe('contenido plano');
+    });
+  });
+
+  describe('readPDFAsText', () => {
+    it('extrae texto ASCII y limpia artefactos de PDF', async () => {
+      const raw = 'Hola Mundo\nBT secreto ET\n/F1 12 Tf\nAdios';
+      const text = await readPDFAsText(fileFrom(raw, 'doc.pdf'));
+      expect(text).toContain('Hola Mundo');
+      expect(text).toContain('Adios');
+      expect(text).not.toContain('secreto');
+    });
+
+    it('devuelve un mensaje de fallback cuando no hay texto legible', async () => {
+      // Bytes no imprimibles → extracción vacía → mensaje de fallback
+      const file = new File([new Uint8Array([0, 1, 2, 3])], 'binario.pdf');
+      const text = await readPDFAsText(file);
+      expect(text).toContain('binario.pdf');
+      expect(text).toContain('no legible');
+    });
+  });
+
+  describe('readFileContent', () => {
+    it('enruta los .txt a lectura de texto', async () => {
+      const content = await readFileContent(fileFrom('plano', 'notas.txt'));
+      expect(content).toBe('plano');
+    });
+
+    it('enruta los .pdf a extracción de PDF', async () => {
+      const content = await readFileContent(fileFrom('Texto PDF', 'doc.pdf'));
+      expect(content).toContain('Texto PDF');
+    });
+  });
+});

@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Testing
 - Tests añadidos para la temperatura por modo en `callGroq` (chat/action/por defecto)
+- Nueva cobertura para `pdfReader`, `pdfAdvanced`, `releaseGenerator` y `TemplatePanel` — cobertura total **32% → 42%** (resuelve el aviso de patch coverage de Codecov sobre los ficheros modificados)
 
 ### Docs
 - **MEJORAS_FUTURAS.md** — #27 y #37 marcados como resueltos; nuevos ítems #38 (Streaming SSE), #39 (ErrorBoundary + a11y) y #40 (Robustez IA/UX); tabla Resumen recalculada (31 ítems)
