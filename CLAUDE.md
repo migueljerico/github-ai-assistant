@@ -12,7 +12,7 @@ probar, y las convenciones que es fácil romper sin querer.
 
 ## 1. Visión general
 
-**GitHub AI Assistant** (v2.3.0) es una app web que permite operar la **GitHub
+**GitHub AI Assistant** (v2.5.0) es una app web que permite operar la **GitHub
 REST API en lenguaje natural** a través de un proveedor de IA (Google Gemini o
 Groq Cloud). El usuario escribe una instrucción, la IA propone una acción, y
 **cada operación de escritura se confirma manualmente** antes de ejecutarse.
