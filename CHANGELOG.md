@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0] — 2026-06-21
+
+### Added
+- **Opiniones de chat fundamentadas en el repo (#41)** — Se puede cargar un repositorio como *contexto activo* del chat (botón "💬 Opinar sobre repo" + chip "Contexto: owner/repo"). Las opiniones del modo chat se basan entonces en el código real (árbol + archivos clave vía `fetchRepoTreeRecursive`), en lugar de respuestas genéricas.
+  - `gemini.ts`: `buildRepoContextSummary()` (contexto compacto, truncado por líneas) y `chatPromptWithContext()` (CHAT_PROMPT reforzado).
+  - Zero-Storage: el contexto vive solo en estado React.
+
+### Testing
+- Tests para `buildRepoContextSummary` y `chatPromptWithContext`. Cobertura/cliente: 141 tests.
+
 ## [2.4.0] — 2026-06-21
 
 ### Fixed
