@@ -95,6 +95,60 @@ Responde en Markdown con formato rico (títulos, listas, negritas, código).`;
 // ── ACTION PROMPT (Opción D - Modo acción explícito) ──────────────────────────
 export const ACTION_PROMPT = SYSTEM_PROMPT; // Alias para claridad
 
+// ── #41: Contexto de repo para opiniones de chat fundamentadas ────────────────
+/**
+ * Construye un resumen compacto del repositorio para fundamentar las opiniones
+ * del modo chat: árbol completo + los primeros `maxFiles` archivos (ya vienen
+ * priorizados desde fetchRepoTreeRecursive) truncados a `maxLinesPerFile` líneas,
+ * para no inflar el presupuesto de tokens.
+ */
+export function buildRepoContextSummary(
+  repoName: string,
+  files: Array<{ path: string; content?: string }>,
+  opts: { maxFiles?: number; maxLinesPerFile?: number } = {},
+): string {
+  const maxFiles = opts.maxFiles ?? 12;
+  const maxLines = opts.maxLinesPerFile ?? 80;
+
+  const tree = files.map(f => f.path).join('\n');
+  const bodies = files
+    .filter(f => f.content)
+    .slice(0, maxFiles)
+    .map(f => {
+      const lines = (f.content || '').split('\n');
+      const shown = lines.slice(0, maxLines).join('\n');
+      const rest = lines.length > maxLines
+        ? `\n[... ${lines.length - maxLines} líneas más ...]`
+        : '';
+      return `### ${f.path}\n\`\`\`\n${shown}${rest}\n\`\`\``;
+    })
+    .join('\n\n');
+
+  return `Repositorio: ${repoName}\nArchivos analizados: ${files.length}\n\n` +
+    `ESTRUCTURA DEL PROYECTO:\n\`\`\`\n${tree}\n\`\`\`\n\n` +
+    `CONTENIDO DE ARCHIVOS CLAVE:\n\n${bodies}`;
+}
+
+/**
+ * Devuelve el CHAT_PROMPT reforzado con el contexto real del repositorio (#41),
+ * para que las opiniones sean específicas y no genéricas/plantilla.
+ */
+export function chatPromptWithContext(contextSummary: string): string {
+  return `${CHAT_PROMPT}
+
+═══════════════════════════════════════════════════════
+CONTEXTO REAL DEL REPOSITORIO DEL USUARIO
+═══════════════════════════════════════════════════════
+Tienes acceso al código y la estructura REALES de su repositorio. Reglas:
+- BASA tu opinión en este contexto: cita archivos, funciones y decisiones concretas.
+- NO des consejos genéricos de plantilla ni asumas carencias que el contexto
+  desmiente (si hay tests, documentación, CI/CD, medidas de seguridad, etc.,
+  reconócelo explícitamente).
+- Si algo no aparece en el contexto, dilo en lugar de inventarlo.
+
+${contextSummary}`;
+}
+
 // ── Message type ──────────────────────────────────────────────────────────────
 export interface Message {
   role: 'user' | 'assistant';

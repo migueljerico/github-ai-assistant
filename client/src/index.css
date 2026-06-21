@@ -629,6 +629,38 @@ textarea.input { resize: none; line-height: 1.6; }
   border-color: rgba(168, 85, 247, 0.4);
 }
 
+/* ── #41: Chip de contexto de repo activo ─────────────────────────────────── */
+.repo-context-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: var(--color-success, #22c55e);
+  font-size: 0.8rem;
+  font-weight: 500;
+  font-family: var(--font-sans);
+}
+.repo-context-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+  padding: 0 2px;
+  opacity: 0.7;
+  transition: opacity var(--transition);
+}
+.repo-context-clear:hover {
+  opacity: 1;
+}
+
 /* ── Multi-Repo ───────────────────────────────────────────────────────────── */
 .multi-repo-toggle {
   display: flex;

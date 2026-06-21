@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { parseGeminiAction, detectPrimaryLanguage, callAI } from '../gemini';
+import {
+  parseGeminiAction,
+  detectPrimaryLanguage,
+  callAI,
+  buildRepoContextSummary,
+  chatPromptWithContext,
+  CHAT_PROMPT,
+} from '../gemini';
 
 describe('gemini.ts - Utilidades', () => {
   describe('parseGeminiAction', () => {
@@ -163,5 +170,47 @@ describe('callAI - Groq temperatura según modo (Opción D / #27)', () => {
       'llama-3.1',
     );
     expect(lastBody(fetchMock).temperature).toBe(0.1);
+  });
+});
+
+describe('Contexto de repo para chat (#41)', () => {
+  const files = [
+    { path: 'README.md', content: '# Mi proyecto\nlínea2\nlínea3' },
+    { path: 'src/index.ts', content: Array.from({ length: 120 }, (_, i) => `linea ${i}`).join('\n') },
+    { path: 'package.json', content: '{ "name": "x" }' },
+    { path: 'src/utils.ts', content: 'export const a = 1;' },
+  ];
+
+  describe('buildRepoContextSummary', () => {
+    it('incluye el árbol completo y el repo', () => {
+      const out = buildRepoContextSummary('owner/repo', files);
+      expect(out).toContain('owner/repo');
+      expect(out).toContain('README.md');
+      expect(out).toContain('src/index.ts');
+      expect(out).toContain('package.json');
+    });
+
+    it('trunca archivos largos por número de líneas', () => {
+      const out = buildRepoContextSummary('owner/repo', files, { maxLinesPerFile: 80 });
+      expect(out).toContain('líneas más'); // src/index.ts (120 líneas) se trunca
+    });
+
+    it('respeta maxFiles para el contenido (no para el árbol)', () => {
+      const out = buildRepoContextSummary('owner/repo', files, { maxFiles: 1 });
+      // El árbol lista todos los paths…
+      expect(out).toContain('src/utils.ts');
+      // …pero el contenido solo del primer archivo
+      expect(out).toContain('# Mi proyecto');
+      expect(out).not.toContain('export const a = 1;');
+    });
+  });
+
+  describe('chatPromptWithContext', () => {
+    it('combina el CHAT_PROMPT con el contexto y las reglas', () => {
+      const prompt = chatPromptWithContext('CONTEXTO_DE_PRUEBA');
+      expect(prompt).toContain(CHAT_PROMPT);
+      expect(prompt).toContain('CONTEXTO_DE_PRUEBA');
+      expect(prompt).toContain('BASA tu opinión');
+    });
   });
 });

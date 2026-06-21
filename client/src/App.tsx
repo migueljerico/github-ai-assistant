@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { useAuth } from './context/AuthContext';
 import { useHistory } from './context/HistoryContext';
 import { useAIProvider } from './context/AIProviderContext';
-import { callAI, parseGeminiAction, generateRepoDocs, CHAT_PROMPT, ACTION_PROMPT } from './services/gemini';
+import { callAI, parseGeminiAction, generateRepoDocs, CHAT_PROMPT, ACTION_PROMPT, buildRepoContextSummary, chatPromptWithContext } from './services/gemini';
 import { executeAction, executeActionMultiRepo } from './services/actionExecutor';
 import { getFileContents, decodeBase64, fetchRepoTreeRecursive, createOrUpdateFile } from './services/github';
 import { formatResultData } from './utils/formatResult';
@@ -142,6 +142,15 @@ export default function App() {
   const [docAnalysis, setDocAnalysis] = useState<RepoAnalysis | null>(null);
   const [isCommittingDocs, setIsCommittingDocs] = useState(false);
 
+  // #41 - Contexto de repo activo para opiniones de chat fundamentadas
+  const [repoContext, setRepoContext] = useState<{
+    repoName: string;
+    contextText: string;
+    filesAnalyzed: number;
+    totalFiles: number;
+    truncated: boolean;
+  } | null>(null);
+
   // 🔥 OPCIÓN D - Modo override: 'auto' | 'chat' | 'action'
   // El setter aún no está cableado a la UI; de momento queda fijado en 'auto'.
   const [modeOverride] = useState<'auto' | 'chat' | 'action'>('auto');
@@ -186,7 +195,11 @@ export default function App() {
     }
 
     // 🔥 OPCIÓN D - SELECCIONAR SYSTEM PROMPT SEGÚN MODO
-    const systemPrompt = finalMode === 'chat' ? CHAT_PROMPT : ACTION_PROMPT;
+    // #41: en modo chat, si hay un repo cargado como contexto, reforzar el prompt
+    // con su código real para que la opinión sea específica y no genérica.
+    const systemPrompt = finalMode === 'chat'
+      ? (repoContext ? chatPromptWithContext(repoContext.contextText) : CHAT_PROMPT)
+      : ACTION_PROMPT;
 
     // 🔥 DEBUG: Log en consola para verificar detección
     console.log(`[Opción D] Modo: ${finalMode} | Override: ${modeOverride} | Conv: ${isConversation} | Action: ${isAction}`);
@@ -281,7 +294,7 @@ export default function App() {
     } finally {
       setIsChatLoading(false);
     }
-  }, [inputValue, token, user, provider, apiKey, model, conversationHistory, multiRepoEnabled, selectedRepos, modeOverride, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [inputValue, token, user, provider, apiKey, model, conversationHistory, multiRepoEnabled, selectedRepos, modeOverride, repoContext, addMessage, updateMessage, addEntry, updateEntry]);
 
   // ── Confirm action ─────────────────────────────────────────────────────────
   const handleConfirm = useCallback(async () => {
@@ -322,6 +335,57 @@ export default function App() {
     }
     setPendingAction(null);
   }, [pendingAction, addEntry, addMessage]);
+
+  // ── #41: Cargar repo como contexto activo del chat ─────────────────────────
+  const handleLoadRepoContext = useCallback(async (repoInput: string) => {
+    if (!token || !user) return;
+
+    const [owner, repoName] = repoInput.includes('/')
+      ? repoInput.split('/', 2)
+      : [user.login, repoInput];
+
+    setIsChatLoading(true);
+    const loadingId = addMessage({
+      role: 'assistant',
+      content: ` Cargando el contexto de **${owner}/${repoName}**...`,
+      isLoading: true,
+    });
+
+    try {
+      const { files, totalScanned, truncated } = await fetchRepoTreeRecursive(token, owner, repoName);
+      const contextText = buildRepoContextSummary(`${owner}/${repoName}`, files);
+      setRepoContext({
+        repoName: `${owner}/${repoName}`,
+        contextText,
+        filesAnalyzed: files.length,
+        totalFiles: totalScanned,
+        truncated,
+      });
+      updateMessage(loadingId, {
+        content:
+          `✅ Contexto cargado de **${owner}/${repoName}** ` +
+          `(${files.length} archivos${truncated ? ` de ${totalScanned}` : ''}). ` +
+          `A partir de ahora mis opiniones en el chat se basarán en tu código real — ` +
+          `pregúntame lo que quieras sobre el repositorio.`,
+        isLoading: false,
+      });
+    } catch (err) {
+      updateMessage(loadingId, {
+        content: `❌ No pude cargar el contexto de **${owner}/${repoName}**: ${(err as Error).message}`,
+        isLoading: false,
+      });
+    } finally {
+      setIsChatLoading(false);
+    }
+  }, [token, user, addMessage, updateMessage]);
+
+  const handleClearRepoContext = useCallback(() => {
+    setRepoContext(null);
+    addMessage({
+      role: 'assistant',
+      content: '🧹 Contexto del repositorio descartado. Volveré a opinar sin contexto específico.',
+    });
+  }, [addMessage]);
 
   // ── Document repo ──────────────────────────────────────────────────────────
   const handleDocumentRepo = useCallback(async (repoInput: string) => {
@@ -443,6 +507,9 @@ export default function App() {
             selectedRepos={selectedRepos}
             onSelectedReposChange={setSelectedRepos}
             onDocumentRepo={handleDocumentRepo}
+            repoContextName={repoContext?.repoName ?? null}
+            onLoadRepoContext={handleLoadRepoContext}
+            onClearRepoContext={handleClearRepoContext}
           />
         </div>
 
