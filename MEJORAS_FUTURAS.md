@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v2.3.0 · Junio 2026
+**Actualizado a:** v2.4.0 · Junio 2026
 
 ---
 
@@ -19,6 +19,8 @@ Estado del código, mejoras pendientes y roadmap del proyecto.
 | 18 | crypto.randomUUID() en lugar de Math.random() | client/src/App.tsx | v2.3.0 |
 | 19 | Soporte método HTTP PATCH en executeAction() | client/src/services/actionExecutor.ts | v2.1.0 |
 | 21 | Unificar cliente fetch — ghFetch() en actionExecutor.ts | client/src/services/actionExecutor.ts | v2.1.0 |
+| 27 | Calidad de respuestas Groq (temperatura por modo) | client/src/services/gemini.ts | v2.4.0 |
+| 37 | CI ejecuta también los tests del servidor | .github/workflows/ci.yml, package.json | v2.4.0 |
 
 ---
 
@@ -27,23 +29,6 @@ Estado del código, mejoras pendientes y roadmap del proyecto.
 Los issues están numerados y ordenados por prioridad descendente dentro de cada bloque. Al resolver un punto, moverlo a la tabla ✅ con versión y SHA de commit.
 
 ### 🔴 Alta Prioridad
-
-#### #27 — Mejorar calidad de respuestas Groq ⚠️ URGENTE
-**Esfuerzo:** 2–3h
-
-**Problema actual:** Groq da respuestas genéricas tipo "plantilla" mientras que Gemini da análisis detallados y personalizados. Diagnóstico realizado:
-- `callGroq()` no soporta el parámetro `mode` (siempre usa prompt de acción con JSON)
-- Temperatura fija en `0.1` (demasiado baja para chat conversacional)
-- System prompt incorrecto para modo conversacional
-
-**Solución propuesta:**
-- Añadir parámetro `mode` a `callGroq()` igual que en `callGeminiDirect()`
-- Ajustar temperatura según modo: `0.1` para action, `0.7` para chat
-- Usar el system prompt correcto según mode (CHAT_PROMPT vs ACTION_PROMPT)
-
-**Beneficio:** Respuestas de Groq a la par de Gemini en calidad; experiencia de usuario consistente entre proveedores.
-
----
 
 #### #28 — Subida de archivos locales (PDF, PBIX, Excel, etc.)
 **Esfuerzo:** 8–12h (feature v3.0)
@@ -175,7 +160,34 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 **Beneficio:** Mayor confianza en cambios futuros; detección temprana de regresiones; documentación viva del comportamiento esperado.
 
-**Nota:** Esta mejora es transversal — cada vez que se resuelva otra mejora (#16, #20, #22, #27, #28, etc.), se deben añadir tests correspondientes.
+**Nota:** Esta mejora es transversal — cada vez que se resuelva otra mejora (#16, #20, #22, #28, etc.), se deben añadir tests correspondientes.
+
+---
+
+#### #38 — Streaming de respuestas (SSE)
+**Esfuerzo:** 5–6h
+
+**Problema actual:** Toda respuesta de la IA se espera completa antes de mostrarse (`result.response.text()` en el proxy; `data.choices[0].message.content` en Groq). En generación de documentación o respuestas largas de chat, la UI se siente congelada durante varios segundos.
+
+**Solución propuesta:**
+- El proxy `/api/gemini` y `callGroq()` emiten tokens incrementales (Server-Sent Events / streaming de la API).
+- `callAI()` expone un callback `onToken` opcional.
+- `ChatArea` renderiza el texto a medida que llega.
+
+**Beneficio:** UX percibida mucho mejor; feedback inmediato; sensación de fluidez equiparable a las apps de chat modernas.
+
+---
+
+#### #39 — ErrorBoundary + accesibilidad (a11y)
+**Esfuerzo:** 4h
+
+**Problema actual:** Un fallo de render en cualquier componente tumba toda la SPA (no hay red de seguridad de UI). Además, los modales (`ConfirmModal`, `DocModal`) carecen de focus-trap, roles ARIA y navegación por teclado completa.
+
+**Solución propuesta:**
+- `ErrorBoundary` de React en `main.tsx` envolviendo `Root`, con pantalla de error amable y opción de recargar.
+- Focus-trap y `role="dialog"` / `aria-modal` en los modales; cierre con `Esc`; foco inicial gestionado.
+
+**Beneficio:** Robustez de UI ante errores inesperados; accesibilidad para usuarios de teclado y lectores de pantalla.
 
 ---
 
@@ -299,14 +311,28 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 ---
 
+#### #40 — Robustez IA/UX (cancelación, validación, persistencia de proveedor)
+**Esfuerzo:** 5h (agrupa 3 sub-tareas)
+
+**Problema actual:** No se puede abortar una generación larga; `parseGeminiAction()` solo valida 3 campos del JSON de acción; y el usuario debe re-seleccionar proveedor y modelo en cada recarga.
+
+**Solución propuesta:**
+- **Cancelación:** `AbortController` en `callAI()` + botón "Detener" mientras genera. Ahorra cuota y mejora la UX.
+- **Validación estricta:** validar el JSON de acción con `zod` y una allowlist de métodos/endpoints, reforzando la garantía *proponer → confirmar → ejecutar*.
+- **Persistencia parcial:** guardar **proveedor + modelo** (NUNCA la API key) en `sessionStorage`, respetando Zero-Storage, para no re-seleccionarlos en cada recarga.
+
+**Beneficio:** Más control y robustez para el usuario; defensa adicional ante respuestas malformadas de la IA; mejor experiencia de reconexión.
+
+---
+
 ## 📊 Resumen
 
 | Prioridad | Total | ✅ Resueltos | ⏳ Pendientes |
 |---|---|---|---|
-| 🔴 Alta | 7 | 4 (#1, #2, #13, #14) | 3 (#15, #27, #28) |
-| 🟡 Media | 11 | 5 (#12, #17, #18, #19, #21) | 6 (#16, #20, #22, #26, #29, #30) |
-| 🟢 Baja | 9 | 0 | 9 (#23, #24, #25, #31, #32, #33, #34, #35, #36) |
-| **TOTAL** | **27** | **9** | **18** |
+| 🔴 Alta | 7 | 5 (#1, #2, #13, #14, #27) | 2 (#15, #28) |
+| 🟡 Media | 14 | 6 (#12, #17, #18, #19, #21, #37) | 8 (#16, #20, #22, #26, #29, #30, #38, #39) |
+| 🟢 Baja | 10 | 0 | 10 (#23, #24, #25, #31, #32, #33, #34, #35, #36, #40) |
+| **TOTAL** | **31** | **11** | **20** |
 
 ---
 

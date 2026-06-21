@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] — 2026-06-21
+
+### Fixed
+- **Calidad de respuestas Groq (#27)** — `callGroq()` ahora recibe el `mode` y ajusta la temperatura (`0.7` en chat, `0.1` en acción), igualando la calidad conversacional de Gemini
+
+### Changed
+- **`callAI()`** propaga el parámetro `mode` también al proveedor Groq (antes solo a Gemini)
+- **`actionExecutor.ts`** — Eliminados imports muertos de `github.ts` (limpieza, sin cambio funcional)
+
+### Infrastructure
+- **CI ejecuta los tests del servidor (#37)** — Nuevo job `server-test` en `.github/workflows/ci.yml`; añadidas devDependencies `vitest` y `supertest` y script `test:server` en la raíz
+- **Tests reorganizados** — Todos los `*.test.ts(x)` movidos a carpetas `__tests__/` para una estructura uniforme (`services/` y `example.test.ts`)
+
+### Testing
+- Tests añadidos para la temperatura por modo en `callGroq` (chat/action/por defecto)
+
+### Docs
+- **MEJORAS_FUTURAS.md** — #27 y #37 marcados como resueltos; nuevos ítems #38 (Streaming SSE), #39 (ErrorBoundary + a11y) y #40 (Robustez IA/UX); tabla Resumen recalculada (31 ítems)
+
 ## [2.3.0] — 2026-06-19
 
 ### Added

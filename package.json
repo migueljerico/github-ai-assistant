@@ -1,6 +1,6 @@
 {
   "name": "github-ai-assistant",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "Asistente de IA para Publicar Repositorios",
   "type": "module",
   "main": "server/index.js",
@@ -11,7 +11,8 @@
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "build": "cd client && npm run build",
     "postinstall": "",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:server": "vitest run server"
   },
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
@@ -21,7 +22,9 @@
     "express-session": "^1.17.3"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "supertest": "^7.0.0",
+    "vitest": "^2.1.8"
   },
   "engines": {
     "node": ">=20"
