@@ -21,18 +21,9 @@ import {
   decodeBase64,
   listAllRepos,
   ghFetch,
-  listIssues,
-  createIssue,
   updateIssueState,
   commentOnIssue,
-  listPullRequests,
-  createPullRequest,
   mergePullRequest,
-  listBranches,
-  createBranch,
-  deleteBranch,
-  listWorkflows,
-  listWorkflowRuns,
   triggerWorkflowRun,
 } from './github';
 
