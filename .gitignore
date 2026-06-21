@@ -6,6 +6,10 @@ client/node_modules/
 dist/
 client/dist/
 
+# Test coverage reports (generated)
+coverage/
+client/coverage/
+
 # Environment variables — NEVER commit these
 .env
 .env.local
