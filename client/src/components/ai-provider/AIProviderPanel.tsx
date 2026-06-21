@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAIProvider, type AIProviderType } from '../../context/AIProviderContext';
 import { validateProviderKey } from '../../services/gemini';
+import { modelLabel } from '../../utils/modelLabels';
 
 // ── Gemini models ─────────────────────────────────────────────────────────────
 // IMPORTANT: gemini-2.0-flash, gemini-1.5-flash and gemini-1.5-pro have their
@@ -235,6 +236,12 @@ export default function AIProviderPanel() {
               <div className="provider-card-inputs" onClick={e => e.stopPropagation()}>
 
                 {/* Model selector — dynamic */}
+                <label
+                  htmlFor="groq-model-select"
+                  style={{ display: 'block', fontSize: '0.72rem', color: 'var(--color-text-muted)', margin: '0 0 4px' }}
+                >
+                  Modelo{!isLoadingModels && ` · ${groqModels.length} disponibles`}
+                </label>
                 <select
                   id="groq-model-select"
                   className="input provider-select"
@@ -245,7 +252,7 @@ export default function AIProviderPanel() {
                   {isLoadingModels
                     ? <option value="">Cargando modelos...</option>
                     : groqModels.map(m => (
-                        <option key={m.value} value={m.value}>{m.label}</option>
+                        <option key={m.value} value={m.value}>{modelLabel(m.value)}</option>
                       ))
                   }
                 </select>
@@ -258,7 +265,7 @@ export default function AIProviderPanel() {
                 )}
                 {!isLoadingModels && modelsLoaded && (
                   <p style={{ fontSize: '0.72rem', color: 'var(--color-success, #22c55e)', margin: '3px 0 6px' }}>
-                    ✅ {groqModels.length} modelos disponibles · Catálogo en tiempo real
+                    ✅ Catálogo cargado en tiempo real desde Groq
                   </p>
                 )}
 
