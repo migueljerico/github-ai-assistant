@@ -1,6 +1,6 @@
 # 📖 Manual Técnico — GitHub AI Assistant
 
-**Versión:** v2.5.0 · Junio 2026
+**Versión:** v2.7.1 · Junio 2026
 
 ---
 
@@ -398,7 +398,7 @@ gcloud run deploy github-ai-assistant \
 - **CI:** GitHub Actions (`.github/workflows/ci.yml`) ejecuta en cada push/PR a `main`
   el lint, los tests del cliente con cobertura y los tests del servidor
   (job `server-test`). Ver "Pipeline CI/CD" en la sección de despliegue.
-- **Cobertura actual:** 49%
+- **Cobertura actual:** ≈50% (ver Codecov para el valor exacto) · 173 tests en el cliente
 
 ### Módulos testeados
 
@@ -406,9 +406,12 @@ gcloud run deploy github-ai-assistant \
 |---|---|---|
 | `AuthContext.tsx` | Login, logout, OAuth, Zero-Storage | ✅ |
 | `AIProviderContext.tsx` | Connect/disconnect, Zero-Storage | ✅ |
+| `providers.ts` | Registro, detección de modelos 🆓, caché de catálogo | ✅ |
 | `actionExecutor.ts` | GET, POST, PUT, DELETE, PATCH, multi-repo | ✅ |
-| `github.ts` | Base64, ghFetch, getUser, createRepo, etc. | ✅ |
-| `gemini.ts` | parseGeminiAction, detectPrimaryLanguage, temperatura Groq por modo, contexto de repo (#41) | ✅ |
+| `github.ts` | Base64, ghFetch, getUser, createRepo, getRepo, getBranchSha | ✅ |
+| `gemini.ts` | parseGeminiAction, detectPrimaryLanguage, temperatura por modo, contexto de repo (#41), enrutado OpenRouter | ✅ |
+| `docPublisher.ts` | Commit directo / Draft PR (#45) | ✅ |
+| `modeDetection.ts` | Chat vs action; sesgo a chat con contexto de repo | ✅ |
 | `formatResult.ts` | Arrays, objetos, strings, JSON | ✅ |
 | `releaseGenerator.ts` | createGitHubRelease, notas, suggestNextVersion | ✅ |
 | `pdfReader.ts` / `pdfAdvanced.ts` | Extracción/limpieza de texto, fallback | ✅ |

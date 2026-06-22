@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.1] — 2026-06-22
+
+### Fixed
+- **El desplegable de modelos no abría** — La tarjeta de proveedor era un `<button>` que envolvía el `<select>` (HTML inválido), impidiendo que el desplegable nativo se abriera (afectaba a Groq y OpenRouter, que mostraban el contador correcto pero solo una opción). Ahora la tarjeta es un `<div role="button">` accesible por teclado; el selector lista todos los modelos. Elimina además el aviso `validateDOMNesting`.
+- **Botón "Conectar" inaccesible** — Con la tarjeta de OpenRouter expandida, el botón quedaba fuera del viewport (la pantalla de conexión no scrolleaba porque `#root`/`body` están en `overflow:hidden`). `.auth-screen` ahora hace scroll (`overflow-y:auto` + `justify-content: safe center`).
+- **Contexto de repo (#41) no reconocido sin nombrar `user/repo`** — La detección de modo enviaba algunas preguntas de opinión a modo acción, por lo que el contexto del repo no se inyectaba. Lógica extraída a `utils/modeDetection.ts` (testeable) que, con un repo cargado como contexto, sesga a chat salvo acción explícita.
+
+### Changed
+- **Strings de UI a multi-proveedor** — Cabecera ("Powered by Google Gemini" → "Multi-proveedor de IA · GitHub API") y pantalla de login.
+- **Documentación sincronizada a v2.7.1** — README, MANUAL_TECNICO, MEJORAS_FUTURAS, CLAUDE.md y versiones de `package.json`/lockfiles (varias cabeceras se habían quedado en v2.5.0).
+
 ## [2.7.0] — 2026-06-22
 
 ### Added

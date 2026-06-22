@@ -12,7 +12,7 @@ probar, y las convenciones que es fácil romper sin querer.
 
 ## 1. Visión general
 
-**GitHub AI Assistant** (v2.5.0) es una app web que permite operar la **GitHub
+**GitHub AI Assistant** (v2.7.1) es una app web que permite operar la **GitHub
 REST API en lenguaje natural** a través de un proveedor de IA (Google Gemini o
 Groq Cloud). El usuario escribe una instrucción, la IA propone una acción, y
 **cada operación de escritura se confirma manualmente** antes de ejecutarse.
@@ -38,9 +38,9 @@ Usuario escribe instrucción
 App.tsx  ──► detecta modo (chat | action)  ──► elige system prompt
         │
         ▼
-services/gemini.ts  callAI()
-        ├─ provider = 'gemini' ──► POST /api/gemini  (proxy Express, evita bloqueo UE)
-        └─ provider = 'groq'   ──► fetch() directo al endpoint de Groq
+services/gemini.ts  callAI()   (enruta según el `transport` del registro de proveedores)
+        ├─ transport = 'gemini-proxy'      ──► POST /api/gemini  (proxy Express, evita bloqueo UE)
+        └─ transport = 'openai-compatible' ──► fetch() directo (Groq, OpenRouter)
         │
         ▼
 La IA responde con un JSON descriptivo de la acción  (parseGeminiAction)
@@ -91,9 +91,12 @@ se guarda ni se loguea en el servidor.
 │   │   ├── App.tsx           # Orquestador: estado de chat, detección de modo, modales
 │   │   ├── main.tsx          # Punto de entrada React
 │   │   ├── services/
-│   │   │   ├── gemini.ts         # Cliente IA unificado (callAI, parseGeminiAction,
-│   │   │   │                     #   generateRepoDocs) + system prompts
+│   │   │   ├── providers.ts      # Registro de proveedores de IA (Gemini/Groq/OpenRouter)
+│   │   │   │                     #   + fetchModels() (catálogo dinámico, etiqueta 🆓)
+│   │   │   ├── gemini.ts         # Cliente IA multi-proveedor (callAI, callOpenAICompatible,
+│   │   │   │                     #   parseGeminiAction, generateRepoDocs) + system prompts
 │   │   │   ├── github.ts         # Wrappers tipados de la GitHub REST API (ghFetch, ...)
+│   │   │   ├── docPublisher.ts   # Publica docs: commit directo o Draft PR (#45)
 │   │   │   └── actionExecutor.ts # Ejecuta acciones CONFIRMADAS; resuelve placeholders
 │   │   ├── context/
 │   │   │   ├── AuthContext.tsx        # Token de GitHub (sessionStorage)
@@ -101,7 +104,8 @@ se guarda ni se loguea en el servidor.
 │   │   │   └── HistoryContext.tsx     # Log de acciones de la sesión
 │   │   ├── hooks/            # useChat, useActions
 │   │   ├── utils/            # formatResult, pdfReader/pdfAdvanced, releaseGenerator/
-│   │   │                     #   releaseAssets, instructionSuggestions, rateLimitHandler
+│   │   │                     #   releaseAssets, instructionSuggestions, rateLimitHandler,
+│   │   │                     #   modeDetection (chat vs action), modelLabels
 │   │   ├── components/       # Agrupados por feature:
 │   │   │                     #   auth/ ai-provider/ chat/ confirm/ layout/
 │   │   │                     #   multi-repo/ templates/

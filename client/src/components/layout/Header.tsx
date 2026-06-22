@@ -21,7 +21,7 @@ export default function Header({
         <div className="header-logo-icon">🤖</div>
         <div className="header-title">
           Asistente de IA para Publicar Repositorios
-          <span>Powered by Google Gemini + GitHub API</span>
+          <span>Multi-proveedor de IA (Gemini · Groq · OpenRouter) + GitHub API</span>
         </div>
       </div>
 
