@@ -4,7 +4,8 @@ import { useHistory } from './context/HistoryContext';
 import { useAIProvider } from './context/AIProviderContext';
 import { callAI, parseGeminiAction, generateRepoDocs, CHAT_PROMPT, ACTION_PROMPT, buildRepoContextSummary, chatPromptWithContext } from './services/gemini';
 import { executeAction, executeActionMultiRepo } from './services/actionExecutor';
-import { getFileContents, decodeBase64, fetchRepoTreeRecursive, createOrUpdateFile, getRepo, getBranchSha, createBranch, createPullRequest } from './services/github';
+import { getFileContents, decodeBase64, fetchRepoTreeRecursive } from './services/github';
+import { writeDocFiles, createDocsDraftPr } from './services/docPublisher';
 import { formatResultData } from './utils/formatResult';
 import Header from './components/layout/Header';
 import HistoryPanel from './components/layout/HistoryPanel';
@@ -452,7 +453,7 @@ export default function App() {
     }
   }, [token, user, provider, apiKey, model, providerName, addMessage, updateMessage, addEntry, updateEntry]);
 
-  // ── Commit docs ────────────────────────────────────────────────────────────
+  // ── Commit docs (commit directo a la rama por defecto) ───────────────────────
   const handleCommitDocs = useCallback(async () => {
     if (!docAnalysis || !token || !user) return;
     setIsCommittingDocs(true);
@@ -461,22 +462,7 @@ export default function App() {
     const histId = addEntry({ status: 'pending', description: `Commiteando documentación en ${docAnalysis.repoName}`, repo: docAnalysis.repoName });
 
     try {
-      // README.md
-      let readmeSha: string | undefined;
-      try {
-        const existing = await getFileContents(token, owner, repo, 'README.md');
-        readmeSha = existing.sha;
-      } catch { /* new file */ }
-      await createOrUpdateFile(token, owner, repo, 'README.md', docAnalysis.readme, 'docs: generate README via Asistente de IA', readmeSha);
-
-      // MANUAL_TECNICO.md
-      let manualSha: string | undefined;
-      try {
-        const existing = await getFileContents(token, owner, repo, 'MANUAL_TECNICO.md');
-        manualSha = existing.sha;
-      } catch { /* new file */ }
-      await createOrUpdateFile(token, owner, repo, 'MANUAL_TECNICO.md', docAnalysis.manualTecnico, 'docs: generate MANUAL_TECNICO via Asistente de IA', manualSha);
-
+      await writeDocFiles(token, owner, repo, docAnalysis.readme, docAnalysis.manualTecnico);
       addMessage({ role: 'assistant', content: `✅ README.md y MANUAL_TECNICO.md commiteados en **${docAnalysis.repoName}**` });
       updateEntry(histId, { status: 'completed', description: `Documentación commiteada en ${docAnalysis.repoName}` });
     } catch (err) {
@@ -497,45 +483,12 @@ export default function App() {
     const histId = addEntry({ status: 'pending', description: `Creando Draft PR de documentación en ${docAnalysis.repoName}`, repo: docAnalysis.repoName });
 
     try {
-      // 1. Rama por defecto y su SHA HEAD
-      const repoInfo = await getRepo(token, owner, repo);
-      const baseBranch = repoInfo.default_branch;
-      const baseSha = await getBranchSha(token, owner, repo, baseBranch);
-
-      // 2. Crear rama nueva a partir de la base
-      const branchName = `docs/auto-${Date.now()}`;
-      await createBranch(token, owner, repo, branchName, baseSha);
-
-      // 3. Escribir ambos archivos en la rama nueva (el SHA existente viene de la
-      //    base; coincide porque la rama se acaba de bifurcar de ella)
-      let readmeSha: string | undefined;
-      try {
-        const existing = await getFileContents(token, owner, repo, 'README.md');
-        readmeSha = existing.sha;
-      } catch { /* new file */ }
-      await createOrUpdateFile(token, owner, repo, 'README.md', docAnalysis.readme, 'docs: generate README via Asistente de IA', readmeSha, branchName);
-
-      let manualSha: string | undefined;
-      try {
-        const existing = await getFileContents(token, owner, repo, 'MANUAL_TECNICO.md');
-        manualSha = existing.sha;
-      } catch { /* new file */ }
-      await createOrUpdateFile(token, owner, repo, 'MANUAL_TECNICO.md', docAnalysis.manualTecnico, 'docs: generate MANUAL_TECNICO via Asistente de IA', manualSha, branchName);
-
-      // 4. Abrir el Draft PR contra la rama por defecto
-      const prBody = [
-        '## 📄 Documentación generada automáticamente',
-        '',
-        `Este Draft PR añade/actualiza la documentación de **${docAnalysis.repoName}**, generada por el Asistente de IA a partir de ${docAnalysis.filesAnalyzed} archivo${docAnalysis.filesAnalyzed !== 1 ? 's' : ''} analizado${docAnalysis.filesAnalyzed !== 1 ? 's' : ''}.`,
-        '',
-        '### Archivos',
-        '- `README.md`',
-        '- `MANUAL_TECNICO.md`',
-        '',
-        '> Revisa el contenido antes de marcar el PR como *Ready for review* y mergear.',
-      ].join('\n');
-      const pr = await createPullRequest(token, owner, repo, 'docs: documentación generada por IA', branchName, baseBranch, prBody, true);
-
+      const { pr, branchName } = await createDocsDraftPr(token, owner, repo, {
+        readme: docAnalysis.readme,
+        manualTecnico: docAnalysis.manualTecnico,
+        filesAnalyzed: docAnalysis.filesAnalyzed,
+        repoName: docAnalysis.repoName,
+      });
       addMessage({ role: 'assistant', content: `✅ Draft PR [#${pr.number}](${pr.html_url}) creado en **${docAnalysis.repoName}** (rama \`${branchName}\`). Revísalo antes de mergear.` });
       updateEntry(histId, { status: 'completed', description: `Draft PR #${pr.number} creado en ${docAnalysis.repoName}` });
     } catch (err) {
