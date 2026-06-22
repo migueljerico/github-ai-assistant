@@ -169,7 +169,7 @@ gcloud run deploy github-ai-assistant \
 - Una GitHub OAuth App ([crear aquí](https://github.com/settings/developers)):
   - Homepage URL: `http://localhost:5173`
   - Callback URL: `http://localhost:3001/auth/callback`
-- Una API key de [Groq Cloud](https://console.groq.com) o [Google Gemini](https://aistudio.google.com/apikey)
+- Una API key de [Groq Cloud](https://console.groq.com), [Google Gemini](https://aistudio.google.com/apikey) u [OpenRouter](https://openrouter.ai/keys) (esta última con modelos gratuitos)
 
 ### Variables de entorno
 
@@ -207,29 +207,29 @@ Usuario (lenguaje natural)
         ↓
 ┌─────────────────────────────────────────────────────┐
 │  Frontend React 18 + TypeScript + Vite              │
-│  ├── AIProviderPanel  (conectar Groq / Gemini)      │
+│  ├── AIProviderPanel  (Groq / Gemini / OpenRouter)  │
 │  ├── LoginButton      (OAuth) / PatInput (PAT)      │
 │  ├── ChatArea + ChatInput                           │
 │  ├── ConfirmModal     (confirmación de acciones)    │
 │  ├── HistoryPanel     (log exportable)              │
 │  ├── TemplatePanel    (plantillas predefinidas)     │
-│  └── RepoSelector     (multi-repo)                 │
+│  └── RepoSelector     (multi-repo)                  │
 └──────────┬──────────────────────────┬───────────────┘
            │ /auth/github             │ Llamadas directas
-           │ /auth/callback           │ (GitHub + Groq)
+           │ /auth/callback           │ (GitHub + Groq + OpenRouter)
            │ /api/gemini (proxy EU)   │
            ▼                          ▼
 ┌──────────────────────┐  ┌───────────────────────────────┐
 │  Express.js          │  │  APIs externas                │
 │  ├── OAuth           │  │  ├── GitHub REST API v3        │
 │  ├── /api/gemini     │  │  ├── Groq Cloud (directo)      │
-│  │   (rate limited)  │  │  └── Google Gemini API         │
-│  ├── /health         │  │    (via proxy en el servidor) │
+│  │   (rate limited)  │  │  ├── OpenRouter (directo)      │
+│  ├── /health         │  │  └── Google Gemini (via proxy) │
 │  └── static files    │  │                               │
 └──────────────────────┘  └───────────────────────────────┘
 ```
 
-**Decisión arquitectónica clave:** el backend Express es intencionalmente mínimo. Gestiona el intercambio de secretos OAuth y actúa como proxy para la API de Gemini — necesario porque Google bloquea las llamadas directas desde navegadores en la UE/EEA. Las llamadas a GitHub y a Groq se realizan directamente desde el navegador del usuario, con su propio token y su propia clave de IA.
+**Decisión arquitectónica clave:** el backend Express es intencionalmente mínimo. Gestiona el intercambio de secretos OAuth y actúa como proxy para la API de Gemini — necesario porque Google bloquea las llamadas directas desde navegadores en la UE/EEA. Las llamadas a GitHub, Groq y OpenRouter se realizan directamente desde el navegador del usuario, con su propio token y su propia clave de IA.
 
 ---
 
@@ -242,7 +242,8 @@ Usuario (lenguaje natural)
 | Express.js | Backend thin — OAuth + proxy Gemini | Gratuito |
 | GitHub REST API v3 | Todas las operaciones sobre repositorios | Gratuito |
 | Groq Cloud | Inferencia de IA ultrarrápida (Llama 3.3) | Tier gratuito |
-| Google Gemini | Modelo de IA alternativo (gemini-2.5-flash) | Tier gratuito |
+| Google Gemini | Modelo de IA (gemini-2.5-flash, vía proxy) | Tier gratuito |
+| OpenRouter | Pasarela OpenAI-compatible a 300+ modelos (OpenAI, Claude, Llama…) | Modelos gratis y de pago |
 | Google Cloud Run | Despliegue serverless (us-central1) | Pay-per-use |
 | Antigravity 2.0 | Entorno de desarrollo agéntico (construcción del código) | — |
 | Claude (Anthropic) | Arquitectura, revisión y documentación | — |
@@ -264,8 +265,8 @@ npm run test:coverage # Tests con reporte de cobertura
 
 ### Cobertura actual
 
-- **Cobertura total:** 49%
-- **Módulos testeados:** AuthContext, AIProviderContext, actionExecutor, github, gemini, formatResult, releaseGenerator, pdfReader, pdfAdvanced, useChat, useActions, ChatArea, ChatInput, ConfirmModal, Header, TemplatePanel, AIProviderPanel, AIProviderBadge — más los tests del servidor (rate limiter)
+- **Cobertura total:** ≈50% (173 tests en el cliente; ver Codecov para el valor exacto)
+- **Módulos testeados:** AuthContext, AIProviderContext, providers, actionExecutor, github, gemini, docPublisher, modeDetection, formatResult, releaseGenerator, pdfReader, pdfAdvanced, useChat, useActions, ChatArea, ChatInput, ConfirmModal, Header, TemplatePanel, AIProviderPanel, AIProviderBadge, RepoContextButton — más los tests del servidor (rate limiter)
 - **Badge con cobertura actual:** [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
 
 ### Estrategia de testing
@@ -291,7 +292,7 @@ El token de acceso de GitHub (ya sea OAuth o PAT) vive exclusivamente en la memo
 
 **Claves de IA — Memoria React:**
 
-Las claves de API de IA (Groq/Gemini) también viven exclusivamente en la memoria de React, dentro del `AIProviderContext`. No se almacenan en ningún sitio.
+Las claves de API de IA (Groq/Gemini/OpenRouter) también viven exclusivamente en la memoria de React, dentro del `AIProviderContext`. No se almacenan en ningún sitio.
 
 **¿Por qué es esto importante?**
 
@@ -315,7 +316,7 @@ La aplicación requiere el scope `repo` de GitHub, que otorga acceso de lectura 
 | Elemento | Dónde vive | Cuándo desaparece |
 |---|---|---|
 | Token OAuth de GitHub | Solo en memoria de React (estado) | Al recargar la página o cerrar la pestaña |
-| Clave de IA (Groq/Gemini) | Solo en memoria de React (estado) | Al recargar la página o cerrar la pestaña |
+| Clave de IA (Groq/Gemini/OpenRouter) | Solo en memoria de React (estado) | Al recargar la página o cerrar la pestaña |
 | GITHUB_CLIENT_SECRET | Variables de entorno del servidor | Solo en memoria del proceso |
 | Datos del usuario | Ningún servidor externo | No se almacenan |
 | Clave Gemini en tránsito | Cuerpo HTTPS hacia /api/gemini | No se persiste en el servidor |
