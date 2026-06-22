@@ -336,7 +336,7 @@ Ver [MEJORAS_FUTURAS.md](./MEJORAS_FUTURAS.md) — Estado actual, sprints y road
 
 ## 🔌 Proveedores de IA soportados y roadmap
 
-La app soporta actualmente Groq Cloud y Google Gemini. Para el análisis de proveedores alternativos evaluados (Together AI, OpenRouter, Fireworks AI, Ollama local, DeepInfra), métricas de código y sprints pendientes, consulta [MEJORAS_FUTURAS.md](./MEJORAS_FUTURAS.md).
+La app soporta actualmente **Groq Cloud**, **Google Gemini** y **OpenRouter** — esta última como pasarela OpenAI-compatible que, con una sola clave, da acceso a 300+ modelos gratuitos y de pago (OpenAI, Claude, Llama…). Para el análisis de otros proveedores evaluados (Together AI, Fireworks AI, Ollama local, DeepInfra), métricas de código y sprints pendientes, consulta [MEJORAS_FUTURAS.md](./MEJORAS_FUTURAS.md).
 
 ---
 
