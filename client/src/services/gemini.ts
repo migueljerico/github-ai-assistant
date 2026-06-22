@@ -218,11 +218,21 @@ async function callOpenAICompatible(
   if (!res.ok) {
     const err = await res.json().catch(() => ({})) as Record<string, unknown>;
     const msg = (err?.error as Record<string, unknown>)?.message as string | undefined;
-    throw Object.assign(new Error(msg || `AI provider error ${res.status}`), { status: res.status });
+    const hint = ' (posible límite/saturación o contexto excesivo del modelo gratuito — prueba con otro modelo)';
+    throw Object.assign(new Error((msg || `AI provider error ${res.status}`) + hint), { status: res.status });
   }
 
-  const data = await res.json() as { choices: Array<{ message: { content: string } }> };
-  return data.choices[0].message.content;
+  const data = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
+  const content = data.choices?.[0]?.message?.content;
+  if (!content || !content.trim()) {
+    // Algunos modelos gratuitos devuelven contenido vacío (o sin choices) ante
+    // prompts grandes; damos un error claro y accionable en vez de una burbuja vacía.
+    throw new Error(
+      'El modelo no devolvió contenido. Prueba con otro modelo del desplegable ' +
+      '(p.ej. Llama 3.3 70B free o DeepSeek R1 free) o con un repositorio más pequeño.',
+    );
+  }
+  return content;
 }
 
 // ── Gemini implementation (proxied through server) ────────────────────────────

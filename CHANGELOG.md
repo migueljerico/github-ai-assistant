@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.2] — 2026-06-22
+
+### Fixed
+- **El desplegable de modelos seguía sin abrir** (los 3 proveedores) — La causa real no era el anidamiento `button`/`select` (corregido en 2.7.1) sino el pseudo-elemento decorativo `.provider-card::before` (`position:absolute; inset:0`), que se pintaba por encima de los inputs y, al no ser un objetivo de eventos independiente, **enrutaba los clics a la tarjeta** en vez de abrir el `<select>`. Solución: `pointer-events:none` en el overlay + `z-index` en `.provider-card-inputs`.
+- **Opinión con contexto de repo devolvía burbuja vacía o "Provider returned error"** — `callOpenAICompatible` devolvía el contenido sin validar. Ahora, si el modelo no devuelve contenido (o no trae `choices`), se lanza un error **claro y accionable** ("prueba con otro modelo del desplegable o un repo más pequeño") en lugar de una burbuja vacía o un crash; los errores de proveedor incluyen una pista sobre límites/contexto de los modelos gratuitos.
+
 ## [2.7.1] — 2026-06-22
 
 ### Fixed
