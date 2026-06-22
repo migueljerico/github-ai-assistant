@@ -103,12 +103,21 @@ export default function AIProviderPanel() {
           {PROVIDER_LIST.map(p => {
             const isSel = selected === p.id;
             return (
-              <button
+              <div
                 key={p.id}
                 id={`select-${p.id}-btn`}
                 className={`provider-card ${isSel ? 'selected' : ''}`}
                 onClick={() => { setSelected(p.id); setStatus('idle'); }}
-                type="button"
+                role="button"
+                tabIndex={0}
+                aria-pressed={isSel}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setSelected(p.id);
+                    setStatus('idle');
+                  }
+                }}
               >
                 <div className="provider-card-header">
                   <div className={`provider-logo provider-logo-${p.id}`}>{p.emoji}</div>
@@ -204,7 +213,7 @@ export default function AIProviderPanel() {
                     </a>
                   </div>
                 )}
-              </button>
+              </div>
             );
           })}
         </div>

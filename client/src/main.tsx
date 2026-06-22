@@ -48,7 +48,7 @@ function AuthGate() {
           <h1 className="auth-title gradient-text">Asistente de IA para Publicar Repositorios</h1>
           <p className="auth-subtitle">
             Gestiona tus repositorios de GitHub con lenguaje natural,<br />
-            impulsado por Google Gemini o Groq Cloud.
+            impulsado por Gemini, Groq u OpenRouter (con modelos gratuitos).
           </p>
           <LoginButton />
           <div className="auth-divider">o usa un token personal</div>

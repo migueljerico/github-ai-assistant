@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v2.5.0 · Junio 2026
+**Actualizado a:** v2.7.1 · Junio 2026
 
 ---
 
@@ -79,19 +79,22 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 #### #26 — Mantener y expandir cobertura de tests con Codecov
 **Esfuerzo:** Continuo (2-4h por sprint)
 
-**Estado actual (v2.5.0):** ✅ Infraestructura completa implementada
+**Estado actual (v2.7.1):** ✅ Infraestructura completa implementada
 
 **Progreso realizado:**
 - ✅ Configuración de Vitest + Codecov
 - ✅ CI con GitHub Actions ejecutando tests (cliente + servidor) automáticamente
 - ✅ Badge de Codecov en README
-- ✅ Cobertura actual: **49%**
-- ✅ Tests implementados para:
+- ✅ Cobertura actual: **≈50%** (ver Codecov para el valor exacto)
+- ✅ 173 tests en el cliente. Implementados para:
   - `AuthContext.tsx` (login, logout, OAuth flow, Zero-Storage)
   - `AIProviderContext.tsx` (conexión/desconexión de proveedores)
+  - `providers.ts` (registro de proveedores, detección de modelos 🆓, caché)
   - `actionExecutor.ts` (ejecutor de acciones GitHub)
-  - `github.ts` (wrapper de GitHub API, decodeBase64, encodeBase64)
-  - `gemini.ts` (parseGeminiAction, detectPrimaryLanguage, temperatura Groq por modo, contexto de repo #41)
+  - `github.ts` (wrapper de GitHub API, decodeBase64, encodeBase64, getRepo, getBranchSha)
+  - `gemini.ts` (parseGeminiAction, detectPrimaryLanguage, temperatura por modo, contexto de repo #41, enrutado OpenRouter)
+  - `docPublisher.ts` (commit directo / Draft PR — #45)
+  - `modeDetection.ts` (chat vs action; sesgo a chat con contexto de repo)
   - `formatResult.ts`, `releaseGenerator.ts`, `pdfReader.ts`, `pdfAdvanced.ts`
   - Hooks: `useChat`, `useActions`
   - Componentes React: `ChatArea`, `ChatInput`, `ConfirmModal`, `Header`, `TemplatePanel`, `AIProviderPanel`, `AIProviderBadge`, `RepoContextButton`

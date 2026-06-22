@@ -10,7 +10,7 @@
 ![OpenRouter](https://img.shields.io/badge/OpenRouter-6566F1?style=for-the-badge&logo=openai&logoColor=white)
 ![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
 ![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
-![Versión](https://img.shields.io/badge/Versión-v2.7.0-blue?style=for-the-badge)
+![Versión](https://img.shields.io/badge/Versión-v2.7.1-blue?style=for-the-badge)
 ![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)
 [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
 
@@ -336,7 +336,7 @@ Ver [MEJORAS_FUTURAS.md](./MEJORAS_FUTURAS.md) — Estado actual, sprints y road
 
 ## 🔌 Proveedores de IA soportados y roadmap
 
-La app soporta actualmente Groq Cloud y Google Gemini. Para el análisis de proveedores alternativos evaluados (Together AI, OpenRouter, Fireworks AI, Ollama local, DeepInfra), métricas de código y sprints pendientes, consulta [MEJORAS_FUTURAS.md](./MEJORAS_FUTURAS.md).
+La app soporta actualmente **Groq Cloud**, **Google Gemini** y **OpenRouter** — esta última como pasarela OpenAI-compatible que, con una sola clave, da acceso a 300+ modelos gratuitos y de pago (OpenAI, Claude, Llama…). Para el análisis de otros proveedores evaluados (Together AI, Fireworks AI, Ollama local, DeepInfra), métricas de código y sprints pendientes, consulta [MEJORAS_FUTURAS.md](./MEJORAS_FUTURAS.md).
 
 ---
 

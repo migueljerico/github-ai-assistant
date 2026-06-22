@@ -3,6 +3,7 @@ import { useAuth } from './context/AuthContext';
 import { useHistory } from './context/HistoryContext';
 import { useAIProvider } from './context/AIProviderContext';
 import { getProvider } from './services/providers';
+import { resolveMode } from './utils/modeDetection';
 import { callAI, parseGeminiAction, generateRepoDocs, CHAT_PROMPT, ACTION_PROMPT, buildRepoContextSummary, chatPromptWithContext } from './services/gemini';
 import { executeAction, executeActionMultiRepo } from './services/actionExecutor';
 import { getFileContents, decodeBase64, fetchRepoTreeRecursive } from './services/github';
@@ -18,44 +19,6 @@ import type { ChatMessage, GitHubRepo, PendingAction, RepoAnalysis } from './typ
 
 // Generate a simple unique ID
 const uid = () => crypto.randomUUID();
-
-// ─ Detect conversation requests (opiniones, análisis, consejos) ─────────────
-function isConversationRequest(message: string): boolean {
-  const keywords = [
-    'opinión', 'opinion', 'qué opinas', 'que opinas', 'piensas',
-    'consejo', 'recomendación', 'recomendacion', 'recomiendas',
-    'crítica', 'critica', 'constructiva', 'constructivo', 'feedback',
-    'mejora', 'mejorar', 'propón', 'propon', 'propuesta', 'sugerencia',
-    'analiza', 'análisis', 'analisis', 'evalúa', 'evalua', 'valoración',
-    'qué te parece', 'que te parece', 'cómo puedo', 'como puedo',
-    'debería', 'deberia', 'es buena', 'es malo', 'es mejor',
-    'ventajas', 'desventajas', 'pros', 'contras',
-    'explícame', 'explicame', 'qué es', 'que es', 'cómo funciona',
-    'ayuda', 'help', 'guía', 'guia', 'tutorial',
-    'documentación', 'documentacion', 'información', 'informacion'
-  ];
-  const lower = message.toLowerCase();
-  return keywords.some(keyword => lower.includes(keyword));
-}
-
-// ── Detect action requests (verbos de acción explícitos) ─────────────────────
-function isActionRequest(message: string): boolean {
-  const keywords = [
-    'lista', 'muéstrame', 'muestra', 'enséñame', 'enseñame', 'ver',
-    'lee', 'leer', 'abre', 'abrir', 'carga', 'cargar',
-    'crea', 'crear', 'genera', 'generar', 'haz', 'hacer',
-    'actualiza', 'actualizar', 'modifica', 'modificar', 'edita', 'editar',
-    'borra', 'borrar', 'elimina', 'eliminar', 'quita', 'quitar',
-    'cierra', 'cerrar', 'reabre', 'reabrir',
-    'fusiona', 'merge', 'une', 'unir',
-    'comenta', 'comentar', 'responde', 'responder',
-    'ejecuta', 'ejecutar', 'rerun', 'corre', 'correr',
-    'sube', 'subir', 'publica', 'publicar',
-    'descarga', 'descargar', 'clona', 'clonar'
-  ];
-  const lower = message.toLowerCase();
-  return keywords.some(keyword => lower.includes(keyword));
-}
 
 // ── Documentation Modal ────────────────────────────────────────────────────────
 function DocModal({
@@ -193,17 +156,9 @@ export default function App() {
     const newHistory = [...conversationHistory, { role: 'user' as const, content: userText }];
 
     // 🔥 OPCIÓN D - DETECCIÓN DE MODO
-    const isConversation = isConversationRequest(userText);
-    const isAction = isActionRequest(userText);
-    
-    // Determinar modo final (manual override o automático)
-    let finalMode: 'chat' | 'action';
-    if (modeOverride === 'auto') {
-      // Auto: si parece conversación Y no parece acción → chat, sino → action
-      finalMode = isConversation && !isAction ? 'chat' : 'action';
-    } else {
-      finalMode = modeOverride;
-    }
+    // #41: si hay un repo cargado como contexto, resolveMode sesga a chat (salvo
+    // acción explícita), para que la opinión use el contexto sin nombrar el repo.
+    const finalMode = resolveMode(userText, modeOverride, repoContext !== null);
 
     // 🔥 OPCIÓN D - SELECCIONAR SYSTEM PROMPT SEGÚN MODO
     // #41: en modo chat, si hay un repo cargado como contexto, reforzar el prompt
@@ -213,7 +168,7 @@ export default function App() {
       : ACTION_PROMPT;
 
     // 🔥 DEBUG: Log en consola para verificar detección
-    console.log(`[Opción D] Modo: ${finalMode} | Override: ${modeOverride} | Conv: ${isConversation} | Action: ${isAction}`);
+    console.log(`[Opción D] Modo: ${finalMode} | Override: ${modeOverride} | Contexto: ${repoContext !== null}`);
 
     try {
       // 🔥 ZERO-STORAGE + OPCIÓN D: Pasar provider, apiKey, model desde el contexto
