@@ -26,7 +26,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { GeminiAction } from '../types';
-import type { AIProviderType } from '../context/AIProviderContext';
+import { getProvider, type AIProviderType } from './providers';
 
 // ── System prompts (Opción D - Tres modos) ────────────────────────────────────
 
@@ -171,15 +171,21 @@ export interface AIProviderConfig {
   model: string;
 }
 
-// ── Groq implementation ───────────────────────────────────────────────────────
-const GROQ_API = 'https://api.groq.com/openai/v1/chat/completions';
-
-async function callGroq(
+// ── OpenAI-compatible implementation (Groq, OpenRouter, …) ────────────────────
+/**
+ * Cliente para cualquier API compatible con OpenAI Chat Completions (Groq,
+ * OpenRouter, etc.). Mismo cuerpo y misma forma de respuesta para todos; solo
+ * cambian el `endpoint` y, opcionalmente, headers extra (p.ej. el `X-Title` de
+ * OpenRouter).
+ */
+async function callOpenAICompatible(
+  endpoint: string,
   apiKey: string,
   model: string,
   messages: Message[],
   systemPrompt: string,
   mode?: 'chat' | 'action',  // ← OPCIÓN D: ajusta la temperatura según el modo
+  extraHeaders?: Record<string, string>,
 ): Promise<string> {
   // Modo chat necesita más creatividad (0.7); modo acción debe ser determinista
   // para producir JSON estable (0.1). Por defecto se mantiene el comportamiento
@@ -199,11 +205,12 @@ async function callGroq(
     max_tokens: 4096,
   };
 
-  const res = await fetch(GROQ_API, {
+  const res = await fetch(endpoint, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
+      ...extraHeaders,
     },
     body: JSON.stringify(body),
   });
@@ -211,7 +218,7 @@ async function callGroq(
   if (!res.ok) {
     const err = await res.json().catch(() => ({})) as Record<string, unknown>;
     const msg = (err?.error as Record<string, unknown>)?.message as string | undefined;
-    throw Object.assign(new Error(msg || `Groq error ${res.status}`), { status: res.status });
+    throw Object.assign(new Error(msg || `AI provider error ${res.status}`), { status: res.status });
   }
 
   const data = await res.json() as { choices: Array<{ message: { content: string } }> };
@@ -269,8 +276,11 @@ export async function callAI(
   model: string,
   mode?: 'chat' | 'action',  // ← NUEVO: modo opcional
 ): Promise<string> {
-  if (provider === 'groq') return callGroq(apiKey, model, messages, systemPrompt, mode);
-  return callGeminiDirect(apiKey, model, messages, systemPrompt, mode);
+  const def = getProvider(provider);
+  if (def.transport === 'gemini-proxy') {
+    return callGeminiDirect(apiKey, model, messages, systemPrompt, mode);
+  }
+  return callOpenAICompatible(def.chatEndpoint!, apiKey, model, messages, systemPrompt, mode, def.extraHeaders);
 }
 
 /** @deprecated Use callAI() directly. */
@@ -282,11 +292,12 @@ export async function validateProviderKey(
   apiKey: string,
   model: string,
 ): Promise<{ valid: boolean; error?: string }> {
+  const def = getProvider(provider);
   try {
-    if (provider === 'groq') {
-      await callGroq(apiKey, model, [{ role: 'user', content: 'Hi' }], 'Reply with one word.');
-    } else {
+    if (def.transport === 'gemini-proxy') {
       await callGeminiDirect(apiKey, model, [{ role: 'user', content: 'Hi' }], 'Reply with one word.');
+    } else {
+      await callOpenAICompatible(def.chatEndpoint!, apiKey, model, [{ role: 'user', content: 'Hi' }], 'Reply with one word.', undefined, def.extraHeaders);
     }
     return { valid: true };
   } catch (err) {
@@ -297,8 +308,7 @@ export async function validateProviderKey(
         message.toLowerCase().includes('invalid_api_key')) {
       return {
         valid: false,
-        error: 'Clave inválida, compruébala en tu panel de ' +
-          (provider === 'groq' ? 'Groq' : 'Google AI Studio'),
+        error: `Clave inválida, compruébala en el panel de ${def.name}`,
       };
     }
     if (status === 429 || message.includes('429')) return { valid: true };

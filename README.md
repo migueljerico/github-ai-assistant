@@ -7,15 +7,16 @@
 ![GitHub OAuth](https://img.shields.io/badge/GitHub_OAuth-181717?style=for-the-badge&logo=github&logoColor=white)
 ![Groq](https://img.shields.io/badge/Groq_Cloud-F55036?style=for-the-badge&logo=groq&logoColor=white)
 ![Gemini](https://img.shields.io/badge/Google_Gemini-4285F4?style=for-the-badge&logo=google&logoColor=white)
+![OpenRouter](https://img.shields.io/badge/OpenRouter-6566F1?style=for-the-badge&logo=openai&logoColor=white)
 ![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
 ![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
-![Versión](https://img.shields.io/badge/Versión-v2.6.0-blue?style=for-the-badge)
+![Versión](https://img.shields.io/badge/Versión-v2.7.0-blue?style=for-the-badge)
 ![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)
 [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
 
 > **Proyecto de portfolio — Curso Análisis de Datos e IA (2025–2026)**
 >
-> Gestiona tus repositorios de GitHub escribiendo en lenguaje natural — con confirmación previa, historial de sesión y documentación automática, impulsado por **Groq Cloud** o **Google Gemini**.
+> Gestiona tus repositorios de GitHub escribiendo en lenguaje natural — con confirmación previa, historial de sesión y documentación automática, impulsado por **Groq Cloud**, **Google Gemini** u **OpenRouter** (con modelos gratuitos y de pago).
 
 **Asistente de IA que entiende tu código.** Se conecta a tus repos de GitHub, lee tu codebase y responde preguntas sobre tu proyecto — con una arquitectura de seguridad que protege tus credenciales.
 
@@ -28,7 +29,7 @@
 | Aspecto | Detalle |
 |---|---|
 | ⏱️ Tiempo de desarrollo | 30 días (desde cero) |
-| 🤖 Modelos soportados | Groq (Llama 3.3) + Gemini 2.5 Flash |
+| 🤖 Proveedores soportados | Groq · Google Gemini · OpenRouter (300+ modelos, gratis y de pago) |
 | ⚡ Latencia media | ~400ms (Groq) / ~1.2s (Gemini) |
 | 🛡️ Seguridad | Zero-Storage completo: token GitHub + claves IA en memoria React |
 | 🌍 Deploy | Google Cloud Run (HTTPS, auto-scaling) |
@@ -43,7 +44,7 @@ A diferencia de un chatbot convencional, este asistente:
 - ✅ **Lee tu código real** de cualquier repo de GitHub (público o privado)
 - ✅ **Responde con contexto** de tu proyecto, no respuestas genéricas
 - ✅ **Protege tus credenciales** con arquitectura Zero-Storage (anti-XSS)
-- ✅ **Funciona con múltiples modelos** (Groq para velocidad, Gemini para calidad)
+- ✅ **Funciona con múltiples proveedores** (Groq para velocidad, Gemini para calidad, OpenRouter como pasarela a 300+ modelos gratis y de pago)
 - ✅ **Documenta repositorios completos** generando README + MANUAL_TECNICO automáticamente
 
 ### Ejemplo de uso real
@@ -81,7 +82,7 @@ El proyecto evolucionó de un prototipo en **Google AI Studio** a una aplicació
 | 📄 **Plantillas predefinidas** | README, `.gitignore` y licencias por tipo de proyecto, pre-formuladas para el chat |
 | 🗂️ **Operaciones multi-repo** | Aplica la misma acción a varios repositorios seleccionados simultáneamente |
 | 🤖 **Documenta tu repositorio entero** | El agente lee hasta 80 archivos y genera README + MANUAL_TECNICO de forma automática |
-| 🔑 **Doble proveedor de IA** | Soporte para **Groq Cloud** y **Google Gemini 2.5 Flash** — usas tu propia clave |
+| 🔑 **Multi-proveedor de IA** | **Groq Cloud**, **Google Gemini** y **OpenRouter** (pasarela a OpenAI, Claude, Llama… con modelos 🆓 gratuitos y de pago) — usas tu propia clave |
 | 🔒 **Autenticación OAuth** | Flujo GitHub OAuth completo con fallback a PAT manual |
 | 🛡️ **Rate limiting** | Protección contra abuso en el proxy de Gemini (40 req/min por IP) |
 

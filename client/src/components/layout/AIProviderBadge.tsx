@@ -1,4 +1,5 @@
 import { useAIProvider } from '../../context/AIProviderContext';
+import { getProvider } from '../../services/providers';
 import { modelLabel } from '../../utils/modelLabels';
 
 export default function AIProviderBadge() {
@@ -6,9 +7,9 @@ export default function AIProviderBadge() {
 
   if (!isConnected || !provider || !model) return null;
 
-  const isGemini = provider === 'gemini';
-  const emoji = isGemini ? '🤖' : '⚡';
-  const providerName = isGemini ? 'Gemini' : 'Groq';
+  const def = getProvider(provider);
+  const emoji = def.emoji;
+  const providerName = def.shortName;
   const modelLabelText = modelLabel(model);
 
   return (

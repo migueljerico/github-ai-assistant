@@ -1,7 +1,12 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { AIProviderContextProvider } from '../../../context/AIProviderContext';
 import AIProviderPanel from '../AIProviderPanel';
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  sessionStorage.clear();
+});
 
 function renderPanel() {
   return render(
@@ -37,5 +42,24 @@ describe('AIProviderPanel — selector de modelos Groq', () => {
     const { container } = renderPanel();
     selectGroq(container);
     expect(screen.getByText(/Modelo · 2 disponibles/)).toBeInTheDocument();
+  });
+});
+
+describe('AIProviderPanel — OpenRouter (#15)', () => {
+  it('renderiza la tarjeta de OpenRouter con modelos etiquetados como gratuitos 🆓', async () => {
+    // El catálogo dinámico falla → cae al fallback estático (modelos :free)
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('sin red')));
+
+    const { container } = renderPanel();
+    fireEvent.click(container.querySelector('#select-openrouter-btn') as HTMLElement);
+
+    const select = container.querySelector('#openrouter-model-select') as HTMLSelectElement;
+    expect(select).toBeInTheDocument();
+
+    // Espera a que termine la carga (vuelve del estado "Cargando modelos...")
+    await waitFor(() => expect(select.disabled).toBe(false));
+
+    const labels = Array.from(select.options).map(o => o.textContent ?? '');
+    expect(labels.some(l => l.startsWith('🆓'))).toBe(true);
   });
 });

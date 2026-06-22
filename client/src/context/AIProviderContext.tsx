@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
+import type { AIProviderType } from '../services/providers';
 
-export type AIProviderType = 'gemini' | 'groq';
+export type { AIProviderType };
 
 export interface AIProviderState {
   provider: AIProviderType | null;

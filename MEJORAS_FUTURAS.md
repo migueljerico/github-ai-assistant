@@ -23,6 +23,7 @@ Estado del código, mejoras pendientes y roadmap del proyecto.
 | 37 | CI ejecuta también los tests del servidor | .github/workflows/ci.yml, package.json | v2.4.0 |
 | 41 | Opiniones de chat fundamentadas en el contexto del repo | gemini.ts, App.tsx, RepoContextButton.tsx | v2.5.0 |
 | 45 | Generación de documentación vía Draft PR | App.tsx, github.ts | v2.6.0 |
+| 15 | Multi-proveedor (OpenRouter) vía registro de proveedores | services/providers.ts, gemini.ts, AIProviderPanel.tsx | v2.7.0 |
 
 ---
 
@@ -46,25 +47,6 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 **Beneficio:** Función clave para usuarios que quieren documentar proyectos locales o analizar documentos externos.
 
 **Nota:** es el ítem más grande del roadmap y el que más ensancha el alcance (de gestión de GitHub a análisis de documentos). Se mantiene como prioridad por decisión de producto.
-
----
-
-#### #15 — Soporte multi-proveedor con fallback (Together AI / OpenRouter / Ollama)
-**Esfuerzo:** 3–4h
-
-**Proveedores evaluados:**
-
-| Proveedor | Ventajas | Tier gratuito | Prioridad |
-|---|---|---|---|
-| Together AI | Llama 3.1, Qwen2.5, DeepSeek, Mistral | Generoso | ⭐ Alta |
-| OpenRouter | Router a decenas de modelos, incluyendo gratuitos | Free credits + pay-per-use | ⭐ Alta |
-| Ollama (local) | 100% privado, sin red, sin límites | Ilimitado (hardware propio) | ⭐ Alta (portfolio) |
-| Fireworks AI | Muy rápido en modelos grandes | Buen free tier | Media |
-| DeepInfra | Barato y rápido | Tier gratuito | Media |
-
-**Arquitectura sugerida:** Groq → Together AI → Gemini como cadena de fallback con selector de prioridad en el panel de IA.
-
-**Beneficio:** Resiliencia ante cortes de servicio; diferenciador claro frente a apps mono-proveedor.
 
 ---
 
@@ -344,10 +326,10 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 | Prioridad | Total | ✅ Resueltos | ⏳ Pendientes |
 |---|---|---|---|
-| 🔴 Alta | 8 | 6 (#1, #2, #13, #14, #27, #45) | 2 (#15, #28) |
+| 🔴 Alta | 8 | 7 (#1, #2, #13, #14, #27, #45, #15) | 1 (#28) |
 | 🟡 Media | 14 | 7 (#12, #17, #18, #19, #21, #37, #41) | 7 (#20, #26, #32, #38, #39, #42, #44) |
 | 🟢 Baja | 11 | 0 | 11 (#22, #23, #24, #25, #33, #34, #35, #36, #40, #46, #48) |
-| **TOTAL** | **33** | **13** | **20** |
+| **TOTAL** | **33** | **14** | **19** |
 
 > **Nota de numeración:** los huecos en #16, #29, #30, #31, #43 y #47 son intencionados — esos ítems se fusionaron o descartaron en revisiones del roadmap y sus números no se reutilizan (convención del documento). #16 se fusionó en #42; #29 en #40.
 
