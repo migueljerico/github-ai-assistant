@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0] — 2026-06-22
+
+### Added
+- **Generación de documentación vía Draft PR (#45)** — El modal de documentación ofrece ahora un botón **"🔀 Crear Draft PR"** junto al commit directo: crea una rama `docs/auto-{timestamp}`, sube `README.md` y `MANUAL_TECNICO.md` y abre un **Draft Pull Request** contra la rama por defecto, con enlace al PR en el chat. Entregable revisable en vez de copiar/pegar.
+  - `github.ts`: nuevos `getRepo()` y `getBranchSha()`; `createOrUpdateFile()` acepta un parámetro `branch` opcional para commitear en una rama concreta.
+  - Reutiliza `createBranch()` y `createPullRequest()` (que ya soportaba `draft`).
+  - Se preserva el commit directo existente: el usuario elige.
+
+### Testing
+- Tests para `getRepo`, `getBranchSha` y `createOrUpdateFile` con/sin `branch`. Cobertura/cliente: 150 tests.
+
 ## [2.5.0] — 2026-06-21
 
 ### Added

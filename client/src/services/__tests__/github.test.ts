@@ -4,6 +4,8 @@ import {
   encodeBase64,
   getUser,
   createRepo,
+  getRepo,
+  getBranchSha,
   getFileContents,
   createOrUpdateFile,
   deleteFile,
@@ -202,6 +204,74 @@ describe('github.ts', () => {
         expect.objectContaining({
           body: expect.stringContaining('old-sha-123'),
         })
+      );
+    });
+
+    it('debería incluir branch en el body cuando se especifica (#45)', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ commit: { sha: 'c1' }, content: { path: 'README.md' } }),
+      } as any);
+
+      await createOrUpdateFile(
+        'test-token',
+        'testuser',
+        'myrepo',
+        'README.md',
+        'contenido',
+        'docs: update',
+        'sha-1',
+        'docs/auto-123'
+      );
+
+      const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string);
+      expect(body.branch).toBe('docs/auto-123');
+    });
+
+    it('NO debería incluir branch en el body cuando no se especifica', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ commit: { sha: 'c1' }, content: { path: 'test.txt' } }),
+      } as any);
+
+      await createOrUpdateFile('test-token', 'testuser', 'myrepo', 'test.txt', 'x', 'chore: x');
+
+      const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string);
+      expect(body.branch).toBeUndefined();
+    });
+  });
+
+  describe('getRepo', () => {
+    it('debería pedir el repo y devolver su metadata', async () => {
+      const mockRepo = { name: 'myrepo', default_branch: 'main' };
+      vi.mocked(fetch).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockRepo,
+      } as any);
+
+      const result = await getRepo('test-token', 'testuser', 'myrepo');
+
+      expect(result).toEqual(mockRepo);
+      expect(fetch).toHaveBeenCalledWith(
+        'https://api.github.com/repos/testuser/myrepo',
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('getBranchSha', () => {
+    it('debería devolver el SHA HEAD de la rama', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ ref: 'refs/heads/main', object: { sha: 'base-sha-123' } }),
+      } as any);
+
+      const sha = await getBranchSha('test-token', 'testuser', 'myrepo', 'main');
+
+      expect(sha).toBe('base-sha-123');
+      expect(fetch).toHaveBeenCalledWith(
+        'https://api.github.com/repos/testuser/myrepo/git/ref/heads/main',
+        expect.any(Object)
       );
     });
   });

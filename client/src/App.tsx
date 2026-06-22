@@ -4,7 +4,7 @@ import { useHistory } from './context/HistoryContext';
 import { useAIProvider } from './context/AIProviderContext';
 import { callAI, parseGeminiAction, generateRepoDocs, CHAT_PROMPT, ACTION_PROMPT, buildRepoContextSummary, chatPromptWithContext } from './services/gemini';
 import { executeAction, executeActionMultiRepo } from './services/actionExecutor';
-import { getFileContents, decodeBase64, fetchRepoTreeRecursive, createOrUpdateFile } from './services/github';
+import { getFileContents, decodeBase64, fetchRepoTreeRecursive, createOrUpdateFile, getRepo, getBranchSha, createBranch, createPullRequest } from './services/github';
 import { formatResultData } from './utils/formatResult';
 import Header from './components/layout/Header';
 import HistoryPanel from './components/layout/HistoryPanel';
@@ -59,15 +59,20 @@ function isActionRequest(message: string): boolean {
 function DocModal({
   analysis,
   onConfirm,
+  onCreateDraftPr,
   onCancel,
   isCommitting,
+  isCreatingDraftPr,
 }: {
   analysis: RepoAnalysis;
   onConfirm: () => void;
+  onCreateDraftPr: () => void;
   onCancel: () => void;
   isCommitting: boolean;
+  isCreatingDraftPr: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<'readme' | 'manual'>('readme');
+  const busy = isCommitting || isCreatingDraftPr;
 
   return (
     <div className="overlay" role="dialog" aria-modal="true">
@@ -102,9 +107,12 @@ function DocModal({
           </div>
         </div>
         <div className="modal-footer">
-          <button id="doc-cancel-btn" className="btn btn-danger" onClick={onCancel} disabled={isCommitting}>❌ Cancelar</button>
-          <button id="doc-confirm-btn" className="btn btn-success" onClick={onConfirm} disabled={isCommitting}>
-            {isCommitting ? <><span className="spinner spinner-sm" /> Haciendo commit...</> : '✅ Hacer commit de ambos archivos'}
+          <button id="doc-cancel-btn" className="btn btn-danger" onClick={onCancel} disabled={busy}>❌ Cancelar</button>
+          <button id="doc-draft-pr-btn" className="btn btn-secondary" onClick={onCreateDraftPr} disabled={busy}>
+            {isCreatingDraftPr ? <><span className="spinner spinner-sm" /> Creando Draft PR...</> : '🔀 Crear Draft PR'}
+          </button>
+          <button id="doc-confirm-btn" className="btn btn-success" onClick={onConfirm} disabled={busy}>
+            {isCommitting ? <><span className="spinner spinner-sm" /> Haciendo commit...</> : '✅ Hacer commit directo'}
           </button>
         </div>
       </div>
@@ -141,6 +149,7 @@ export default function App() {
   // Doc repo state
   const [docAnalysis, setDocAnalysis] = useState<RepoAnalysis | null>(null);
   const [isCommittingDocs, setIsCommittingDocs] = useState(false);
+  const [isCreatingDraftPr, setIsCreatingDraftPr] = useState(false);
 
   // #41 - Contexto de repo activo para opiniones de chat fundamentadas
   const [repoContext, setRepoContext] = useState<{
@@ -479,6 +488,65 @@ export default function App() {
     }
   }, [docAnalysis, token, user, addMessage, addEntry, updateEntry]);
 
+  // ── Crear Draft PR con la documentación (#45) ────────────────────────────────
+  const handleCreateDraftPr = useCallback(async () => {
+    if (!docAnalysis || !token || !user) return;
+    setIsCreatingDraftPr(true);
+
+    const [owner, repo] = docAnalysis.repoName.split('/');
+    const histId = addEntry({ status: 'pending', description: `Creando Draft PR de documentación en ${docAnalysis.repoName}`, repo: docAnalysis.repoName });
+
+    try {
+      // 1. Rama por defecto y su SHA HEAD
+      const repoInfo = await getRepo(token, owner, repo);
+      const baseBranch = repoInfo.default_branch;
+      const baseSha = await getBranchSha(token, owner, repo, baseBranch);
+
+      // 2. Crear rama nueva a partir de la base
+      const branchName = `docs/auto-${Date.now()}`;
+      await createBranch(token, owner, repo, branchName, baseSha);
+
+      // 3. Escribir ambos archivos en la rama nueva (el SHA existente viene de la
+      //    base; coincide porque la rama se acaba de bifurcar de ella)
+      let readmeSha: string | undefined;
+      try {
+        const existing = await getFileContents(token, owner, repo, 'README.md');
+        readmeSha = existing.sha;
+      } catch { /* new file */ }
+      await createOrUpdateFile(token, owner, repo, 'README.md', docAnalysis.readme, 'docs: generate README via Asistente de IA', readmeSha, branchName);
+
+      let manualSha: string | undefined;
+      try {
+        const existing = await getFileContents(token, owner, repo, 'MANUAL_TECNICO.md');
+        manualSha = existing.sha;
+      } catch { /* new file */ }
+      await createOrUpdateFile(token, owner, repo, 'MANUAL_TECNICO.md', docAnalysis.manualTecnico, 'docs: generate MANUAL_TECNICO via Asistente de IA', manualSha, branchName);
+
+      // 4. Abrir el Draft PR contra la rama por defecto
+      const prBody = [
+        '## 📄 Documentación generada automáticamente',
+        '',
+        `Este Draft PR añade/actualiza la documentación de **${docAnalysis.repoName}**, generada por el Asistente de IA a partir de ${docAnalysis.filesAnalyzed} archivo${docAnalysis.filesAnalyzed !== 1 ? 's' : ''} analizado${docAnalysis.filesAnalyzed !== 1 ? 's' : ''}.`,
+        '',
+        '### Archivos',
+        '- `README.md`',
+        '- `MANUAL_TECNICO.md`',
+        '',
+        '> Revisa el contenido antes de marcar el PR como *Ready for review* y mergear.',
+      ].join('\n');
+      const pr = await createPullRequest(token, owner, repo, 'docs: documentación generada por IA', branchName, baseBranch, prBody, true);
+
+      addMessage({ role: 'assistant', content: `✅ Draft PR [#${pr.number}](${pr.html_url}) creado en **${docAnalysis.repoName}** (rama \`${branchName}\`). Revísalo antes de mergear.` });
+      updateEntry(histId, { status: 'completed', description: `Draft PR #${pr.number} creado en ${docAnalysis.repoName}` });
+    } catch (err) {
+      addMessage({ role: 'assistant', content: `❌ Error al crear Draft PR: ${(err as Error).message}` });
+      updateEntry(histId, { status: 'error', description: `Error al crear Draft PR en ${docAnalysis.repoName}` });
+    } finally {
+      setIsCreatingDraftPr(false);
+      setDocAnalysis(null);
+    }
+  }, [docAnalysis, token, user, addMessage, addEntry, updateEntry]);
+
   return (
     <>
       <Header
@@ -531,8 +599,10 @@ export default function App() {
         <DocModal
           analysis={docAnalysis}
           onConfirm={handleCommitDocs}
+          onCreateDraftPr={handleCreateDraftPr}
           onCancel={() => setDocAnalysis(null)}
           isCommitting={isCommittingDocs}
+          isCreatingDraftPr={isCreatingDraftPr}
         />
       )}
     </>

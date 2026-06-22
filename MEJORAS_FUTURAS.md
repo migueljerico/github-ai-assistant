@@ -22,6 +22,7 @@ Estado del código, mejoras pendientes y roadmap del proyecto.
 | 27 | Calidad de respuestas Groq (temperatura por modo) | client/src/services/gemini.ts | v2.4.0 |
 | 37 | CI ejecuta también los tests del servidor | .github/workflows/ci.yml, package.json | v2.4.0 |
 | 41 | Opiniones de chat fundamentadas en el contexto del repo | gemini.ts, App.tsx, RepoContextButton.tsx | v2.5.0 |
+| 45 | Generación de documentación vía Draft PR | App.tsx, github.ts | v2.6.0 |
 
 ---
 
@@ -64,17 +65,6 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 **Arquitectura sugerida:** Groq → Together AI → Gemini como cadena de fallback con selector de prioridad en el panel de IA.
 
 **Beneficio:** Resiliencia ante cortes de servicio; diferenciador claro frente a apps mono-proveedor.
-
----
-
-#### #45 — Generación de documentación vía Draft PR
-**Esfuerzo:** 4–5h
-
-**Problema actual:** La documentación generada se entrega en el chat, obligando al usuario a copiar/pegar a mano.
-
-**Solución propuesta:** Extender el flujo `handleDocumentRepo`/`handleCommitDocs` (`App.tsx`): crear un branch `docs/auto-{timestamp}`, subir los archivos y abrir un **Draft Pull Request**. Reutiliza funciones ya existentes en `github.ts`: `createBranch` y `createPullRequest`.
-
-**Beneficio:** Entregable tangible — el usuario recibe un PR listo para revisar y mergear, automatizando el flujo completo. Alto ROI (casi toda la infraestructura ya existe).
 
 ---
 
@@ -354,10 +344,10 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 | Prioridad | Total | ✅ Resueltos | ⏳ Pendientes |
 |---|---|---|---|
-| 🔴 Alta | 8 | 5 (#1, #2, #13, #14, #27) | 3 (#15, #28, #45) |
+| 🔴 Alta | 8 | 6 (#1, #2, #13, #14, #27, #45) | 2 (#15, #28) |
 | 🟡 Media | 14 | 7 (#12, #17, #18, #19, #21, #37, #41) | 7 (#20, #26, #32, #38, #39, #42, #44) |
 | 🟢 Baja | 11 | 0 | 11 (#22, #23, #24, #25, #33, #34, #35, #36, #40, #46, #48) |
-| **TOTAL** | **33** | **12** | **21** |
+| **TOTAL** | **33** | **13** | **20** |
 
 > **Nota de numeración:** los huecos en #16, #29, #30, #31, #43 y #47 son intencionados — esos ítems se fusionaron o descartaron en revisiones del roadmap y sus números no se reutilizan (convención del documento). #16 se fusionó en #42; #29 en #40.
 
