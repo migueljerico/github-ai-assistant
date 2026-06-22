@@ -44,6 +44,8 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 **Beneficio:** Función clave para usuarios que quieren documentar proyectos locales o analizar documentos externos.
 
+**Nota:** es el ítem más grande del roadmap y el que más ensancha el alcance (de gestión de GitHub a análisis de documentos). Se mantiene como prioridad por decisión de producto.
+
 ---
 
 #### #15 — Soporte multi-proveedor con fallback (Together AI / OpenRouter / Ollama)
@@ -65,18 +67,18 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 ---
 
-### 🟡 Media Prioridad
+#### #45 — Generación de documentación vía Draft PR
+**Esfuerzo:** 4–5h
 
-#### #16 — Extraer DocModal a componente propio
-**Esfuerzo:** 1h
+**Problema actual:** La documentación generada se entrega en el chat, obligando al usuario a copiar/pegar a mano.
 
-**Problema actual:** `DocModal` está embebido en `App.tsx` (~80 líneas de JSX), dificultando el mantenimiento.
+**Solución propuesta:** Extender el flujo `handleDocumentRepo`/`handleCommitDocs` (`App.tsx`): crear un branch `docs/auto-{timestamp}`, subir los archivos y abrir un **Draft Pull Request**. Reutiliza funciones ya existentes en `github.ts`: `createBranch` y `createPullRequest`.
 
-**Solución propuesta:** Mover `DocModal` a `client/src/components/confirm/DocModal.tsx` con props tipadas.
-
-**Beneficio:** `App.tsx` pasa de ~450 a ~370 líneas; mejor separación de responsabilidades.
+**Beneficio:** Entregable tangible — el usuario recibe un PR listo para revisar y mergear, automatizando el flujo completo. Alto ROI (casi toda la infraestructura ya existe).
 
 ---
+
+### 🟡 Media Prioridad
 
 #### #20 — Truncamiento semántico por líneas en generateRepoDocs()
 **Esfuerzo:** 2h
@@ -88,46 +90,17 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 ---
 
-#### #22 — SessionWarningBanner — Advertencia de caducidad de sesión
+#### #32 — Resumir hilos de comentarios largos
 **Esfuerzo:** 3h
 
-**Problema actual:** El usuario no recibe advertencia cuando su token de GitHub o clave de IA llevan muchas horas activos.
+**Problema actual:** Los hilos de issues/PRs largos son difíciles de seguir.
 
-**Solución propuesta:** Nuevo componente `SessionWarningBanner.tsx` que muestra banner amber si las credenciales llevan >8h activas. Revisión cada 60s.
+**Solución propuesta:** Nueva acción "resumir hilo" que:
+- Obtiene todos los comentarios de un issue/PR
+- Envía al LLM con prompt de resumen
+- Muestra resumen estructurado en el chat
 
-**Dependencia:** Requiere Zero-Storage real (#13) para funcionar correctamente. ✅ Ya implementado.
-
-**Beneficio:** Mejor UX; seguridad proactiva.
-
----
-
-#### #29 — Retries con backoff exponencial para APIs
-**Esfuerzo:** 2h
-
-**Problema actual:** Las llamadas a GitHub/Gemini/Groq fallan silenciosamente ante errores temporales (rate limits, timeouts, errores 5xx).
-
-**Solución propuesta:** Implementar wrapper `fetchWithRetry()` con:
-- Máximo 3 reintentos
-- Backoff exponencial (1s, 2s, 4s)
-- Logging de cada reintento
-- Error final descriptivo al usuario
-
-**Beneficio:** Robustez mejorada; menos fallos silenciosos; mejor experiencia en condiciones de red inestables.
-
----
-
-#### #30 — Caché de respuestas LLM
-**Esfuerzo:** 3h
-
-**Problema actual:** Cada pregunta idéntica genera una nueva llamada al LLM, consumiendo cuota y tiempo.
-
-**Solución propuesta:**
-- Caché en memoria (Map) con clave = hash(prompt + messages)
-- TTL configurable (por defecto 1h)
-- Indicador visual "Respuesta cacheada" en el chat
-- Opción de "forzar nueva respuesta"
-
-**Beneficio:** Control de costos; respuestas instantáneas para queries repetidas; ahorro de cuota API.
+**Beneficio:** Ahorro de tiempo en revisión de PRs complejos; onboarding rápido a discusiones técnicas. Cubre un hueco real frente a GitHub Copilot.
 
 ---
 
@@ -164,7 +137,7 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 **Beneficio:** Mayor confianza en cambios futuros; detección temprana de regresiones; documentación viva del comportamiento esperado.
 
-**Nota:** Esta mejora es transversal — cada vez que se resuelva otra mejora (#16, #20, #22, #28, etc.), se deben añadir tests correspondientes.
+**Nota:** Esta mejora es transversal — cada vez que se resuelva otra mejora (#20, #28, #42, etc.), se deben añadir tests correspondientes.
 
 ---
 
@@ -195,16 +168,19 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 ---
 
-#### #42 — Refactor y cobertura de `App.tsx`
-**Esfuerzo:** 5–6h
+#### #42 — Refactor y cobertura de `App.tsx` (incluye extraer DocModal)
+**Esfuerzo:** 6–7h
 
-**Problema actual:** `App.tsx` (~473 líneas, **0% de cobertura**) concentra la orquestación del chat, la detección de modo, los modales y el flujo multi-repo. Es el mayor bloque sin testear del proyecto y el principal foco de mantenibilidad.
+**Problema actual:** `App.tsx` (~473 líneas, **0% de cobertura**) concentra la orquestación del chat, la detección de modo, los modales y el flujo multi-repo. Es el mayor bloque sin testear del proyecto y el principal foco de mantenibilidad. En particular, `DocModal` está embebido (~80 líneas de JSX) dentro del propio `App.tsx`.
 
 **Solución propuesta:**
-- Extraer lógica a hooks ya existentes (`useChat`, `useActions`) y a componentes propios (relacionado con #16 — extraer `DocModal`).
+- Extraer `DocModal` (~80 líneas de JSX) a su propio componente `client/src/components/confirm/DocModal.tsx` con props tipadas.
+- Extraer el resto de lógica a hooks ya existentes (`useChat`, `useActions`).
 - Añadir tests para la lógica extraída (detección de modo, manejo de confirmación/ejecución).
 
-**Beneficio:** Mejor mantenibilidad y separación de responsabilidades; sube de forma significativa la cobertura global (es el bloque dominante a 0%).
+**Beneficio:** Mejor mantenibilidad y separación de responsabilidades; `App.tsx` baja de ~473 a ~370 líneas; sube de forma significativa la cobertura global (es el bloque dominante a 0%).
+
+**Nota:** absorbe el antiguo #16 (extraer DocModal) como primer paso del refactor.
 
 ---
 
@@ -220,16 +196,22 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 **Beneficio:** Demostrar skills de Análisis de Datos aplicados a DevOps; aprovechar la experiencia previa con Power BI para diseñar dashboards en web.
 
+**Nota:** ítem de **escaparate** (Análisis de Datos), no núcleo de gestión de GitHub. Es el primer candidato a soltar si se quiere enfocar más el roadmap.
+
 ---
 
-#### #45 — Generación de documentación vía Draft PR
-**Esfuerzo:** 4–5h
+### 🟢 Baja Prioridad
 
-**Problema actual:** La documentación generada se entrega en el chat, obligando al usuario a copiar/pegar a mano.
+#### #22 — SessionWarningBanner — Advertencia de caducidad de sesión
+**Esfuerzo:** 3h
 
-**Solución propuesta:** Extender el flujo `handleDocumentRepo`/`handleCommitDocs` (`App.tsx`): crear un branch `docs/auto-{timestamp}`, subir los archivos y abrir un **Draft Pull Request**. Reutiliza funciones ya existentes en `github.ts`: `createBranch` y `createPullRequest`.
+**Problema actual:** El usuario no recibe advertencia cuando su token de GitHub o clave de IA llevan muchas horas activos.
 
-**Beneficio:** Entregable tangible — el usuario recibe un PR listo para revisar y mergear, automatizando el flujo completo. Alto ROI (casi toda la infraestructura ya existe).
+**Solución propuesta:** Nuevo componente `SessionWarningBanner.tsx` que muestra banner amber si las credenciales llevan >8h activas. Revisión cada 60s.
+
+**Dependencia:** Requiere Zero-Storage real (#13) para funcionar correctamente. ✅ Ya implementado.
+
+**Beneficio:** Mejor UX; seguridad proactiva.
 
 ---
 
@@ -249,37 +231,6 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 ---
 
-### 🟢 Baja Prioridad
-
-#### #31 — Sistema de feedback del usuario (👍/👎)
-**Esfuerzo:** 4h
-
-**Problema actual:** No hay forma de que el usuario indique si una respuesta fue útil o no.
-
-**Solución propuesta:**
-- Botones 👍/👎 en cada mensaje del asistente
-- Almacenamiento en HistoryContext (solo sesión)
-- Exportación de feedback en el log
-- Métricas de satisfacción en panel de admin (futuro)
-
-**Beneficio:** Mejora continua del asistente; datos para optimizar prompts; detección de respuestas problemáticas.
-
----
-
-#### #32 — Resumir hilos de comentarios largos
-**Esfuerzo:** 3h
-
-**Problema actual:** Los hilos de issues/PRs largos son difíciles de seguir.
-
-**Solución propuesta:** Nueva acción "resumir hilo" que:
-- Obtiene todos los comentarios de un issue/PR
-- Envía al LLM con prompt de resumen
-- Muestra resumen estructurado en el chat
-
-**Beneficio:** Ahorro de tiempo en revisión de PRs complejos; onboarding rápido a discusiones técnicas.
-
----
-
 #### #33 — Sugerir revisores de código basándose en historial
 **Esfuerzo:** 4h
 
@@ -291,6 +242,8 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 - Sugerir revisores con ranking de relevancia
 
 **Beneficio:** PRs revisados más rápido; distribución equilibrada de carga de revisión.
+
+**Nota:** nicho — bajo valor en repos pequeños o individuales; candidato a corte en una futura poda.
 
 ---
 
@@ -322,17 +275,16 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 ---
 
-#### #36 — Permisos GitHub más granulares
-**Esfuerzo:** 3h
+#### #36 — Migrar a GitHub App para permisos granulares
+**Esfuerzo:** 6–8h (cambio de arquitectura de auth)
 
-**Problema actual:** La app requiere scope `repo` (acceso total a todos los repos), lo cual es excesivo si solo se usan funciones de lectura.
+**Problema actual:** La app usa una **OAuth App** con scope `repo` (acceso total a todos los repos), excesivo si solo se usan funciones de lectura.
 
-**Solución propuesta:**
-- Detectar qué permisos necesita cada acción
-- Solicitar solo los scopes mínimos necesarios
-- Advertir al usuario si una acción requiere permisos adicionales
+**Solución propuesta:** Los permisos finos por recurso (repos concretos, lectura vs escritura) **no son viables con la OAuth App actual** — requieren migrar a una **GitHub App** con *fine-grained permissions* y selección de repositorios por instalación. Implica rehacer el flujo OAuth del servidor (`server/index.js`) y el manejo de tokens de instalación.
 
-**Beneficio:** Seguridad mejorada; principio de mínimo privilegio; mayor confianza del usuario.
+**Beneficio:** Principio de mínimo privilegio real; el usuario elige a qué repos da acceso; mayor confianza.
+
+**Nota:** caveat de viabilidad — no es un ajuste de scopes, es un cambio de tipo de aplicación en GitHub. Por eso sube de esfuerzo y de complejidad.
 
 ---
 
@@ -370,17 +322,20 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 ---
 
-#### #40 — Robustez IA/UX (cancelación, validación, persistencia de proveedor)
-**Esfuerzo:** 5h (agrupa 3 sub-tareas)
+#### #40 — Robustez de red e IA/UX (reintentos, cancelación, validación, persistencia)
+**Esfuerzo:** ~6h (agrupa 4 sub-tareas)
 
-**Problema actual:** No se puede abortar una generación larga; `parseGeminiAction()` solo valida 3 campos del JSON de acción; y el usuario debe re-seleccionar proveedor y modelo en cada recarga.
+**Problema actual:** Las llamadas a GitHub/Gemini/Groq fallan silenciosamente ante errores temporales (rate limits, timeouts, 5xx); no se puede abortar una generación larga; `parseGeminiAction()` solo valida 3 campos del JSON de acción; y el usuario debe re-seleccionar proveedor y modelo en cada recarga.
 
 **Solución propuesta:**
+- **Reintentos con backoff:** wrapper `fetchWithRetry()` (máx. 3 intentos, backoff exponencial 1s/2s/4s, logging por reintento, error final descriptivo) en las llamadas a GitHub/Gemini/Groq.
 - **Cancelación:** `AbortController` en `callAI()` + botón "Detener" mientras genera. Ahorra cuota y mejora la UX.
 - **Validación estricta:** validar el JSON de acción con `zod` y una allowlist de métodos/endpoints, reforzando la garantía *proponer → confirmar → ejecutar*.
 - **Persistencia parcial:** guardar **proveedor + modelo** (NUNCA la API key) en `sessionStorage`, respetando Zero-Storage, para no re-seleccionarlos en cada recarga.
 
-**Beneficio:** Más control y robustez para el usuario; defensa adicional ante respuestas malformadas de la IA; mejor experiencia de reconexión.
+**Beneficio:** Robustez ante red inestable (menos fallos silenciosos); más control para el usuario; defensa adicional ante respuestas malformadas de la IA; mejor experiencia de reconexión.
+
+**Nota:** absorbe el antiguo #29 (reintentos con backoff) como primera sub-tarea.
 
 ---
 
@@ -399,10 +354,12 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 | Prioridad | Total | ✅ Resueltos | ⏳ Pendientes |
 |---|---|---|---|
-| 🔴 Alta | 7 | 5 (#1, #2, #13, #14, #27) | 2 (#15, #28) |
-| 🟡 Media | 19 | 7 (#12, #17, #18, #19, #21, #37, #41) | 12 (#16, #20, #22, #26, #29, #30, #38, #39, #42, #44, #45, #46) |
-| 🟢 Baja | 11 | 0 | 11 (#23, #24, #25, #31, #32, #33, #34, #35, #36, #40, #48) |
-| **TOTAL** | **37** | **12** | **25** |
+| 🔴 Alta | 8 | 5 (#1, #2, #13, #14, #27) | 3 (#15, #28, #45) |
+| 🟡 Media | 14 | 7 (#12, #17, #18, #19, #21, #37, #41) | 7 (#20, #26, #32, #38, #39, #42, #44) |
+| 🟢 Baja | 11 | 0 | 11 (#22, #23, #24, #25, #33, #34, #35, #36, #40, #46, #48) |
+| **TOTAL** | **33** | **12** | **21** |
+
+> **Nota de numeración:** los huecos en #16, #29, #30, #31, #43 y #47 son intencionados — esos ítems se fusionaron o descartaron en revisiones del roadmap y sus números no se reutilizan (convención del documento). #16 se fusionó en #42; #29 en #40.
 
 ---
 
