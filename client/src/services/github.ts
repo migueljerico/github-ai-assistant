@@ -83,6 +83,17 @@ export async function listUserRepos(token: string): Promise<GitHubRepo[]> {
 }
 
 /**
+ * Get a single repository's metadata (incluye `default_branch`).
+ */
+export async function getRepo(
+  token: string,
+  owner: string,
+  repo: string
+): Promise<GitHubRepo> {
+  return ghFetch<GitHubRepo>(token, `/repos/${owner}/${repo}`);
+}
+
+/**
  * Create a new repository for the authenticated user.
  * @param token - GitHub OAuth token or PAT (requires `repo` scope)
  * @param name - Repository name
@@ -176,13 +187,15 @@ export async function createOrUpdateFile(
   path: string,
   content: string,
   message: string,
-  sha?: string
+  sha?: string,
+  branch?: string
 ): Promise<{ commit: { sha: string }; content: GitHubFile }> {
   const body: Record<string, unknown> = {
     message,
     content: encodeBase64(content),
   };
   if (sha) body.sha = sha;
+  if (branch) body.branch = branch;
 
   return ghFetch(token, `/repos/${owner}/${repo}/contents/${path}`, {
     method: 'PUT',
@@ -468,6 +481,23 @@ export async function listBranches(
   repo: string
 ): Promise<GitHubBranch[]> {
   return ghFetch<GitHubBranch[]>(token, `/repos/${owner}/${repo}/branches?per_page=100`);
+}
+
+/**
+ * Get the HEAD commit SHA of a branch (vía git refs).
+ * Útil para crear una rama nueva a partir de otra.
+ */
+export async function getBranchSha(
+  token: string,
+  owner: string,
+  repo: string,
+  branch: string
+): Promise<string> {
+  const res = await ghFetch<{ object: { sha: string } }>(
+    token,
+    `/repos/${owner}/${repo}/git/ref/heads/${branch}`
+  );
+  return res.object.sha;
 }
 
 /**
