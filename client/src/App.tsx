@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useAuth } from './context/AuthContext';
 import { useHistory } from './context/HistoryContext';
 import { useAIProvider } from './context/AIProviderContext';
+import { getProvider } from './services/providers';
 import { callAI, parseGeminiAction, generateRepoDocs, CHAT_PROMPT, ACTION_PROMPT, buildRepoContextSummary, chatPromptWithContext } from './services/gemini';
 import { executeAction, executeActionMultiRepo } from './services/actionExecutor';
 import { getFileContents, decodeBase64, fetchRepoTreeRecursive } from './services/github';
@@ -127,7 +128,7 @@ export default function App() {
   const { addEntry, updateEntry } = useHistory();
   // 🔥 ZERO-STORAGE: Extraemos provider, apiKey Y model del contexto (no de sessionStorage)
   const { provider, apiKey, model } = useAIProvider();
-  const providerName = provider === 'groq' ? 'Groq Cloud' : 'Google Gemini';
+  const providerName = provider ? getProvider(provider).name : 'IA';
 
   // Chat state
   const [messages, setMessages] = useState<ChatMessage[]>([]);

@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.0] — 2026-06-22
+
+### Added
+- **Multi-proveedor de IA con OpenRouter (#15)** — Nuevo proveedor seleccionable **OpenRouter**, pasarela OpenAI-compatible que con una sola key da acceso a modelos **gratuitos** (🆓) y de pago (OpenAI, Claude, Llama… 300+). El usuario elige proveedor y modelo; coherente con Zero-Storage (una key activa, solo en memoria).
+  - El catálogo de OpenRouter se carga en tiempo real desde su `/models` (público), etiqueta los modelos gratuitos y preselecciona uno gratis.
+
+### Changed
+- **Registro de proveedores (`services/providers.ts`)** — Nueva fuente única de verdad config-driven que describe cada proveedor (transporte, endpoints, modelos, etc.). Elimina el hardcoding de `gemini`/`groq` repartido por `gemini.ts`, `AIProviderPanel`, `AIProviderBadge` y `App.tsx`. Añadir un proveedor nuevo es ahora rellenar una entrada.
+- **`callGroq` generalizado a `callOpenAICompatible`** — un único cliente para cualquier API compatible con OpenAI (Groq, OpenRouter); `callAI`/`validateProviderKey` enrutan por `transport`.
+
+### Fixed
+- Nota de pie del panel de conexión: decía erróneamente que la clave se guarda en `sessionStorage`; ahora refleja el modelo Zero-Storage real (la clave vive solo en memoria).
+
 ## [2.6.0] — 2026-06-22
 
 ### Added

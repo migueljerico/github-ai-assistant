@@ -67,7 +67,8 @@ github-ai-assistant/
 │       │   └── HistoryContext.tsx   # Log de sesión + exportación
 │       ├── services/
 │       │   ├── github.ts           # Wrapper GitHub REST API v3
-│       │   ├── gemini.ts           # Cliente unificado Groq + Gemini
+│       │   ├── providers.ts        # Registro de proveedores (Gemini/Groq/OpenRouter)
+│       │   ├── gemini.ts           # Cliente unificado (callAI, OpenAI-compatible + proxy)
 │       │   └── actionExecutor.ts   # Ejecutor de acciones confirmadas
 │       ├── utils/
 │       │   └── formatResult.ts     # Formateador de resultados de API
@@ -130,24 +131,31 @@ El system prompt (`SYSTEM_PROMPT`) está diseñado con cuatro objetivos explíci
 - **Reglas de endpoint** — previene errores 404 por placeholders sin resolver
 - **Idioma español** — el usuario objetivo interactúa en español
 
-### Routing entre proveedores
+### Routing entre proveedores (registro config-driven, #15)
+
+Los proveedores se describen en un **registro central** (`services/providers.ts`):
+cada uno declara su `transport` (`gemini-proxy` u `openai-compatible`), endpoints,
+modelos, etc. `callAI` enruta según ese `transport`, sin hardcodear proveedores.
 
 ```typescript
-// provider === 'groq'   → callGroq()
-// provider === 'gemini' → callGeminiDirect()
-export async function callAI(messages, systemPrompt, provider, apiKey, model): Promise<string>
+// transport === 'gemini-proxy'      → callGeminiDirect()  (proxy /api/gemini)
+// transport === 'openai-compatible' → callOpenAICompatible(endpoint, …)  (Groq, OpenRouter)
+export async function callAI(messages, systemPrompt, provider, apiKey, model, mode?): Promise<string>
 ```
 
-Las claves de API se leen del `AIProviderContext` (memoria React) en cada llamada y nunca pasan por el servidor (excepto la clave de Gemini que viaja en el body HTTPS hacia el proxy).
+Añadir un proveedor nuevo = rellenar una entrada en el registro. Las claves de API
+se leen del `AIProviderContext` (memoria React) en cada llamada y nunca pasan por el
+servidor (excepto la de Gemini, que viaja en el body HTTPS hacia el proxy).
 
-### Groq vs. Gemini — Diferencias de implementación
+### Diferencias de implementación por transporte
 
-| Aspecto | Groq | Gemini |
+| Aspecto | OpenAI-compatible (Groq, OpenRouter) | Gemini |
 |---|---|---|
-| SDK | `fetch()` directo | `@google/generative-ai` (via proxy) |
+| SDK | `fetch()` directo (sin proxy) | `@google/generative-ai` (via proxy) |
 | Formato mensajes | OpenAI-compatible (`system` + `messages`) | `startChat({ history })` + `sendMessage()` |
 | System prompt | Mensaje con `role: 'system'` | `systemInstruction` en el modelo |
-| Temperatura | 0.1 (determinista) | Por defecto del SDK |
+| Catálogo de modelos | `GET /models` dinámico (OpenRouter etiqueta 🆓) | Lista curada estática |
+| Temperatura | 0.7 chat / 0.1 acción | Por defecto del SDK |
 | Max tokens | 4096 | 1024 (SDK default) |
 | Restricciones geográficas | Ninguna | Bloqueado en UE/EEA (requiere proxy) |
 
@@ -425,7 +433,6 @@ Ver [MEJORAS_FUTURAS.md](./MEJORAS_FUTURAS.md) para el detalle completo.
 |---|---|---|
 | DocModal embebido en App.tsx | Dificulta el mantenimiento | Extraer a componente (#16) |
 | Truncamiento por caracteres (2000) | Corta código a mitad | Truncamiento por líneas (#20) |
-| Soporte limitado de proveedores IA | Sin fallback ante cortes | Multi-proveedor con fallback (#15) |
 | SessionWarningBanner no implementado | Sin aviso de caducidad | Banner de advertencia (#22) |
 | Prompts incrustados en código | Dificulta edición/i18n | Migrar a archivos .md (#23) |
 | App solo en español | Limita audiencia | i18n con i18next (#24) |

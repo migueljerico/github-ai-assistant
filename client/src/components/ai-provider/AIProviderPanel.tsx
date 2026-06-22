@@ -1,114 +1,73 @@
 import { useState, useEffect } from 'react';
-import { useAIProvider, type AIProviderType } from '../../context/AIProviderContext';
+import { useAIProvider } from '../../context/AIProviderContext';
 import { validateProviderKey } from '../../services/gemini';
+import { PROVIDERS, getProvider, fetchModels, type AIProviderType, type ModelOption } from '../../services/providers';
 import { modelLabel } from '../../utils/modelLabels';
 
-// ── Gemini models ─────────────────────────────────────────────────────────────
-// IMPORTANT: gemini-2.0-flash, gemini-1.5-flash and gemini-1.5-pro have their
-// free-tier quota set to 0 by Google and will always return a 429 error.
-// Only models in the gemini-2.5-* family have active free quota.
-const GEMINI_MODELS = [
-  {
-    value: 'gemini-2.5-flash',
-    label: 'Gemini 2.5 Flash ⭐ Recomendado',
-    description:
-      'Mejor calidad · Ideal para generación de documentación completa de repositorios · ~500 peticiones/día gratuitas',
-    recommended: true,
-  },
-  {
-    value: 'gemini-2.5-flash-lite',
-    label: 'Gemini 2.5 Flash Lite',
-    description:
-      'Más rápido y más cuota gratuita · Puede generar documentación incompleta en repos grandes · Recomendado solo para instrucciones simples',
-    recommended: false,
-  },
-];
+const PROVIDER_LIST = Object.values(PROVIDERS);
 
-// Fallback shown while Groq models load or if the API call fails
-const GROQ_FALLBACK: Array<{ value: string; label: string }> = [
-  { value: 'llama-3.3-70b-versatile', label: 'llama-3.3-70b-versatile' },
-  { value: 'llama-3.1-8b-instant',    label: 'llama-3.1-8b-instant' },
-];
+const initKeys = () => Object.fromEntries(PROVIDER_LIST.map(p => [p.id, ''])) as Record<AIProviderType, string>;
+const initModels = () => Object.fromEntries(PROVIDER_LIST.map(p => [p.id, p.defaultModel])) as Record<AIProviderType, string>;
+const initCatalog = () => Object.fromEntries(PROVIDER_LIST.map(p => [p.id, p.staticModels])) as Record<AIProviderType, ModelOption[]>;
+const initLoaded = () => Object.fromEntries(PROVIDER_LIST.map(p => [p.id, false])) as Record<AIProviderType, boolean>;
 
-// Prefixes of non-chat Groq models to exclude from the selector
-const GROQ_EXCLUDED = ['whisper', 'distil-whisper', 'playai', 'llama-guard', 'tts'];
+/** Texto de la opción: usa la etiqueta descriptiva si la hay; si no, prettifica el id. */
+function optionLabel(m: ModelOption): string {
+  const base = m.label !== m.value ? m.label : modelLabel(m.value);
+  return m.free ? `🆓 ${base}` : base;
+}
 
 export default function AIProviderPanel() {
   const { connect } = useAIProvider();
-  const [selected, setSelected]           = useState<AIProviderType>('gemini');
-  const [geminiKey, setGeminiKey]         = useState('');
-  const [groqKey, setGroqKey]             = useState('');
-  const [geminiModel, setGeminiModel]     = useState(GEMINI_MODELS[0].value);
-  const [groqModel, setGroqModel]         = useState(GROQ_FALLBACK[0].value);
-  const [showGeminiKey, setShowGeminiKey] = useState(false);
-  const [showGroqKey, setShowGroqKey]     = useState(false);
-  const [status, setStatus]               = useState<'idle' | 'validating' | 'success' | 'error'>('idle');
-  const [errorMsg, setErrorMsg]           = useState('');
+  const [selected, setSelected] = useState<AIProviderType>('gemini');
+  const [keys, setKeys] = useState<Record<AIProviderType, string>>(initKeys);
+  const [models, setModels] = useState<Record<AIProviderType, string>>(initModels);
+  const [showKey, setShowKey] = useState(false);
+  const [status, setStatus] = useState<'idle' | 'validating' | 'success' | 'error'>('idle');
+  const [errorMsg, setErrorMsg] = useState('');
 
-  // Dynamic Groq model catalogue
-  const [groqModels, setGroqModels]         = useState(GROQ_FALLBACK);
-  const [isLoadingModels, setIsLoadingModels] = useState(false);
-  const [modelsLoaded, setModelsLoaded]     = useState(false);
+  // Catálogo de modelos (dinámico para proveedores con modelsEndpoint)
+  const [catalog, setCatalog] = useState<Record<AIProviderType, ModelOption[]>>(initCatalog);
+  const [loadingModels, setLoadingModels] = useState(false);
+  const [modelsLoaded, setModelsLoaded] = useState<Record<AIProviderType, boolean>>(initLoaded);
 
-  const activeKey   = selected === 'gemini' ? geminiKey   : groqKey;
-  const activeModel = selected === 'gemini' ? geminiModel : groqModel;
-  const geminiInfo  = GEMINI_MODELS.find(m => m.value === geminiModel);
+  const def = getProvider(selected);
+  const activeKey = keys[selected];
+  const activeModel = models[selected];
+  const activeCatalog = catalog[selected];
+  const selectedModelInfo = activeCatalog.find(m => m.value === activeModel);
+  const freeCount = activeCatalog.filter(m => m.free).length;
 
-  // ── Load Groq models dynamically when the key looks valid ──────────────────
+  // ── Carga dinámica del catálogo de modelos ─────────────────────────────────
   useEffect(() => {
-    if (selected !== 'groq') return;
-    if (!groqKey.startsWith('gsk_') || groqKey.length < 20) return;
+    if (!def.modelsEndpoint) return;
+    const key = keys[selected];
+    // Si el endpoint requiere key (Groq), espera a que tenga pinta válida.
+    if (def.modelsNeedKey && (!def.keyPrefix || !key.startsWith(def.keyPrefix) || key.length < 20)) return;
 
-    const CACHE_KEY = 'groq_models_cache';
-    const cached = sessionStorage.getItem(CACHE_KEY);
-    if (cached) {
+    let cancelled = false;
+    const load = async () => {
+      setLoadingModels(true);
       try {
-        const { models, ts } = JSON.parse(cached) as {
-          models: Array<{ value: string; label: string }>;
-          ts: number;
-        };
-        if (Date.now() - ts < 3_600_000) {   // cache valid 1 hour
-          setGroqModels(models);
-          setModelsLoaded(true);
-          return;
-        }
-      } catch { /* corrupt cache — ignore */ }
-    }
-
-    const fetchModels = async () => {
-      setIsLoadingModels(true);
-      try {
-        const res = await fetch('https://api.groq.com/openai/v1/models', {
-          headers: { Authorization: `Bearer ${groqKey}` },
+        const list = await fetchModels(def, key || undefined);
+        if (cancelled || !list) return;
+        setCatalog(prev => ({ ...prev, [selected]: list }));
+        setModelsLoaded(prev => ({ ...prev, [selected]: true }));
+        // Mantén la selección si sigue disponible; si no, prefiere un modelo gratis.
+        setModels(prev => {
+          if (list.find(m => m.value === prev[selected])) return prev;
+          const fallback = list.find(m => m.free) ?? list[0];
+          return { ...prev, [selected]: fallback.value };
         });
-        if (!res.ok) throw new Error('API error');
-
-        const data = await res.json() as { data: Array<{ id: string }> };
-        const models = data.data
-          .filter(m => !GROQ_EXCLUDED.some(p => m.id.startsWith(p)))
-          .sort((a, b) => a.id.localeCompare(b.id))
-          .map(m => ({ value: m.id, label: m.id }));
-
-        if (models.length === 0) throw new Error('empty');
-
-        setGroqModels(models);
-        setModelsLoaded(true);
-        sessionStorage.setItem(CACHE_KEY, JSON.stringify({ models, ts: Date.now() }));
-
-        // Keep current selection if still available; otherwise prefer 70b
-        if (!models.find(m => m.value === groqModel)) {
-          const pref = models.find(m => m.value === 'llama-3.3-70b-versatile');
-          setGroqModel(pref ? pref.value : models[0].value);
-        }
       } catch {
-        // Silent fallback — GROQ_FALLBACK stays in state
+        // Silencioso — se mantiene el fallback estático del registro.
       } finally {
-        setIsLoadingModels(false);
+        if (!cancelled) setLoadingModels(false);
       }
     };
-
-    void fetchModels();
-  }, [selected, groqKey]); // eslint-disable-line react-hooks/exhaustive-deps
+    void load();
+    return () => { cancelled = true; };
+  }, [selected, keys, def]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleConnect = async () => {
     if (!activeKey.trim()) return;
@@ -139,163 +98,115 @@ export default function AIProviderPanel() {
           <div className="ai-provider-privacy-badge">🔒 100% privado · Solo en tu dispositivo</div>
         </div>
 
-        {/* Provider cards */}
+        {/* Provider cards (generadas desde el registro) */}
         <div className="provider-cards">
-
-          {/* ── Gemini ── */}
-          <button
-            id="select-gemini-btn"
-            className={`provider-card ${selected === 'gemini' ? 'selected' : ''}`}
-            onClick={() => setSelected('gemini')}
-            type="button"
-          >
-            <div className="provider-card-header">
-              <div className="provider-logo provider-logo-gemini">🤖</div>
-              <div>
-                <div className="provider-card-name">Google Gemini</div>
-                <div className="provider-card-desc">Modelos 2.5 · free tier activo</div>
-              </div>
-            </div>
-
-            {selected === 'gemini' && (
-              <div className="provider-card-inputs" onClick={e => e.stopPropagation()}>
-
-                {/* Model selector */}
-                <select
-                  id="gemini-model-select"
-                  className="input provider-select"
-                  value={geminiModel}
-                  onChange={e => setGeminiModel(e.target.value)}
-                >
-                  {GEMINI_MODELS.map(m => (
-                    <option key={m.value} value={m.value}>{m.label}</option>
-                  ))}
-                </select>
-
-                {/* Model description */}
-                {geminiInfo && (
-                  <p style={{
-                    fontSize: '0.74rem',
-                    color: geminiInfo.recommended ? 'var(--color-success, #22c55e)' : '#f59e0b',
-                    margin: '4px 0 8px',
-                    lineHeight: 1.45,
-                  }}>
-                    {geminiInfo.recommended ? '✅' : '⚠️'} {geminiInfo.description}
-                  </p>
-                )}
-
-                {/* Deprecation notice */}
-                <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginBottom: '8px' }}>
-                  ℹ️ Los modelos <strong>gemini-2.0</strong> y <strong>gemini-1.5</strong> están deprecados y tienen cuota = 0. Solo usa modelos <strong>2.5</strong>.
-                </p>
-
-                {/* Key input */}
-                <div className="key-input-row">
-                  <input
-                    id="gemini-key-input"
-                    type={showGeminiKey ? 'text' : 'password'}
-                    className="input"
-                    placeholder="AIzaSy..."
-                    value={geminiKey}
-                    onChange={e => { setGeminiKey(e.target.value); setStatus('idle'); }}
-                    autoComplete="off"
-                    spellCheck={false}
-                    style={{ fontFamily: 'var(--font-mono)', fontSize: '0.82rem' }}
-                  />
-                  <button type="button" className="key-toggle-btn"
-                    onClick={() => setShowGeminiKey(v => !v)}
-                    aria-label="Mostrar/ocultar clave">
-                    {showGeminiKey ? '🙈' : '👁️'}
-                  </button>
+          {PROVIDER_LIST.map(p => {
+            const isSel = selected === p.id;
+            return (
+              <button
+                key={p.id}
+                id={`select-${p.id}-btn`}
+                className={`provider-card ${isSel ? 'selected' : ''}`}
+                onClick={() => { setSelected(p.id); setStatus('idle'); }}
+                type="button"
+              >
+                <div className="provider-card-header">
+                  <div className={`provider-logo provider-logo-${p.id}`}>{p.emoji}</div>
+                  <div>
+                    <div className="provider-card-name">{p.name}</div>
+                    <div className="provider-card-desc">{p.cardDesc}</div>
+                  </div>
                 </div>
 
-                <a href="https://aistudio.google.com/apikey" target="_blank"
-                  rel="noopener noreferrer" className="provider-link">
-                  Obtener clave gratuita en aistudio.google.com →
-                </a>
-              </div>
-            )}
-          </button>
+                {isSel && (
+                  <div className="provider-card-inputs" onClick={e => e.stopPropagation()}>
 
-          {/* ── Groq ── */}
-          <button
-            id="select-groq-btn"
-            className={`provider-card ${selected === 'groq' ? 'selected' : ''}`}
-            onClick={() => setSelected('groq')}
-            type="button"
-          >
-            <div className="provider-card-header">
-              <div className="provider-logo provider-logo-groq">⚡</div>
-              <div>
-                <div className="provider-card-name">Groq Cloud</div>
-                <div className="provider-card-desc">Ultrarrápido · Tier gratuito muy generoso</div>
-              </div>
-            </div>
+                    {/* Etiqueta + contador (solo proveedores con catálogo dinámico) */}
+                    {p.modelsEndpoint && (
+                      <label
+                        htmlFor={`${p.id}-model-select`}
+                        style={{ display: 'block', fontSize: '0.72rem', color: 'var(--color-text-muted)', margin: '0 0 4px' }}
+                      >
+                        Modelo{!loadingModels && ` · ${activeCatalog.length} disponibles${freeCount ? ` · ${freeCount} 🆓` : ''}`}
+                      </label>
+                    )}
 
-            {selected === 'groq' && (
-              <div className="provider-card-inputs" onClick={e => e.stopPropagation()}>
+                    {/* Selector de modelo */}
+                    <select
+                      id={`${p.id}-model-select`}
+                      className="input provider-select"
+                      value={activeModel}
+                      onChange={e => setModels(prev => ({ ...prev, [p.id]: e.target.value }))}
+                      disabled={loadingModels}
+                    >
+                      {loadingModels
+                        ? <option value="">Cargando modelos...</option>
+                        : activeCatalog.map(m => (
+                            <option key={m.value} value={m.value}>{optionLabel(m)}</option>
+                          ))
+                      }
+                    </select>
 
-                {/* Model selector — dynamic */}
-                <label
-                  htmlFor="groq-model-select"
-                  style={{ display: 'block', fontSize: '0.72rem', color: 'var(--color-text-muted)', margin: '0 0 4px' }}
-                >
-                  Modelo{!isLoadingModels && ` · ${groqModels.length} disponibles`}
-                </label>
-                <select
-                  id="groq-model-select"
-                  className="input provider-select"
-                  value={groqModel}
-                  onChange={e => setGroqModel(e.target.value)}
-                  disabled={isLoadingModels}
-                >
-                  {isLoadingModels
-                    ? <option value="">Cargando modelos...</option>
-                    : groqModels.map(m => (
-                        <option key={m.value} value={m.value}>{modelLabel(m.value)}</option>
-                      ))
-                  }
-                </select>
+                    {/* Descripción del modelo seleccionado (Gemini) */}
+                    {selectedModelInfo?.description && (
+                      <p style={{
+                        fontSize: '0.74rem',
+                        color: selectedModelInfo.recommended ? 'var(--color-success, #22c55e)' : '#f59e0b',
+                        margin: '4px 0 8px',
+                        lineHeight: 1.45,
+                      }}>
+                        {selectedModelInfo.recommended ? '✅' : '⚠️'} {selectedModelInfo.description}
+                      </p>
+                    )}
 
-                {/* Model status feedback */}
-                {isLoadingModels && (
-                  <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', margin: '3px 0 6px' }}>
-                    ⏳ Cargando catálogo actualizado desde Groq...
-                  </p>
+                    {/* Estado de carga del catálogo dinámico */}
+                    {p.modelsEndpoint && loadingModels && (
+                      <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', margin: '3px 0 6px' }}>
+                        ⏳ Cargando catálogo actualizado...
+                      </p>
+                    )}
+                    {p.modelsEndpoint && !loadingModels && modelsLoaded[p.id] && (
+                      <p style={{ fontSize: '0.72rem', color: 'var(--color-success, #22c55e)', margin: '3px 0 6px' }}>
+                        ✅ Catálogo cargado en tiempo real
+                      </p>
+                    )}
+
+                    {/* Nota del proveedor (deprecación Gemini, gratis OpenRouter…) */}
+                    {p.note && (
+                      <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginBottom: '8px', lineHeight: 1.45 }}>
+                        {p.note}
+                      </p>
+                    )}
+
+                    {/* Key input */}
+                    <div className="key-input-row">
+                      <input
+                        id={`${p.id}-key-input`}
+                        type={showKey ? 'text' : 'password'}
+                        className="input"
+                        placeholder={p.keyPlaceholder}
+                        value={keys[p.id]}
+                        onChange={e => { setKeys(prev => ({ ...prev, [p.id]: e.target.value })); setStatus('idle'); }}
+                        autoComplete="off"
+                        spellCheck={false}
+                        style={{ fontFamily: 'var(--font-mono)', fontSize: '0.82rem' }}
+                      />
+                      <button type="button" className="key-toggle-btn"
+                        onClick={() => setShowKey(v => !v)}
+                        aria-label="Mostrar/ocultar clave">
+                        {showKey ? '🙈' : '👁️'}
+                      </button>
+                    </div>
+
+                    <a href={p.signupUrl} target="_blank"
+                      rel="noopener noreferrer" className="provider-link">
+                      {p.signupLabel}
+                    </a>
+                  </div>
                 )}
-                {!isLoadingModels && modelsLoaded && (
-                  <p style={{ fontSize: '0.72rem', color: 'var(--color-success, #22c55e)', margin: '3px 0 6px' }}>
-                    ✅ Catálogo cargado en tiempo real desde Groq
-                  </p>
-                )}
-
-                {/* Key input */}
-                <div className="key-input-row">
-                  <input
-                    id="groq-key-input"
-                    type={showGroqKey ? 'text' : 'password'}
-                    className="input"
-                    placeholder="gsk_..."
-                    value={groqKey}
-                    onChange={e => { setGroqKey(e.target.value); setStatus('idle'); }}
-                    autoComplete="off"
-                    spellCheck={false}
-                    style={{ fontFamily: 'var(--font-mono)', fontSize: '0.82rem' }}
-                  />
-                  <button type="button" className="key-toggle-btn"
-                    onClick={() => setShowGroqKey(v => !v)}
-                    aria-label="Mostrar/ocultar clave">
-                    {showGroqKey ? '🙈' : '👁️'}
-                  </button>
-                </div>
-
-                <a href="https://console.groq.com" target="_blank"
-                  rel="noopener noreferrer" className="provider-link">
-                  Obtener clave gratuita en console.groq.com →
-                </a>
-              </div>
-            )}
-          </button>
+              </button>
+            );
+          })}
         </div>
 
         {/* Error */}
@@ -313,12 +224,12 @@ export default function AIProviderPanel() {
         >
           {status === 'validating' && <><span className="spinner spinner-sm" /> Verificando clave...</>}
           {status === 'success'    && <>✅ ¡Conectado! Entrando a la app...</>}
-          {status === 'idle'       && `Conectar con ${selected === 'gemini' ? 'Google Gemini' : 'Groq Cloud'}`}
-          {status === 'error'      && `Reintentar con ${selected === 'gemini' ? 'Google Gemini' : 'Groq Cloud'}`}
+          {status === 'idle'       && `Conectar con ${def.name}`}
+          {status === 'error'      && `Reintentar con ${def.name}`}
         </button>
 
         <p className="provider-footer-note">
-          Tu clave se almacena en <code>sessionStorage</code> y se elimina al cerrar la pestaña.
+          🔒 Tu clave vive <strong>solo en la memoria del navegador</strong> (Zero-Storage): desaparece al recargar o cerrar la pestaña y nunca se guarda.
         </p>
       </div>
     </div>

@@ -173,6 +173,35 @@ describe('callAI - Groq temperatura según modo (Opción D / #27)', () => {
   });
 });
 
+describe('callAI - enrutado OpenRouter (#15)', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('llama al endpoint de OpenRouter con Authorization y header X-Title', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: 'ok' } }] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await callAI(
+      [{ role: 'user', content: 'Hola' }],
+      'system',
+      'openrouter',
+      'sk-or-xxx',
+      'deepseek/deepseek-r1:free',
+      'chat',
+    );
+
+    const [url, init] = fetchMock.mock.calls[0];
+    const headers = (init as RequestInit).headers as Record<string, string>;
+    expect(url).toContain('openrouter.ai');
+    expect(headers['X-Title']).toBe('GitHub AI Assistant');
+    expect(headers['Authorization']).toContain('sk-or-xxx');
+  });
+});
+
 describe('Contexto de repo para chat (#41)', () => {
   const files = [
     { path: 'README.md', content: '# Mi proyecto\nlínea2\nlínea3' },
