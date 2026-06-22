@@ -200,6 +200,26 @@ describe('callAI - enrutado OpenRouter (#15)', () => {
     expect(headers['X-Title']).toBe('GitHub AI Assistant');
     expect(headers['Authorization']).toContain('sk-or-xxx');
   });
+
+  it('lanza un error claro si el modelo devuelve contenido vacío', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: '' } }] }),
+    }));
+    await expect(
+      callAI([{ role: 'user', content: 'Hola' }], 'system', 'openrouter', 'k', 'm', 'chat'),
+    ).rejects.toThrow(/no devolvió contenido/i);
+  });
+
+  it('lanza un error claro si la respuesta no trae choices (no crashea)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [] }),
+    }));
+    await expect(
+      callAI([{ role: 'user', content: 'Hola' }], 'system', 'groq', 'k', 'm', 'chat'),
+    ).rejects.toThrow(/no devolvió contenido/i);
+  });
 });
 
 describe('Contexto de repo para chat (#41)', () => {

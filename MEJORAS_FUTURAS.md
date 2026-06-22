@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v2.7.1 · Junio 2026
+**Actualizado a:** v2.7.2 · Junio 2026
 
 ---
 
@@ -79,14 +79,14 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 #### #26 — Mantener y expandir cobertura de tests con Codecov
 **Esfuerzo:** Continuo (2-4h por sprint)
 
-**Estado actual (v2.7.1):** ✅ Infraestructura completa implementada
+**Estado actual (v2.7.2):** ✅ Infraestructura completa implementada
 
 **Progreso realizado:**
 - ✅ Configuración de Vitest + Codecov
 - ✅ CI con GitHub Actions ejecutando tests (cliente + servidor) automáticamente
 - ✅ Badge de Codecov en README
 - ✅ Cobertura actual: **≈50%** (ver Codecov para el valor exacto)
-- ✅ 173 tests en el cliente. Implementados para:
+- ✅ 175 tests en el cliente. Implementados para:
   - `AuthContext.tsx` (login, logout, OAuth flow, Zero-Storage)
   - `AIProviderContext.tsx` (conexión/desconexión de proveedores)
   - `providers.ts` (registro de proveedores, detección de modelos 🆓, caché)

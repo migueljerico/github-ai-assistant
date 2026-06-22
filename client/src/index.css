@@ -1252,6 +1252,7 @@ textarea.input { resize: none; line-height: 1.6; }
   opacity: 0;
   transition: opacity var(--transition);
   border-radius: inherit;
+  pointer-events: none; /* decorativo: nunca debe capturar clics del <select>/<input> */
 }
 
 .provider-card:hover {
@@ -1313,6 +1314,8 @@ textarea.input { resize: none; line-height: 1.6; }
   flex-direction: column;
   gap: 10px;
   animation: slideUp 0.2s ease;
+  position: relative;
+  z-index: 1; /* por encima del overlay decorativo ::before */
 }
 
 .provider-select {
