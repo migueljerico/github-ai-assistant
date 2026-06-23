@@ -8,6 +8,7 @@ import { callAI, parseGeminiAction, generateRepoDocs, CHAT_PROMPT, ACTION_PROMPT
 import { executeAction, executeActionMultiRepo } from './services/actionExecutor';
 import { getFileContents, decodeBase64, fetchRepoTreeRecursive } from './services/github';
 import { writeDocFiles, createDocsDraftPr } from './services/docPublisher';
+import { summarizeThread, parseThreadInput } from './services/threadSummary';
 import { formatResultData } from './utils/formatResult';
 import Header from './components/layout/Header';
 import HistoryPanel from './components/layout/HistoryPanel';
@@ -412,6 +413,59 @@ export default function App() {
     }
   }, [token, user, provider, apiKey, model, providerName, addMessage, updateMessage, addEntry, updateEntry]);
 
+  // ── Resumir hilo (#32) ───────────────────────────────────────────────────────
+  const handleSummarizeThread = useCallback(async (input: string) => {
+    // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto
+    if (!token || !user || !provider || !apiKey || !model) return;
+
+    const parsed = parseThreadInput(input);
+    if (!parsed) {
+      addMessage({
+        role: 'assistant',
+        content: '❌ No entendí la referencia del hilo. Usa el formato `owner/repo#42` (o `#42` con un repo de contexto cargado).',
+      });
+      return;
+    }
+
+    // Resolver owner/repo: explícito > repo de contexto activo > usuario
+    let owner = parsed.owner;
+    let repo = parsed.repo;
+    if (!repo && repoContext?.repoName?.includes('/')) {
+      [owner, repo] = repoContext.repoName.split('/', 2);
+    }
+    if (repo && !owner) owner = user.login;
+    if (!owner || !repo) {
+      addMessage({
+        role: 'assistant',
+        content: '❌ No pude determinar el repositorio. Indícalo como `owner/repo#42` o carga un repo de contexto primero.',
+      });
+      return;
+    }
+
+    const ref = `${owner}/${repo}#${parsed.number}`;
+    setIsChatLoading(true);
+    const loadingId = addMessage({
+      role: 'assistant',
+      content: `🔎 Resumiendo el hilo **${ref}** con ${providerName}...`,
+      isLoading: true,
+    });
+    const histId = addEntry({ status: 'pending', description: `Resumiendo hilo ${ref}`, repo: `${owner}/${repo}` });
+
+    try {
+      const summary = await summarizeThread(token, owner, repo, parsed.number, { provider, apiKey, model });
+      updateMessage(loadingId, {
+        content: `📌 **Resumen del hilo ${ref}**\n\n${summary}`,
+        isLoading: false,
+      });
+      updateEntry(histId, { status: 'completed', description: `Hilo ${ref} resumido` });
+    } catch (err) {
+      updateMessage(loadingId, { content: `❌ Error al resumir el hilo ${ref}: ${(err as Error).message}`, isLoading: false });
+      updateEntry(histId, { status: 'error', description: `Error al resumir ${ref}` });
+    } finally {
+      setIsChatLoading(false);
+    }
+  }, [token, user, provider, apiKey, model, providerName, repoContext, addMessage, updateMessage, addEntry, updateEntry]);
+
   // ── Commit docs (commit directo a la rama por defecto) ───────────────────────
   const handleCommitDocs = useCallback(async () => {
     if (!docAnalysis || !token || !user) return;
@@ -504,6 +558,7 @@ export default function App() {
             selectedRepos={selectedRepos}
             onSelectedReposChange={setSelectedRepos}
             onDocumentRepo={handleDocumentRepo}
+            onSummarizeThread={handleSummarizeThread}
             repoContextName={repoContext?.repoName ?? null}
             onLoadRepoContext={handleLoadRepoContext}
             onClearRepoContext={handleClearRepoContext}

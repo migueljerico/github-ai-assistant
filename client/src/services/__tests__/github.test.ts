@@ -11,6 +11,9 @@ import {
   deleteFile,
   ghFetch,
   GitHubAPIError,
+  getIssueOrPr,
+  getIssueComments,
+  getPullReviewComments,
 } from '../github';
 
 // Mock de fetch global
@@ -290,6 +293,63 @@ describe('github.ts', () => {
         expect.objectContaining({
           method: 'DELETE',
         })
+      );
+    });
+  });
+
+  describe('getIssueOrPr', () => {
+    it('debería usar el endpoint de issues y exponer pull_request', async () => {
+      const mockPr = { number: 12, title: 'PR', body: 'x', state: 'open', html_url: 'u', user: { login: 'a' }, pull_request: { url: 'y' } };
+      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => mockPr } as any);
+
+      const result = await getIssueOrPr('test-token', 'owner', 'repo', 12);
+
+      expect(result.pull_request).toBeTruthy();
+      expect(fetch).toHaveBeenCalledWith(
+        'https://api.github.com/repos/owner/repo/issues/12',
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('getIssueComments', () => {
+    it('debería concatenar varias páginas hasta una página incompleta', async () => {
+      const fullPage = Array.from({ length: 100 }, (_, i) => ({ id: i, body: 'c', user: { login: 'a' }, created_at: '2026-01-01' }));
+      const lastPage = [{ id: 999, body: 'fin', user: { login: 'b' }, created_at: '2026-01-02' }];
+      vi.mocked(fetch)
+        .mockResolvedValueOnce({ ok: true, json: async () => fullPage } as any)
+        .mockResolvedValueOnce({ ok: true, json: async () => lastPage } as any);
+
+      const result = await getIssueComments('test-token', 'owner', 'repo', 5);
+
+      expect(result).toHaveLength(101);
+      expect(fetch).toHaveBeenCalledTimes(2);
+      expect(fetch).toHaveBeenNthCalledWith(
+        1, 'https://api.github.com/repos/owner/repo/issues/5/comments?per_page=100&page=1', expect.any(Object)
+      );
+      expect(fetch).toHaveBeenNthCalledWith(
+        2, 'https://api.github.com/repos/owner/repo/issues/5/comments?per_page=100&page=2', expect.any(Object)
+      );
+    });
+
+    it('debería parar tras una única página incompleta', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => [{ id: 1, body: 'c', user: { login: 'a' }, created_at: 'x' }] } as any);
+
+      const result = await getIssueComments('test-token', 'owner', 'repo', 5);
+
+      expect(result).toHaveLength(1);
+      expect(fetch).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('getPullReviewComments', () => {
+    it('debería usar el endpoint de pulls/comments', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => [] } as any);
+
+      await getPullReviewComments('test-token', 'owner', 'repo', 12);
+
+      expect(fetch).toHaveBeenNthCalledWith(
+        1, 'https://api.github.com/repos/owner/repo/pulls/12/comments?per_page=100&page=1', expect.any(Object)
       );
     });
   });

@@ -3,6 +3,7 @@ import type { GitHubRepo } from '../../types';
 import MultiRepoSelector from '../multi-repo/RepoSelector';
 import DocumentRepoButton from './DocumentRepoButton';
 import RepoContextButton from './RepoContextButton';
+import ThreadSummaryButton from './ThreadSummaryButton';
 
 interface ChatInputProps {
   value: string;
@@ -15,6 +16,8 @@ interface ChatInputProps {
   selectedRepos: GitHubRepo[];
   onSelectedReposChange: (repos: GitHubRepo[]) => void;
   onDocumentRepo: (repoName: string) => void;
+  // #32 - Resumir hilo de comentarios de un issue/PR
+  onSummarizeThread: (input: string) => void;
   // #41 - Contexto de repo para opiniones fundamentadas
   repoContextName: string | null;
   onLoadRepoContext: (repoName: string) => void;
@@ -35,6 +38,7 @@ export default function ChatInput({
   selectedRepos,
   onSelectedReposChange,
   onDocumentRepo,
+  onSummarizeThread,
   repoContextName,
   onLoadRepoContext,
   onClearRepoContext,
@@ -149,6 +153,11 @@ export default function ChatInput({
         <DocumentRepoButton
           disabled={disabled}
           onDocumentRepo={onDocumentRepo}
+        />
+
+        <ThreadSummaryButton
+          disabled={disabled}
+          onSummarizeThread={onSummarizeThread}
         />
 
         <RepoContextButton
