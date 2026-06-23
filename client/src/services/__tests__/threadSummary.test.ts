@@ -170,4 +170,18 @@ describe('summarizeThread', () => {
     expect(out.startsWith('```')).toBe(false);
     expect(out).toContain('Hola');
   });
+
+  it('trunca los comentarios muy largos en el mensaje enviado a la IA', async () => {
+    vi.mocked(getIssueOrPr).mockResolvedValue({
+      number: 5, title: 'Bug', body: 'b', state: 'open', html_url: 'u', user: { login: 'ana' },
+    } as any);
+    vi.mocked(getIssueComments).mockResolvedValue([
+      { id: 1, body: 'x'.repeat(2000), user: { login: 'leo' }, created_at: '2026-06-01' },
+    ] as any);
+
+    await summarizeThread(TOKEN, OWNER, REPO, 5, CONFIG);
+
+    const userMessage = vi.mocked(callAI).mock.calls[0][0][0].content;
+    expect(userMessage).toContain('[… truncado …]');
+  });
 });
