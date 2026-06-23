@@ -1,6 +1,6 @@
 # 📖 Manual Técnico — GitHub AI Assistant
 
-**Versión:** v2.7.4 · Junio 2026
+**Versión:** v2.8.0 · Junio 2026
 
 ---
 
@@ -415,7 +415,7 @@ gcloud run deploy github-ai-assistant \
 - **CI:** GitHub Actions (`.github/workflows/ci.yml`) ejecuta en cada push/PR a `main`
   el lint, los tests del cliente con cobertura y los tests del servidor
   (job `server-test`). Ver "Pipeline CI/CD" en la sección de despliegue.
-- **Cobertura actual:** ≈50% (ver Codecov para el valor exacto) · 187 tests en el cliente
+- **Cobertura actual:** ≈50% (ver Codecov para el valor exacto) · 202 tests en el cliente
 
 ### Módulos testeados
 
@@ -428,6 +428,7 @@ gcloud run deploy github-ai-assistant \
 | `github.ts` | Base64, ghFetch, getUser, createRepo, getRepo, getBranchSha | ✅ |
 | `gemini.ts` | parseGeminiAction, detectPrimaryLanguage, temperatura por modo, contexto de repo (#41), enrutado OpenRouter, reintento transitorio (`withTransientRetry`) | ✅ |
 | `docPublisher.ts` | Commit directo / Draft PR (#45) | ✅ |
+| `threadSummary.ts` | Resumen de hilos issue/PR (#32): parseo, issue vs PR, hilo vacío | ✅ |
 | `modeDetection.ts` | Chat vs action; sesgo a chat con contexto de repo | ✅ |
 | `formatResult.ts` | Arrays, objetos, strings, JSON | ✅ |
 | `releaseGenerator.ts` | createGitHubRelease, notas, suggestNextVersion | ✅ |

@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.0] — 2026-06-23
+
+### Added
+- **Resumen de hilos de issues/PRs (#32)** — Nuevo botón **"📝 Resumir hilo"** en la barra del chat: se introduce `owner/repo#42` (o `#42` con un repo de contexto cargado) y la IA devuelve un resumen estructurado en Markdown (**TL;DR · Puntos clave · Decisiones/pendientes · Tono**) del hilo. Para issues incluye el cuerpo + comentarios de conversación; para PRs añade además los comentarios de **revisión** sobre código. Cubre un hueco real frente a Copilot al revisar discusiones largas.
+  - `github.ts`: nuevos wrappers de **solo lectura** `getIssueOrPr()` (detecta PR vs issue por la clave `pull_request`), `getIssueComments()` y `getPullReviewComments()` (ambos con paginación completa).
+  - Nuevo servicio `services/threadSummary.ts` (`summarizeThread()` + `parseThreadInput()`), espejo del flujo dedicado de `generateRepoDocs`: descarga → llamada LLM con prompt propio → render en burbuja de chat. No toca el flujo *propón→confirma→ejecuta* ni Zero-Storage (la clave sigue en memoria; el resumen no se persiste).
+  - Nuevo componente `ThreadSummaryButton.tsx`.
+
+### Testing
+- Tests para los wrappers de comentarios (`github.test.ts`: paginación + paths) y para `threadSummary` (`parseThreadInput`, issue vs PR, hilo vacío, limpieza de fences). Cobertura/cliente: **202 tests**.
+
 ## [2.7.4] — 2026-06-23
 
 ### Fixed

@@ -10,7 +10,7 @@
 ![OpenRouter](https://img.shields.io/badge/OpenRouter-6566F1?style=for-the-badge&logo=openai&logoColor=white)
 ![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
 ![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
-![Versión](https://img.shields.io/badge/Versión-v2.7.4-blue?style=for-the-badge)
+![Versión](https://img.shields.io/badge/Versión-v2.8.0-blue?style=for-the-badge)
 ![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)
 [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
 
@@ -82,9 +82,36 @@ El proyecto evolucionó de un prototipo en **Google AI Studio** a una aplicació
 | 📄 **Plantillas predefinidas** | README, `.gitignore` y licencias por tipo de proyecto, pre-formuladas para el chat |
 | 🗂️ **Operaciones multi-repo** | Aplica la misma acción a varios repositorios seleccionados simultáneamente |
 | 🤖 **Documenta tu repositorio entero** | El agente lee hasta 80 archivos y genera README + MANUAL_TECNICO de forma automática |
+| 📝 **Resume hilos de issues/PRs** | Introduce `owner/repo#42` y la IA resume la discusión (TL;DR · puntos clave · decisiones/pendientes · tono); en PRs incluye los comentarios de revisión |
 | 🔑 **Multi-proveedor de IA** | **Groq Cloud**, **Google Gemini** y **OpenRouter** (pasarela a OpenAI, Claude, Llama… con modelos 🆓 gratuitos y de pago) — usas tu propia clave |
 | 🔒 **Autenticación OAuth** | Flujo GitHub OAuth completo con fallback a PAT manual |
 | 🛡️ **Rate limiting** | Protección contra abuso en el proxy de Gemini (40 req/min por IP) |
+
+---
+
+## 🆚 Qué aporta frente a GitHub Copilot
+
+GitHub Copilot es excelente como **copiloto de código** dentro del editor. Esta app
+cubre un terreno **complementario y distinto**: *operar tu cuenta de GitHub en lenguaje
+natural*, con un modelo de acceso abierto y sin suscripción por asiento. Necesidades de
+usuario que aquí quedan cubiertas:
+
+| Necesidad del usuario | GitHub AI Assistant | GitHub Copilot |
+|---|---|---|
+| **Coste de acceso** | Gratis con tus propias claves de los tiers gratuitos (Gemini / Groq / OpenRouter) | Suscripción de pago por asiento (existe un tier gratuito limitado) |
+| **Elección de proveedor/modelo** | Multi-proveedor: Gemini, Groq y OpenRouter (300+ modelos, muchos 🆓) — *tu propia clave* | Catálogo gestionado por la plataforma; no traes tu clave |
+| **Operar la GitHub REST API en lenguaje natural** | ✅ Crear repos, subir archivos, issues, PRs, ramas… con **panel de confirmación + diff** (*propón→confirma→ejecuta*) | Orientado a sugerencias de código; no es un orquestador de operaciones de la API con confirmación |
+| **Misma acción en varios repos a la vez** | ✅ Modo multi-repo | No es su foco |
+| **Resumen de hilos de issues/PRs bajo demanda** | ✅ Un clic: `owner/repo#42` → TL;DR · puntos clave · decisiones · tono | Parcial (resúmenes de PR), no como acción integrada del asistente |
+| **Documentación automática del repo** | ✅ Genera README + MANUAL_TECNICO (commit directo o Draft PR) | No es su foco |
+| **Privacidad de credenciales** | Zero-Storage: las claves de IA viven **solo en memoria** del navegador | Gestionado por la plataforma |
+| **Código abierto / autoalojable** | ✅ | No |
+
+> **Nota honesta:** Copilot evoluciona rápido y ya ofrece resúmenes de PR y un tier
+> gratuito limitado. La ventaja diferencial de esta app no es "hacer lo mismo gratis",
+> sino ser un **asistente de operaciones de GitHub** abierto, multi-proveedor y con tu
+> propia clave, bajo la garantía de seguridad *propón→confirma→ejecuta*. Esta tabla se
+> irá ampliando a medida que se añadan funciones que cubran necesidades aún no resueltas.
 
 ---
 
@@ -265,7 +292,7 @@ npm run test:coverage # Tests con reporte de cobertura
 
 ### Cobertura actual
 
-- **Cobertura total:** ≈50% (187 tests en el cliente; ver Codecov para el valor exacto)
+- **Cobertura total:** ≈50% (202 tests en el cliente; ver Codecov para el valor exacto)
 - **Módulos testeados:** AuthContext, AIProviderContext, providers, actionExecutor, github, gemini, docPublisher, modeDetection, formatResult, releaseGenerator, pdfReader, pdfAdvanced, useChat, useActions, ChatArea, ChatInput, ConfirmModal, Header, TemplatePanel, AIProviderPanel, AIProviderBadge, RepoContextButton — más los tests del servidor (rate limiter)
 - **Badge con cobertura actual:** [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
 

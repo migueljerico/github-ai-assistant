@@ -417,6 +417,96 @@ export async function commentOnIssue(
   });
 }
 
+// ── Comentarios / hilos (#32 — resumir hilos) ──────────────────────────────────
+
+/** Tipo mínimo de un comentario de issue o PR (lo que necesita el resumen de hilos). */
+export interface ThreadComment {
+  id: number;
+  body: string;
+  user: { login: string } | null;
+  created_at: string;
+  path?: string;          // solo en comentarios de revisión de PR (sobre código)
+  line?: number | null;   // idem
+}
+
+/**
+ * Tipo mínimo de un issue o PR. GitHub trata los PRs como issues en el endpoint
+ * `/issues/{n}`; la presencia de la clave `pull_request` indica que es un PR.
+ */
+export interface IssueOrPr {
+  number: number;
+  title: string;
+  body: string | null;
+  state: string;
+  html_url: string;
+  user: { login: string } | null;
+  pull_request?: unknown;
+}
+
+/**
+ * Obtiene un issue o PR (título, cuerpo, estado). Si el resultado trae
+ * `pull_request`, el "issue" es en realidad un Pull Request.
+ */
+export async function getIssueOrPr(
+  token: string,
+  owner: string,
+  repo: string,
+  number: number
+): Promise<IssueOrPr> {
+  return ghFetch<IssueOrPr>(token, `/repos/${owner}/${repo}/issues/${number}`);
+}
+
+/**
+ * Obtiene TODOS los comentarios de conversación de un issue o PR (paginado).
+ * Sirve tanto para issues como para PRs (la pestaña de conversación).
+ */
+export async function getIssueComments(
+  token: string,
+  owner: string,
+  repo: string,
+  number: number
+): Promise<ThreadComment[]> {
+  const all: ThreadComment[] = [];
+  let page = 1;
+  const perPage = 100;
+  while (true) {
+    const batch = await ghFetch<ThreadComment[]>(
+      token,
+      `/repos/${owner}/${repo}/issues/${number}/comments?per_page=${perPage}&page=${page}`
+    );
+    all.push(...batch);
+    if (batch.length < perPage) break;
+    page++;
+  }
+  return all;
+}
+
+/**
+ * Obtiene TODOS los comentarios de REVISIÓN (sobre código) de un PR (paginado).
+ * Son distintos de los de conversación (getIssueComments): cuelgan de líneas
+ * concretas del diff.
+ */
+export async function getPullReviewComments(
+  token: string,
+  owner: string,
+  repo: string,
+  number: number
+): Promise<ThreadComment[]> {
+  const all: ThreadComment[] = [];
+  let page = 1;
+  const perPage = 100;
+  while (true) {
+    const batch = await ghFetch<ThreadComment[]>(
+      token,
+      `/repos/${owner}/${repo}/pulls/${number}/comments?per_page=${perPage}&page=${page}`
+    );
+    all.push(...batch);
+    if (batch.length < perPage) break;
+    page++;
+  }
+  return all;
+}
+
 // ── Pull Requests ─────────────────────────────────────────────────────────────
 
 /**

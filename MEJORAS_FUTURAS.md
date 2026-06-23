@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v2.7.4 · Junio 2026
+**Actualizado a:** v2.8.0 · Junio 2026
 
 ---
 
@@ -24,6 +24,7 @@ Estado del código, mejoras pendientes y roadmap del proyecto.
 | 41 | Opiniones de chat fundamentadas en el contexto del repo | gemini.ts, App.tsx, RepoContextButton.tsx | v2.5.0 |
 | 45 | Generación de documentación vía Draft PR | App.tsx, github.ts | v2.6.0 |
 | 15 | Multi-proveedor (OpenRouter) vía registro de proveedores | services/providers.ts, gemini.ts, AIProviderPanel.tsx | v2.7.0 |
+| 32 | Resumir hilos de comentarios de issues/PRs | github.ts, services/threadSummary.ts, ThreadSummaryButton.tsx | v2.8.0 |
 
 ---
 
@@ -62,31 +63,17 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 ---
 
-#### #32 — Resumir hilos de comentarios largos
-**Esfuerzo:** 3h
-
-**Problema actual:** Los hilos de issues/PRs largos son difíciles de seguir.
-
-**Solución propuesta:** Nueva acción "resumir hilo" que:
-- Obtiene todos los comentarios de un issue/PR
-- Envía al LLM con prompt de resumen
-- Muestra resumen estructurado en el chat
-
-**Beneficio:** Ahorro de tiempo en revisión de PRs complejos; onboarding rápido a discusiones técnicas. Cubre un hueco real frente a GitHub Copilot.
-
----
-
 #### #26 — Mantener y expandir cobertura de tests con Codecov
 **Esfuerzo:** Continuo (2-4h por sprint)
 
-**Estado actual (v2.7.4):** ✅ Infraestructura completa implementada
+**Estado actual (v2.8.0):** ✅ Infraestructura completa implementada
 
 **Progreso realizado:**
 - ✅ Configuración de Vitest + Codecov
 - ✅ CI con GitHub Actions ejecutando tests (cliente + servidor) automáticamente
 - ✅ Badge de Codecov en README
 - ✅ Cobertura actual: **≈50%** (ver Codecov para el valor exacto)
-- ✅ 187 tests en el cliente. Implementados para:
+- ✅ 202 tests en el cliente. Implementados para:
   - `AuthContext.tsx` (login, logout, OAuth flow, Zero-Storage)
   - `AIProviderContext.tsx` (conexión/desconexión de proveedores)
   - `providers.ts` (registro de proveedores, detección de modelos 🆓, caché, `pickDefaultModel`)
@@ -94,6 +81,7 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
   - `github.ts` (wrapper de GitHub API, decodeBase64, encodeBase64, getRepo, getBranchSha)
   - `gemini.ts` (parseGeminiAction, detectPrimaryLanguage, temperatura por modo, contexto de repo #41, enrutado OpenRouter, reintento transitorio `withTransientRetry`/`isTransientAIError`)
   - `docPublisher.ts` (commit directo / Draft PR — #45)
+  - `threadSummary.ts` (resumen de hilos #32: `parseThreadInput`, issue vs PR, hilo vacío) + wrappers de comentarios en `github.ts` (paginación)
   - `modeDetection.ts` (chat vs action; sesgo a chat con contexto de repo)
   - `formatResult.ts`, `releaseGenerator.ts`, `pdfReader.ts`, `pdfAdvanced.ts`
   - Hooks: `useChat`, `useActions`
@@ -347,9 +335,9 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 | Prioridad | Total | ✅ Resueltos | ⏳ Pendientes |
 |---|---|---|---|
 | 🔴 Alta | 8 | 7 (#1, #2, #13, #14, #27, #45, #15) | 1 (#28) |
-| 🟡 Media | 15 | 7 (#12, #17, #18, #19, #21, #37, #41) | 8 (#20, #26, #32, #38, #39, #42, #44, #49) |
+| 🟡 Media | 15 | 8 (#12, #17, #18, #19, #21, #37, #41, #32) | 7 (#20, #26, #38, #39, #42, #44, #49) |
 | 🟢 Baja | 11 | 0 | 11 (#22, #23, #24, #25, #33, #34, #35, #36, #40, #46, #48) |
-| **TOTAL** | **34** | **14** | **20** |
+| **TOTAL** | **34** | **15** | **19** |
 
 > **Nota de numeración:** los huecos en #16, #29, #30, #31, #43 y #47 son intencionados — esos ítems se fusionaron o descartaron en revisiones del roadmap y sus números no se reutilizan (convención del documento). #16 se fusionó en #42; #29 en #40.
 
