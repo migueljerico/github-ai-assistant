@@ -265,7 +265,7 @@ npm run test:coverage # Tests con reporte de cobertura
 
 ### Cobertura actual
 
-- **Cobertura total:** ≈50% (175 tests en el cliente; ver Codecov para el valor exacto)
+- **Cobertura total:** ≈50% (187 tests en el cliente; ver Codecov para el valor exacto)
 - **Módulos testeados:** AuthContext, AIProviderContext, providers, actionExecutor, github, gemini, docPublisher, modeDetection, formatResult, releaseGenerator, pdfReader, pdfAdvanced, useChat, useActions, ChatArea, ChatInput, ConfirmModal, Header, TemplatePanel, AIProviderPanel, AIProviderBadge, RepoContextButton — más los tests del servidor (rate limiter)
 - **Badge con cobertura actual:** [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
 
@@ -372,6 +372,7 @@ Este proyecto se ha construido con ayuda de varias IAs, pero bajo un principio: 
 | **Qwen** | Generación de componentes de código |
 | **Manus** | Ideas y propuestas; algunas implementaciones introdujeron regresiones que hubo que corregir |
 | **DeepSeek** · **GLM 5.2** | Propuestas para el roadmap, filtradas y curadas antes de incorporarse |
+| **Gemma** (vía OpenRouter) | Revisión de arquitectura del repo; su propuesta de gestión de contexto/RAG se incorporó al roadmap (#49), reformulada a un índice en memoria por el modelo "sin BD" |
 
 **Validación en acción:** por ejemplo, una propuesta de "memoria persistente con IndexedDB" se **rechazó** por contradecir la arquitectura Zero-Storage (y porque no funcionaba entre sesiones), reformulándose a export/import de fichero. Otras propuestas se ajustaron o descartaron tras revisarlas contra el código real.
 
@@ -386,5 +387,5 @@ Este proyecto forma parte del programa de formación en Análisis de Datos e Int
 ---
 
 <p align="center">
-Desarrollado por <a href="https://github.com/migueljerico">@migueljerico</a> con la asistencia de <strong>Claude / Claude Code</strong> (Anthropic), <strong>Antigravity 2.0</strong> (Google), <strong>Qwen</strong>, <strong>Manus</strong>, <strong>DeepSeek</strong> y <strong>GLM 5.2</strong> — con validación cruzada y revisión crítica · 2026
+Desarrollado por <a href="https://github.com/migueljerico">@migueljerico</a> con la asistencia de <strong>Claude / Claude Code</strong> (Anthropic), <strong>Antigravity 2.0</strong> (Google), <strong>Qwen</strong>, <strong>Manus</strong>, <strong>DeepSeek</strong>, <strong>GLM 5.2</strong> y <strong>Gemma</strong> — con validación cruzada y revisión crítica · 2026
 </p>

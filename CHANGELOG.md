@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Default de modelo más fiable** — Al cargar el catálogo, se elige por defecto un modelo gratuito **fiable** (`pickDefaultModel`: Gemma → Llama 3.3 70B → DeepSeek…) en vez de un `:free` arbitrario, ya que muchos endpoints gratuitos de OpenRouter están saturados. Se respeta la elección explícita del usuario.
 - **Mensajes de error más claros** — Ante un fallo de proveedor OpenAI-compatible, el mensaje explica que el modelo gratuito está saturado y sugiere probar otro (Gemma) o cambiar a Gemini/Groq.
 
+### Docs
+- Sincronización completa a v2.7.3 (README, MANUAL_TECNICO, MEJORAS_FUTURAS, CLAUDE.md, `package.json`/lockfiles).
+- Nuevo ítem de roadmap **#49** (gestión de la ventana de contexto / RAG ligero), surgido de una revisión de arquitectura de **Gemma** y reformulado a un índice en memoria para respetar el modelo "sin BD". Gemma añadida a la tabla de validación cruzada del README. #40 actualizado: el reintento transitorio de IA queda como sub-tarea ✅ parcial.
+
 ## [2.7.2] — 2026-06-22
 
 ### Fixed

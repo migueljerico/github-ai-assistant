@@ -86,13 +86,13 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 - ✅ CI con GitHub Actions ejecutando tests (cliente + servidor) automáticamente
 - ✅ Badge de Codecov en README
 - ✅ Cobertura actual: **≈50%** (ver Codecov para el valor exacto)
-- ✅ 175 tests en el cliente. Implementados para:
+- ✅ 187 tests en el cliente. Implementados para:
   - `AuthContext.tsx` (login, logout, OAuth flow, Zero-Storage)
   - `AIProviderContext.tsx` (conexión/desconexión de proveedores)
-  - `providers.ts` (registro de proveedores, detección de modelos 🆓, caché)
+  - `providers.ts` (registro de proveedores, detección de modelos 🆓, caché, `pickDefaultModel`)
   - `actionExecutor.ts` (ejecutor de acciones GitHub)
   - `github.ts` (wrapper de GitHub API, decodeBase64, encodeBase64, getRepo, getBranchSha)
-  - `gemini.ts` (parseGeminiAction, detectPrimaryLanguage, temperatura por modo, contexto de repo #41, enrutado OpenRouter)
+  - `gemini.ts` (parseGeminiAction, detectPrimaryLanguage, temperatura por modo, contexto de repo #41, enrutado OpenRouter, reintento transitorio `withTransientRetry`/`isTransientAIError`)
   - `docPublisher.ts` (commit directo / Draft PR — #45)
   - `modeDetection.ts` (chat vs action; sesgo a chat con contexto de repo)
   - `formatResult.ts`, `releaseGenerator.ts`, `pdfReader.ts`, `pdfAdvanced.ts`
@@ -119,10 +119,10 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 #### #38 — Streaming de respuestas (SSE)
 **Esfuerzo:** 5–6h
 
-**Problema actual:** Toda respuesta de la IA se espera completa antes de mostrarse (`result.response.text()` en el proxy; `data.choices[0].message.content` en Groq). En generación de documentación o respuestas largas de chat, la UI se siente congelada durante varios segundos.
+**Problema actual:** Toda respuesta de la IA se espera completa antes de mostrarse (`result.response.text()` en el proxy; `data.choices[0].message.content` en los proveedores OpenAI-compatible). En generación de documentación o respuestas largas de chat, la UI se siente congelada durante varios segundos.
 
 **Solución propuesta:**
-- El proxy `/api/gemini` y `callGroq()` emiten tokens incrementales (Server-Sent Events / streaming de la API).
+- El proxy `/api/gemini` y `callOpenAICompatible()` emiten tokens incrementales (Server-Sent Events / streaming de la API).
 - `callAI()` expone un callback `onToken` opcional.
 - `ChatArea` renderiza el texto a medida que llega.
 
@@ -172,6 +172,22 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 **Beneficio:** Demostrar skills de Análisis de Datos aplicados a DevOps; aprovechar la experiencia previa con Power BI para diseñar dashboards en web.
 
 **Nota:** ítem de **escaparate** (Análisis de Datos), no núcleo de gestión de GitHub. Es el primer candidato a soltar si se quiere enfocar más el roadmap.
+
+---
+
+#### #49 — Gestión de la ventana de contexto (selección de archivos relevantes / RAG ligero)
+**Esfuerzo:** 6–10h
+**Origen:** sugerencia de **Gemma** (vía OpenRouter) en una revisión de arquitectura, contrastada con el modelo "sin base de datos" del proyecto.
+
+**Problema actual:** `buildRepoContextSummary` (#41) envía el árbol completo + los primeros N archivos truncados. En repos grandes esto (1) gasta tokens, (2) puede degradar la calidad o agotar el contexto del modelo, y (3) puede dejar fuera los archivos realmente relevantes para la pregunta concreta.
+
+**Solución propuesta (compatible con Zero-Storage / sin BD):**
+- En lugar de una BD vectorial externa (Pinecone/ChromaDB — rompería el principio "sin base de datos"), un enfoque ligero **en cliente**: calcular embeddings de los fragmentos en memoria (volátil) y seleccionar por similitud (cosine) solo los más relevantes a la consulta antes de enviarlos al LLM.
+- Alternativa aún más simple sin embeddings: ranking léxico (BM25 / TF-IDF) de los archivos frente a la consulta, reutilizando el árbol que ya descarga `fetchRepoTreeRecursive`.
+
+**Beneficio:** opiniones y documentación más precisas y más baratas en tokens; mejor escalado a repos grandes; ataca el que Gemma identificó como "el mayor reto de un asistente de GitHub: el contexto".
+
+**Nota:** Gemma proponía una BD vectorial (Pinecone/Chroma); se **reformula** a un índice en memoria para no contradecir el modelo Zero-Storage / sin BD del proyecto (mismo criterio que se aplicó a la propuesta de IndexedDB en #46). Ejemplo de la validación cruzada del README: se toma la idea útil y se adapta a la arquitectura.
 
 ---
 
@@ -304,6 +320,7 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 **Solución propuesta:**
 - **Reintentos con backoff:** wrapper `fetchWithRetry()` (máx. 3 intentos, backoff exponencial 1s/2s/4s, logging por reintento, error final descriptivo) en las llamadas a GitHub/Gemini/Groq.
+  - ✅ **Parcial (v2.7.3):** `callAI` ya reintenta con backoff ante errores **transitorios** de los proveedores de IA (`withTransientRetry`/`isTransientAIError`: 503 "high demand", "Provider returned error", red). Falta extenderlo a las llamadas a GitHub (`ghFetch`) y unificar en un `fetchWithRetry` genérico.
 - **Cancelación:** `AbortController` en `callAI()` + botón "Detener" mientras genera. Ahorra cuota y mejora la UX.
 - **Validación estricta:** validar el JSON de acción con `zod` y una allowlist de métodos/endpoints, reforzando la garantía *proponer → confirmar → ejecutar*.
 - **Persistencia parcial:** guardar **proveedor + modelo** (NUNCA la API key) en `sessionStorage`, respetando Zero-Storage, para no re-seleccionarlos en cada recarga.
@@ -330,9 +347,9 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 | Prioridad | Total | ✅ Resueltos | ⏳ Pendientes |
 |---|---|---|---|
 | 🔴 Alta | 8 | 7 (#1, #2, #13, #14, #27, #45, #15) | 1 (#28) |
-| 🟡 Media | 14 | 7 (#12, #17, #18, #19, #21, #37, #41) | 7 (#20, #26, #32, #38, #39, #42, #44) |
+| 🟡 Media | 15 | 7 (#12, #17, #18, #19, #21, #37, #41) | 8 (#20, #26, #32, #38, #39, #42, #44, #49) |
 | 🟢 Baja | 11 | 0 | 11 (#22, #23, #24, #25, #33, #34, #35, #36, #40, #46, #48) |
-| **TOTAL** | **33** | **14** | **19** |
+| **TOTAL** | **34** | **14** | **20** |
 
 > **Nota de numeración:** los huecos en #16, #29, #30, #31, #43 y #47 son intencionados — esos ítems se fusionaron o descartaron en revisiones del roadmap y sus números no se reutilizan (convención del documento). #16 se fusionó en #42; #29 en #40.
 
