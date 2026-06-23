@@ -84,11 +84,13 @@ body {
   color: var(--text-primary);
   line-height: 1.6;
   min-height: 100vh;
+  min-height: 100dvh; /* alto visible real en móvil (excluye barra del navegador) */
   overflow: hidden;
 }
 
 #root {
   height: 100vh;
+  height: 100dvh; /* fallback 100vh arriba para navegadores sin dvh */
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -313,6 +315,7 @@ textarea.input { resize: none; line-height: 1.6; }
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0; /* permite que el título encoja en vez de empujar a .header-right fuera */
 }
 
 .header-logo-icon {
@@ -332,6 +335,9 @@ textarea.input { resize: none; line-height: 1.6; }
   font-weight: 600;
   color: var(--text-primary);
   white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .header-title span {
@@ -346,6 +352,7 @@ textarea.input { resize: none; line-height: 1.6; }
   align-items: center;
   gap: 12px;
   margin-left: auto;
+  flex-shrink: 0; /* nunca se sale del viewport: encoge antes el bloque del logo/título */
 }
 
 /* ── Main Layout ──────────────────────────────────────────────────────────── */
@@ -980,6 +987,7 @@ textarea.input { resize: none; line-height: 1.6; }
      viewport, alinea arriba y permite scroll (evita recorte del botón Conectar). */
   justify-content: safe center;
   min-height: 100vh;
+  min-height: 100dvh; /* alto visible real en móvil */
   height: 100%;
   overflow-y: auto;
   gap: 32px;
