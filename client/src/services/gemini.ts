@@ -155,6 +155,46 @@ export interface Message {
   content: string;
 }
 
+// ── Reintento ante errores transitorios ───────────────────────────────────────
+// Los proveedores de IA fallan a menudo con errores TRANSITORIOS del servidor
+// (Gemini: 503 "high demand, try again later"; OpenRouter free: "Provider returned
+// error"). Suelen resolverse al segundo intento, así que reintentamos con backoff
+// corto SOLO en esos casos — nunca ante 4xx no recuperables (key inválida, 400).
+const TRANSIENT_STATUS = new Set([500, 502, 503, 504]);
+const TRANSIENT_PATTERN =
+  /overloaded|high demand|currently experiencing|service unavailable|provider returned error|temporarily|try again|failed to fetch|network|timeout|econnreset/i;
+
+/** ¿El error es transitorio y merece la pena reintentar? */
+export function isTransientAIError(err: unknown): boolean {
+  const e = err as { status?: number; transient?: boolean; message?: string };
+  if (e?.transient) return true;
+  if (typeof e?.status === 'number' && TRANSIENT_STATUS.has(e.status)) return true;
+  return TRANSIENT_PATTERN.test(e?.message ?? '');
+}
+
+/**
+ * Ejecuta `fn` reintentando ante errores transitorios con backoff exponencial.
+ * Por defecto: hasta 2 reintentos (800ms, 1600ms). Los errores no transitorios se
+ * propagan de inmediato.
+ */
+export async function withTransientRetry<T>(
+  fn: () => Promise<T>,
+  retries = 2,
+  baseDelayMs = 800,
+): Promise<T> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (attempt === retries || !isTransientAIError(err)) throw err;
+      await new Promise(r => setTimeout(r, baseDelayMs * 2 ** attempt));
+    }
+  }
+  throw lastErr;
+}
+
 // ── Types for repo documentation generation (exportados para tests) ───────────
 export type RepoFile = { path: string; content?: string };
 export type GeneratedDocs = {
@@ -218,7 +258,7 @@ async function callOpenAICompatible(
   if (!res.ok) {
     const err = await res.json().catch(() => ({})) as Record<string, unknown>;
     const msg = (err?.error as Record<string, unknown>)?.message as string | undefined;
-    const hint = ' (posible límite/saturación o contexto excesivo del modelo gratuito — prueba con otro modelo)';
+    const hint = ' — el modelo no está disponible ahora mismo (saturación del tier gratuito). Prueba otro modelo (p.ej. Gemma) o cambia a Gemini/Groq.';
     throw Object.assign(new Error((msg || `AI provider error ${res.status}`) + hint), { status: res.status });
   }
 
@@ -226,10 +266,11 @@ async function callOpenAICompatible(
   const content = data.choices?.[0]?.message?.content;
   if (!content || !content.trim()) {
     // Algunos modelos gratuitos devuelven contenido vacío (o sin choices) ante
-    // prompts grandes; damos un error claro y accionable en vez de una burbuja vacía.
+    // prompts grandes; damos un error claro y accionable en vez de una burbuja
+    // vacía. No se marca como transitorio (suele ser determinista del modelo).
     throw new Error(
       'El modelo no devolvió contenido. Prueba con otro modelo del desplegable ' +
-      '(p.ej. Llama 3.3 70B free o DeepSeek R1 free) o con un repositorio más pequeño.',
+      '(p.ej. Gemma o Llama 3.3 70B free) o con un repositorio más pequeño.',
     );
   }
   return content;
@@ -287,10 +328,14 @@ export async function callAI(
   mode?: 'chat' | 'action',  // ← NUEVO: modo opcional
 ): Promise<string> {
   const def = getProvider(provider);
-  if (def.transport === 'gemini-proxy') {
-    return callGeminiDirect(apiKey, model, messages, systemPrompt, mode);
-  }
-  return callOpenAICompatible(def.chatEndpoint!, apiKey, model, messages, systemPrompt, mode, def.extraHeaders);
+  // Reintento ante errores transitorios del servidor (503 "high demand",
+  // "Provider returned error"…). La validación de clave llama a las funciones
+  // internas directamente, así que no se ve afectada por este reintento.
+  return withTransientRetry(() =>
+    def.transport === 'gemini-proxy'
+      ? callGeminiDirect(apiKey, model, messages, systemPrompt, mode)
+      : callOpenAICompatible(def.chatEndpoint!, apiKey, model, messages, systemPrompt, mode, def.extraHeaders),
+  );
 }
 
 /** @deprecated Use callAI() directly. */

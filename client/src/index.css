@@ -355,6 +355,11 @@ textarea.input { resize: none; line-height: 1.6; }
   overflow: hidden;
 }
 
+/* Backdrop de los paneles laterales: solo visible en móvil (ver media query). */
+.mobile-backdrop {
+  display: none;
+}
+
 /* ── Sidebar ──────────────────────────────────────────────────────────────── */
 .sidebar {
   width: var(--sidebar-width);
@@ -1155,14 +1160,33 @@ textarea.input { resize: none; line-height: 1.6; }
     top: var(--header-height);
     bottom: 0;
     z-index: 40;
+    max-width: 320px;
   }
   .sidebar {
     left: 0;
+    width: min(82vw, var(--sidebar-width));
     border-right: 1px solid var(--border);
   }
   .history-panel {
     right: 0;
+    width: min(82vw, var(--history-width));
     border-left: 1px solid var(--border);
+  }
+  /* Asegura que un panel cerrado siga oculto pese al ancho fijo de arriba. */
+  .sidebar.collapsed, .history-panel.collapsed {
+    width: 0;
+    max-width: 0;
+  }
+  /* Fondo oscuro tras los overlays; al tocarlo se cierran (handler en React). */
+  .mobile-backdrop {
+    display: block;
+    position: fixed;
+    top: var(--header-height);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 35;
   }
   .header-title { display: none; }
 }

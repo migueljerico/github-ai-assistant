@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.3] — 2026-06-23
+
+### Fixed
+- **Layout móvil inutilizable** — Los paneles laterales (Plantillas e Historial) arrancaban **abiertos** y en pantallas ≤900px (donde son overlays `position:fixed`) tapaban el chat. Ahora en móvil arrancan **cerrados**, se abre solo uno a la vez y un **fondo oscuro** (`.mobile-backdrop`) permite cerrarlos tocando fuera; ancho de panel adaptado (`min(82vw, …)`).
+
+### Changed
+- **Robustez ante caídas transitorias de los proveedores de IA** — Las peticiones (`callAI`) ahora **reintentan con backoff** (hasta 2 veces) SOLO ante errores **transitorios** del servidor (Gemini `503 "high demand, try again later"`, OpenRouter `"Provider returned error"`, fallos de red), nunca ante 4xx no recuperables (key inválida, 400). Helpers `isTransientAIError`/`withTransientRetry` en `gemini.ts`.
+- **Default de modelo más fiable** — Al cargar el catálogo, se elige por defecto un modelo gratuito **fiable** (`pickDefaultModel`: Gemma → Llama 3.3 70B → DeepSeek…) en vez de un `:free` arbitrario, ya que muchos endpoints gratuitos de OpenRouter están saturados. Se respeta la elección explícita del usuario.
+- **Mensajes de error más claros** — Ante un fallo de proveedor OpenAI-compatible, el mensaje explica que el modelo gratuito está saturado y sugiere probar otro (Gemma) o cambiar a Gemini/Groq.
+
 ## [2.7.2] — 2026-06-22
 
 ### Fixed

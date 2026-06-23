@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAIProvider } from '../../context/AIProviderContext';
 import { validateProviderKey } from '../../services/gemini';
-import { PROVIDERS, getProvider, fetchModels, type AIProviderType, type ModelOption } from '../../services/providers';
+import { PROVIDERS, getProvider, fetchModels, pickDefaultModel, type AIProviderType, type ModelOption } from '../../services/providers';
 import { modelLabel } from '../../utils/modelLabels';
 
 const PROVIDER_LIST = Object.values(PROVIDERS);
@@ -53,11 +53,15 @@ export default function AIProviderPanel() {
         if (cancelled || !list) return;
         setCatalog(prev => ({ ...prev, [selected]: list }));
         setModelsLoaded(prev => ({ ...prev, [selected]: true }));
-        // Mantén la selección si sigue disponible; si no, prefiere un modelo gratis.
+        // Respeta la elección explícita del usuario si sigue disponible. Si aún
+        // tiene el default estático (no ha tocado el selector) o ese modelo ya no
+        // está en el catálogo, escoge un default fiable (pickDefaultModel).
         setModels(prev => {
-          if (list.find(m => m.value === prev[selected])) return prev;
-          const fallback = list.find(m => m.free) ?? list[0];
-          return { ...prev, [selected]: fallback.value };
+          const current = prev[selected];
+          const stillValid = list.some(m => m.value === current);
+          const userChose = current !== def.defaultModel;
+          if (stillValid && userChose) return prev;
+          return { ...prev, [selected]: pickDefaultModel(list, current) };
         });
       } catch {
         // Silencioso — se mantiene el fallback estático del registro.

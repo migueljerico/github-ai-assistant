@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { PROVIDERS, getProvider, fetchModels } from '../providers';
+import { PROVIDERS, getProvider, fetchModels, pickDefaultModel, type ModelOption } from '../providers';
 
 describe('providers — registro', () => {
   it('los tres proveedores tienen su defaultModel dentro de staticModels', () => {
@@ -19,6 +19,36 @@ describe('providers — registro', () => {
     // El catálogo de OpenRouter es público (no necesita key)
     expect(PROVIDERS.openrouter.modelsNeedKey).toBe(false);
     expect(PROVIDERS.groq.modelsNeedKey).toBe(true);
+  });
+});
+
+describe('providers — pickDefaultModel', () => {
+  const free = (value: string): ModelOption => ({ value, label: value, free: true });
+  const paid = (value: string): ModelOption => ({ value, label: value });
+
+  it('prefiere un modelo free fiable (Gemma) sobre otros gratuitos', () => {
+    const list = [free('a/aardvark:free'), free('google/gemma-4-31b-it:free'), free('z/zzz:free')];
+    expect(pickDefaultModel(list)).toBe('google/gemma-4-31b-it:free');
+  });
+
+  it('respeta el orden de preferencia (Llama 3.3 70B antes que DeepSeek)', () => {
+    const list = [free('deepseek/deepseek-r1:free'), free('meta-llama/llama-3.3-70b-instruct:free')];
+    expect(pickDefaultModel(list)).toBe('meta-llama/llama-3.3-70b-instruct:free');
+  });
+
+  it('si ningún free coincide con la preferencia, devuelve el primer free', () => {
+    const list = [paid('openai/gpt-4o'), free('some/exotic-model:free')];
+    expect(pickDefaultModel(list)).toBe('some/exotic-model:free');
+  });
+
+  it('sin modelos free, aplica la preferencia sobre todos (Groq → llama-3.3-70b)', () => {
+    const list = [paid('llama-3.1-8b-instant'), paid('llama-3.3-70b-versatile')];
+    expect(pickDefaultModel(list)).toBe('llama-3.3-70b-versatile');
+  });
+
+  it('lista vacía devuelve el fallback', () => {
+    expect(pickDefaultModel([], 'fallback/model')).toBe('fallback/model');
+    expect(pickDefaultModel([])).toBe('');
   });
 });
 
