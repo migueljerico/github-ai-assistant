@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.4] — 2026-06-23
+
+### Fixed
+- **Tarjetas de plantilla en blanco que se desbordaban (escritorio)** — `.template-item` era un `<button>` sin `background` ni `width`, por lo que el navegador le aplicaba el estilo nativo (fondo blanco, texto negro, ancho según contenido) y se salía del panel. Ahora resetea el estilo nativo (`background:transparent`, `width:100%`, `color`, `text-align`, `font-family`).
+- **Toggles 📋/📜 fuera de pantalla en móvil** — Los 5 elementos de `.header-right` se desbordaban y empujaban los botones de Plantillas/Historial fuera del viewport, impidiendo abrir los paneles en móvil. Ahora en móvil la cabecera es compacta: toggles solo-icono, badge de conexión solo-punto (`.btn-label` oculto) y el badge de proveedor se trunca con elipsis.
+- **Barra inferior cortada en móvil** — `.chat-input-extras` no envolvía; ahora usa `flex-wrap: wrap` para que el checkbox + botones pasen a varias líneas sin cortarse.
+
 ## [2.7.3] — 2026-06-23
 
 ### Fixed
