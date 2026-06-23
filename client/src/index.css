@@ -611,7 +611,9 @@ textarea.input { resize: none; line-height: 1.6; }
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
+  row-gap: 8px;
 }
 
 .doc-repo-btn {
@@ -843,12 +845,18 @@ textarea.input { resize: none; line-height: 1.6; }
   display: flex;
   align-items: flex-start;
   gap: 8px;
+  width: 100%;
   padding: 8px 10px;
   margin: 2px 0;
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all var(--transition);
   border: 1px solid transparent;
+  /* Reset del estilo nativo de <button> (evita fondo blanco / texto negro). */
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+  font-family: var(--font-sans);
 }
 .template-item:hover {
   background: var(--bg-elevated);
@@ -1189,6 +1197,19 @@ textarea.input { resize: none; line-height: 1.6; }
     z-index: 35;
   }
   .header-title { display: none; }
+
+  /* Cabecera compacta: que los toggles 📋/📜 quepan siempre en pantalla. */
+  .header { padding: 0 10px; gap: 8px; }
+  .header-right { gap: 6px; }
+  /* Oculta etiquetas de texto secundarias (toggles solo-icono, badge solo-punto). */
+  .btn-label { display: none; }
+  /* El badge de proveedor no debe empujar al resto: trúncalo. */
+  .ai-badge-text {
+    max-width: 96px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 @media (max-width: 600px) {

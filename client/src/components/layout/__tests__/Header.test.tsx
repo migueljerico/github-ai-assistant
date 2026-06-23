@@ -160,7 +160,7 @@ describe('Header', () => {
     const onToggleTemplates = vi.fn();
     render(<Header {...defaultProps} onToggleTemplates={onToggleTemplates} />);
     
-    fireEvent.click(screen.getByText(/📋 Plantillas/i));
+    fireEvent.click(screen.getByRole('button', { name: /plantillas/i }));
     
     expect(onToggleTemplates).toHaveBeenCalled();
   });
@@ -182,7 +182,7 @@ describe('Header', () => {
     const onToggleHistory = vi.fn();
     render(<Header {...defaultProps} onToggleHistory={onToggleHistory} />);
     
-    fireEvent.click(screen.getByText(/📜 Historial/i));
+    fireEvent.click(screen.getByRole('button', { name: /historial/i }));
     
     expect(onToggleHistory).toHaveBeenCalled();
   });
@@ -203,7 +203,7 @@ describe('Header', () => {
 
     render(<Header {...defaultProps} templatesOpen={true} />);
     
-    const button = screen.getByText(/📋 Plantillas/i);
+    const button = screen.getByRole('button', { name: /plantillas/i });
     expect(button).toHaveAttribute('title', 'Ocultar plantillas');
   });
 
@@ -223,7 +223,7 @@ describe('Header', () => {
 
     render(<Header {...defaultProps} templatesOpen={false} />);
     
-    const button = screen.getByText(/📋 Plantillas/i);
+    const button = screen.getByRole('button', { name: /plantillas/i });
     expect(button).toHaveAttribute('title', 'Mostrar plantillas');
   });
 });

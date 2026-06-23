@@ -32,10 +32,10 @@ export default function Header({
         {/* GitHub connection status badge */}
         <div className={`badge ${isAuthenticated ? 'badge-connected' : 'badge-disconnected'}`}>
           <span className="badge-dot" />
-          {isAuthenticated ? 'Conectado' : 'Sin conectar'}
+          <span className="btn-label">{isAuthenticated ? 'Conectado' : 'Sin conectar'}</span>
         </div>
 
-        {/* Sidebar toggles */}
+        {/* Sidebar toggles (el texto se oculta en móvil, queda el emoji) */}
         <button
           id="toggle-templates-btn"
           className="btn btn-ghost btn-sm"
@@ -43,7 +43,7 @@ export default function Header({
           title={templatesOpen ? 'Ocultar plantillas' : 'Mostrar plantillas'}
           aria-pressed={templatesOpen}
         >
-          📋 Plantillas
+          📋 <span className="btn-label">Plantillas</span>
         </button>
         <button
           id="toggle-history-btn"
@@ -52,7 +52,7 @@ export default function Header({
           title={historyOpen ? 'Ocultar historial' : 'Mostrar historial'}
           aria-pressed={historyOpen}
         >
-          📜 Historial
+          📜 <span className="btn-label">Historial</span>
         </button>
 
         {/* User badge */}
