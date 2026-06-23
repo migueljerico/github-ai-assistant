@@ -182,17 +182,15 @@ export async function withTransientRetry<T>(
   retries = 2,
   baseDelayMs = 800,
 ): Promise<T> {
-  let lastErr: unknown;
-  for (let attempt = 0; attempt <= retries; attempt++) {
+  for (let attempt = 0; ; attempt++) {
     try {
       return await fn();
     } catch (err) {
-      lastErr = err;
-      if (attempt === retries || !isTransientAIError(err)) throw err;
+      // En el último intento, o si el error no es transitorio, se propaga.
+      if (attempt >= retries || !isTransientAIError(err)) throw err;
       await new Promise(r => setTimeout(r, baseDelayMs * 2 ** attempt));
     }
   }
-  throw lastErr;
 }
 
 // ── Types for repo documentation generation (exportados para tests) ───────────

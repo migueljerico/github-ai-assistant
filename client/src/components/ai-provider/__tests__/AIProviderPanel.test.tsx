@@ -62,4 +62,26 @@ describe('AIProviderPanel — OpenRouter (#15)', () => {
     const labels = Array.from(select.options).map(o => o.textContent ?? '');
     expect(labels.some(l => l.startsWith('🆓'))).toBe(true);
   });
+
+  it('al cargar el catálogo elige por defecto un modelo free fiable (Gemma)', async () => {
+    // Catálogo con varios :free; pickDefaultModel debe preferir Gemma sobre el
+    // default estático (deepseek) y sobre otros gratuitos arbitrarios.
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          { id: 'aaa/aardvark:free', name: 'Aardvark' },
+          { id: 'google/gemma-4-31b-it:free', name: 'Gemma 4 31B' },
+          { id: 'openai/gpt-4o', name: 'GPT-4o', pricing: { prompt: '1', completion: '2' } },
+        ],
+      }),
+    }));
+
+    const { container } = renderPanel();
+    fireEvent.click(container.querySelector('#select-openrouter-btn') as HTMLElement);
+    const select = container.querySelector('#openrouter-model-select') as HTMLSelectElement;
+
+    await waitFor(() => expect(select.disabled).toBe(false));
+    await waitFor(() => expect(select.value).toBe('google/gemma-4-31b-it:free'));
+  });
 });

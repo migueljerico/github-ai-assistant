@@ -203,6 +203,21 @@ describe('callAI - enrutado OpenRouter (#15)', () => {
     expect(headers['Authorization']).toContain('sk-or-xxx');
   });
 
+  it('ante un !ok del proveedor lanza un error con pista accionable y NO reintenta un 401', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ error: { message: 'Invalid API key' } }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      callAI([{ role: 'user', content: 'Hola' }], 'system', 'openrouter', 'k', 'm', 'chat'),
+    ).rejects.toThrow(/Gemini\/Groq|otro modelo|saturación/i);
+    // 401 es no recuperable → no se reintenta
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('lanza un error claro si el modelo devuelve contenido vacío', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,

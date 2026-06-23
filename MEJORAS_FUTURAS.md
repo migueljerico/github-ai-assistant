@@ -177,7 +177,7 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 #### #49 — Gestión de la ventana de contexto (selección de archivos relevantes / RAG ligero)
 **Esfuerzo:** 6–10h
-**Origen:** sugerencia de **Gemma** (vía OpenRouter) en una revisión de arquitectura, contrastada con el modelo "sin base de datos" del proyecto.
+**Origen:** sugerencia de **Gemma 4 31B** (Google, vía OpenRouter) en una revisión de arquitectura, **obtenida usando la propia app** (dogfooding: se cargó este repo como contexto y se pidió su opinión), contrastada con el modelo "sin base de datos" del proyecto.
 
 **Problema actual:** `buildRepoContextSummary` (#41) envía el árbol completo + los primeros N archivos truncados. En repos grandes esto (1) gasta tokens, (2) puede degradar la calidad o agotar el contexto del modelo, y (3) puede dejar fuera los archivos realmente relevantes para la pregunta concreta.
 
