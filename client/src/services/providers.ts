@@ -127,13 +127,37 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     keyPrefix: 'sk-or-',
     signupUrl: 'https://openrouter.ai/keys',
     signupLabel: 'Obtener clave (incluye modelos gratuitos) en openrouter.ai →',
-    note: '🆓 Los modelos marcados son gratuitos. Una sola key da acceso también a OpenAI, Claude y Llama (de pago).',
+    note: '🆓 Los modelos marcados son gratuitos. Una sola key da acceso también a OpenAI, Claude y Llama (de pago). Los modelos :free van y vienen: si uno falla con "Provider returned error", prueba otro (Gemma suele estar disponible).',
     extraHeaders: { 'X-Title': 'GitHub AI Assistant' },
   },
 };
 
 export function getProvider(id: AIProviderType): ProviderDef {
   return PROVIDERS[id];
+}
+
+// ── Elección de modelo por defecto ────────────────────────────────────────────
+// Los endpoints :free de OpenRouter están a menudo saturados/caídos ("Provider
+// returned error"), pero unos pocos suelen estar disponibles. Cuando el catálogo
+// se carga, preferimos uno de esos modelos fiables como default en vez de un :free
+// arbitrario (el primero alfabético), para que la primera petición tenga más
+// probabilidad de funcionar. Comparación por substring sobre el `value` del modelo.
+const RELIABLE_MODEL_PREFS = ['gemma', 'llama-3.3-70b', 'deepseek', 'qwen'];
+
+/**
+ * Escoge un modelo por defecto de un catálogo: prioriza modelos gratuitos fiables
+ * conocidos (Gemma, Llama 3.3 70B, DeepSeek…), luego cualquier gratuito, luego el
+ * primero de la lista. Si no hay modelos, devuelve `fallback`.
+ */
+export function pickDefaultModel(models: ModelOption[], fallback = ''): string {
+  if (models.length === 0) return fallback;
+  const free = models.filter(m => m.free);
+  const pool = free.length > 0 ? free : models;
+  for (const pref of RELIABLE_MODEL_PREFS) {
+    const hit = pool.find(m => m.value.toLowerCase().includes(pref));
+    if (hit) return hit.value;
+  }
+  return pool[0].value;
 }
 
 // ── Catálogo dinámico de modelos ──────────────────────────────────────────────

@@ -99,9 +99,12 @@ export default function App() {
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [conversationHistory, setConversationHistory] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
 
-  // Sidebar state
-  const [templatesOpen, setTemplatesOpen] = useState(true);
-  const [historyOpen, setHistoryOpen] = useState(true);
+  // Sidebar state — en móvil (≤900px) los paneles laterales son overlays fijos;
+  // arrancarlos abiertos taparía el chat, así que en pantallas estrechas empiezan
+  // cerrados (en escritorio, abiertos como hasta ahora).
+  const startPanelsOpen = () => typeof window === 'undefined' || window.innerWidth > 900;
+  const [templatesOpen, setTemplatesOpen] = useState(startPanelsOpen);
+  const [historyOpen, setHistoryOpen] = useState(startPanelsOpen);
 
   // Multi-repo state
   const [multiRepoEnabled, setMultiRepoEnabled] = useState(false);
@@ -459,13 +462,30 @@ export default function App() {
   return (
     <>
       <Header
-        onToggleTemplates={() => setTemplatesOpen(v => !v)}
-        onToggleHistory={() => setHistoryOpen(v => !v)}
+        onToggleTemplates={() => {
+          const opening = !templatesOpen;
+          setTemplatesOpen(opening);
+          // En móvil solo cabe un overlay a la vez: al abrir uno, cierra el otro.
+          if (opening && window.innerWidth <= 900) setHistoryOpen(false);
+        }}
+        onToggleHistory={() => {
+          const opening = !historyOpen;
+          setHistoryOpen(opening);
+          if (opening && window.innerWidth <= 900) setTemplatesOpen(false);
+        }}
         templatesOpen={templatesOpen}
         historyOpen={historyOpen}
       />
 
       <div className="main-layout">
+        {/* Fondo oscuro en móvil: al tocar fuera, cierra los paneles laterales. */}
+        {(templatesOpen || historyOpen) && (
+          <div
+            className="mobile-backdrop"
+            onClick={() => { setTemplatesOpen(false); setHistoryOpen(false); }}
+            aria-hidden="true"
+          />
+        )}
         <TemplatePanel
           isOpen={templatesOpen}
           onSelectTemplate={setInputValue}

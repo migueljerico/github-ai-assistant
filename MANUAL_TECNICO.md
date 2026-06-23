@@ -1,6 +1,6 @@
 # 📖 Manual Técnico — GitHub AI Assistant
 
-**Versión:** v2.7.2 · Junio 2026
+**Versión:** v2.7.3 · Junio 2026
 
 ---
 
@@ -91,7 +91,7 @@ App.tsx → handleSend()
   Construye el historial de conversación
   Llama a callAI(messages, provider, apiKey, model) → gemini.ts
 ↓
-gemini.ts → callGroq() o callGeminiDirect()
+gemini.ts → callOpenAICompatible() o callGeminiDirect()  (con reintento transitorio)
   Envía el SYSTEM_PROMPT + historial al modelo
   Recibe JSON estructurado:
   {
@@ -146,6 +146,23 @@ export async function callAI(messages, systemPrompt, provider, apiKey, model, mo
 Añadir un proveedor nuevo = rellenar una entrada en el registro. Las claves de API
 se leen del `AIProviderContext` (memoria React) en cada llamada y nunca pasan por el
 servidor (excepto la de Gemini, que viaja en el body HTTPS hacia el proxy).
+
+Al cargar el catálogo dinámico, `pickDefaultModel` (en `providers.ts`) elige como
+modelo por defecto uno gratuito **fiable** (preferencia: Gemma → Llama 3.3 70B →
+DeepSeek) en vez de un `:free` arbitrario, ya que muchos endpoints gratuitos de
+OpenRouter están a menudo saturados. Si el usuario ya cambió el selector, se respeta
+su elección.
+
+### Reintento ante errores transitorios (v2.7.3)
+
+Los proveedores de IA fallan a menudo con errores **transitorios** del servidor
+(Gemini `503 "high demand, try again later"`; OpenRouter `"Provider returned error"`).
+`callAI` envuelve la llamada en `withTransientRetry` (en `gemini.ts`), que reintenta
+con backoff exponencial corto (hasta 2 veces) **solo** cuando `isTransientAIError`
+detecta un caso transitorio (status 5xx, patrones de mensaje conocidos, fallos de red).
+Los errores **no recuperables** (key inválida, 400/401) se propagan de inmediato sin
+reintentar. La validación de clave (`validateProviderKey`) llama a las funciones internas
+directamente, por lo que no se ve afectada por este reintento.
 
 ### Diferencias de implementación por transporte
 
@@ -398,7 +415,7 @@ gcloud run deploy github-ai-assistant \
 - **CI:** GitHub Actions (`.github/workflows/ci.yml`) ejecuta en cada push/PR a `main`
   el lint, los tests del cliente con cobertura y los tests del servidor
   (job `server-test`). Ver "Pipeline CI/CD" en la sección de despliegue.
-- **Cobertura actual:** ≈50% (ver Codecov para el valor exacto) · 175 tests en el cliente
+- **Cobertura actual:** ≈50% (ver Codecov para el valor exacto) · 187 tests en el cliente
 
 ### Módulos testeados
 
@@ -406,10 +423,10 @@ gcloud run deploy github-ai-assistant \
 |---|---|---|
 | `AuthContext.tsx` | Login, logout, OAuth, Zero-Storage | ✅ |
 | `AIProviderContext.tsx` | Connect/disconnect, Zero-Storage | ✅ |
-| `providers.ts` | Registro, detección de modelos 🆓, caché de catálogo | ✅ |
+| `providers.ts` | Registro, detección de modelos 🆓, caché de catálogo, `pickDefaultModel` | ✅ |
 | `actionExecutor.ts` | GET, POST, PUT, DELETE, PATCH, multi-repo | ✅ |
 | `github.ts` | Base64, ghFetch, getUser, createRepo, getRepo, getBranchSha | ✅ |
-| `gemini.ts` | parseGeminiAction, detectPrimaryLanguage, temperatura por modo, contexto de repo (#41), enrutado OpenRouter | ✅ |
+| `gemini.ts` | parseGeminiAction, detectPrimaryLanguage, temperatura por modo, contexto de repo (#41), enrutado OpenRouter, reintento transitorio (`withTransientRetry`) | ✅ |
 | `docPublisher.ts` | Commit directo / Draft PR (#45) | ✅ |
 | `modeDetection.ts` | Chat vs action; sesgo a chat con contexto de repo | ✅ |
 | `formatResult.ts` | Arrays, objetos, strings, JSON | ✅ |
@@ -434,7 +451,7 @@ Ver [MEJORAS_FUTURAS.md](./MEJORAS_FUTURAS.md) para el detalle completo.
 
 | Limitación | Impacto | Solución planificada |
 |---|---|---|
-| DocModal embebido en App.tsx | Dificulta el mantenimiento | Extraer a componente (#16) |
+| DocModal embebido en App.tsx | Dificulta el mantenimiento | Extraer a componente (#42) |
 | Truncamiento por caracteres (2000) | Corta código a mitad | Truncamiento por líneas (#20) |
 | SessionWarningBanner no implementado | Sin aviso de caducidad | Banner de advertencia (#22) |
 | Prompts incrustados en código | Dificulta edición/i18n | Migrar a archivos .md (#23) |

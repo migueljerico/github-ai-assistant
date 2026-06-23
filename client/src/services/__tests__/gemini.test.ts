@@ -6,6 +6,8 @@ import {
   buildRepoContextSummary,
   chatPromptWithContext,
   CHAT_PROMPT,
+  isTransientAIError,
+  withTransientRetry,
 } from '../gemini';
 
 describe('gemini.ts - Utilidades', () => {
@@ -219,6 +221,58 @@ describe('callAI - enrutado OpenRouter (#15)', () => {
     await expect(
       callAI([{ role: 'user', content: 'Hola' }], 'system', 'groq', 'k', 'm', 'chat'),
     ).rejects.toThrow(/no devolvió contenido/i);
+  });
+});
+
+describe('Reintento ante errores transitorios (v2.7.3)', () => {
+  describe('isTransientAIError', () => {
+    it('detecta transitorios por status (503/502/500/504)', () => {
+      expect(isTransientAIError({ status: 503 })).toBe(true);
+      expect(isTransientAIError({ status: 502 })).toBe(true);
+      expect(isTransientAIError({ status: 500 })).toBe(true);
+    });
+
+    it('detecta transitorios por mensaje (Gemini 503 / OpenRouter)', () => {
+      expect(isTransientAIError(new Error('503 Service Unavailable: high demand'))).toBe(true);
+      expect(isTransientAIError(new Error('Provider returned error'))).toBe(true);
+      expect(isTransientAIError(new Error('Failed to fetch'))).toBe(true);
+    });
+
+    it('respeta el flag transient', () => {
+      expect(isTransientAIError({ transient: true })).toBe(true);
+    });
+
+    it('NO reintenta errores no recuperables (401/400/key inválida)', () => {
+      expect(isTransientAIError({ status: 401 })).toBe(false);
+      expect(isTransientAIError({ status: 400 })).toBe(false);
+      expect(isTransientAIError(new Error('invalid_api_key'))).toBe(false);
+    });
+  });
+
+  describe('withTransientRetry', () => {
+    it('reintenta y acaba devolviendo el valor tras un fallo transitorio', async () => {
+      let calls = 0;
+      const fn = vi.fn(async () => {
+        calls++;
+        if (calls < 2) throw Object.assign(new Error('overloaded'), { status: 503 });
+        return 'ok';
+      });
+      const result = await withTransientRetry(fn, 2, 0); // delay 0 en test
+      expect(result).toBe('ok');
+      expect(fn).toHaveBeenCalledTimes(2);
+    });
+
+    it('NO reintenta ante un error no transitorio (lo propaga de inmediato)', async () => {
+      const fn = vi.fn(async () => { throw Object.assign(new Error('invalid_api_key'), { status: 401 }); });
+      await expect(withTransientRetry(fn, 2, 0)).rejects.toThrow(/invalid_api_key/);
+      expect(fn).toHaveBeenCalledTimes(1);
+    });
+
+    it('propaga el último error si se agotan los reintentos', async () => {
+      const fn = vi.fn(async () => { throw Object.assign(new Error('high demand'), { status: 503 }); });
+      await expect(withTransientRetry(fn, 2, 0)).rejects.toThrow(/high demand/);
+      expect(fn).toHaveBeenCalledTimes(3); // intento inicial + 2 reintentos
+    });
   });
 });
 
