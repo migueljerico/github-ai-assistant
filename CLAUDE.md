@@ -25,6 +25,28 @@ Es un proyecto pequeño con dos partes:
 
 No hay base de datos: el estado vive en el navegador (memoria/sessionStorage).
 
+### Principio de producto — UX para usuarios NO técnicos (rector)
+
+El público objetivo son **personas sin experiencia en programación ni en GitHub**
+(el propio autor empezó hace ~1 mes). La promesa es interactuar con los repos **en
+lenguaje natural**, sin saber de endpoints, payloads, Base64, números de issue/PR ni
+URLs. Por eso, **toda** función nueva o modificada debe cumplir:
+
+- **Acepta lenguaje natural y formatos variados:** nunca exijas una sintaxis exacta;
+  admite frases, sinónimos y referencias parciales (nombre de repo, URL pegada, "el
+  último issue", etc.).
+- **Nunca dejes un callejón sin salida:** si falta un dato (p. ej. *qué* issue/PR
+  resumir), **guía** al usuario — ofrece una lista para elegir o pregunta en lenguaje
+  llano — en lugar de devolver un error de formato.
+- **No presupongas conocimiento de GitHub** (números de issue, URLs, ramas, Base64…):
+  dedúcelo del contexto o pídelo con naturalidad.
+- **Errores en lenguaje claro**, orientados a la siguiente acción y sin jerga.
+- **Mantén la garantía** *propón→confirmar→ejecutar* y Zero-Storage al hacerlo.
+
+> **Ejemplo ya aplicado (#32, v2.8.1):** "Resumir hilo" solo aceptaba `owner/repo#N`;
+> ahora acepta una URL de GitHub o el repo, y si das **solo el repo** lista los
+> issues/PRs abiertos para que elijas. Úsalo como patrón de referencia.
+
 ---
 
 ## 2. Arquitectura
@@ -161,6 +183,9 @@ Ejecutar **un solo test**: `cd client && npm run test:run -- src/services/github
   intencionado (mitiga XSS). El token de GitHub sí va en `sessionStorage` (llega
   por el hash de la URL tras el OAuth). **No introduzcas credenciales en
   almacenamiento del navegador** — CONTRIBUTING rechaza PRs que lo hagan.
+- **UX para no técnicos (rector):** ver §1 — toda función debe entender lenguaje
+  natural y guiar al usuario sin exigir conocimientos de GitHub (números de issue,
+  URLs, etc.); nunca dejes un error de formato como callejón sin salida.
 - **Proponer → confirmar → ejecutar:** ver §2. Las escrituras pasan siempre por
   `ConfirmModal`.
 - **Resolución de placeholders:** la IA a veces emite endpoints con
