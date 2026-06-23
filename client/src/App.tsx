@@ -8,7 +8,7 @@ import { callAI, parseGeminiAction, generateRepoDocs, CHAT_PROMPT, ACTION_PROMPT
 import { executeAction, executeActionMultiRepo } from './services/actionExecutor';
 import { getFileContents, decodeBase64, fetchRepoTreeRecursive } from './services/github';
 import { writeDocFiles, createDocsDraftPr } from './services/docPublisher';
-import { summarizeThread, parseThreadInput } from './services/threadSummary';
+import { summarizeThread, parseThreadInput, listOpenThreads, formatThreadList } from './services/threadSummary';
 import { formatResultData } from './utils/formatResult';
 import Header from './components/layout/Header';
 import HistoryPanel from './components/layout/HistoryPanel';
@@ -422,7 +422,7 @@ export default function App() {
     if (!parsed) {
       addMessage({
         role: 'assistant',
-        content: '❌ No entendí la referencia del hilo. Usa el formato `owner/repo#42` (o `#42` con un repo de contexto cargado).',
+        content: '❌ No entendí la referencia del hilo. Indica un issue/PR como `owner/repo#42`, pega su URL de GitHub, o escribe solo el repo para elegir de una lista.',
       });
       return;
     }
@@ -442,8 +442,28 @@ export default function App() {
       return;
     }
 
-    const ref = `${owner}/${repo}#${parsed.number}`;
     setIsChatLoading(true);
+
+    // El usuario dio solo el repo (sin nº de issue/PR): un "hilo" es un issue/PR
+    // concreto, así que listamos los abiertos para que elija cuál resumir.
+    if (parsed.number === undefined) {
+      const listId = addMessage({
+        role: 'assistant',
+        content: `🔎 Buscando issues y PRs abiertos en **${owner}/${repo}**...`,
+        isLoading: true,
+      });
+      try {
+        const threads = await listOpenThreads(token, owner, repo);
+        updateMessage(listId, { content: formatThreadList(owner, repo, threads), isLoading: false });
+      } catch (err) {
+        updateMessage(listId, { content: `❌ No pude listar los hilos de ${owner}/${repo}: ${(err as Error).message}`, isLoading: false });
+      } finally {
+        setIsChatLoading(false);
+      }
+      return;
+    }
+
+    const ref = `${owner}/${repo}#${parsed.number}`;
     const loadingId = addMessage({
       role: 'assistant',
       content: `🔎 Resumiendo el hilo **${ref}** con ${providerName}...`,

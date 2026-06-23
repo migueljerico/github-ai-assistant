@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.1] — 2026-06-23
+
+### Fixed
+- **Pantalla cortada en móvil y en "modo escritorio" de Chrome** — `body`/`#root` usaban `height: 100vh`, que en navegadores móviles incluye la franja de la barra del navegador, dejando la barra de entrada (y a veces la cabecera) fuera del área visible. Ahora usan **`100dvh`** (dynamic viewport height) con `100vh` de fallback. La pantalla de login (`.auth-screen`) también.
+- **Cabecera desbordada a la derecha** — el badge de usuario quedaba cortado cuando el ancho apretaba (p. ej. en "modo escritorio" sobre el móvil). Ahora el bloque de logo/título encoge y se trunca (`min-width:0` + elipsis) y `.header-right` no se sale (`flex-shrink:0`).
+
+### Changed
+- **"Resumir hilo" más tolerante y guiado (#32)** — `parseThreadInput` acepta ahora **URLs de GitHub** (`.../issues/N`, `.../pull/N`), rutas `owner/repo/issues/N`, `owner/repo#N`, `#N` y `N`. Si introduces **solo el repositorio** (sin número), en vez de un error sin salida, el asistente **lista los issues/PRs abiertos** para que elijas cuál resumir (`listOpenThreads`/`formatThreadList`, reutilizando `listIssues`). Mensajes de ayuda más claros.
+
+### Testing
+- Nuevos tests de `parseThreadInput` (URL, ruta, repo-only), `listOpenThreads` (detección de PR) y `formatThreadList`. Cobertura/cliente: **215 tests**.
+
 ## [2.8.0] — 2026-06-23
 
 ### Added

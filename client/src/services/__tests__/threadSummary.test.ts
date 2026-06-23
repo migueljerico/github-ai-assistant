@@ -5,14 +5,15 @@ vi.mock('../github', () => ({
   getIssueOrPr: vi.fn(),
   getIssueComments: vi.fn(),
   getPullReviewComments: vi.fn(),
+  listIssues: vi.fn(),
 }));
 vi.mock('../gemini', () => ({
   callAI: vi.fn(),
 }));
 
-import { getIssueOrPr, getIssueComments, getPullReviewComments } from '../github';
+import { getIssueOrPr, getIssueComments, getPullReviewComments, listIssues } from '../github';
 import { callAI } from '../gemini';
-import { summarizeThread, parseThreadInput } from '../threadSummary';
+import { summarizeThread, parseThreadInput, listOpenThreads, formatThreadList } from '../threadSummary';
 
 const TOKEN = 'tok';
 const OWNER = 'owner';
@@ -37,9 +38,68 @@ describe('parseThreadInput', () => {
     expect(parseThreadInput('42')).toEqual({ number: 42 });
   });
 
-  it('devuelve null sin número válido', () => {
-    expect(parseThreadInput('owner/repo')).toBeNull();
+  it('parsea una URL de GitHub de issue y de PR', () => {
+    expect(parseThreadInput('https://github.com/owner/repo/issues/42'))
+      .toEqual({ owner: 'owner', repo: 'repo', number: 42 });
+    expect(parseThreadInput('https://github.com/owner/repo/pull/7'))
+      .toEqual({ owner: 'owner', repo: 'repo', number: 7 });
+  });
+
+  it('parsea la ruta sin host owner/repo/issues/N', () => {
+    expect(parseThreadInput('owner/repo/pull/12'))
+      .toEqual({ owner: 'owner', repo: 'repo', number: 12 });
+  });
+
+  it('parsea SOLO el repo (sin número) → sin number, para listar', () => {
+    expect(parseThreadInput('owner/repo')).toEqual({ owner: 'owner', repo: 'repo' });
+    expect(parseThreadInput('mi-repo')).toEqual({ repo: 'mi-repo' });
+  });
+
+  it('devuelve null si no hay repo ni número reconocibles', () => {
     expect(parseThreadInput('')).toBeNull();
+    expect(parseThreadInput('???')).toBeNull();
+  });
+});
+
+describe('listOpenThreads / formatThreadList', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('listOpenThreads marca como PR los items con pull_request', async () => {
+    vi.mocked(listIssues).mockResolvedValue([
+      { number: 12, title: 'Un PR', pull_request: { url: 'x' } },
+      { number: 8, title: 'Un issue' },
+    ] as any);
+
+    const out = await listOpenThreads(TOKEN, OWNER, REPO);
+
+    expect(listIssues).toHaveBeenCalledWith(TOKEN, OWNER, REPO, 'open');
+    expect(out).toEqual([
+      { number: 12, title: 'Un PR', isPr: true },
+      { number: 8, title: 'Un issue', isPr: false },
+    ]);
+  });
+
+  it('listOpenThreads respeta el límite', async () => {
+    const many = Array.from({ length: 30 }, (_, i) => ({ number: i + 1, title: `t${i}` }));
+    vi.mocked(listIssues).mockResolvedValue(many as any);
+    const out = await listOpenThreads(TOKEN, OWNER, REPO, 5);
+    expect(out).toHaveLength(5);
+  });
+
+  it('formatThreadList muestra los hilos marcando PR vs issue', () => {
+    const md = formatThreadList(OWNER, REPO, [
+      { number: 12, title: 'Un PR', isPr: true },
+      { number: 8, title: 'Un issue', isPr: false },
+    ]);
+    expect(md).toContain('#12');
+    expect(md).toContain('(PR)');
+    expect(md).toContain('#8');
+    expect(md).toContain('(issue)');
+  });
+
+  it('formatThreadList informa cuando no hay hilos abiertos', () => {
+    const md = formatThreadList(OWNER, REPO, []);
+    expect(md).toMatch(/No hay issues ni PRs/i);
   });
 });
 

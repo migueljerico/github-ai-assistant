@@ -11,19 +11,19 @@ describe('ThreadSummaryButton (#32)', () => {
   it('al pulsar el botón se abre el input con el placeholder owner/repo#42', () => {
     render(<ThreadSummaryButton disabled={false} onSummarizeThread={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: /Resumir hilo/ }));
-    expect(screen.getByPlaceholderText('owner/repo#42')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/owner\/repo#42/)).toBeInTheDocument();
   });
 
   it('enviar el formulario llama a onSummarizeThread con el valor recortado y cierra', () => {
     const onSummarize = vi.fn();
     render(<ThreadSummaryButton disabled={false} onSummarizeThread={onSummarize} />);
     fireEvent.click(screen.getByRole('button', { name: /Resumir hilo/ }));
-    const input = screen.getByPlaceholderText('owner/repo#42');
+    const input = screen.getByPlaceholderText(/owner\/repo#42/);
     fireEvent.change(input, { target: { value: '  owner/repo#42  ' } });
     fireEvent.click(screen.getByRole('button', { name: '✓' }));
     expect(onSummarize).toHaveBeenCalledWith('owner/repo#42');
     // tras enviar, vuelve al botón cerrado
-    expect(screen.queryByPlaceholderText('owner/repo#42')).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/owner\/repo#42/)).not.toBeInTheDocument();
   });
 
   it('no llama a onSummarizeThread si el valor está vacío', () => {
@@ -32,7 +32,7 @@ describe('ThreadSummaryButton (#32)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Resumir hilo/ }));
     const submit = screen.getByRole('button', { name: '✓' }) as HTMLButtonElement;
     expect(submit.disabled).toBe(true);
-    fireEvent.submit(screen.getByPlaceholderText('owner/repo#42'));
+    fireEvent.submit(screen.getByPlaceholderText(/owner\/repo#42/));
     expect(onSummarize).not.toHaveBeenCalled();
   });
 
@@ -41,7 +41,7 @@ describe('ThreadSummaryButton (#32)', () => {
     render(<ThreadSummaryButton disabled={false} onSummarizeThread={onSummarize} />);
     fireEvent.click(screen.getByRole('button', { name: /Resumir hilo/ }));
     fireEvent.click(screen.getByRole('button', { name: '✕' }));
-    expect(screen.queryByPlaceholderText('owner/repo#42')).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/owner\/repo#42/)).not.toBeInTheDocument();
     expect(onSummarize).not.toHaveBeenCalled();
   });
 

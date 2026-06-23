@@ -44,7 +44,7 @@ export default function ThreadSummaryButton({ disabled, onSummarizeThread }: Thr
         autoFocus
         type="text"
         className="input"
-        placeholder="owner/repo#42"
+        placeholder="owner/repo#42 · URL · o repo"
         value={value}
         onChange={e => setValue(e.target.value)}
         style={{ fontSize: '0.8rem', padding: '6px 10px', minWidth: '200px' }}

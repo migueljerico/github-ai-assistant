@@ -1,6 +1,6 @@
 # 📖 Manual Técnico — GitHub AI Assistant
 
-**Versión:** v2.8.0 · Junio 2026
+**Versión:** v2.8.1 · Junio 2026
 
 ---
 
@@ -415,7 +415,7 @@ gcloud run deploy github-ai-assistant \
 - **CI:** GitHub Actions (`.github/workflows/ci.yml`) ejecuta en cada push/PR a `main`
   el lint, los tests del cliente con cobertura y los tests del servidor
   (job `server-test`). Ver "Pipeline CI/CD" en la sección de despliegue.
-- **Cobertura actual:** ≈50% (ver Codecov para el valor exacto) · 202 tests en el cliente
+- **Cobertura actual:** ≈50% (ver Codecov para el valor exacto) · 215 tests en el cliente
 
 ### Módulos testeados
 
