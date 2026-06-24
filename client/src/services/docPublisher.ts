@@ -70,6 +70,61 @@ export async function writeDocFiles(
   await createOrUpdateFile(token, owner, repo, MANUAL_PATH, manualTecnico, MANUAL_MESSAGE, manualSha, branch);
 }
 
+/** Resultado de publicar un fichero suelto (#28 Fase 2). */
+export interface PublishFileResult {
+  /** El PR creado (solo en modo Draft PR); `null` en commit directo. */
+  pr: GitHubPullRequest | null;
+  branchName: string | null;
+}
+
+/**
+ * #28 Fase 2: publica UN fichero arbitrario (p. ej. `docs/notas.md`) en un repo,
+ * como commit directo (rama por defecto) o como Draft PR. Reutiliza los wrappers
+ * de github.ts. Devuelve el PR + rama cuando es Draft PR.
+ *
+ * @param now - Timestamp para el nombre de la rama (inyectable para tests).
+ */
+export async function publishFileDoc(
+  token: string,
+  owner: string,
+  repo: string,
+  path: string,
+  content: string,
+  options: { draft?: boolean } = {},
+  now: number = Date.now()
+): Promise<PublishFileResult> {
+  const message = `docs: ${path} generado por el Asistente de IA`;
+
+  if (!options.draft) {
+    // Commit directo a la rama por defecto.
+    const sha = await getExistingSha(token, owner, repo, path);
+    await createOrUpdateFile(token, owner, repo, path, content, message, sha);
+    return { pr: null, branchName: null };
+  }
+
+  // Draft PR: bifurca la rama por defecto, escribe el fichero y abre el PR.
+  const repoInfo = await getRepo(token, owner, repo);
+  const baseBranch = repoInfo.default_branch;
+  const baseSha = await getBranchSha(token, owner, repo, baseBranch);
+  const branchName = `docs/file-${now}`;
+  await createBranch(token, owner, repo, branchName, baseSha);
+
+  const sha = await getExistingSha(token, owner, repo, path);
+  await createOrUpdateFile(token, owner, repo, path, content, message, sha, branchName);
+
+  const pr = await createPullRequest(
+    token,
+    owner,
+    repo,
+    `docs: ${path} (generado por IA)`,
+    branchName,
+    baseBranch,
+    `## 📄 Documentación generada\n\nEste Draft PR añade \`${path}\`, generado por el Asistente de IA a partir de un archivo adjunto.\n\n> Revisa el contenido antes de mergear.`,
+    true
+  );
+  return { pr, branchName };
+}
+
 /** Construye el cuerpo (Markdown) del Draft PR de documentación. */
 export function buildDocsPrBody(repoName: string, filesAnalyzed: number): string {
   const plural = filesAnalyzed !== 1;

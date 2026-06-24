@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v3.0.0 · Junio 2026
+**Actualizado a:** v3.1.0 · Junio 2026
 
 ---
 
@@ -28,6 +28,7 @@ Estado del código, mejoras pendientes y roadmap del proyecto.
 | 42 | Refactor de App.tsx (DocModal + lógica del chat a módulos testeables) | services/assistantActions.ts, components/confirm/DocModal.tsx, utils/repoRef.ts | v2.8.2 |
 | 38 | Streaming de respuestas (SSE) token a token en modo chat | server/index.js, services/gemini.ts, services/assistantActions.ts, ChatMessage.tsx | v2.9.0 |
 | 28 | Subida de archivos locales — **Fase 1**: adjuntar PDF/texto/código como contexto del chat | utils/pdfReader.ts, utils/pdfAdvanced.ts (pdfjs-dist), services/assistantActions.ts (runAttachFile), FileAttachButton.tsx | v3.0.0 |
+| 28 | Archivos locales — **Fase 2**: documentar el archivo y publicarlo (commit / Draft PR / GitHub Release) | services/gemini.ts (generateFileDoc), services/docPublisher.ts (publishFileDoc), services/assistantActions.ts, components/confirm/FilePublishModal.tsx | v3.1.0 |
 
 ---
 
@@ -42,11 +43,12 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 > **#28 (subida de archivos) entregado por fases.** **Fase 1** (v3.0.0): adjuntar
 > PDF + texto/código como **contexto** del chat (cliente / Zero-Storage; reutiliza
 > `pdfReader`/`pdfAdvanced` + el patrón #41) → ya permite *"documéntame este archivo"*
-> en lenguaje natural. **Norte pendiente** (se planificará como fases/ítems propios):
-> **Fase 2** — *documentar→publicar*: generar documentación del archivo y publicarla
-> (commit / Draft PR / release) reutilizando `docPublisher`/`releaseGenerator`;
-> **Fase 3** — más formatos: Excel/CSV (SheetJS) e imágenes (visión). PBIX queda fuera
-> (formato propietario complejo).
+> en lenguaje natural. **Fase 2** (v3.1.0): *documentar→publicar* — generar
+> documentación del archivo y publicarla como **commit**, **Draft PR** o **GitHub
+> Release** (reutiliza `docPublisher`/`releaseGenerator`). Con esto el **norte de #28
+> queda cubierto**: adjuntar cualquier archivo → documentar → publicar.
+> **Pendiente — Fase 3** — más formatos: Excel/CSV (SheetJS) e imágenes (visión).
+> PBIX queda fuera (formato propietario complejo).
 
 ---
 
@@ -65,21 +67,22 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 #### #26 — Mantener y expandir cobertura de tests con Codecov
 **Esfuerzo:** Continuo (2-4h por sprint)
 
-**Estado actual (v3.0.0):** ✅ Infraestructura completa implementada
+**Estado actual (v3.1.0):** ✅ Infraestructura completa implementada
 
 **Progreso realizado:**
 - ✅ Configuración de Vitest + Codecov
 - ✅ CI con GitHub Actions ejecutando tests (cliente + servidor) automáticamente
 - ✅ Badge de Codecov en README
 - ✅ Cobertura actual: **≈64%** (ver Codecov para el valor exacto)
-- ✅ 269 tests en el cliente. Implementados para:
+- ✅ 289 tests en el cliente. Implementados para:
   - `AuthContext.tsx` (login, logout, OAuth flow, Zero-Storage)
   - `AIProviderContext.tsx` (conexión/desconexión de proveedores)
   - `providers.ts` (registro de proveedores, detección de modelos 🆓, caché, `pickDefaultModel`)
   - `actionExecutor.ts` (ejecutor de acciones GitHub)
   - `github.ts` (wrapper de GitHub API, decodeBase64, encodeBase64, getRepo, getBranchSha)
   - `gemini.ts` (parseGeminiAction, detectPrimaryLanguage, temperatura por modo, contexto de repo #41, enrutado OpenRouter, reintento transitorio `withTransientRetry`/`isTransientAIError`)
-  - `docPublisher.ts` (commit directo / Draft PR — #45)
+  - `docPublisher.ts` (commit directo / Draft PR — #45; `publishFileDoc` de fichero suelto — #28 Fase 2)
+  - `gemini.ts` `generateFileDoc` + `assistantActions.ts` `runGenerateFileDoc`/`runPublishFileDoc`/`runCreateFileRelease` + `FilePublishModal.tsx` (documentar y publicar archivos — #28 Fase 2)
   - `threadSummary.ts` (resumen de hilos #32: `parseThreadInput`, issue vs PR, hilo vacío) + wrappers de comentarios en `github.ts` (paginación)
   - `assistantActions.ts` (#42: orquestación del chat — `runSend`, `runConfirmAction`, `runCancelAction` y los flujos de botón; ~98%) + `repoRef.ts` (`resolveRepoRef`) + `DocModal.tsx`
   - `modeDetection.ts` (chat vs action; sesgo a chat con contexto de repo)
@@ -309,8 +312,9 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 | 🟢 Baja | 11 | 0 | 11 (#22, #23, #24, #25, #33, #34, #35, #36, #40, #46, #48) |
 | **TOTAL** | **34** | **18** | **16** |
 
-> **#28** cuenta como resuelto por su **Fase 1** (v3.0.0); sus fases siguientes
-> (documentar→publicar, más formatos) se trackearán como ítems nuevos cuando se aborden.
+> **#28** cubierto en su **norte** por las Fases 1 (v3.0.0, adjuntar como contexto) y
+> 2 (v3.1.0, documentar→publicar). Queda pendiente la **Fase 3** (más formatos:
+> Excel/CSV, imágenes), que se trackeará como ítem nuevo cuando se aborde.
 
 > **Nota de numeración:** los huecos en #16, #29, #30, #31, #43 y #47 son intencionados — esos ítems se fusionaron o descartaron en revisiones del roadmap y sus números no se reutilizan (convención del documento). #16 se fusionó en #42; #29 en #40.
 

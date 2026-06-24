@@ -9,12 +9,13 @@
  * núcleo del chat `runSend`/`runConfirmAction`/`runCancelAction` (Fase 3).
  */
 
-import { generateRepoDocs, buildRepoContextSummary, callAI, parseGeminiAction, CHAT_PROMPT, ACTION_PROMPT, chatPromptWithContext } from './gemini';
+import { generateRepoDocs, generateFileDoc, buildRepoContextSummary, callAI, parseGeminiAction, CHAT_PROMPT, ACTION_PROMPT, chatPromptWithContext } from './gemini';
 import type { AIProviderConfig } from './gemini';
 import { fetchRepoTreeRecursive, getFileContents, decodeBase64 } from './github';
-import { writeDocFiles, createDocsDraftPr } from './docPublisher';
+import { writeDocFiles, createDocsDraftPr, publishFileDoc } from './docPublisher';
 import { summarizeThread, parseThreadInput, listOpenThreads, formatThreadList } from './threadSummary';
 import { executeAction, executeActionMultiRepo } from './actionExecutor';
+import { createGitHubRelease, suggestNextVersion } from '../utils/releaseGenerator';
 import { resolveMode } from '../utils/modeDetection';
 import { resolveRepoRef } from '../utils/repoRef';
 import { readFileContent, formatFileContentForAI, assertSupportedFile } from '../utils/pdfReader';
@@ -425,5 +426,87 @@ export async function runAttachFile(deps: ChatDeps, file: File): Promise<FileCon
     return null;
   } finally {
     setIsChatLoading(false);
+  }
+}
+
+// ── Documentar y publicar el archivo adjunto (#28, Fase 2) ────────────────────
+
+/** Genera documentación (Markdown) del archivo adjunto. Devuelve el doc o null. */
+export async function runGenerateFileDoc(
+  deps: ChatDeps,
+  config: AIProviderConfig,
+  fileContext: FileContext,
+): Promise<string | null> {
+  const { providerName, addMessage, updateMessage, setIsChatLoading } = deps;
+  setIsChatLoading(true);
+  const loadingId = addMessage({ role: 'assistant', content: `📝 Generando documentación de **${fileContext.name}** con ${providerName}...`, isLoading: true });
+  try {
+    const doc = await generateFileDoc(fileContext.name, fileContext.contextText, config);
+    updateMessage(loadingId, { content: `✅ Documentación de **${fileContext.name}** lista. Elige cómo publicarla.`, isLoading: false });
+    return doc;
+  } catch (err) {
+    updateMessage(loadingId, { content: `❌ Error al documentar: ${(err as Error).message}`, isLoading: false });
+    return null;
+  } finally {
+    setIsChatLoading(false);
+  }
+}
+
+/** Deriva `docs/{base}.md` a partir del nombre del archivo adjunto. */
+function docPathFor(fileName: string): string {
+  const base = fileName.replace(/\.[^.]+$/, '').replace(/[^\w.-]+/g, '-') || 'archivo';
+  return `docs/${base}.md`;
+}
+
+/** Publica la documentación generada como fichero (commit directo o Draft PR). */
+export async function runPublishFileDoc(
+  deps: ChatDeps,
+  owner: string,
+  repo: string,
+  fileName: string,
+  doc: string,
+  opts: { draft?: boolean },
+): Promise<void> {
+  const { token, addMessage, addEntry, updateEntry } = deps;
+  const path = docPathFor(fileName);
+  const histId = addEntry({ status: 'pending', description: `Publicando ${path} en ${owner}/${repo}`, repo: `${owner}/${repo}` });
+  try {
+    const { pr } = await publishFileDoc(token, owner, repo, path, doc, { draft: opts.draft });
+    addMessage({
+      role: 'assistant',
+      content: pr
+        ? `✅ Draft PR [#${pr.number}](${pr.html_url}) con \`${path}\` en **${owner}/${repo}**. Revísalo antes de mergear.`
+        : `✅ \`${path}\` commiteado en **${owner}/${repo}**.`,
+    });
+    updateEntry(histId, { status: 'completed', description: `Documentación publicada en ${owner}/${repo}` });
+  } catch (err) {
+    addMessage({ role: 'assistant', content: `❌ Error al publicar la documentación: ${(err as Error).message}` });
+    updateEntry(histId, { status: 'error', description: `Error al publicar en ${owner}/${repo}` });
+  }
+}
+
+/** Crea un GitHub Release usando la doc generada como notas. Versión vacía → sugerida. */
+export async function runCreateFileRelease(
+  deps: ChatDeps,
+  owner: string,
+  repo: string,
+  fileName: string,
+  doc: string,
+  version?: string,
+): Promise<void> {
+  const { token, addMessage, addEntry, updateEntry } = deps;
+  const histId = addEntry({ status: 'pending', description: `Creando release en ${owner}/${repo}`, repo: `${owner}/${repo}` });
+  try {
+    const tag = version?.trim() || await suggestNextVersion(token, owner, repo);
+    const { url } = await createGitHubRelease(token, owner, repo, {
+      version: tag,
+      title: `${tag} — ${fileName}`,
+      body: doc,
+    });
+    addMessage({ role: 'assistant', content: `✅ Release [${tag}](${url}) creado en **${owner}/${repo}** con la documentación de ${fileName}.` });
+    updateEntry(histId, { status: 'completed', description: `Release ${tag} creado en ${owner}/${repo}` });
+  } catch (err) {
+    addMessage({ role: 'assistant', content: `❌ Error al crear el release: ${(err as Error).message}` });
+    updateEntry(histId, { status: 'error', description: `Error al crear release en ${owner}/${repo}` });
   }
 }

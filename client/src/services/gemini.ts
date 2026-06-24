@@ -652,3 +652,46 @@ No incluyas ningún texto fuera del JSON. No uses bloques de código externos.`;
     metadatos: (parsed.metadatos as Record<string, unknown>) || defaultMetadatos,
   };
 }
+
+/**
+ * #28 Fase 2: genera documentación en Markdown a partir del contenido de un
+ * archivo adjunto (no de un repo). Una sola llamada LLM; el Markdown resultante
+ * sirve tanto para commitear como fichero como para el cuerpo de un release.
+ */
+export async function generateFileDoc(
+  fileName: string,
+  content: string,
+  config: AIProviderConfig,
+): Promise<string> {
+  const docSystemPrompt = `Eres un experto en documentación técnica. A partir del contenido de un archivo, redacta documentación clara y útil EN ESPAÑOL, en **Markdown**, con estas secciones:
+
+# {Título descriptivo del documento}
+## 📋 Resumen
+(2-3 frases sobre qué es y para qué sirve.)
+## 🔑 Puntos clave
+- (lo más importante del contenido)
+## 📝 Detalle
+(explicación estructurada del contenido; usa subtítulos, listas y tablas si ayudan.)
+## ✅ Conclusiones / siguientes pasos
+(si aplica.)
+
+Reglas: básate ÚNICAMENTE en el contenido aportado; no inventes. Responde SOLO con el Markdown, sin texto introductorio ni bloques de código externos que envuelvan todo.`;
+
+  const userMessage = `Archivo: ${fileName}\n\nCONTENIDO:\n${content}`;
+
+  const raw = await callAI(
+    [{ role: 'user', content: userMessage }],
+    docSystemPrompt,
+    config.provider,
+    config.apiKey,
+    config.model,
+  );
+
+  const doc = raw
+    .replace(/^```(?:markdown)?\s*/i, '')
+    .replace(/\s*```\s*$/, '')
+    .trim();
+
+  if (!doc) throw new Error('La IA no devolvió documentación. Prueba con otro modelo o un archivo más pequeño.');
+  return doc;
+}
