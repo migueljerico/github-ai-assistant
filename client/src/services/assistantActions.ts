@@ -269,8 +269,14 @@ export async function runSend(deps: SendDeps, config: AIProviderConfig, params: 
 
   console.log(`[Opción D] Modo: ${finalMode} | Override: ${modeOverride} | Contexto: ${repoContext !== null}`);
 
+  // #38: en modo chat (texto Markdown largo) mostramos la respuesta en streaming,
+  // token a token. En modo acción la respuesta es JSON → no se streamea (se vería feo).
+  const onToken = finalMode === 'chat'
+    ? (textSoFar: string) => updateMessage(loadingId, { content: textSoFar, isLoading: true })
+    : undefined;
+
   try {
-    const rawResponse = await callAI(newHistory, systemPrompt, config.provider, config.apiKey, config.model, finalMode);
+    const rawResponse = await callAI(newHistory, systemPrompt, config.provider, config.apiKey, config.model, finalMode, onToken);
 
     // Modo chat: forzar texto, nunca ejecutar.
     if (finalMode === 'chat') {

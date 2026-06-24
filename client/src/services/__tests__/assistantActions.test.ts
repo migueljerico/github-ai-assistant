@@ -384,3 +384,34 @@ describe('runCancelAction', () => {
     expect(deps.addMessage).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('cancelada') }));
   });
 });
+
+describe('runSend — streaming (#38)', () => {
+  it('en modo chat pasa onToken y renderiza el texto acumulado en vivo', async () => {
+    vi.mocked(resolveMode).mockReturnValue('chat');
+    vi.mocked(callAI).mockImplementation(async (...args: any[]) => {
+      const onToken = args[6];
+      onToken?.('Parcial');
+      onToken?.('Parcial completo');
+      return 'Parcial completo';
+    });
+    vi.mocked(parseGeminiAction).mockReturnValue(null);
+    const deps = makeDeps();
+
+    await runSend(deps, CONFIG, SEND_PARAMS);
+
+    expect(deps.updateMessage).toHaveBeenCalledWith('msg-2', { content: 'Parcial', isLoading: true });
+    expect(deps.updateMessage).toHaveBeenCalledWith('msg-2', { content: 'Parcial completo', isLoading: true });
+  });
+
+  it('en modo acción NO pasa onToken (no se streamea el JSON)', async () => {
+    vi.mocked(resolveMode).mockReturnValue('action');
+    let received: unknown = 'UNSET';
+    vi.mocked(callAI).mockImplementation(async (...args: any[]) => { received = args[6]; return 'texto'; });
+    vi.mocked(parseGeminiAction).mockReturnValue(null);
+    const deps = makeDeps();
+
+    await runSend(deps, CONFIG, SEND_PARAMS);
+
+    expect(received).toBeUndefined();
+  });
+});

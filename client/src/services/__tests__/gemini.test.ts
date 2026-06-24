@@ -332,3 +332,76 @@ describe('Contexto de repo para chat (#41)', () => {
     });
   });
 });
+
+// ── #38: Streaming (SSE) ──────────────────────────────────────────────────────
+describe('callAI - streaming (#38)', () => {
+  beforeEach(() => { vi.restoreAllMocks(); });
+
+  /** Construye una Response-like con un cuerpo SSE a partir de líneas. */
+  function sseResponse(chunks: string[]) {
+    const encoder = new TextEncoder();
+    return {
+      ok: true,
+      body: new ReadableStream({
+        start(controller) {
+          for (const c of chunks) controller.enqueue(encoder.encode(c));
+          controller.close();
+        },
+      }),
+    };
+  }
+
+  it('openai-compatible (Groq): pide stream:true y acumula los deltas', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(sseResponse([
+      'data: {"choices":[{"delta":{"content":"Hola"}}]}\n\n',
+      'data: {"choices":[{"delta":{"content":" mundo"}}]}\n\n',
+      'data: [DONE]\n\n',
+    ]));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const tokens: string[] = [];
+    const out = await callAI(
+      [{ role: 'user', content: 'hi' }], 'sys', 'groq', 'key', 'llama', 'chat',
+      (t) => tokens.push(t),
+    );
+
+    expect(out).toBe('Hola mundo');
+    expect(tokens).toEqual(['Hola', 'Hola mundo']); // semántica "set": texto acumulado
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(body.stream).toBe(true);
+  });
+
+  it('gemini-proxy: hace streaming de los chunks {text} del proxy', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(sseResponse([
+      'data: {"text":"Ho"}\n\n',
+      'data: {"text":"la"}\n\n',
+      'data: [DONE]\n\n',
+    ]));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const tokens: string[] = [];
+    const out = await callAI(
+      [{ role: 'user', content: 'hi' }], 'sys', 'gemini', 'key', 'gemini-2.5-flash', 'chat',
+      (t) => tokens.push(t),
+    );
+
+    expect(out).toBe('Hola');
+    expect(tokens).toEqual(['Ho', 'Hola']);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('/api/gemini');
+    expect(JSON.parse((init as RequestInit).body as string).stream).toBe(true);
+  });
+
+  it('sin onToken NO streamea (ruta clásica, no envía stream:true)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: 'completo' } }] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const out = await callAI([{ role: 'user', content: 'hi' }], 'sys', 'groq', 'key', 'llama', 'chat');
+
+    expect(out).toBe('completo');
+    expect((fetchMock.mock.calls[0][1] as RequestInit).body).not.toContain('"stream":true');
+  });
+});
