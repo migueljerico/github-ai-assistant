@@ -1,21 +1,24 @@
 /**
- * assistantActions — lógica de orquestación de los flujos "de botón" del chat,
- * extraída de `App.tsx` (#42, Fase 2) para poder testearla de forma aislada.
+ * assistantActions — lógica de orquestación del chat, extraída de `App.tsx`
+ * (#42) para poder testearla de forma aislada.
  *
  * Cada función recibe un objeto `deps` con los setters/callbacks de React (estado
  * de chat e historial), de modo que NO depende de hooks ni de contexto: se testea
  * pasando mocks y mockeando los servicios. `App.tsx` mantiene su estado y envuelve
- * cada función en un handler fino. NO incluye el núcleo `handleSend`/`handleConfirm`
- * (flujo propón→confirma→ejecuta), que se aborda en la Fase 3.
+ * cada función en un handler fino. Incluye los flujos "de botón" (Fase 2) y el
+ * núcleo del chat `runSend`/`runConfirmAction`/`runCancelAction` (Fase 3).
  */
 
-import { generateRepoDocs, buildRepoContextSummary } from './gemini';
+import { generateRepoDocs, buildRepoContextSummary, callAI, parseGeminiAction, CHAT_PROMPT, ACTION_PROMPT, chatPromptWithContext } from './gemini';
 import type { AIProviderConfig } from './gemini';
-import { fetchRepoTreeRecursive } from './github';
+import { fetchRepoTreeRecursive, getFileContents, decodeBase64 } from './github';
 import { writeDocFiles, createDocsDraftPr } from './docPublisher';
 import { summarizeThread, parseThreadInput, listOpenThreads, formatThreadList } from './threadSummary';
+import { executeAction, executeActionMultiRepo } from './actionExecutor';
+import { resolveMode } from '../utils/modeDetection';
 import { resolveRepoRef } from '../utils/repoRef';
-import type { ChatMessage, HistoryEntry, RepoAnalysis } from '../types';
+import { formatResultData } from '../utils/formatResult';
+import type { ChatMessage, HistoryEntry, RepoAnalysis, GitHubRepo, PendingAction } from '../types';
 
 /** Contexto de repo activo para opiniones de chat fundamentadas (#41). */
 export interface RepoContext {
@@ -36,6 +39,22 @@ export interface ChatDeps {
   addEntry: (entry: Omit<HistoryEntry, 'id' | 'timestamp'>) => string;
   updateEntry: (id: string, update: Partial<HistoryEntry>) => void;
   setIsChatLoading: (loading: boolean) => void;
+}
+
+/** Deps adicionales que necesita `runSend` (núcleo del chat). */
+export interface SendDeps extends ChatDeps {
+  setConversationHistory: (history: Array<{ role: 'user' | 'assistant'; content: string }>) => void;
+  setPendingAction: (action: PendingAction | null) => void;
+}
+
+/** Parámetros (estado de App) que `runSend` necesita leer en cada envío. */
+export interface SendParams {
+  userText: string;
+  conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>;
+  modeOverride: 'auto' | 'chat' | 'action';
+  repoContext: RepoContext | null;
+  multiRepoEnabled: boolean;
+  selectedRepos: GitHubRepo[];
 }
 
 /**
@@ -221,4 +240,138 @@ export async function runCreateDraftPr(deps: ChatDeps, analysis: RepoAnalysis): 
     addMessage({ role: 'assistant', content: `❌ Error al crear Draft PR: ${(err as Error).message}` });
     updateEntry(histId, { status: 'error', description: `Error al crear Draft PR en ${analysis.repoName}` });
   }
+}
+
+// ── Núcleo del chat (Fase 3) ────────────────────────────────────────────────────
+
+/**
+ * Envía el mensaje del usuario a la IA y procesa la respuesta (Opción D):
+ * - Modo chat → muestra texto (bloquea JSON; si la IA devuelve acción, extrae texto).
+ * - Modo acción → parsea la acción; si requiere confirmación abre el modal
+ *   (`setPendingAction`), si es de solo lectura la ejecuta directa.
+ * Porta `handleSend` sin cambiar el comportamiento.
+ */
+export async function runSend(deps: SendDeps, config: AIProviderConfig, params: SendParams): Promise<void> {
+  const { token, user, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading, setConversationHistory, setPendingAction } = deps;
+  const { userText, conversationHistory, modeOverride, repoContext, multiRepoEnabled, selectedRepos } = params;
+
+  setIsChatLoading(true);
+  addMessage({ role: 'user', content: userText });
+  const loadingId = addMessage({ role: 'assistant', content: '', isLoading: true });
+
+  const newHistory = [...conversationHistory, { role: 'user' as const, content: userText }];
+
+  // #41: si hay repo de contexto, resolveMode sesga a chat (salvo acción explícita).
+  const finalMode = resolveMode(userText, modeOverride, repoContext !== null);
+  const systemPrompt = finalMode === 'chat'
+    ? (repoContext ? chatPromptWithContext(repoContext.contextText) : CHAT_PROMPT)
+    : ACTION_PROMPT;
+
+  console.log(`[Opción D] Modo: ${finalMode} | Override: ${modeOverride} | Contexto: ${repoContext !== null}`);
+
+  try {
+    const rawResponse = await callAI(newHistory, systemPrompt, config.provider, config.apiKey, config.model, finalMode);
+
+    // Modo chat: forzar texto, nunca ejecutar.
+    if (finalMode === 'chat') {
+      const action = parseGeminiAction(rawResponse);
+      let textResponse = rawResponse;
+      if (action) {
+        if (action.accion && action.accion.length > 50) {
+          textResponse = action.accion;
+        } else if (action.endpoint) {
+          textResponse = `💡 **Análisis detectado**: ${action.accion}\n\nEntiendo que quieres información sobre tu repositorio. Aquí tienes mi opinión como consultor:\n\n${rawResponse}`;
+        } else {
+          textResponse = rawResponse;
+        }
+      }
+      updateMessage(loadingId, { content: textResponse, isLoading: false });
+      setConversationHistory([...newHistory, { role: 'assistant', content: textResponse }]);
+      setIsChatLoading(false);
+      return;
+    }
+
+    // Modo acción: procesar JSON.
+    const action = parseGeminiAction(rawResponse);
+    if (!action) {
+      updateMessage(loadingId, { content: rawResponse, isLoading: false });
+      setConversationHistory([...newHistory, { role: 'assistant', content: rawResponse }]);
+      setIsChatLoading(false);
+      return;
+    }
+
+    // Para updates de archivo, traer el contenido actual para el diff.
+    let enrichedAction = action;
+    if (action.metodo === 'PUT' && action.repo && action.archivo && !action.contenidoActual) {
+      try {
+        const { owner, repo } = resolveRepoRef(action.repo, user.login);
+        const file = await getFileContents(token, owner, repo, action.archivo);
+        if (file.content) {
+          enrichedAction = { ...action, contenidoActual: decodeBase64(file.content) };
+        }
+      } catch {
+        // El archivo no existe aún — es una creación.
+      }
+    }
+
+    updateMessage(loadingId, { content: enrichedAction.accion, isLoading: false, action: enrichedAction });
+    setConversationHistory([...newHistory, { role: 'assistant', content: rawResponse }]);
+
+    if (enrichedAction.requiereConfirmacion) {
+      const repos = multiRepoEnabled && selectedRepos.length > 0 ? selectedRepos : [];
+      setPendingAction({ action: enrichedAction, targetRepos: repos });
+    } else {
+      // Solo lectura: ejecutar directamente.
+      const histId = addEntry({ status: 'pending', description: enrichedAction.accion, repo: enrichedAction.repo });
+      updateEntry(histId, { status: 'pending' });
+      const result = await executeAction(token, user, enrichedAction);
+      updateEntry(histId, { status: result.success ? 'completed' : 'error', description: result.message });
+      if (result.success && result.data) {
+        addMessage({ role: 'assistant', content: `✅ ${result.message}\n\n${formatResultData(result.data)}` });
+      }
+    }
+  } catch (err) {
+    updateMessage(loadingId, { content: ` Error al contactar con el asistente: ${(err as Error).message}`, isLoading: false });
+  } finally {
+    setIsChatLoading(false);
+  }
+}
+
+/**
+ * Ejecuta una acción ya confirmada (single o multi-repo) y registra el resultado.
+ * Porta el cuerpo de `handleConfirm`; el estado de UI (`setIsExecuting`,
+ * `setPendingAction(null)`) lo gestiona el wrapper de App.
+ */
+export async function runConfirmAction(deps: ChatDeps, pendingAction: PendingAction): Promise<void> {
+  const { token, user, addMessage, addEntry, updateEntry } = deps;
+  const { action, targetRepos } = pendingAction;
+
+  if (targetRepos.length > 1) {
+    await executeActionMultiRepo(token, user, action, targetRepos, {
+      onProgress: (repo, status, message) => {
+        addEntry({ status, description: message, repo });
+      },
+    });
+    addMessage({ role: 'assistant', content: `✅ Acción aplicada a ${targetRepos.length} repositorios` });
+  } else {
+    const histId = addEntry({ status: 'pending', description: action.accion, repo: action.repo });
+    const result = await executeAction(token, user, action);
+    updateEntry(histId, { status: result.success ? 'completed' : 'error', description: result.message });
+    addMessage({
+      role: 'assistant',
+      content: result.success
+        ? `✅ ${result.message}${result.data ? '\n\n' + formatResultData(result.data) : ''}`
+        : `❌ ${result.message}`,
+    });
+  }
+}
+
+/**
+ * Registra la cancelación de una acción pendiente (entry 'cancelled' + mensaje).
+ * El `setPendingAction(null)` lo hace el wrapper de App.
+ */
+export function runCancelAction(deps: ChatDeps, pendingAction: PendingAction): void {
+  const { addMessage, addEntry } = deps;
+  addEntry({ status: 'cancelled', description: `Cancelado: ${pendingAction.action.accion}`, repo: pendingAction.action.repo });
+  addMessage({ role: 'assistant', content: '⏸️ Acción cancelada.' });
 }
