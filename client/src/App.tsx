@@ -3,14 +3,11 @@ import { useAuth } from './context/AuthContext';
 import { useHistory } from './context/HistoryContext';
 import { useAIProvider } from './context/AIProviderContext';
 import { getProvider } from './services/providers';
-import { resolveMode } from './utils/modeDetection';
-import { callAI, parseGeminiAction, CHAT_PROMPT, ACTION_PROMPT, chatPromptWithContext } from './services/gemini';
-import { executeAction, executeActionMultiRepo } from './services/actionExecutor';
-import { getFileContents, decodeBase64 } from './services/github';
-import { runDocumentRepo, runLoadRepoContext, runSummarizeThread, runCommitDocs, runCreateDraftPr } from './services/assistantActions';
+import {
+  runDocumentRepo, runLoadRepoContext, runSummarizeThread, runCommitDocs, runCreateDraftPr,
+  runSend, runConfirmAction, runCancelAction,
+} from './services/assistantActions';
 import type { RepoContext } from './services/assistantActions';
-import { formatResultData } from './utils/formatResult';
-import { resolveRepoRef } from './utils/repoRef';
 import Header from './components/layout/Header';
 import HistoryPanel from './components/layout/HistoryPanel';
 import TemplatePanel from './components/templates/TemplatePanel';
@@ -76,164 +73,43 @@ export default function App() {
 
   // ── Send message to AI (Opción D - con detección de modo) ──────────────────
   const handleSend = useCallback(async () => {
-    // 🔥 ZERO-STORAGE: Verificar que tenemos provider, apiKey y model del contexto
+    // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto
     if (!inputValue.trim() || !token || !user || !provider || !apiKey || !model) return;
-
     const userText = inputValue.trim();
     setInputValue('');
-    setIsChatLoading(true);
-
-    addMessage({ role: 'user', content: userText });
-
-    // Add loading bubble
-    const loadingId = addMessage({ role: 'assistant', content: '', isLoading: true });
-
-    const newHistory = [...conversationHistory, { role: 'user' as const, content: userText }];
-
-    // 🔥 OPCIÓN D - DETECCIÓN DE MODO
-    // #41: si hay un repo cargado como contexto, resolveMode sesga a chat (salvo
-    // acción explícita), para que la opinión use el contexto sin nombrar el repo.
-    const finalMode = resolveMode(userText, modeOverride, repoContext !== null);
-
-    // 🔥 OPCIÓN D - SELECCIONAR SYSTEM PROMPT SEGÚN MODO
-    // #41: en modo chat, si hay un repo cargado como contexto, reforzar el prompt
-    // con su código real para que la opinión sea específica y no genérica.
-    const systemPrompt = finalMode === 'chat'
-      ? (repoContext ? chatPromptWithContext(repoContext.contextText) : CHAT_PROMPT)
-      : ACTION_PROMPT;
-
-    // 🔥 DEBUG: Log en consola para verificar detección
-    console.log(`[Opción D] Modo: ${finalMode} | Override: ${modeOverride} | Contexto: ${repoContext !== null}`);
-
-    try {
-      // 🔥 ZERO-STORAGE + OPCIÓN D: Pasar provider, apiKey, model desde el contexto
-      const rawResponse = await callAI(newHistory, systemPrompt, provider, apiKey, model, finalMode);
-
-      // 🔥 OPCIÓN D - MODO CHAT: Forzar respuesta en texto, bloquear JSON
-      if (finalMode === 'chat') {
-        const action = parseGeminiAction(rawResponse);
-        
-        if (action) {
-          // La IA generó JSON en modo chat - EXTRAER TEXTO Y NO EJECUTAR
-          let textResponse = rawResponse;
-          
-          // Intentar extraer algo útil del JSON para mostrar como texto
-          if (action.accion && action.accion.length > 50) {
-            textResponse = action.accion;
-          } else if (action.endpoint) {
-            textResponse = `💡 **Análisis detectado**: ${action.accion}\n\nEntiendo que quieres información sobre tu repositorio. Aquí tienes mi opinión como consultor:\n\n${rawResponse}`;
-          } else {
-            textResponse = rawResponse;
-          }
-          
-          updateMessage(loadingId, { content: textResponse, isLoading: false });
-          setConversationHistory([...newHistory, { role: 'assistant', content: textResponse }]);
-          setIsChatLoading(false);
-          return; // ⛔ NO EJECUTAR NADA EN MODO CHAT
-        } else {
-          // Perfecto - respuesta en Markdown
-          updateMessage(loadingId, { content: rawResponse, isLoading: false });
-          setConversationHistory([...newHistory, { role: 'assistant', content: rawResponse }]);
-          setIsChatLoading(false);
-          return;
-        }
-      }
-
-      // 🔥 MODO ACCIÓN: Procesar JSON normalmente (comportamiento original)
-      const action = parseGeminiAction(rawResponse);
-
-      if (!action) {
-        // AI returned non-JSON — treat as plain response
-        updateMessage(loadingId, { content: rawResponse, isLoading: false });
-        setConversationHistory([...newHistory, { role: 'assistant', content: rawResponse }]);
-        setIsChatLoading(false);
-        return;
-      }
-
-      // For file updates, fetch the current content for diff
-      let enrichedAction = action;
-      if (action.metodo === 'PUT' && action.repo && action.archivo && !action.contenidoActual) {
-        try {
-          const { owner, repo } = resolveRepoRef(action.repo, user.login);
-          const file = await getFileContents(token, owner, repo, action.archivo);
-          if (file.content) {
-            enrichedAction = { ...action, contenidoActual: decodeBase64(file.content) };
-          }
-        } catch {
-          // File doesn't exist yet — it's a creation
-        }
-      }
-
-      updateMessage(loadingId, { content: enrichedAction.accion, isLoading: false, action: enrichedAction });
-      setConversationHistory([...newHistory, { role: 'assistant', content: rawResponse }]);
-
-      if (enrichedAction.requiereConfirmacion) {
-        // Show confirmation modal
-        const repos = multiRepoEnabled && selectedRepos.length > 0 ? selectedRepos : [];
-        setPendingAction({ action: enrichedAction, targetRepos: repos });
-      } else {
-        // Read-only: execute directly
-        const histId = addEntry({ status: 'pending', description: enrichedAction.accion, repo: enrichedAction.repo });
-        updateEntry(histId, { status: 'pending' });
-        const result = await executeAction(token, user, enrichedAction);
-        updateEntry(histId, { status: result.success ? 'completed' : 'error', description: result.message });
-
-        if (result.success && result.data) {
-          addMessage({
-            role: 'assistant',
-            content: `✅ ${result.message}\n\n${formatResultData(result.data)}`,
-          });
-        }
-      }
-    } catch (err) {
-      updateMessage(loadingId, {
-        content: ` Error al contactar con el asistente: ${(err as Error).message}`,
-        isLoading: false,
-      });
-    } finally {
-      setIsChatLoading(false);
-    }
-  }, [inputValue, token, user, provider, apiKey, model, conversationHistory, multiRepoEnabled, selectedRepos, modeOverride, repoContext, addMessage, updateMessage, addEntry, updateEntry]);
+    await runSend(
+      { token, user, providerName, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading, setConversationHistory, setPendingAction },
+      { provider, apiKey, model },
+      { userText, conversationHistory, modeOverride, repoContext, multiRepoEnabled, selectedRepos },
+    );
+  }, [inputValue, token, user, provider, apiKey, model, providerName, conversationHistory, multiRepoEnabled, selectedRepos, modeOverride, repoContext, addMessage, updateMessage, addEntry, updateEntry]);
 
   // ── Confirm action ─────────────────────────────────────────────────────────
   const handleConfirm = useCallback(async () => {
     if (!pendingAction || !token || !user) return;
-    setIsExecuting(true);
-
-    const { action, targetRepos } = pendingAction;
+    const pa = pendingAction;
     setPendingAction(null);
-
-    if (targetRepos.length > 1) {
-      // Multi-repo
-      await executeActionMultiRepo(token, user, action, targetRepos, {
-        onProgress: (repo, status, message) => {
-          addEntry({ status, description: message, repo });
-        },
-      });
-      addMessage({ role: 'assistant', content: `✅ Acción aplicada a ${targetRepos.length} repositorios` });
-    } else {
-      const histId = addEntry({ status: 'pending', description: action.accion, repo: action.repo });
-      const result = await executeAction(token, user, action);
-      updateEntry(histId, { status: result.success ? 'completed' : 'error', description: result.message });
-      addMessage({
-        role: 'assistant',
-        content: result.success
-          ? `✅ ${result.message}${result.data ? '\n\n' + formatResultData(result.data) : ''}`
-          : `❌ ${result.message}`,
-      });
+    setIsExecuting(true);
+    try {
+      await runConfirmAction(
+        { token, user, providerName, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+        pa,
+      );
+    } finally {
+      setIsExecuting(false);
     }
-
-    setIsExecuting(false);
-  }, [pendingAction, token, user, addEntry, updateEntry, addMessage]);
+  }, [pendingAction, token, user, providerName, addMessage, updateMessage, addEntry, updateEntry]);
 
   // ── Cancel action ──────────────────────────────────────────────────────────
   const handleCancel = useCallback(() => {
     if (pendingAction) {
-      addEntry({ status: 'cancelled', description: `Cancelado: ${pendingAction.action.accion}`, repo: pendingAction.action.repo });
-      addMessage({ role: 'assistant', content: '⏸️ Acción cancelada.' });
+      runCancelAction(
+        { token: token ?? '', user: user ?? { login: '' }, providerName, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+        pendingAction,
+      );
     }
     setPendingAction(null);
-  }, [pendingAction, addEntry, addMessage]);
+  }, [pendingAction, token, user, providerName, addMessage, updateMessage, addEntry, updateEntry]);
 
   // ── #41: Cargar repo como contexto activo del chat ─────────────────────────
   const handleLoadRepoContext = useCallback(async (repoInput: string) => {
