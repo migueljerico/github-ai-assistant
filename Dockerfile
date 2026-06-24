@@ -3,7 +3,10 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ── Stage 1: Build the React frontend ────────────────────────────────────────
-FROM node:20-alpine AS builder
+# Node 22 (≥22.13) es obligatorio: pdfjs-dist@6 declara engines ">=22.13.0 || >=24".
+# Con node:20 npm OMITE pdfjs-dist (es optionalDependency) y luego `tsc` falla con
+# "Cannot find module 'pdfjs-dist'". Mantener alineado con CI (Node 24) y local.
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
@@ -16,7 +19,8 @@ COPY client/ client/
 RUN cd client && npm run build
 
 # ── Stage 2: Production Express server ───────────────────────────────────────
-FROM node:20-alpine AS production
+# Misma versión de Node que el builder (coherencia; el server solo necesita ≥20).
+FROM node:22-alpine AS production
 
 WORKDIR /app
 

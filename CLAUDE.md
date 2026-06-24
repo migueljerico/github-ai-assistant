@@ -208,6 +208,19 @@ Ejecutar **un solo test**: `cd client && npm run test:run -- src/services/github
 - **ESM en todo el proyecto** (`"type": "module"`), Node ≥20.
 - **Conventional Commits:** `feat:`, `fix:`, `docs:`, `test:`, `refactor:`.
 - **Estilo bilingüe:** prosa/UI en español, identificadores en inglés.
+- **Versión de Node del Dockerfile = la de CI/local (o rompe el deploy):** el build
+  de Cloud Run corre dentro del `Dockerfile` con `node:22-alpine`. Debe **satisfacer
+  el `engines` de todas las dependencias**. Caso real (v3.0.0–v3.1.1 no desplegaban):
+  `pdfjs-dist@6` pide Node `>=22.13.0 || >=24`; con `node:20` npm **omitía pdfjs-dist
+  en silencio** (es `optionalDependency`, no da error en `npm ci`) y luego `tsc`
+  fallaba con *"Cannot find module 'pdfjs-dist'"*. **No se detecta en local ni en CI**
+  porque ambos usan Node ≥22 (CI: 24). Al añadir una dependencia con `engines` altos,
+  revisa que el `FROM node:` del Dockerfile lo cumpla; señal de alarma: `npm ci` en el
+  builder instala **un paquete menos** que en local (la opcional omitida).
+- **Lockfiles sincronizados:** al tocar dependencias, regenera el lockfile con
+  `npm install` (nunca lo edites a mano); el `Dockerfile` usa `npm ci`, que **aborta**
+  si `client/package-lock.json` no cuadra con su `package.json`. Valida con
+  `cd client && rm -rf node_modules && npm ci` antes de pushear deps o un bump.
 
 ---
 
@@ -247,6 +260,10 @@ clave de Gemini o Groq desde el navegador en tiempo de ejecución.
 
 1. Stage 1 construye el frontend (`client/dist`).
 2. Stage 2 levanta Express sirviendo esa SPA + el proxy.
+
+> **Node del builder = `node:22-alpine`** (≥22.13). No bajarlo: `pdfjs-dist@6` lo
+> exige; con Node 20 se omite como dependencia opcional y `tsc` falla en el build.
+> Mantenerlo alineado con CI (Node 24) y el entorno local (ver §5).
 
 En producción: `NODE_ENV=production`, `PORT=8080`, `HEALTHCHECK` sobre
 `/health`. El catch-all sirve `index.html` para el routing de la SPA (devuelve
