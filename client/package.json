@@ -1,7 +1,7 @@
 {
   "name": "github-ai-assistant-client",
   "private": true,
-  "version": "3.1.1",
+  "version": "3.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -16,7 +16,8 @@
     "diff": "^5.2.0",
     "diff2html": "^3.4.47",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",

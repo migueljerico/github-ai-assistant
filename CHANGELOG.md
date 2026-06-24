@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.0] — 2026-06-24
+
+### Added
+- **Adjuntar hojas de cálculo Excel/CSV — #28 Fase 3a** — Ahora puedes adjuntar `.xlsx`, `.xls` y `.csv` (además de PDF y texto/código) y trabajar con ellos en lenguaje natural (preguntar, documentar, publicar). Extracción con **SheetJS** (`xlsx`), en el navegador (Zero-Storage); la librería va en un chunk aparte (lazy).
+  - **Control de tokens (clave en datasets grandes):** en vez de volcar todo el archivo —que reventaría el contexto del modelo (error 400)—, se extraen las **cabeceras + una muestra de las primeras 100 filas** por hoja y se **avisa en el chat**: *"…es grande, analizaré una muestra de las primeras 100 filas. Si necesitas cálculos sobre el dataset completo, dime qué calcular."* (principio rector: claro y orientado a la siguiente acción).
+  - Nuevo `utils/spreadsheetReader.ts` (`readSpreadsheet`, `SPREADSHEET_SAMPLE_ROWS`); `runAttachFile` enruta las hojas y compone el aviso. "Documentar y publicar" (Fase 2) funciona igual sobre los datos extraídos.
+
+### Testing
+- Tests de `readSpreadsheet` (muestra de filas, truncado, múltiples hojas, CSV, vacío), `assertSupportedFile` (xlsx/xls) y `runAttachFile` con hoja (aviso de muestra). Cobertura/cliente: **297 tests**.
+
 ## [3.1.1] — 2026-06-24
 
 ### Fixed

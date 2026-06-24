@@ -5,10 +5,11 @@
 
 import { readPDFAdvanced } from './pdfAdvanced';
 
-/** Extensiones admitidas en la v1 de adjuntar archivos (#28): PDF + texto/código. */
+/** Extensiones admitidas al adjuntar archivos (#28): PDF + texto/código + hojas de cálculo. */
 export const SUPPORTED_FILE_EXTENSIONS = [
   'pdf', 'txt', 'md', 'markdown', 'json', 'csv', 'yaml', 'yml',
   'js', 'jsx', 'ts', 'tsx', 'py', 'html', 'css', 'xml', 'log', 'env',
+  'xlsx', 'xls', // #28 Fase 3a — hojas de cálculo (Excel) vía SheetJS
 ];
 
 /** Tamaño máximo de archivo adjunto (5 MB). */
@@ -22,8 +23,8 @@ export function assertSupportedFile(file: File): void {
   const ext = file.name.split('.').pop()?.toLowerCase() || '';
   if (!SUPPORTED_FILE_EXTENSIONS.includes(ext)) {
     throw new Error(
-      `No puedo leer archivos «.${ext || '?'}» todavía. Por ahora acepto PDF y archivos de ` +
-      `texto/código (pdf, txt, md, json, csv, código fuente…).`,
+      `No puedo leer archivos «.${ext || '?'}» todavía. Por ahora acepto PDF, hojas de cálculo ` +
+      `(Excel, CSV) y archivos de texto/código (pdf, xlsx, csv, txt, md, json, código fuente…).`,
     );
   }
   if (file.size > MAX_FILE_SIZE_BYTES) {

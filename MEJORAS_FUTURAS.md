@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v3.1.1 · Junio 2026
+**Actualizado a:** v3.2.0 · Junio 2026
 
 ---
 
@@ -29,6 +29,7 @@ Estado del código, mejoras pendientes y roadmap del proyecto.
 | 38 | Streaming de respuestas (SSE) token a token en modo chat | server/index.js, services/gemini.ts, services/assistantActions.ts, ChatMessage.tsx | v2.9.0 |
 | 28 | Subida de archivos locales — **Fase 1**: adjuntar PDF/texto/código como contexto del chat | utils/pdfReader.ts, utils/pdfAdvanced.ts (pdfjs-dist), services/assistantActions.ts (runAttachFile), FileAttachButton.tsx | v3.0.0 |
 | 28 | Archivos locales — **Fase 2**: documentar el archivo y publicarlo (commit / Draft PR / GitHub Release) | services/gemini.ts (generateFileDoc), services/docPublisher.ts (publishFileDoc), services/assistantActions.ts, components/confirm/FilePublishModal.tsx | v3.1.0 |
+| 28 | Archivos locales — **Fase 3a**: hojas de cálculo Excel/CSV (muestra de filas + aviso de tokens) | utils/spreadsheetReader.ts (SheetJS/xlsx), utils/pdfReader.ts, services/assistantActions.ts (runAttachFile) | v3.2.0 |
 
 ---
 
@@ -47,8 +48,15 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 > documentación del archivo y publicarla como **commit**, **Draft PR** o **GitHub
 > Release** (reutiliza `docPublisher`/`releaseGenerator`). Con esto el **norte de #28
 > queda cubierto**: adjuntar cualquier archivo → documentar → publicar.
-> **Pendiente — Fase 3** — más formatos: Excel/CSV (SheetJS) e imágenes (visión).
-> PBIX queda fuera (formato propietario complejo).
+> **Fase 3a** (v3.2.0): **hojas de cálculo Excel/CSV** (SheetJS) con muestra de
+> cabeceras + 100 filas y aviso de tokens. **Visión/imágenes: DESCARTADA**
+> (multimodal; tocaría el servidor y depende del modelo).
+> **Pendiente — Fase 3b: PBIX/PBIT** — un `.pbix` es un ZIP: se puede documentar el
+> **informe** (páginas/visuales/campos del `Report/Layout`) y el **Power Query (M)**
+> del `DataMashup`; el **modelo de datos y las medidas DAX** NO son parseables en
+> navegador (binario propietario VertiPaq), salvo desde **`.pbit`** (plantilla), que
+> incluye `DataModelSchema` (tablas/columnas/DAX) en JSON. Viable pero parcial →
+> ronda propia (lector ZIP cliente, p. ej. `fflate`).
 
 ---
 
@@ -67,14 +75,14 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 #### #26 — Mantener y expandir cobertura de tests con Codecov
 **Esfuerzo:** Continuo (2-4h por sprint)
 
-**Estado actual (v3.1.1):** ✅ Infraestructura completa implementada
+**Estado actual (v3.2.0):** ✅ Infraestructura completa implementada
 
 **Progreso realizado:**
 - ✅ Configuración de Vitest + Codecov
 - ✅ CI con GitHub Actions ejecutando tests (cliente + servidor) automáticamente
 - ✅ Badge de Codecov en README
 - ✅ Cobertura actual: **≈64%** (ver Codecov para el valor exacto)
-- ✅ 289 tests en el cliente. Implementados para:
+- ✅ 297 tests en el cliente. Implementados para:
   - `AuthContext.tsx` (login, logout, OAuth flow, Zero-Storage)
   - `AIProviderContext.tsx` (conexión/desconexión de proveedores)
   - `providers.ts` (registro de proveedores, detección de modelos 🆓, caché, `pickDefaultModel`)
@@ -86,7 +94,7 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
   - `threadSummary.ts` (resumen de hilos #32: `parseThreadInput`, issue vs PR, hilo vacío) + wrappers de comentarios en `github.ts` (paginación)
   - `assistantActions.ts` (#42: orquestación del chat — `runSend`, `runConfirmAction`, `runCancelAction` y los flujos de botón; ~98%) + `repoRef.ts` (`resolveRepoRef`) + `DocModal.tsx`
   - `modeDetection.ts` (chat vs action; sesgo a chat con contexto de repo)
-  - `formatResult.ts`, `releaseGenerator.ts`, `pdfReader.ts`, `pdfAdvanced.ts`
+  - `formatResult.ts`, `releaseGenerator.ts`, `pdfReader.ts`, `pdfAdvanced.ts`, `spreadsheetReader.ts` (#28 Fase 3a)
   - Hooks: `useChat`, `useActions`
   - Componentes React: `ChatArea`, `ChatInput`, `ConfirmModal`, `Header`, `TemplatePanel`, `AIProviderPanel`, `AIProviderBadge`, `RepoContextButton`
   - Servidor: `rateLimit.test.js`
