@@ -17,7 +17,8 @@ export default function ChatMessageBubble({ message }: { message: ChatMessage })
         {avatarContent}
       </div>
       <div>
-        {message.isLoading ? (
+        {message.isLoading && !message.content ? (
+          // Estado inicial: aún no ha llegado el primer token (#38).
           <div className="message-loading">
             <span className="spinner spinner-sm" />
             Pensando...
@@ -26,6 +27,8 @@ export default function ChatMessageBubble({ message }: { message: ChatMessage })
           <div className="message-bubble">
             <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
               {message.content}
+              {/* #38: cursor parpadeante mientras llega el streaming */}
+              {message.isLoading && <span className="typing-cursor" aria-hidden="true">▍</span>}
             </div>
 
             {/* Action card shown on assistant messages with parsed action */}

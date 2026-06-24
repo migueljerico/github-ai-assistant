@@ -68,13 +68,14 @@ const geminiLimiter = rateLimit({
 // The user's API key travels in the HTTPS request body and is used only for
 // the duration of this call — it is never stored, logged, or cached.
 //
-// Request body: { apiKey, model, messages: [{role, content}], systemPrompt, mode?: 'chat'|'action' }
-// Response:     { text }
+// Request body: { apiKey, model, messages: [{role, content}], systemPrompt, mode?, stream? }
+// Response:     { text }  — o, si stream===true, un flujo SSE de `data: {"text": "<chunk>"}`
+//               terminado con `data: [DONE]` (#38).
 //
 // Groq calls are NOT proxied — they go directly from the browser (no EU block).
 app.post('/api/gemini', geminiLimiter, async (req, res) => {
-  // 🔥 OPCIÓN D: Extraemos 'mode' opcional del body
-  const { apiKey, model, messages, systemPrompt, mode } = req.body;
+  // 🔥 OPCIÓN D: Extraemos 'mode' opcional del body. #38: 'stream' opcional.
+  const { apiKey, model, messages, systemPrompt, mode, stream } = req.body;
 
   if (!apiKey || !model || !Array.isArray(messages) || !systemPrompt) {
     return res.status(400).json({
@@ -91,7 +92,7 @@ app.post('/api/gemini', geminiLimiter, async (req, res) => {
 
     // 🔥 OPCIÓN D: Log para ver el modo en Cloud Run (útil para debugging)
     if (mode) {
-      console.log(`[Opción D] Gemini proxy received mode: ${mode}`);
+      console.log(`[Opción D] Gemini proxy received mode: ${mode}${stream ? ' (streaming)' : ''}`);
     }
 
     // Translate from internal Message format → Gemini SDK format.
@@ -104,12 +105,33 @@ app.post('/api/gemini', geminiLimiter, async (req, res) => {
 
     const chat = gemModel.startChat({ history });
     const lastMessage = messages[messages.length - 1];
+
+    // #38: streaming vía SSE. Obtenemos el stream ANTES de enviar cabeceras, para
+    // que un fallo de setup (clave/modelo inválidos) salga como JSON de error.
+    if (stream) {
+      const result = await chat.sendMessageStream(lastMessage.content);
+      res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      if (typeof res.flushHeaders === 'function') res.flushHeaders();
+      for await (const chunk of result.stream) {
+        const t = chunk.text();
+        if (t) res.write(`data: ${JSON.stringify({ text: t })}\n\n`);
+      }
+      res.write('data: [DONE]\n\n');
+      return res.end();
+    }
+
     const result = await chat.sendMessage(lastMessage.content);
     const text = result.response.text();
-
     res.json({ text });
   } catch (err) {
     console.error('Gemini proxy error:', err);
+    // Si ya empezó el stream (cabeceras enviadas), solo cerramos la conexión.
+    if (res.headersSent) {
+      try { res.end(); } catch { /* noop */ }
+      return;
+    }
     // Surface the HTTP status from the Gemini SDK error when available
     const status = err?.status ?? err?.httpErrorCode ?? 500;
     const safeStatus = (status >= 400 && status < 600) ? status : 500;

@@ -549,6 +549,15 @@ textarea.input { resize: none; line-height: 1.6; }
   padding: 12px 16px;
 }
 
+/* #38: cursor parpadeante durante el streaming de la respuesta */
+.typing-cursor {
+  display: inline-block;
+  margin-left: 1px;
+  color: var(--primary-color, #22d3ee);
+  animation: blink 1s steps(2, start) infinite;
+}
+@keyframes blink { to { visibility: hidden; } }
+
 /* ── Chat Input ───────────────────────────────────────────────────────────── */
 .chat-input-area {
   padding: 16px 20px;

@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.0] — 2026-06-24
+
+### Added
+- **Streaming de respuestas token a token (#38)** — En modo chat (opiniones/consultas), la respuesta de la IA aparece **incrementalmente** (tipo ChatGPT) en vez de de golpe, con un cursor parpadeante mientras llega. Funciona en los **tres proveedores**:
+  - `services/gemini.ts`: `callAI` acepta un callback opcional `onToken(textoAcumulado)`; `callOpenAICompatible` (Groq/OpenRouter) pide `stream: true` y parsea el SSE de deltas; `callGeminiDirect` consume el SSE del proxy. Helper compartido `readSSEStream`. Semántica "set" (texto acumulado) → segura ante el reintento transitorio.
+  - `server/index.js`: el proxy `POST /api/gemini` admite `stream: true` y responde con **Server-Sent Events** usando `chat.sendMessageStream` (errores previos al stream siguen saliendo como JSON).
+  - `services/assistantActions.ts`: `runSend` pasa `onToken` solo en modo chat (las acciones, que devuelven JSON, no se streamean). `ChatMessage.tsx` renderiza el texto a medida que llega.
+
+### Testing
+- Tests de streaming: `callAI` SSE (Groq y proxy Gemini), `runSend` (pasa/omite `onToken` según modo) y render incremental en `ChatMessage`. Cobertura/cliente: **259 tests**.
+
+## [2.8.2] — 2026-06-24
+
+### Changed
+- **Refactor de `App.tsx` (#42, en 3 fases) — sin cambio de comportamiento.** Toda la lógica del chat sale del componente a módulos testeables:
+  - **Fase 1:** `DocModal` extraído a `components/confirm/DocModal.tsx` (con botón Draft PR) + nuevo helper puro `utils/repoRef.ts` (`resolveRepoRef`, dedup del patrón `owner/repo`).
+  - **Fase 2:** flujos "de botón" a `services/assistantActions.ts` con **dependencias inyectadas** (`runDocumentRepo`, `runLoadRepoContext`, `runSummarizeThread`, `runCommitDocs`, `runCreateDraftPr`).
+  - **Fase 3:** el **núcleo** `runSend` (loop chat/acción), `runConfirmAction` y `runCancelAction` (*propón→confirma→ejecuta*).
+  - `App.tsx` queda como JSX + estado + wrappers finos: **614 → 264 líneas**.
+
+### Docs
+- Nuevo **principio rector de producto** en `CLAUDE.md`: toda función debe entender lenguaje natural y guiar al usuario sin presuponer conocimientos de GitHub (números de issue, URLs, Base64…), manteniendo *propón→confirma→ejecuta* y Zero-Storage.
+
+### Testing
+- Tests de `assistantActions.ts` (~98%, todos los flujos + ramas de error), `DocModal` (100%) y `resolveRepoRef` (100%). Cobertura global **~50% → ~62%**. Cobertura/cliente: **251 tests**.
+
 ## [2.8.1] — 2026-06-23
 
 ### Fixed

@@ -209,12 +209,42 @@ export interface AIProviderConfig {
   model: string;
 }
 
+// ── Streaming (SSE) — helper compartido (#38) ─────────────────────────────────
+/**
+ * Lee un cuerpo `text/event-stream` y llama `onChunk` con el payload de cada
+ * línea `data:` (ignora `[DONE]` y los keep-alive vacíos). Soporta tanto el SSE
+ * de los proveedores OpenAI-compatibles como el de nuestro proxy de Gemini.
+ */
+async function readSSEStream(res: Response, onChunk: (json: string) => void): Promise<void> {
+  const reader = res.body!.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  const flushLine = (line: string) => {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith('data:')) return;
+    const payload = trimmed.slice(5).trim();
+    if (payload && payload !== '[DONE]') onChunk(payload);
+  };
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
+    for (const line of lines) flushLine(line);
+  }
+  flushLine(buffer);
+}
+
 // ── OpenAI-compatible implementation (Groq, OpenRouter, …) ────────────────────
 /**
  * Cliente para cualquier API compatible con OpenAI Chat Completions (Groq,
  * OpenRouter, etc.). Mismo cuerpo y misma forma de respuesta para todos; solo
  * cambian el `endpoint` y, opcionalmente, headers extra (p.ej. el `X-Title` de
  * OpenRouter).
+ *
+ * Si se pasa `onToken`, se solicita `stream: true` y se entrega el texto
+ * **acumulado** en cada fragmento (semántica "set": segura ante reintentos).
  */
 async function callOpenAICompatible(
   endpoint: string,
@@ -224,11 +254,13 @@ async function callOpenAICompatible(
   systemPrompt: string,
   mode?: 'chat' | 'action',  // ← OPCIÓN D: ajusta la temperatura según el modo
   extraHeaders?: Record<string, string>,
+  onToken?: (textSoFar: string) => void,  // ← #38: streaming opcional
 ): Promise<string> {
   // Modo chat necesita más creatividad (0.7); modo acción debe ser determinista
   // para producir JSON estable (0.1). Por defecto se mantiene el comportamiento
   // determinista previo.
   const temperature = mode === 'chat' ? 0.7 : 0.1;
+  const stream = Boolean(onToken);
 
   const body = {
     model,
@@ -241,6 +273,7 @@ async function callOpenAICompatible(
     ],
     temperature,
     max_tokens: 4096,
+    ...(stream ? { stream: true } : {}),
   };
 
   const res = await fetch(endpoint, {
@@ -260,16 +293,30 @@ async function callOpenAICompatible(
     throw Object.assign(new Error((msg || `AI provider error ${res.status}`) + hint), { status: res.status });
   }
 
+  // Mensaje de error reutilizado cuando el modelo no devuelve contenido.
+  const emptyError = 'El modelo no devolvió contenido. Prueba con otro modelo del desplegable ' +
+    '(p.ej. Gemma o Llama 3.3 70B free) o con un repositorio más pequeño.';
+
+  if (stream && res.body) {
+    let acc = '';
+    await readSSEStream(res, (json) => {
+      try {
+        const parsed = JSON.parse(json) as { choices?: Array<{ delta?: { content?: string } }> };
+        const delta = parsed.choices?.[0]?.delta?.content;
+        if (delta) { acc += delta; onToken!(acc); }
+      } catch { /* línea no-JSON (keep-alive): se ignora */ }
+    });
+    if (!acc.trim()) throw new Error(emptyError);
+    return acc;
+  }
+
   const data = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
   const content = data.choices?.[0]?.message?.content;
   if (!content || !content.trim()) {
     // Algunos modelos gratuitos devuelven contenido vacío (o sin choices) ante
     // prompts grandes; damos un error claro y accionable en vez de una burbuja
     // vacía. No se marca como transitorio (suele ser determinista del modelo).
-    throw new Error(
-      'El modelo no devolvió contenido. Prueba con otro modelo del desplegable ' +
-      '(p.ej. Gemma o Llama 3.3 70B free) o con un repositorio más pequeño.',
-    );
+    throw new Error(emptyError);
   }
   return content;
 }
@@ -282,18 +329,14 @@ async function callGeminiDirect(
   messages: Message[],
   systemPrompt: string,
   mode?: 'chat' | 'action',  // ← NUEVO: modo opcional
+  onToken?: (textSoFar: string) => void,  // ← #38: streaming opcional (vía proxy SSE)
 ): Promise<string> {
-  const body: Record<string, unknown> = { 
-    apiKey, 
-    model, 
-    messages, 
-    systemPrompt 
-  };
-  
+  const stream = Boolean(onToken);
+  const body: Record<string, unknown> = { apiKey, model, messages, systemPrompt };
+
   // Solo añadir mode si está definido (retrocompatible)
-  if (mode) {
-    body.mode = mode;
-  }
+  if (mode) body.mode = mode;
+  if (stream) body.stream = true;
 
   const res = await fetch('/api/gemini', {
     method: 'POST',
@@ -310,6 +353,20 @@ async function callGeminiDirect(
     );
   }
 
+  if (stream && res.body) {
+    let acc = '';
+    await readSSEStream(res, (json) => {
+      try {
+        const parsed = JSON.parse(json) as { text?: string };
+        if (parsed.text) { acc += parsed.text; onToken!(acc); }
+      } catch { /* línea no-JSON: se ignora */ }
+    });
+    if (!acc.trim()) {
+      throw new Error('El modelo no devolvió contenido. Prueba con otro modelo o vuelve a intentarlo.');
+    }
+    return acc;
+  }
+
   const data = await res.json() as { text: string };
   return data.text;
 }
@@ -324,15 +381,18 @@ export async function callAI(
   apiKey: string,
   model: string,
   mode?: 'chat' | 'action',  // ← NUEVO: modo opcional
+  onToken?: (textSoFar: string) => void,  // ← #38: si se pasa, la respuesta llega en streaming
 ): Promise<string> {
   const def = getProvider(provider);
   // Reintento ante errores transitorios del servidor (503 "high demand",
   // "Provider returned error"…). La validación de clave llama a las funciones
   // internas directamente, así que no se ve afectada por este reintento.
+  // Con streaming, `onToken` recibe el texto ACUMULADO (semántica "set"): si hay
+  // reintento, el stream reinicia y sobrescribe la burbuja sin duplicar.
   return withTransientRetry(() =>
     def.transport === 'gemini-proxy'
-      ? callGeminiDirect(apiKey, model, messages, systemPrompt, mode)
-      : callOpenAICompatible(def.chatEndpoint!, apiKey, model, messages, systemPrompt, mode, def.extraHeaders),
+      ? callGeminiDirect(apiKey, model, messages, systemPrompt, mode, onToken)
+      : callOpenAICompatible(def.chatEndpoint!, apiKey, model, messages, systemPrompt, mode, def.extraHeaders, onToken),
   );
 }
 

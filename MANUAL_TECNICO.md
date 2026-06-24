@@ -1,6 +1,6 @@
 # 📖 Manual Técnico — GitHub AI Assistant
 
-**Versión:** v2.8.1 · Junio 2026
+**Versión:** v2.9.0 · Junio 2026
 
 ---
 
@@ -69,9 +69,14 @@ github-ai-assistant/
 │       │   ├── github.ts           # Wrapper GitHub REST API v3
 │       │   ├── providers.ts        # Registro de proveedores (Gemini/Groq/OpenRouter)
 │       │   ├── gemini.ts           # Cliente unificado (callAI, OpenAI-compatible + proxy)
+│       │   ├── assistantActions.ts # Orquestación del chat (runSend/Confirm/Cancel + botones) #42
+│       │   ├── threadSummary.ts    # Resumen de hilos de issues/PRs (#32)
+│       │   ├── docPublisher.ts     # Publicación de docs: commit directo / Draft PR (#45)
 │       │   └── actionExecutor.ts   # Ejecutor de acciones confirmadas
 │       ├── utils/
-│       │   └── formatResult.ts     # Formateador de resultados de API
+│       │   ├── formatResult.ts     # Formateador de resultados de API
+│       │   ├── repoRef.ts          # resolveRepoRef (owner/repo vs repo)
+│       │   └── modeDetection.ts    # Detección de modo chat vs action
 │       └── types/index.ts          # Tipos compartidos TypeScript
 ├── server/
 │   └── index.js              # Express: OAuth + proxy Gemini + rate limit + static
@@ -415,7 +420,7 @@ gcloud run deploy github-ai-assistant \
 - **CI:** GitHub Actions (`.github/workflows/ci.yml`) ejecuta en cada push/PR a `main`
   el lint, los tests del cliente con cobertura y los tests del servidor
   (job `server-test`). Ver "Pipeline CI/CD" en la sección de despliegue.
-- **Cobertura actual:** ≈50% (ver Codecov para el valor exacto) · 215 tests en el cliente
+- **Cobertura actual:** ≈64% (ver Codecov para el valor exacto) · 259 tests en el cliente
 
 ### Módulos testeados
 
@@ -429,6 +434,9 @@ gcloud run deploy github-ai-assistant \
 | `gemini.ts` | parseGeminiAction, detectPrimaryLanguage, temperatura por modo, contexto de repo (#41), enrutado OpenRouter, reintento transitorio (`withTransientRetry`) | ✅ |
 | `docPublisher.ts` | Commit directo / Draft PR (#45) | ✅ |
 | `threadSummary.ts` | Resumen de hilos issue/PR (#32): parseo, issue vs PR, hilo vacío | ✅ |
+| `assistantActions.ts` | Orquestación del chat (#42): `runSend` (chat/acción, confirmación, solo lectura, PUT, error), `runConfirmAction` (single/multi-repo), `runCancelAction` + flujos de botón (~98%) | ✅ |
+| `repoRef.ts` | `resolveRepoRef` (owner/repo vs repo) | ✅ |
+| `DocModal.tsx` | Pestañas README/MANUAL, callbacks, estado busy | ✅ |
 | `modeDetection.ts` | Chat vs action; sesgo a chat con contexto de repo | ✅ |
 | `formatResult.ts` | Arrays, objetos, strings, JSON | ✅ |
 | `releaseGenerator.ts` | createGitHubRelease, notas, suggestNextVersion | ✅ |

@@ -10,7 +10,7 @@
 ![OpenRouter](https://img.shields.io/badge/OpenRouter-6566F1?style=for-the-badge&logo=openai&logoColor=white)
 ![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
 ![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
-![Versión](https://img.shields.io/badge/Versión-v2.8.1-blue?style=for-the-badge)
+![Versión](https://img.shields.io/badge/Versión-v2.9.0-blue?style=for-the-badge)
 ![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)
 [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
 
@@ -77,6 +77,7 @@ El proyecto evolucionó de un prototipo en **Google AI Studio** a una aplicació
 | Funcionalidad | Descripción |
 |---|---|
 | 💬 **Chat en lenguaje natural** | Escribe instrucciones como "crea un repo público llamado mi-proyecto" y la IA las ejecuta |
+| ⚡ **Respuestas en streaming** | Las opiniones/consultas aparecen token a token (tipo ChatGPT), sin esperar a que termine toda la respuesta |
 | ✅ **Panel de confirmación** | Toda operación de escritura muestra lo que va a hacer y espera tu aprobación |
 | 📋 **Historial de sesión** | Log exportable de todas las acciones con estado (✅ ❌ ⏸️ ⏳) |
 | 📄 **Plantillas predefinidas** | README, `.gitignore` y licencias por tipo de proyecto, pre-formuladas para el chat |
@@ -292,7 +293,7 @@ npm run test:coverage # Tests con reporte de cobertura
 
 ### Cobertura actual
 
-- **Cobertura total:** ≈50% (215 tests en el cliente; ver Codecov para el valor exacto)
+- **Cobertura total:** ≈64% (259 tests en el cliente; ver Codecov para el valor exacto)
 - **Módulos testeados:** AuthContext, AIProviderContext, providers, actionExecutor, github, gemini, docPublisher, modeDetection, formatResult, releaseGenerator, pdfReader, pdfAdvanced, useChat, useActions, ChatArea, ChatInput, ConfirmModal, Header, TemplatePanel, AIProviderPanel, AIProviderBadge, RepoContextButton — más los tests del servidor (rate limiter)
 - **Badge con cobertura actual:** [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
 

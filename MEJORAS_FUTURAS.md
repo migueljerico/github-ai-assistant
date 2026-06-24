@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v2.8.1 · Junio 2026
+**Actualizado a:** v2.9.0 · Junio 2026
 
 ---
 
@@ -25,6 +25,8 @@ Estado del código, mejoras pendientes y roadmap del proyecto.
 | 45 | Generación de documentación vía Draft PR | App.tsx, github.ts | v2.6.0 |
 | 15 | Multi-proveedor (OpenRouter) vía registro de proveedores | services/providers.ts, gemini.ts, AIProviderPanel.tsx | v2.7.0 |
 | 32 | Resumir hilos de comentarios de issues/PRs | github.ts, services/threadSummary.ts, ThreadSummaryButton.tsx | v2.8.0 |
+| 42 | Refactor de App.tsx (DocModal + lógica del chat a módulos testeables) | services/assistantActions.ts, components/confirm/DocModal.tsx, utils/repoRef.ts | v2.8.2 |
+| 38 | Streaming de respuestas (SSE) token a token en modo chat | server/index.js, services/gemini.ts, services/assistantActions.ts, ChatMessage.tsx | v2.9.0 |
 
 ---
 
@@ -66,14 +68,14 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 #### #26 — Mantener y expandir cobertura de tests con Codecov
 **Esfuerzo:** Continuo (2-4h por sprint)
 
-**Estado actual (v2.8.1):** ✅ Infraestructura completa implementada
+**Estado actual (v2.9.0):** ✅ Infraestructura completa implementada
 
 **Progreso realizado:**
 - ✅ Configuración de Vitest + Codecov
 - ✅ CI con GitHub Actions ejecutando tests (cliente + servidor) automáticamente
 - ✅ Badge de Codecov en README
-- ✅ Cobertura actual: **≈50%** (ver Codecov para el valor exacto)
-- ✅ 215 tests en el cliente. Implementados para:
+- ✅ Cobertura actual: **≈64%** (ver Codecov para el valor exacto)
+- ✅ 259 tests en el cliente. Implementados para:
   - `AuthContext.tsx` (login, logout, OAuth flow, Zero-Storage)
   - `AIProviderContext.tsx` (conexión/desconexión de proveedores)
   - `providers.ts` (registro de proveedores, detección de modelos 🆓, caché, `pickDefaultModel`)
@@ -82,6 +84,7 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
   - `gemini.ts` (parseGeminiAction, detectPrimaryLanguage, temperatura por modo, contexto de repo #41, enrutado OpenRouter, reintento transitorio `withTransientRetry`/`isTransientAIError`)
   - `docPublisher.ts` (commit directo / Draft PR — #45)
   - `threadSummary.ts` (resumen de hilos #32: `parseThreadInput`, issue vs PR, hilo vacío) + wrappers de comentarios en `github.ts` (paginación)
+  - `assistantActions.ts` (#42: orquestación del chat — `runSend`, `runConfirmAction`, `runCancelAction` y los flujos de botón; ~98%) + `repoRef.ts` (`resolveRepoRef`) + `DocModal.tsx`
   - `modeDetection.ts` (chat vs action; sesgo a chat con contexto de repo)
   - `formatResult.ts`, `releaseGenerator.ts`, `pdfReader.ts`, `pdfAdvanced.ts`
   - Hooks: `useChat`, `useActions`
@@ -89,9 +92,9 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
   - Servidor: `rateLimit.test.js`
 
 **Pendiente:**
-- Aumentar cobertura del 49% al 70% objetivo
+- Aumentar cobertura del ~64% al 70% objetivo
 - Añadir tests para módulos no cubiertos:
-  - `App.tsx` (~0%, el mayor bloque — ver #42)
+  - `App.tsx` (~0%): tras #42 ya es solo JSX + wrappers finos (la lógica vive testeada en `assistantActions.ts`). Llevarlo a verde requiere un **test de integración que renderice `App`** (mockeando los 3 contextos y los hijos) — bajo valor, opcional.
   - `HistoryContext.tsx`
   - `RepoSelector`
   - `DiffViewer`
@@ -101,20 +104,6 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 **Beneficio:** Mayor confianza en cambios futuros; detección temprana de regresiones; documentación viva del comportamiento esperado.
 
 **Nota:** Esta mejora es transversal — cada vez que se resuelva otra mejora (#20, #28, #42, etc.), se deben añadir tests correspondientes.
-
----
-
-#### #38 — Streaming de respuestas (SSE)
-**Esfuerzo:** 5–6h
-
-**Problema actual:** Toda respuesta de la IA se espera completa antes de mostrarse (`result.response.text()` en el proxy; `data.choices[0].message.content` en los proveedores OpenAI-compatible). En generación de documentación o respuestas largas de chat, la UI se siente congelada durante varios segundos.
-
-**Solución propuesta:**
-- El proxy `/api/gemini` y `callOpenAICompatible()` emiten tokens incrementales (Server-Sent Events / streaming de la API).
-- `callAI()` expone un callback `onToken` opcional.
-- `ChatArea` renderiza el texto a medida que llega.
-
-**Beneficio:** UX percibida mucho mejor; feedback inmediato; sensación de fluidez equiparable a las apps de chat modernas.
 
 ---
 
@@ -128,22 +117,6 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 - Focus-trap y `role="dialog"` / `aria-modal` en los modales; cierre con `Esc`; foco inicial gestionado.
 
 **Beneficio:** Robustez de UI ante errores inesperados; accesibilidad para usuarios de teclado y lectores de pantalla.
-
----
-
-#### #42 — Refactor y cobertura de `App.tsx` (incluye extraer DocModal)
-**Esfuerzo:** 6–7h
-
-**Problema actual:** `App.tsx` (~473 líneas, **0% de cobertura**) concentra la orquestación del chat, la detección de modo, los modales y el flujo multi-repo. Es el mayor bloque sin testear del proyecto y el principal foco de mantenibilidad. En particular, `DocModal` está embebido (~80 líneas de JSX) dentro del propio `App.tsx`.
-
-**Solución propuesta:**
-- Extraer `DocModal` (~80 líneas de JSX) a su propio componente `client/src/components/confirm/DocModal.tsx` con props tipadas.
-- Extraer el resto de lógica a hooks ya existentes (`useChat`, `useActions`).
-- Añadir tests para la lógica extraída (detección de modo, manejo de confirmación/ejecución).
-
-**Beneficio:** Mejor mantenibilidad y separación de responsabilidades; `App.tsx` baja de ~473 a ~370 líneas; sube de forma significativa la cobertura global (es el bloque dominante a 0%).
-
-**Nota:** absorbe el antiguo #16 (extraer DocModal) como primer paso del refactor.
 
 ---
 
@@ -335,9 +308,9 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 | Prioridad | Total | ✅ Resueltos | ⏳ Pendientes |
 |---|---|---|---|
 | 🔴 Alta | 8 | 7 (#1, #2, #13, #14, #27, #45, #15) | 1 (#28) |
-| 🟡 Media | 15 | 8 (#12, #17, #18, #19, #21, #37, #41, #32) | 7 (#20, #26, #38, #39, #42, #44, #49) |
+| 🟡 Media | 15 | 10 (#12, #17, #18, #19, #21, #37, #41, #32, #42, #38) | 5 (#20, #26, #39, #44, #49) |
 | 🟢 Baja | 11 | 0 | 11 (#22, #23, #24, #25, #33, #34, #35, #36, #40, #46, #48) |
-| **TOTAL** | **34** | **15** | **19** |
+| **TOTAL** | **34** | **17** | **17** |
 
 > **Nota de numeración:** los huecos en #16, #29, #30, #31, #43 y #47 son intencionados — esos ítems se fusionaron o descartaron en revisiones del roadmap y sus números no se reutilizan (convención del documento). #16 se fusionó en #42; #29 en #40.
 
