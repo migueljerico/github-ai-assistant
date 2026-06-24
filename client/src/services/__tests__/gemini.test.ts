@@ -8,6 +8,7 @@ import {
   CHAT_PROMPT,
   isTransientAIError,
   withTransientRetry,
+  generateFileDoc,
 } from '../gemini';
 
 describe('gemini.ts - Utilidades', () => {
@@ -403,5 +404,46 @@ describe('callAI - streaming (#38)', () => {
 
     expect(out).toBe('completo');
     expect((fetchMock.mock.calls[0][1] as RequestInit).body).not.toContain('"stream":true');
+  });
+});
+
+describe('generateFileDoc - documentar archivo adjunto (#28 Fase 2)', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /** Mockea fetch (transporte groq) devolviendo el contenido indicado. */
+  function mockContent(content: string) {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content } }] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    return fetchMock;
+  }
+
+  const config = { provider: 'groq' as const, apiKey: 'k', model: 'llama' };
+
+  it('devuelve el Markdown generado e incluye nombre+contenido en el prompt', async () => {
+    const fetchMock = mockContent('# Doc\n## Resumen\nTexto.');
+    const doc = await generateFileDoc('notas.txt', 'contenido del archivo', config);
+
+    expect(doc).toBe('# Doc\n## Resumen\nTexto.');
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    const userMsg = body.messages.find((m: { role: string }) => m.role === 'user');
+    expect(userMsg.content).toContain('notas.txt');
+    expect(userMsg.content).toContain('contenido del archivo');
+  });
+
+  it('limpia los fences ```markdown que envuelvan la respuesta', async () => {
+    mockContent('```markdown\n# Título\ncuerpo\n```');
+    const doc = await generateFileDoc('a.md', 'x', config);
+    expect(doc).toBe('# Título\ncuerpo');
+  });
+
+  it('lanza un error claro si tras limpiar fences no queda documentación', async () => {
+    // Contenido no vacío para callAI, pero que al quitar los fences queda vacío.
+    mockContent('```markdown\n```');
+    await expect(generateFileDoc('a.md', 'x', config)).rejects.toThrow(/no devolvió documentación/);
   });
 });

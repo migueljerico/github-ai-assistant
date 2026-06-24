@@ -6,8 +6,10 @@ import { getProvider } from './services/providers';
 import {
   runDocumentRepo, runLoadRepoContext, runSummarizeThread, runCommitDocs, runCreateDraftPr,
   runSend, runConfirmAction, runCancelAction, runAttachFile,
+  runGenerateFileDoc, runPublishFileDoc, runCreateFileRelease,
 } from './services/assistantActions';
 import type { RepoContext, FileContext } from './services/assistantActions';
+import { resolveRepoRef } from './utils/repoRef';
 import Header from './components/layout/Header';
 import HistoryPanel from './components/layout/HistoryPanel';
 import TemplatePanel from './components/templates/TemplatePanel';
@@ -15,6 +17,7 @@ import ChatArea from './components/chat/ChatArea';
 import ChatInput from './components/chat/ChatInput';
 import ConfirmModal from './components/confirm/ConfirmModal';
 import DocModal from './components/confirm/DocModal';
+import FilePublishModal from './components/confirm/FilePublishModal';
 import type { ChatMessage, GitHubRepo, PendingAction, RepoAnalysis } from './types';
 
 // Generate a simple unique ID
@@ -59,6 +62,10 @@ export default function App() {
 
   // #28 - Archivo local adjunto como contexto del chat
   const [fileContext, setFileContext] = useState<FileContext | null>(null);
+
+  // #28 Fase 2 - Documentación generada del archivo, pendiente de publicar
+  const [filePublish, setFilePublish] = useState<{ fileName: string; doc: string } | null>(null);
+  const [isPublishingFile, setIsPublishingFile] = useState(false);
 
   // 🔥 OPCIÓN D - Modo override: 'auto' | 'chat' | 'action'
   // El setter aún no está cableado a la UI; de momento queda fijado en 'auto'.
@@ -146,6 +153,50 @@ export default function App() {
     setFileContext(null);
     addMessage({ role: 'assistant', content: '🧹 Archivo adjunto descartado.' });
   }, [addMessage]);
+
+  // ── #28 Fase 2: documentar el archivo adjunto y abrir el modal de publicación ─
+  const handleDocumentAndPublishFile = useCallback(async () => {
+    // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto
+    if (!fileContext || !token || !user || !provider || !apiKey || !model) return;
+    const doc = await runGenerateFileDoc(
+      { token, user, providerName, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+      { provider, apiKey, model },
+      fileContext,
+    );
+    if (doc) setFilePublish({ fileName: fileContext.name, doc });
+  }, [fileContext, token, user, provider, apiKey, model, providerName, addMessage, updateMessage, addEntry, updateEntry]);
+
+  // ── #28 Fase 2: publicar la doc generada como commit directo o Draft PR ──────
+  const handlePublishFileDoc = useCallback(async (repoInput: string, draft: boolean) => {
+    if (!filePublish || !token || !user) return;
+    const ref = resolveRepoRef(repoInput, user.login);
+    setIsPublishingFile(true);
+    try {
+      await runPublishFileDoc(
+        { token, user, providerName, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+        ref.owner, ref.repo, filePublish.fileName, filePublish.doc, { draft },
+      );
+    } finally {
+      setIsPublishingFile(false);
+      setFilePublish(null);
+    }
+  }, [filePublish, token, user, providerName, addMessage, updateMessage, addEntry, updateEntry]);
+
+  // ── #28 Fase 2: publicar la doc generada como GitHub Release ─────────────────
+  const handleCreateFileRelease = useCallback(async (repoInput: string, version: string) => {
+    if (!filePublish || !token || !user) return;
+    const ref = resolveRepoRef(repoInput, user.login);
+    setIsPublishingFile(true);
+    try {
+      await runCreateFileRelease(
+        { token, user, providerName, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+        ref.owner, ref.repo, filePublish.fileName, filePublish.doc, version || undefined,
+      );
+    } finally {
+      setIsPublishingFile(false);
+      setFilePublish(null);
+    }
+  }, [filePublish, token, user, providerName, addMessage, updateMessage, addEntry, updateEntry]);
 
   // ── Document repo ──────────────────────────────────────────────────────────
   const handleDocumentRepo = useCallback(async (repoInput: string) => {
@@ -253,6 +304,7 @@ export default function App() {
             fileContextName={fileContext?.name ?? null}
             onAttachFile={handleAttachFile}
             onClearFile={handleClearFile}
+            onPublishFile={handleDocumentAndPublishFile}
           />
         </div>
 
@@ -278,6 +330,19 @@ export default function App() {
           onCancel={() => setDocAnalysis(null)}
           isCommitting={isCommittingDocs}
           isCreatingDraftPr={isCreatingDraftPr}
+        />
+      )}
+
+      {/* #28 Fase 2 - Modal de publicación de la doc generada del archivo */}
+      {filePublish && (
+        <FilePublishModal
+          fileName={filePublish.fileName}
+          doc={filePublish.doc}
+          busy={isPublishingFile}
+          onCommit={(repo) => handlePublishFileDoc(repo, false)}
+          onDraftPr={(repo) => handlePublishFileDoc(repo, true)}
+          onRelease={handleCreateFileRelease}
+          onCancel={() => setFilePublish(null)}
         />
       )}
     </>

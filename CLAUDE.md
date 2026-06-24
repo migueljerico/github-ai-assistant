@@ -12,7 +12,7 @@ probar, y las convenciones que es fácil romper sin querer.
 
 ## 1. Visión general
 
-**GitHub AI Assistant** (v3.0.0) es una app web que permite operar la **GitHub
+**GitHub AI Assistant** (v3.1.0) es una app web que permite operar la **GitHub
 REST API en lenguaje natural** a través de un proveedor de IA (Google Gemini o
 Groq Cloud). El usuario escribe una instrucción, la IA propone una acción, y
 **cada operación de escritura se confirma manualmente** antes de ejecutarse.
@@ -123,11 +123,13 @@ se guarda ni se loguea en el servidor.
 │   │   │   ├── providers.ts      # Registro de proveedores de IA (Gemini/Groq/OpenRouter)
 │   │   │   │                     #   + fetchModels() (catálogo dinámico, etiqueta 🆓)
 │   │   │   ├── gemini.ts         # Cliente IA multi-proveedor (callAI, callOpenAICompatible,
-│   │   │   │                     #   parseGeminiAction, generateRepoDocs) + system prompts
+│   │   │   │                     #   parseGeminiAction, generateRepoDocs, generateFileDoc #28) + system prompts
 │   │   │   ├── github.ts         # Wrappers tipados de la GitHub REST API (ghFetch, ...)
 │   │   │   ├── assistantActions.ts # Orquestación del chat extraída de App.tsx (#42):
 │   │   │   │                     #   runSend/runConfirmAction/runCancelAction + flujos de botón
-│   │   │   ├── docPublisher.ts   # Publica docs: commit directo o Draft PR (#45)
+│   │   │   │                     #   (incl. documentar+publicar archivo #28 Fase 2)
+│   │   │   ├── docPublisher.ts   # Publica docs: commit directo o Draft PR (#45);
+│   │   │   │                     #   publishFileDoc de fichero suelto (#28 Fase 2)
 │   │   │   ├── threadSummary.ts  # Resume hilos de issues/PRs vía LLM (#32)
 │   │   │   └── actionExecutor.ts # Ejecuta acciones CONFIRMADAS; resuelve placeholders
 │   │   ├── context/

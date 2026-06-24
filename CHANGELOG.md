@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0] — 2026-06-24
+
+### Added
+- **Documentar y publicar archivos — Fase 2 (#28)** — Con un archivo adjunto, nuevo botón **"📤 Documentar y publicar"**: la IA genera documentación en **Markdown** a partir del contenido y se abre un modal para **publicarla** donde elijas.
+  - **Tres formas de publicar** (cada una *propón→confirma→ejecuta*): **📥 Commit directo** del fichero (`docs/{nombre}.md`) a la rama por defecto, **🔀 Draft PR** revisable, o **🏷️ GitHub Release** (usando la doc como notas, con versión sugerida automáticamente si no la indicas).
+  - **Repo destino en lenguaje natural:** acepta `owner/repo` o solo el nombre (el owner es tu usuario). Vista previa de la documentación antes de publicar.
+  - Reutiliza maquinaria existente: nueva `generateFileDoc` (`gemini.ts`), `publishFileDoc` (`docPublisher.ts`) y `releaseGenerator.ts`; orquestación en `services/assistantActions.ts` (`runGenerateFileDoc`/`runPublishFileDoc`/`runCreateFileRelease`) + nuevo `FilePublishModal.tsx`.
+  - **Cierra el norte de #28:** adjuntar cualquier archivo → documentar → publicar (fichero o release). Más formatos (Excel/CSV, imágenes) quedan para la Fase 3.
+
+### Testing
+- Tests de `generateFileDoc`, `publishFileDoc` (commit + Draft PR), `runGenerateFileDoc`/`runPublishFileDoc`/`runCreateFileRelease` y `FilePublishModal`. Cobertura/cliente: **289 tests**.
+
 ## [3.0.0] — 2026-06-24
 
 ### Added

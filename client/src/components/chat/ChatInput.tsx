@@ -27,6 +27,8 @@ interface ChatInputProps {
   fileContextName: string | null;
   onAttachFile: (file: File) => void;
   onClearFile: () => void;
+  // #28 Fase 2 - Documentar y publicar el archivo adjunto
+  onPublishFile: () => void;
   // 🔥 OPCIÓN D - Props para el selector de modo (opcionales para retrocompatibilidad)
   modeOverride?: 'auto' | 'chat' | 'action';
   onModeOverrideChange?: (mode: 'auto' | 'chat' | 'action') => void;
@@ -50,6 +52,7 @@ export default function ChatInput({
   fileContextName,
   onAttachFile,
   onClearFile,
+  onPublishFile,
   modeOverride = 'auto',
   onModeOverrideChange,
 }: ChatInputProps) {
@@ -181,6 +184,18 @@ export default function ChatInput({
           onAttach={onAttachFile}
           onClear={onClearFile}
         />
+
+        {fileContextName && (
+          <button
+            id="publish-file-btn"
+            className="doc-repo-btn"
+            type="button"
+            disabled={disabled}
+            onClick={onPublishFile}
+          >
+            📤 Documentar y publicar
+          </button>
+        )}
       </div>
     </div>
   );

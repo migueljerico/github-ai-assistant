@@ -18,7 +18,7 @@ import {
   createBranch,
   createPullRequest,
 } from '../github';
-import { writeDocFiles, buildDocsPrBody, createDocsDraftPr } from '../docPublisher';
+import { writeDocFiles, buildDocsPrBody, createDocsDraftPr, publishFileDoc } from '../docPublisher';
 
 const TOKEN = 'tok';
 const OWNER = 'owner';
@@ -105,6 +105,46 @@ describe('docPublisher', () => {
         TOKEN, OWNER, REPO, expect.any(String), 'docs/auto-123', 'main', expect.any(String), true
       );
       expect(result).toEqual({ pr: { number: 7, html_url: 'http://pr/7' }, branchName: 'docs/auto-123' });
+    });
+  });
+
+  describe('publishFileDoc (#28 Fase 2)', () => {
+    it('commit directo: escribe UN fichero en la rama por defecto, sin PR', async () => {
+      vi.mocked(getFileContents).mockResolvedValue({ sha: 'existing' } as any);
+      vi.mocked(createOrUpdateFile).mockResolvedValue({ commit: { sha: 'c' } } as any);
+
+      const result = await publishFileDoc(TOKEN, OWNER, REPO, 'docs/notas.md', '# Doc', {});
+
+      expect(createOrUpdateFile).toHaveBeenCalledTimes(1);
+      expect(createOrUpdateFile).toHaveBeenCalledWith(
+        TOKEN, OWNER, REPO, 'docs/notas.md', '# Doc', expect.any(String), 'existing'
+      );
+      // commit directo → no toca rama ni PR
+      expect(createBranch).not.toHaveBeenCalled();
+      expect(createPullRequest).not.toHaveBeenCalled();
+      expect(result).toEqual({ pr: null, branchName: null });
+    });
+
+    it('Draft PR: bifurca rama, escribe el fichero en ella y abre el PR draft', async () => {
+      vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
+      vi.mocked(getBranchSha).mockResolvedValue('base-sha');
+      vi.mocked(createBranch).mockResolvedValue({} as any);
+      vi.mocked(getFileContents).mockRejectedValue(new Error('404')); // fichero nuevo
+      vi.mocked(createOrUpdateFile).mockResolvedValue({ commit: { sha: 'c' } } as any);
+      vi.mocked(createPullRequest).mockResolvedValue({ number: 9, html_url: 'http://pr/9' } as any);
+
+      const result = await publishFileDoc(TOKEN, OWNER, REPO, 'docs/notas.md', '# Doc', { draft: true }, 456);
+
+      expect(createBranch).toHaveBeenCalledWith(TOKEN, OWNER, REPO, 'docs/file-456', 'base-sha');
+      // fichero escrito en la rama nueva (8º arg) con sha undefined (no existía)
+      expect(createOrUpdateFile).toHaveBeenCalledWith(
+        TOKEN, OWNER, REPO, 'docs/notas.md', '# Doc', expect.any(String), undefined, 'docs/file-456'
+      );
+      // PR draft contra la rama por defecto
+      expect(createPullRequest).toHaveBeenCalledWith(
+        TOKEN, OWNER, REPO, expect.any(String), 'docs/file-456', 'main', expect.any(String), true
+      );
+      expect(result).toEqual({ pr: { number: 9, html_url: 'http://pr/9' }, branchName: 'docs/file-456' });
     });
   });
 });

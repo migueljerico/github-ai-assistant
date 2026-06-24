@@ -10,7 +10,7 @@
 ![OpenRouter](https://img.shields.io/badge/OpenRouter-6566F1?style=for-the-badge&logo=openai&logoColor=white)
 ![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
 ![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
-![Versión](https://img.shields.io/badge/Versión-v3.0.0-blue?style=for-the-badge)
+![Versión](https://img.shields.io/badge/Versión-v3.1.0-blue?style=for-the-badge)
 ![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)
 [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
 
@@ -84,6 +84,7 @@ El proyecto evolucionó de un prototipo en **Google AI Studio** a una aplicació
 | 🗂️ **Operaciones multi-repo** | Aplica la misma acción a varios repositorios seleccionados simultáneamente |
 | 🤖 **Documenta tu repositorio entero** | El agente lee hasta 80 archivos y genera README + MANUAL_TECNICO de forma automática |
 | 📎 **Adjunta archivos locales** | Sube un PDF o archivo de texto/código y trabaja con él en lenguaje natural (resumir, documentar…). Se lee **solo en tu navegador** — no se sube a ningún servidor |
+| 📤 **Documenta y publica un archivo** | A partir del archivo adjunto, la IA genera documentación y la publicas donde elijas: **commit** del fichero, **Draft PR** revisable o **GitHub Release** (con versión sugerida) — cada paso con confirmación |
 | 📝 **Resume hilos de issues/PRs** | Introduce `owner/repo#42` y la IA resume la discusión (TL;DR · puntos clave · decisiones/pendientes · tono); en PRs incluye los comentarios de revisión |
 | 🔑 **Multi-proveedor de IA** | **Groq Cloud**, **Google Gemini** y **OpenRouter** (pasarela a OpenAI, Claude, Llama… con modelos 🆓 gratuitos y de pago) — usas tu propia clave |
 | 🔒 **Autenticación OAuth** | Flujo GitHub OAuth completo con fallback a PAT manual |
@@ -107,6 +108,7 @@ usuario que aquí quedan cubiertas:
 | **Resumen de hilos de issues/PRs bajo demanda** | ✅ Un clic: `owner/repo#42` → TL;DR · puntos clave · decisiones · tono | Parcial (resúmenes de PR), no como acción integrada del asistente |
 | **Documentación automática del repo** | ✅ Genera README + MANUAL_TECNICO (commit directo o Draft PR) | No es su foco |
 | **Analizar archivos locales (PDF/texto)** | ✅ Adjuntas el archivo y trabajas con él en lenguaje natural; se lee **solo en el navegador** (Zero-Storage) | No es su foco |
+| **Documentar un archivo y publicarlo en GitHub** | ✅ Genera la doc del archivo adjunto y la publica como commit, Draft PR o Release | No es su foco |
 | **Privacidad de credenciales** | Zero-Storage: las claves de IA viven **solo en memoria** del navegador | Gestionado por la plataforma |
 | **Código abierto / autoalojable** | ✅ | No |
 

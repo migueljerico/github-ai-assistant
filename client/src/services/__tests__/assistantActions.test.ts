@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Mock de los servicios de los que dependen las acciones
 vi.mock('../gemini', () => ({
   generateRepoDocs: vi.fn(),
+  generateFileDoc: vi.fn(),
   buildRepoContextSummary: vi.fn(),
   callAI: vi.fn(),
   parseGeminiAction: vi.fn(),
@@ -18,6 +19,11 @@ vi.mock('../github', () => ({
 vi.mock('../docPublisher', () => ({
   writeDocFiles: vi.fn(),
   createDocsDraftPr: vi.fn(),
+  publishFileDoc: vi.fn(),
+}));
+vi.mock('../../utils/releaseGenerator', () => ({
+  createGitHubRelease: vi.fn(),
+  suggestNextVersion: vi.fn(),
 }));
 vi.mock('../threadSummary', () => ({
   summarizeThread: vi.fn(),
@@ -37,12 +43,13 @@ vi.mock('../../utils/pdfReader', () => ({
   formatFileContentForAI: vi.fn((name: string, content: string) => `FMT(${name}):${content}`),
 }));
 
-import { generateRepoDocs, buildRepoContextSummary, callAI, parseGeminiAction, chatPromptWithContext } from '../gemini';
+import { generateRepoDocs, generateFileDoc, buildRepoContextSummary, callAI, parseGeminiAction, chatPromptWithContext } from '../gemini';
 import { assertSupportedFile, readFileContent } from '../../utils/pdfReader';
 import { fetchRepoTreeRecursive, getFileContents } from '../github';
-import { writeDocFiles, createDocsDraftPr } from '../docPublisher';
+import { writeDocFiles, createDocsDraftPr, publishFileDoc } from '../docPublisher';
 import { summarizeThread, parseThreadInput, listOpenThreads, formatThreadList } from '../threadSummary';
 import { executeAction, executeActionMultiRepo } from '../actionExecutor';
+import { createGitHubRelease, suggestNextVersion } from '../../utils/releaseGenerator';
 import { resolveMode } from '../../utils/modeDetection';
 import {
   runDocumentRepo,
@@ -54,6 +61,9 @@ import {
   runConfirmAction,
   runCancelAction,
   runAttachFile,
+  runGenerateFileDoc,
+  runPublishFileDoc,
+  runCreateFileRelease,
 } from '../assistantActions';
 
 const CONFIG = { provider: 'groq' as const, apiKey: 'k', model: 'm' };
@@ -466,5 +476,112 @@ describe('runSend — contexto de archivo (#28)', () => {
     await runSend(deps, CONFIG, { ...SEND_PARAMS, fileContext: { name: 'a.md', contextText: 'FILE_CTX' } });
 
     expect(chatPromptWithContext).toHaveBeenCalledWith(expect.stringContaining('FILE_CTX'));
+  });
+});
+
+describe('runGenerateFileDoc (#28 Fase 2)', () => {
+  const FILE_CTX = { name: 'notas.txt', contextText: 'contenido' };
+
+  it('genera el doc, muestra progreso y lo devuelve', async () => {
+    vi.mocked(generateFileDoc).mockResolvedValue('# Doc generada');
+    const deps = makeDeps();
+
+    const doc = await runGenerateFileDoc(deps, CONFIG, FILE_CTX);
+
+    expect(generateFileDoc).toHaveBeenCalledWith('notas.txt', 'contenido', CONFIG);
+    expect(doc).toBe('# Doc generada');
+    expect(deps.addMessage).toHaveBeenCalled();
+    expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', expect.objectContaining({ isLoading: false }));
+    expect(deps.setIsChatLoading).toHaveBeenLastCalledWith(false);
+  });
+
+  it('ante un error muestra el mensaje y devuelve null', async () => {
+    vi.mocked(generateFileDoc).mockRejectedValue(new Error('boom'));
+    const deps = makeDeps();
+
+    const doc = await runGenerateFileDoc(deps, CONFIG, FILE_CTX);
+
+    expect(doc).toBeNull();
+    expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', expect.objectContaining({
+      content: expect.stringContaining('boom'),
+      isLoading: false,
+    }));
+  });
+});
+
+describe('runPublishFileDoc (#28 Fase 2)', () => {
+  it('commit directo: deriva docs/{base}.md y muestra confirmación', async () => {
+    vi.mocked(publishFileDoc).mockResolvedValue({ pr: null, branchName: null });
+    const deps = makeDeps();
+
+    await runPublishFileDoc(deps, 'owner', 'repo', 'notas.txt', '# Doc', { draft: false });
+
+    expect(publishFileDoc).toHaveBeenCalledWith('tok', 'owner', 'repo', 'docs/notas.md', '# Doc', { draft: false });
+    expect(deps.addMessage).toHaveBeenCalledWith(expect.objectContaining({
+      content: expect.stringContaining('`docs/notas.md` commiteado'),
+    }));
+    expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'completed' }));
+  });
+
+  it('Draft PR: muestra el enlace al PR', async () => {
+    vi.mocked(publishFileDoc).mockResolvedValue({ pr: { number: 5, html_url: 'http://pr/5' } as any, branchName: 'docs/file-1' });
+    const deps = makeDeps();
+
+    await runPublishFileDoc(deps, 'owner', 'repo', 'notas.txt', '# Doc', { draft: true });
+
+    expect(deps.addMessage).toHaveBeenCalledWith(expect.objectContaining({
+      content: expect.stringContaining('[#5](http://pr/5)'),
+    }));
+  });
+
+  it('ante un error marca la entrada de historial como error', async () => {
+    vi.mocked(publishFileDoc).mockRejectedValue(new Error('falló'));
+    const deps = makeDeps();
+
+    await runPublishFileDoc(deps, 'owner', 'repo', 'a.md', '# D', {});
+
+    expect(deps.addMessage).toHaveBeenCalledWith(expect.objectContaining({
+      content: expect.stringContaining('falló'),
+    }));
+    expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'error' }));
+  });
+});
+
+describe('runCreateFileRelease (#28 Fase 2)', () => {
+  it('usa la versión sugerida cuando no se indica y crea el release', async () => {
+    vi.mocked(suggestNextVersion).mockResolvedValue('v1.2.0');
+    vi.mocked(createGitHubRelease).mockResolvedValue({ url: 'http://rel', id: 1 } as any);
+    const deps = makeDeps();
+
+    await runCreateFileRelease(deps, 'owner', 'repo', 'notas.txt', '# Doc');
+
+    expect(suggestNextVersion).toHaveBeenCalledWith('tok', 'owner', 'repo');
+    expect(createGitHubRelease).toHaveBeenCalledWith('tok', 'owner', 'repo', expect.objectContaining({
+      version: 'v1.2.0',
+      body: '# Doc',
+    }));
+    expect(deps.addMessage).toHaveBeenCalledWith(expect.objectContaining({
+      content: expect.stringContaining('[v1.2.0](http://rel)'),
+    }));
+  });
+
+  it('respeta la versión indicada y NO llama a suggestNextVersion', async () => {
+    vi.mocked(createGitHubRelease).mockResolvedValue({ url: 'http://rel', id: 1 } as any);
+    const deps = makeDeps();
+
+    await runCreateFileRelease(deps, 'owner', 'repo', 'a.md', '# D', 'v9.9.9');
+
+    expect(suggestNextVersion).not.toHaveBeenCalled();
+    expect(createGitHubRelease).toHaveBeenCalledWith('tok', 'owner', 'repo', expect.objectContaining({ version: 'v9.9.9' }));
+  });
+
+  it('ante un error marca la entrada como error', async () => {
+    vi.mocked(suggestNextVersion).mockResolvedValue('v1.0.0');
+    vi.mocked(createGitHubRelease).mockRejectedValue(new Error('rel-err'));
+    const deps = makeDeps();
+
+    await runCreateFileRelease(deps, 'owner', 'repo', 'a.md', '# D');
+
+    expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'error' }));
   });
 });
