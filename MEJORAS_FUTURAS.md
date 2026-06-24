@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v2.9.0 · Junio 2026
+**Actualizado a:** v3.0.0 · Junio 2026
 
 ---
 
@@ -27,6 +27,7 @@ Estado del código, mejoras pendientes y roadmap del proyecto.
 | 32 | Resumir hilos de comentarios de issues/PRs | github.ts, services/threadSummary.ts, ThreadSummaryButton.tsx | v2.8.0 |
 | 42 | Refactor de App.tsx (DocModal + lógica del chat a módulos testeables) | services/assistantActions.ts, components/confirm/DocModal.tsx, utils/repoRef.ts | v2.8.2 |
 | 38 | Streaming de respuestas (SSE) token a token en modo chat | server/index.js, services/gemini.ts, services/assistantActions.ts, ChatMessage.tsx | v2.9.0 |
+| 28 | Subida de archivos locales — **Fase 1**: adjuntar PDF/texto/código como contexto del chat | utils/pdfReader.ts, utils/pdfAdvanced.ts (pdfjs-dist), services/assistantActions.ts (runAttachFile), FileAttachButton.tsx | v3.0.0 |
 
 ---
 
@@ -36,20 +37,16 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 ### 🔴 Alta Prioridad
 
-#### #28 — Subida de archivos locales (PDF, PBIX, Excel, etc.)
-**Esfuerzo:** 8–12h (feature v3.0)
-**Problema actual:** No existe forma de subir archivos del usuario para análisis. Solo se pueden analizar repositorios de GitHub.
+✅ Sin ítems pendientes — todos resueltos.
 
-**Solución propuesta:**
-- UI drag & drop en ChatInput para archivos locales
-- Backend con parser para múltiples formatos (PDF, Excel, PBIX, Word, imágenes)
-- Extracción de texto/contenido de cada formato
-- Análisis con LLM y generación de documentación
-- Almacenamiento temporal en memoria (Zero-Storage)
-
-**Beneficio:** Función clave para usuarios que quieren documentar proyectos locales o analizar documentos externos.
-
-**Nota:** es el ítem más grande del roadmap y el que más ensancha el alcance (de gestión de GitHub a análisis de documentos). Se mantiene como prioridad por decisión de producto.
+> **#28 (subida de archivos) entregado por fases.** **Fase 1** (v3.0.0): adjuntar
+> PDF + texto/código como **contexto** del chat (cliente / Zero-Storage; reutiliza
+> `pdfReader`/`pdfAdvanced` + el patrón #41) → ya permite *"documéntame este archivo"*
+> en lenguaje natural. **Norte pendiente** (se planificará como fases/ítems propios):
+> **Fase 2** — *documentar→publicar*: generar documentación del archivo y publicarla
+> (commit / Draft PR / release) reutilizando `docPublisher`/`releaseGenerator`;
+> **Fase 3** — más formatos: Excel/CSV (SheetJS) e imágenes (visión). PBIX queda fuera
+> (formato propietario complejo).
 
 ---
 
@@ -68,14 +65,14 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 #### #26 — Mantener y expandir cobertura de tests con Codecov
 **Esfuerzo:** Continuo (2-4h por sprint)
 
-**Estado actual (v2.9.0):** ✅ Infraestructura completa implementada
+**Estado actual (v3.0.0):** ✅ Infraestructura completa implementada
 
 **Progreso realizado:**
 - ✅ Configuración de Vitest + Codecov
 - ✅ CI con GitHub Actions ejecutando tests (cliente + servidor) automáticamente
 - ✅ Badge de Codecov en README
 - ✅ Cobertura actual: **≈64%** (ver Codecov para el valor exacto)
-- ✅ 259 tests en el cliente. Implementados para:
+- ✅ 269 tests en el cliente. Implementados para:
   - `AuthContext.tsx` (login, logout, OAuth flow, Zero-Storage)
   - `AIProviderContext.tsx` (conexión/desconexión de proveedores)
   - `providers.ts` (registro de proveedores, detección de modelos 🆓, caché, `pickDefaultModel`)
@@ -307,10 +304,13 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 | Prioridad | Total | ✅ Resueltos | ⏳ Pendientes |
 |---|---|---|---|
-| 🔴 Alta | 8 | 7 (#1, #2, #13, #14, #27, #45, #15) | 1 (#28) |
+| 🔴 Alta | 8 | 8 (#1, #2, #13, #14, #27, #45, #15, #28) | 0 |
 | 🟡 Media | 15 | 10 (#12, #17, #18, #19, #21, #37, #41, #32, #42, #38) | 5 (#20, #26, #39, #44, #49) |
 | 🟢 Baja | 11 | 0 | 11 (#22, #23, #24, #25, #33, #34, #35, #36, #40, #46, #48) |
-| **TOTAL** | **34** | **17** | **17** |
+| **TOTAL** | **34** | **18** | **16** |
+
+> **#28** cuenta como resuelto por su **Fase 1** (v3.0.0); sus fases siguientes
+> (documentar→publicar, más formatos) se trackearán como ítems nuevos cuando se aborden.
 
 > **Nota de numeración:** los huecos en #16, #29, #30, #31, #43 y #47 son intencionados — esos ítems se fusionaron o descartaron en revisiones del roadmap y sus números no se reutilizan (convención del documento). #16 se fusionó en #42; #29 en #40.
 

@@ -4,6 +4,7 @@ import MultiRepoSelector from '../multi-repo/RepoSelector';
 import DocumentRepoButton from './DocumentRepoButton';
 import RepoContextButton from './RepoContextButton';
 import ThreadSummaryButton from './ThreadSummaryButton';
+import FileAttachButton from './FileAttachButton';
 
 interface ChatInputProps {
   value: string;
@@ -22,6 +23,10 @@ interface ChatInputProps {
   repoContextName: string | null;
   onLoadRepoContext: (repoName: string) => void;
   onClearRepoContext: () => void;
+  // #28 - Adjuntar archivo local como contexto
+  fileContextName: string | null;
+  onAttachFile: (file: File) => void;
+  onClearFile: () => void;
   // 🔥 OPCIÓN D - Props para el selector de modo (opcionales para retrocompatibilidad)
   modeOverride?: 'auto' | 'chat' | 'action';
   onModeOverrideChange?: (mode: 'auto' | 'chat' | 'action') => void;
@@ -42,6 +47,9 @@ export default function ChatInput({
   repoContextName,
   onLoadRepoContext,
   onClearRepoContext,
+  fileContextName,
+  onAttachFile,
+  onClearFile,
   modeOverride = 'auto',
   onModeOverrideChange,
 }: ChatInputProps) {
@@ -165,6 +173,13 @@ export default function ChatInput({
           activeContext={repoContextName}
           onLoadContext={onLoadRepoContext}
           onClearContext={onClearRepoContext}
+        />
+
+        <FileAttachButton
+          disabled={disabled}
+          fileName={fileContextName}
+          onAttach={onAttachFile}
+          onClear={onClearFile}
         />
       </div>
     </div>

@@ -5,9 +5,9 @@ import { useAIProvider } from './context/AIProviderContext';
 import { getProvider } from './services/providers';
 import {
   runDocumentRepo, runLoadRepoContext, runSummarizeThread, runCommitDocs, runCreateDraftPr,
-  runSend, runConfirmAction, runCancelAction,
+  runSend, runConfirmAction, runCancelAction, runAttachFile,
 } from './services/assistantActions';
-import type { RepoContext } from './services/assistantActions';
+import type { RepoContext, FileContext } from './services/assistantActions';
 import Header from './components/layout/Header';
 import HistoryPanel from './components/layout/HistoryPanel';
 import TemplatePanel from './components/templates/TemplatePanel';
@@ -57,6 +57,9 @@ export default function App() {
   // #41 - Contexto de repo activo para opiniones de chat fundamentadas
   const [repoContext, setRepoContext] = useState<RepoContext | null>(null);
 
+  // #28 - Archivo local adjunto como contexto del chat
+  const [fileContext, setFileContext] = useState<FileContext | null>(null);
+
   // 🔥 OPCIÓN D - Modo override: 'auto' | 'chat' | 'action'
   // El setter aún no está cableado a la UI; de momento queda fijado en 'auto'.
   const [modeOverride] = useState<'auto' | 'chat' | 'action'>('auto');
@@ -80,9 +83,9 @@ export default function App() {
     await runSend(
       { token, user, providerName, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading, setConversationHistory, setPendingAction },
       { provider, apiKey, model },
-      { userText, conversationHistory, modeOverride, repoContext, multiRepoEnabled, selectedRepos },
+      { userText, conversationHistory, modeOverride, repoContext, fileContext, multiRepoEnabled, selectedRepos },
     );
-  }, [inputValue, token, user, provider, apiKey, model, providerName, conversationHistory, multiRepoEnabled, selectedRepos, modeOverride, repoContext, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [inputValue, token, user, provider, apiKey, model, providerName, conversationHistory, multiRepoEnabled, selectedRepos, modeOverride, repoContext, fileContext, addMessage, updateMessage, addEntry, updateEntry]);
 
   // ── Confirm action ─────────────────────────────────────────────────────────
   const handleConfirm = useCallback(async () => {
@@ -127,6 +130,21 @@ export default function App() {
       role: 'assistant',
       content: '🧹 Contexto del repositorio descartado. Volveré a opinar sin contexto específico.',
     });
+  }, [addMessage]);
+
+  // ── #28: Adjuntar archivo local como contexto ───────────────────────────────
+  const handleAttachFile = useCallback(async (file: File) => {
+    if (!token || !user) return;
+    const ctx = await runAttachFile(
+      { token, user, providerName, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+      file,
+    );
+    if (ctx) setFileContext(ctx);
+  }, [token, user, providerName, addMessage, updateMessage, addEntry, updateEntry]);
+
+  const handleClearFile = useCallback(() => {
+    setFileContext(null);
+    addMessage({ role: 'assistant', content: '🧹 Archivo adjunto descartado.' });
   }, [addMessage]);
 
   // ── Document repo ──────────────────────────────────────────────────────────
@@ -232,6 +250,9 @@ export default function App() {
             repoContextName={repoContext?.repoName ?? null}
             onLoadRepoContext={handleLoadRepoContext}
             onClearRepoContext={handleClearRepoContext}
+            fileContextName={fileContext?.name ?? null}
+            onAttachFile={handleAttachFile}
+            onClearFile={handleClearFile}
           />
         </div>
 
