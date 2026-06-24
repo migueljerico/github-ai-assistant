@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.1] — 2026-06-24
+
+### Fixed
+- **Build de Cloud Run roto desde v3.0.0** — `client/package-lock.json` estaba **desincronizado** con `client/package.json`: el lockfile listaba `pdfjs-dist` en `dependencies` además de en `optionalDependencies`, mientras que el `package.json` solo lo tiene en `optionalDependencies`. El `Dockerfile` (Stage 1) usa `npm ci`, que **aborta** ante esa desincronización antes de construir → las versiones 3.0.0 y 3.1.0 no desplegaban. **Solución:** lockfile regenerado con `npm install` (ahora `pdfjs-dist` queda solo en `optionalDependencies`); `npm ci` vuelve a pasar. Sin cambios de funcionalidad respecto a 3.1.0.
+
 ## [3.1.0] — 2026-06-24
 
 ### Added
