@@ -4,6 +4,8 @@ import {
   readTextFile,
   readFileContent,
   formatFileContentForAI,
+  assertSupportedFile,
+  MAX_FILE_SIZE_BYTES,
 } from '../pdfReader';
 
 /** Crea un File a partir de una cadena UTF-8. */
@@ -73,5 +75,24 @@ describe('pdfReader', () => {
       const content = await readFileContent(fileFrom('Texto PDF', 'doc.pdf'));
       expect(content).toContain('Texto PDF');
     });
+  });
+});
+
+describe('assertSupportedFile (#28)', () => {
+  it('acepta extensiones soportadas (pdf, md, json…)', () => {
+    expect(() => assertSupportedFile(fileFrom('x', 'doc.pdf'))).not.toThrow();
+    expect(() => assertSupportedFile(fileFrom('x', 'notas.md'))).not.toThrow();
+    expect(() => assertSupportedFile(fileFrom('x', 'data.json'))).not.toThrow();
+  });
+
+  it('rechaza extensiones no soportadas con mensaje claro', () => {
+    expect(() => assertSupportedFile(fileFrom('x', 'app.exe'))).toThrow(/\.exe/);
+    expect(() => assertSupportedFile(fileFrom('x', 'foto.png'))).toThrow(/no puedo leer/i);
+  });
+
+  it('rechaza archivos por encima del tamaño máximo', () => {
+    const big = fileFrom('x', 'grande.txt');
+    Object.defineProperty(big, 'size', { value: MAX_FILE_SIZE_BYTES + 1 });
+    expect(() => assertSupportedFile(big)).toThrow(/máximo/i);
   });
 });

@@ -14,12 +14,18 @@
  */
 export async function readPDFAdvanced(file: File): Promise<string> {
   try {
-    // Try to use pdfjs-dist if available
-    const pdfjsLib = await import('pdfjs-dist' as string);
+    // pdfjs-dist ahora es dependencia (#28). El import dinámico mantiene la
+    // librería en un chunk aparte (no engorda el bundle inicial).
+    const pdfjsLib = await import('pdfjs-dist');
+    // Worker resuelto por Vite a una URL del bundle. Si algo falla aquí o en el
+    // parseo, el catch cae a la extracción básica (degradación elegante).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (pdfjsLib as any).GlobalWorkerOptions.workerSrc =
+      new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
     return await extractWithPDFJS(file, pdfjsLib);
   } catch {
     // Fallback to basic extraction
-    console.warn('pdfjs-dist not available, using basic PDF extraction');
+    console.warn('pdfjs-dist no disponible o fallo de parseo, usando extracción básica');
     return readPDFBasic(file);
   }
 }

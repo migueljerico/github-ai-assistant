@@ -3,6 +3,35 @@
  * Uses the browser's built-in capabilities or a lightweight approach
  */
 
+import { readPDFAdvanced } from './pdfAdvanced';
+
+/** Extensiones admitidas en la v1 de adjuntar archivos (#28): PDF + texto/código. */
+export const SUPPORTED_FILE_EXTENSIONS = [
+  'pdf', 'txt', 'md', 'markdown', 'json', 'csv', 'yaml', 'yml',
+  'js', 'jsx', 'ts', 'tsx', 'py', 'html', 'css', 'xml', 'log', 'env',
+];
+
+/** Tamaño máximo de archivo adjunto (5 MB). */
+export const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
+
+/**
+ * Valida que el archivo se pueda procesar. Lanza un error en lenguaje claro
+ * (principio rector) si la extensión no está soportada o supera el tamaño máx.
+ */
+export function assertSupportedFile(file: File): void {
+  const ext = file.name.split('.').pop()?.toLowerCase() || '';
+  if (!SUPPORTED_FILE_EXTENSIONS.includes(ext)) {
+    throw new Error(
+      `No puedo leer archivos «.${ext || '?'}» todavía. Por ahora acepto PDF y archivos de ` +
+      `texto/código (pdf, txt, md, json, csv, código fuente…).`,
+    );
+  }
+  if (file.size > MAX_FILE_SIZE_BYTES) {
+    const mb = (file.size / 1024 / 1024).toFixed(1);
+    throw new Error(`El archivo pesa ${mb} MB y el máximo es ${MAX_FILE_SIZE_BYTES / 1024 / 1024} MB. Prueba con uno más pequeño.`);
+  }
+}
+
 /**
  * Read a PDF file and extract text content.
  * This is a simplified approach that works with text-based PDFs.
@@ -105,9 +134,10 @@ export async function readTextFile(file: File): Promise<string> {
  */
 export async function readFileContent(file: File): Promise<string> {
   const extension = file.name.split('.').pop()?.toLowerCase() || '';
-  
+
   if (extension === 'pdf') {
-    return readPDFAsText(file);
+    // #28: extracción real con pdfjs-dist (cae a la básica si el worker falla).
+    return readPDFAdvanced(file);
   } else {
     return readTextFile(file);
   }

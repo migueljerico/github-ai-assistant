@@ -17,6 +17,7 @@ import { summarizeThread, parseThreadInput, listOpenThreads, formatThreadList } 
 import { executeAction, executeActionMultiRepo } from './actionExecutor';
 import { resolveMode } from '../utils/modeDetection';
 import { resolveRepoRef } from '../utils/repoRef';
+import { readFileContent, formatFileContentForAI, assertSupportedFile } from '../utils/pdfReader';
 import { formatResultData } from '../utils/formatResult';
 import type { ChatMessage, HistoryEntry, RepoAnalysis, GitHubRepo, PendingAction } from '../types';
 
@@ -47,12 +48,19 @@ export interface SendDeps extends ChatDeps {
   setPendingAction: (action: PendingAction | null) => void;
 }
 
+/** Archivo local adjunto como contexto del chat (#28, Fase 1). */
+export interface FileContext {
+  name: string;
+  contextText: string;
+}
+
 /** Parámetros (estado de App) que `runSend` necesita leer en cada envío. */
 export interface SendParams {
   userText: string;
   conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>;
   modeOverride: 'auto' | 'chat' | 'action';
   repoContext: RepoContext | null;
+  fileContext: FileContext | null;
   multiRepoEnabled: boolean;
   selectedRepos: GitHubRepo[];
 }
@@ -253,7 +261,7 @@ export async function runCreateDraftPr(deps: ChatDeps, analysis: RepoAnalysis): 
  */
 export async function runSend(deps: SendDeps, config: AIProviderConfig, params: SendParams): Promise<void> {
   const { token, user, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading, setConversationHistory, setPendingAction } = deps;
-  const { userText, conversationHistory, modeOverride, repoContext, multiRepoEnabled, selectedRepos } = params;
+  const { userText, conversationHistory, modeOverride, repoContext, fileContext, multiRepoEnabled, selectedRepos } = params;
 
   setIsChatLoading(true);
   addMessage({ role: 'user', content: userText });
@@ -261,13 +269,18 @@ export async function runSend(deps: SendDeps, config: AIProviderConfig, params: 
 
   const newHistory = [...conversationHistory, { role: 'user' as const, content: userText }];
 
-  // #41: si hay repo de contexto, resolveMode sesga a chat (salvo acción explícita).
-  const finalMode = resolveMode(userText, modeOverride, repoContext !== null);
+  // #41/#28: si hay repo y/o archivo como contexto, resolveMode sesga a chat (salvo
+  // acción explícita) y se combinan ambos contextos en el prompt.
+  const hasContext = repoContext !== null || fileContext !== null;
+  const combinedContext = [repoContext?.contextText, fileContext?.contextText]
+    .filter(Boolean)
+    .join('\n\n');
+  const finalMode = resolveMode(userText, modeOverride, hasContext);
   const systemPrompt = finalMode === 'chat'
-    ? (repoContext ? chatPromptWithContext(repoContext.contextText) : CHAT_PROMPT)
+    ? (combinedContext ? chatPromptWithContext(combinedContext) : CHAT_PROMPT)
     : ACTION_PROMPT;
 
-  console.log(`[Opción D] Modo: ${finalMode} | Override: ${modeOverride} | Contexto: ${repoContext !== null}`);
+  console.log(`[Opción D] Modo: ${finalMode} | Override: ${modeOverride} | Contexto: ${hasContext}`);
 
   // #38: en modo chat (texto Markdown largo) mostramos la respuesta en streaming,
   // token a token. En modo acción la respuesta es JSON → no se streamea (se vería feo).
@@ -380,4 +393,37 @@ export function runCancelAction(deps: ChatDeps, pendingAction: PendingAction): v
   const { addMessage, addEntry } = deps;
   addEntry({ status: 'cancelled', description: `Cancelado: ${pendingAction.action.accion}`, repo: pendingAction.action.repo });
   addMessage({ role: 'assistant', content: '⏸️ Acción cancelada.' });
+}
+
+// ── Adjuntar archivo local (#28, Fase 1) ──────────────────────────────────────
+
+/**
+ * Adjunta un archivo local como contexto del chat: lee su contenido (PDF vía
+ * pdfjs con fallback, o texto/código), lo formatea para la IA y devuelve el
+ * contexto. Devuelve `null` + mensaje de error claro si el archivo no es válido
+ * o no tiene texto extraíble. Zero-Storage: el contenido vive solo en memoria.
+ */
+export async function runAttachFile(deps: ChatDeps, file: File): Promise<FileContext | null> {
+  const { addMessage, updateMessage, setIsChatLoading } = deps;
+  setIsChatLoading(true);
+  const loadingId = addMessage({ role: 'assistant', content: ` Leyendo **${file.name}**...`, isLoading: true });
+  try {
+    assertSupportedFile(file);
+    const content = await readFileContent(file);
+    if (!content.trim()) {
+      throw new Error('No pude extraer texto del archivo (¿es un PDF escaneado o una imagen?). Prueba con un PDF de texto o un archivo de texto/código.');
+    }
+    const contextText = formatFileContentForAI(file.name, content);
+    const kb = Math.max(1, Math.round(file.size / 1024));
+    updateMessage(loadingId, {
+      content: `📎 Adjuntado **${file.name}** (${kb} KB). Pregúntame lo que quieras sobre él o pídeme que lo documente.`,
+      isLoading: false,
+    });
+    return { name: file.name, contextText };
+  } catch (err) {
+    updateMessage(loadingId, { content: `❌ ${(err as Error).message}`, isLoading: false });
+    return null;
+  } finally {
+    setIsChatLoading(false);
+  }
 }

@@ -1,6 +1,6 @@
 # 📖 Manual Técnico — GitHub AI Assistant
 
-**Versión:** v2.9.0 · Junio 2026
+**Versión:** v3.0.0 · Junio 2026
 
 ---
 
@@ -76,6 +76,8 @@ github-ai-assistant/
 │       ├── utils/
 │       │   ├── formatResult.ts     # Formateador de resultados de API
 │       │   ├── repoRef.ts          # resolveRepoRef (owner/repo vs repo)
+│       │   ├── pdfReader.ts        # Lectura de archivos adjuntos: PDF/texto + assertSupportedFile (#28)
+│       │   ├── pdfAdvanced.ts      # Extracción de PDF con pdfjs-dist (fallback básico) (#28)
 │       │   └── modeDetection.ts    # Detección de modo chat vs action
 │       └── types/index.ts          # Tipos compartidos TypeScript
 ├── server/
@@ -420,7 +422,7 @@ gcloud run deploy github-ai-assistant \
 - **CI:** GitHub Actions (`.github/workflows/ci.yml`) ejecuta en cada push/PR a `main`
   el lint, los tests del cliente con cobertura y los tests del servidor
   (job `server-test`). Ver "Pipeline CI/CD" en la sección de despliegue.
-- **Cobertura actual:** ≈64% (ver Codecov para el valor exacto) · 259 tests en el cliente
+- **Cobertura actual:** ≈64% (ver Codecov para el valor exacto) · 269 tests en el cliente
 
 ### Módulos testeados
 

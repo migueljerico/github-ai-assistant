@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] — 2026-06-24
+
+### Added
+- **Subida de archivos locales — Fase 1 (#28)** — Nuevo botón **"📎 Adjuntar archivo"** en la barra del chat: adjuntas un archivo local y se carga como **contexto** del chat (chip "📎 nombre ✕"), igual que "Opinar sobre repo" pero con tu documento. A partir de ahí puedes preguntarle o pedir *"documéntame este archivo"* en lenguaje natural.
+  - **Formatos:** PDF (extracción real con **`pdfjs-dist`**, con fallback básico) + texto/código (`txt, md, json, csv, yaml, código fuente…`). Validación de extensión y tamaño (máx. 5 MB) con mensajes claros.
+  - **Cliente / Zero-Storage:** el archivo se lee **solo en memoria**; nada se sube a ningún servidor (el proxy no interviene). `pdfjs-dist` se carga en un chunk aparte (lazy).
+  - Reutiliza `utils/pdfReader.ts`/`pdfAdvanced.ts` (ya existentes) + el patrón de contexto (#41); lógica en `services/assistantActions.ts` (`runAttachFile`) + nuevo `FileAttachButton.tsx`.
+  - **Base del objetivo de #28** (documentar y publicar a partir de cualquier archivo): la Fase 1 ya habilita *documentar en lenguaje natural*; publicar/release y más formatos (Excel/CSV, imágenes) llegarán en fases siguientes.
+
+### Testing
+- Tests de `assertSupportedFile` (extensiones/tamaño), `runAttachFile` (lectura, archivo inválido, sin texto), `runSend` con archivo de contexto y `FileAttachButton`. Cobertura/cliente: **269 tests**.
+
 ## [2.9.0] — 2026-06-24
 
 ### Added

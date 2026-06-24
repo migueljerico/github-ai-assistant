@@ -31,8 +31,14 @@ vi.mock('../actionExecutor', () => ({
 }));
 vi.mock('../../utils/modeDetection', () => ({ resolveMode: vi.fn() }));
 vi.mock('../../utils/formatResult', () => ({ formatResultData: vi.fn(() => 'FORMATTED') }));
+vi.mock('../../utils/pdfReader', () => ({
+  assertSupportedFile: vi.fn(),
+  readFileContent: vi.fn(),
+  formatFileContentForAI: vi.fn((name: string, content: string) => `FMT(${name}):${content}`),
+}));
 
-import { generateRepoDocs, buildRepoContextSummary, callAI, parseGeminiAction } from '../gemini';
+import { generateRepoDocs, buildRepoContextSummary, callAI, parseGeminiAction, chatPromptWithContext } from '../gemini';
+import { assertSupportedFile, readFileContent } from '../../utils/pdfReader';
 import { fetchRepoTreeRecursive, getFileContents } from '../github';
 import { writeDocFiles, createDocsDraftPr } from '../docPublisher';
 import { summarizeThread, parseThreadInput, listOpenThreads, formatThreadList } from '../threadSummary';
@@ -47,6 +53,7 @@ import {
   runSend,
   runConfirmAction,
   runCancelAction,
+  runAttachFile,
 } from '../assistantActions';
 
 const CONFIG = { provider: 'groq' as const, apiKey: 'k', model: 'm' };
@@ -72,6 +79,7 @@ const SEND_PARAMS = {
   conversationHistory: [] as Array<{ role: 'user' | 'assistant'; content: string }>,
   modeOverride: 'auto' as const,
   repoContext: null,
+  fileContext: null,
   multiRepoEnabled: false,
   selectedRepos: [] as never[],
 };
@@ -413,5 +421,50 @@ describe('runSend — streaming (#38)', () => {
     await runSend(deps, CONFIG, SEND_PARAMS);
 
     expect(received).toBeUndefined();
+  });
+});
+
+describe('runAttachFile (#28)', () => {
+  it('lee un archivo de texto y devuelve el contexto', async () => {
+    vi.mocked(assertSupportedFile).mockReturnValue(undefined);
+    vi.mocked(readFileContent).mockResolvedValue('contenido del archivo');
+    const deps = makeDeps();
+
+    const ctx = await runAttachFile(deps, new File(['contenido del archivo'], 'notas.md'));
+
+    expect(ctx).toEqual({ name: 'notas.md', contextText: expect.stringContaining('contenido del archivo') });
+    expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', expect.objectContaining({ content: expect.stringContaining('Adjuntado'), isLoading: false }));
+  });
+
+  it('devuelve null y avisa si el archivo no es válido', async () => {
+    vi.mocked(assertSupportedFile).mockImplementation(() => { throw new Error('No puedo leer archivos «.exe»'); });
+    const deps = makeDeps();
+
+    const ctx = await runAttachFile(deps, new File(['x'], 'app.exe'));
+
+    expect(ctx).toBeNull();
+    expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', expect.objectContaining({ content: expect.stringContaining('.exe') }));
+  });
+
+  it('devuelve null si no hay texto extraíble', async () => {
+    vi.mocked(assertSupportedFile).mockReturnValue(undefined);
+    vi.mocked(readFileContent).mockResolvedValue('   ');
+
+    const ctx = await runAttachFile(makeDeps(), new File(['x'], 'scan.pdf'));
+
+    expect(ctx).toBeNull();
+  });
+});
+
+describe('runSend — contexto de archivo (#28)', () => {
+  it('inyecta el archivo adjunto en el prompt de chat', async () => {
+    vi.mocked(resolveMode).mockReturnValue('chat');
+    vi.mocked(callAI).mockResolvedValue('ok');
+    vi.mocked(parseGeminiAction).mockReturnValue(null);
+    const deps = makeDeps();
+
+    await runSend(deps, CONFIG, { ...SEND_PARAMS, fileContext: { name: 'a.md', contextText: 'FILE_CTX' } });
+
+    expect(chatPromptWithContext).toHaveBeenCalledWith(expect.stringContaining('FILE_CTX'));
   });
 });
