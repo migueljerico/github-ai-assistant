@@ -1,6 +1,6 @@
 # 📖 Manual Técnico — GitHub AI Assistant
 
-**Versión:** v3.1.1 · Junio 2026
+**Versión:** v3.2.0 · Junio 2026
 
 ---
 
@@ -78,6 +78,7 @@ github-ai-assistant/
 │       │   ├── repoRef.ts          # resolveRepoRef (owner/repo vs repo)
 │       │   ├── pdfReader.ts        # Lectura de archivos adjuntos: PDF/texto + assertSupportedFile (#28)
 │       │   ├── pdfAdvanced.ts      # Extracción de PDF con pdfjs-dist (fallback básico) (#28)
+│       │   ├── spreadsheetReader.ts # Excel/CSV con SheetJS: muestra de filas + aviso de tokens (#28 Fase 3a)
 │       │   └── modeDetection.ts    # Detección de modo chat vs action
 │       └── types/index.ts          # Tipos compartidos TypeScript
 ├── server/

@@ -85,6 +85,12 @@ describe('assertSupportedFile (#28)', () => {
     expect(() => assertSupportedFile(fileFrom('x', 'data.json'))).not.toThrow();
   });
 
+  it('acepta hojas de cálculo Excel/CSV (#28 Fase 3a)', () => {
+    expect(() => assertSupportedFile(fileFrom('x', 'ventas.xlsx'))).not.toThrow();
+    expect(() => assertSupportedFile(fileFrom('x', 'datos.xls'))).not.toThrow();
+    expect(() => assertSupportedFile(fileFrom('x', 'export.csv'))).not.toThrow();
+  });
+
   it('rechaza extensiones no soportadas con mensaje claro', () => {
     expect(() => assertSupportedFile(fileFrom('x', 'app.exe'))).toThrow(/\.exe/);
     expect(() => assertSupportedFile(fileFrom('x', 'foto.png'))).toThrow(/no puedo leer/i);

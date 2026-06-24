@@ -19,6 +19,7 @@ import { createGitHubRelease, suggestNextVersion } from '../utils/releaseGenerat
 import { resolveMode } from '../utils/modeDetection';
 import { resolveRepoRef } from '../utils/repoRef';
 import { readFileContent, formatFileContentForAI, assertSupportedFile } from '../utils/pdfReader';
+import { readSpreadsheet, SPREADSHEET_SAMPLE_ROWS } from '../utils/spreadsheetReader';
 import { formatResultData } from '../utils/formatResult';
 import type { ChatMessage, HistoryEntry, RepoAnalysis, GitHubRepo, PendingAction } from '../types';
 
@@ -410,6 +411,24 @@ export async function runAttachFile(deps: ChatDeps, file: File): Promise<FileCon
   const loadingId = addMessage({ role: 'assistant', content: ` Leyendo **${file.name}**...`, isLoading: true });
   try {
     assertSupportedFile(file);
+    const ext = file.name.split('.').pop()?.toLowerCase() || '';
+
+    // #28 Fase 3a — hojas de cálculo: muestra de filas + aviso de tokens (evita 400).
+    if (ext === 'xlsx' || ext === 'xls' || ext === 'csv') {
+      const { text, summary, truncated } = await readSpreadsheet(file);
+      // El tamaño ya está acotado en readSpreadsheet (muestra de filas + tope por
+      // hoja), así que NO reusamos el recorte a 4000 chars de formatFileContentForAI
+      // (mutilaría la muestra y haría falso el aviso de "100 filas").
+      const contextText = `\n\n--- Datos del archivo adjunto: ${file.name} (hoja de cálculo) ---\n${text}\n--- Fin del archivo ---\n`;
+      updateMessage(loadingId, {
+        content: truncated
+          ? `📎 Cargado **${file.name}** — ${summary}. Es grande, así que analizaré una **muestra de las primeras ${SPREADSHEET_SAMPLE_ROWS} filas**. Si necesitas cálculos sobre el dataset completo, dime qué quieres calcular (sumas, medias, filtros…).`
+          : `📎 Adjuntado **${file.name}** — ${summary}. Pregúntame lo que quieras sobre los datos o pídeme que lo documente.`,
+        isLoading: false,
+      });
+      return { name: file.name, contextText };
+    }
+
     const content = await readFileContent(file);
     if (!content.trim()) {
       throw new Error('No pude extraer texto del archivo (¿es un PDF escaneado o una imagen?). Prueba con un PDF de texto o un archivo de texto/código.');

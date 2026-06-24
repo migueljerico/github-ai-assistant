@@ -42,9 +42,14 @@ vi.mock('../../utils/pdfReader', () => ({
   readFileContent: vi.fn(),
   formatFileContentForAI: vi.fn((name: string, content: string) => `FMT(${name}):${content}`),
 }));
+vi.mock('../../utils/spreadsheetReader', () => ({
+  readSpreadsheet: vi.fn(),
+  SPREADSHEET_SAMPLE_ROWS: 100,
+}));
 
 import { generateRepoDocs, generateFileDoc, buildRepoContextSummary, callAI, parseGeminiAction, chatPromptWithContext } from '../gemini';
 import { assertSupportedFile, readFileContent } from '../../utils/pdfReader';
+import { readSpreadsheet } from '../../utils/spreadsheetReader';
 import { fetchRepoTreeRecursive, getFileContents } from '../github';
 import { writeDocFiles, createDocsDraftPr, publishFileDoc } from '../docPublisher';
 import { summarizeThread, parseThreadInput, listOpenThreads, formatThreadList } from '../threadSummary';
@@ -463,6 +468,46 @@ describe('runAttachFile (#28)', () => {
     const ctx = await runAttachFile(makeDeps(), new File(['x'], 'scan.pdf'));
 
     expect(ctx).toBeNull();
+  });
+
+  it('Excel grande: usa readSpreadsheet y avisa de la muestra de filas (#28 Fase 3a)', async () => {
+    vi.mocked(assertSupportedFile).mockReturnValue(undefined);
+    vi.mocked(readSpreadsheet).mockResolvedValue({
+      text: '### Hoja "Datos" (50000 filas × 12 columnas)\n...',
+      summary: '"Datos" (50.000 filas × 12 columnas)',
+      truncated: true,
+    });
+    const deps = makeDeps();
+
+    const ctx = await runAttachFile(deps, new File(['x'], 'ventas.xlsx'));
+
+    expect(readSpreadsheet).toHaveBeenCalled();
+    expect(readFileContent).not.toHaveBeenCalled();
+    expect(ctx).toEqual({ name: 'ventas.xlsx', contextText: expect.stringContaining('hoja de cálculo') });
+    expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', expect.objectContaining({
+      content: expect.stringContaining('muestra de las primeras 100 filas'),
+      isLoading: false,
+    }));
+  });
+
+  it('CSV pequeño: usa readSpreadsheet sin aviso de truncado', async () => {
+    vi.mocked(assertSupportedFile).mockReturnValue(undefined);
+    vi.mocked(readSpreadsheet).mockResolvedValue({
+      text: '### Hoja "Sheet1" (3 filas × 2 columnas)\n...',
+      summary: '"Sheet1" (3 filas × 2 columnas)',
+      truncated: false,
+    });
+    const deps = makeDeps();
+
+    const ctx = await runAttachFile(deps, new File(['a,b\n1,2'], 'mini.csv'));
+
+    expect(readSpreadsheet).toHaveBeenCalled();
+    expect(ctx).not.toBeNull();
+    expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', expect.objectContaining({
+      content: expect.stringContaining('Adjuntado'),
+    }));
+    const msg = vi.mocked(deps.updateMessage).mock.calls[0][1] as { content: string };
+    expect(msg.content).not.toContain('muestra de las primeras');
   });
 });
 
