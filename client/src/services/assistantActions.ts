@@ -11,7 +11,7 @@
 
 import { generateRepoDocs, generateFileDoc, buildRepoContextSummary, callAI, parseGeminiAction, CHAT_PROMPT, ACTION_PROMPT, chatPromptWithContext } from './gemini';
 import type { AIProviderConfig } from './gemini';
-import { fetchRepoTreeRecursive, getFileContents, decodeBase64 } from './github';
+import { fetchRepoTreeRecursive, getFileContents, decodeBase64, createRepo, repoExists, GitHubAPIError } from './github';
 import { writeDocFiles, createDocsDraftPr, publishFileDoc } from './docPublisher';
 import { summarizeThread, parseThreadInput, listOpenThreads, formatThreadList } from './threadSummary';
 import { executeAction, executeActionMultiRepo } from './actionExecutor';
@@ -278,7 +278,9 @@ export async function runSend(deps: SendDeps, config: AIProviderConfig, params: 
   const combinedContext = [repoContext?.contextText, fileContext?.contextText]
     .filter(Boolean)
     .join('\n\n');
-  const finalMode = resolveMode(userText, modeOverride, hasContext);
+  // Con archivo adjunto, resolveMode fuerza chat (ninguna acción de GitHub lee un
+  // archivo local); el repo y el archivo se pasan por separado.
+  const finalMode = resolveMode(userText, modeOverride, repoContext !== null, fileContext !== null);
   const systemPrompt = finalMode === 'chat'
     ? (combinedContext ? chatPromptWithContext(combinedContext) : CHAT_PROMPT)
     : ACTION_PROMPT;
@@ -487,6 +489,43 @@ export async function runGenerateFileDoc(
   }
 }
 
+/**
+ * Traduce un error de publicación a lenguaje claro (principio rector). Un 404 de
+ * GitHub suele significar "el repo no existe o no tengo acceso", no un fallo técnico.
+ */
+function describePublishError(err: unknown, owner: string, repo: string): string {
+  const message = (err as Error).message || 'Error desconocido';
+  const status = err instanceof GitHubAPIError ? err.status : undefined;
+  if (status === 404 || /not found/i.test(message)) {
+    return `No encontré el repositorio **${owner}/${repo}** (¿existe y tienes acceso?).`;
+  }
+  return message;
+}
+
+/**
+ * Crea un repositorio en la cuenta del usuario (reutiliza `createRepo`, con
+ * `auto_init` para que tenga rama por defecto y se pueda commitear/publicar de
+ * inmediato). Devuelve `true` si se creó. Mensajes de progreso/error en el chat.
+ */
+export async function runCreateRepo(
+  deps: ChatDeps,
+  name: string,
+  opts: { description?: string } = {},
+): Promise<boolean> {
+  const { token, addMessage, addEntry, updateEntry } = deps;
+  const histId = addEntry({ status: 'pending', description: `Creando repositorio ${name}`, repo: name });
+  try {
+    await createRepo(token, name, opts.description ?? 'Creado desde el Asistente de IA');
+    addMessage({ role: 'assistant', content: `✅ Repositorio **${name}** creado en tu cuenta.` });
+    updateEntry(histId, { status: 'completed', description: `Repositorio ${name} creado` });
+    return true;
+  } catch (err) {
+    addMessage({ role: 'assistant', content: `❌ No pude crear el repositorio **${name}**: ${(err as Error).message}` });
+    updateEntry(histId, { status: 'error', description: `Error al crear repositorio ${name}` });
+    return false;
+  }
+}
+
 /** Deriva `docs/{base}.md` a partir del nombre del archivo adjunto. */
 function docPathFor(fileName: string): string {
   const base = fileName.replace(/\.[^.]+$/, '').replace(/[^\w.-]+/g, '-') || 'archivo';
@@ -515,7 +554,7 @@ export async function runPublishFileDoc(
     });
     updateEntry(histId, { status: 'completed', description: `Documentación publicada en ${owner}/${repo}` });
   } catch (err) {
-    addMessage({ role: 'assistant', content: `❌ Error al publicar la documentación: ${(err as Error).message}` });
+    addMessage({ role: 'assistant', content: `❌ Error al publicar la documentación: ${describePublishError(err, owner, repo)}` });
     updateEntry(histId, { status: 'error', description: `Error al publicar en ${owner}/${repo}` });
   }
 }
@@ -541,7 +580,63 @@ export async function runCreateFileRelease(
     addMessage({ role: 'assistant', content: `✅ Release [${tag}](${url}) creado en **${owner}/${repo}** con la documentación de ${fileName}.` });
     updateEntry(histId, { status: 'completed', description: `Release ${tag} creado en ${owner}/${repo}` });
   } catch (err) {
-    addMessage({ role: 'assistant', content: `❌ Error al crear el release: ${(err as Error).message}` });
+    addMessage({ role: 'assistant', content: `❌ Error al crear el release: ${describePublishError(err, owner, repo)}` });
     updateEntry(histId, { status: 'error', description: `Error al crear release en ${owner}/${repo}` });
   }
+}
+
+/** Forma de publicar la doc del archivo adjunto. */
+export type PublishKind = 'commit' | 'draftpr' | 'release';
+
+/** Datos para publicar la doc generada en un repo concreto. */
+export interface PublishTarget {
+  owner: string;
+  repo: string;
+  fileName: string;
+  doc: string;
+  kind: PublishKind;
+  version?: string;
+}
+
+/** Despacha la publicación según el `kind` (commit / Draft PR / Release). */
+export async function runPublishFileDocByKind(deps: ChatDeps, t: PublishTarget): Promise<void> {
+  if (t.kind === 'release') {
+    await runCreateFileRelease(deps, t.owner, t.repo, t.fileName, t.doc, t.version);
+  } else {
+    await runPublishFileDoc(deps, t.owner, t.repo, t.fileName, t.doc, { draft: t.kind === 'draftpr' });
+  }
+}
+
+/** Resultado de iniciar la publicación. `repo-missing` → App ofrece crear el repo. */
+export type StartPublishResult = 'published' | 'repo-missing' | 'handled';
+
+/**
+ * Inicia la publicación comprobando antes que el repo destino existe (evita el crudo
+ * "Not Found"). Si no existe y es de la cuenta del usuario, devuelve `repo-missing`
+ * para que App ofrezca crearlo; si es de otra cuenta o hay error, lo notifica y
+ * devuelve `handled`. Si existe, publica y devuelve `published`.
+ */
+export async function runStartPublish(
+  deps: ChatDeps,
+  target: PublishTarget,
+  isOwnAccount: boolean,
+): Promise<StartPublishResult> {
+  const { token, addMessage } = deps;
+  const { owner, repo } = target;
+  let exists: boolean;
+  try {
+    exists = await repoExists(token, owner, repo);
+  } catch (err) {
+    addMessage({ role: 'assistant', content: `❌ No pude comprobar el repositorio **${owner}/${repo}**: ${(err as Error).message}` });
+    return 'handled';
+  }
+  if (!exists) {
+    if (!isOwnAccount) {
+      addMessage({ role: 'assistant', content: `❌ No encontré **${owner}/${repo}** y solo puedo crear repositorios en tu cuenta. Créalo en GitHub o elige otro destino.` });
+      return 'handled';
+    }
+    return 'repo-missing';
+  }
+  await runPublishFileDocByKind(deps, target);
+  return 'published';
 }

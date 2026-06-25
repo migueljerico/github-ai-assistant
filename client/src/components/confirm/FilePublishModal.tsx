@@ -6,9 +6,15 @@ interface FilePublishModalProps {
   /** Documentación (Markdown) generada a partir del archivo adjunto. */
   doc: string;
   busy: boolean;
+  /** Si está, el repo destino no existe: se ofrece crearlo y publicar (#28 fix). */
+  repoMissing?: { owner: string; repo: string } | null;
   onCommit: (repo: string) => void;
   onDraftPr: (repo: string) => void;
   onRelease: (repo: string, version: string) => void;
+  /** Confirmar la creación del repo inexistente y publicar el `kind` pendiente. */
+  onCreateRepoAndPublish?: () => void;
+  /** Descartar la oferta de crear repo (volver a editar el destino). */
+  onCancelCreate?: () => void;
   onCancel: () => void;
 }
 
@@ -20,9 +26,12 @@ export default function FilePublishModal({
   fileName,
   doc,
   busy,
+  repoMissing,
   onCommit,
   onDraftPr,
   onRelease,
+  onCreateRepoAndPublish,
+  onCancelCreate,
   onCancel,
 }: FilePublishModalProps) {
   const [repo, setRepo] = useState('');
@@ -66,20 +75,44 @@ export default function FilePublishModal({
               style={{ flex: '1 1 180px', fontSize: '0.85rem', padding: '8px 10px' }}
             />
           </div>
+
+          {repoMissing && (
+            <div
+              id="filepub-repo-missing"
+              style={{
+                marginTop: '12px', padding: '10px 12px', borderRadius: '8px', fontSize: '0.85rem',
+                background: 'rgba(234, 179, 8, 0.12)', border: '1px solid rgba(234, 179, 8, 0.4)',
+              }}
+            >
+              ⚠️ El repositorio <strong>{repoMissing.owner}/{repoMissing.repo}</strong> no existe en tu
+              cuenta. ¿Quieres que lo cree y publique ahí?
+            </div>
+          )}
         </div>
 
-        <div className="modal-footer">
-          <button id="filepub-cancel-btn" className="btn btn-danger" onClick={onCancel} disabled={busy}>❌ Cancelar</button>
-          <button id="filepub-commit-btn" className="btn btn-secondary" onClick={() => onCommit(repo.trim())} disabled={busy || !repoOk}>
-            📥 Commit directo
-          </button>
-          <button id="filepub-draftpr-btn" className="btn btn-secondary" onClick={() => onDraftPr(repo.trim())} disabled={busy || !repoOk}>
-            🔀 Draft PR
-          </button>
-          <button id="filepub-release-btn" className="btn btn-success" onClick={() => onRelease(repo.trim(), version.trim())} disabled={busy || !repoOk}>
-            {busy ? <><span className="spinner spinner-sm" /> Publicando...</> : '🏷️ Crear Release'}
-          </button>
-        </div>
+        {repoMissing ? (
+          <div className="modal-footer">
+            <button id="filepub-create-cancel-btn" className="btn btn-secondary" onClick={onCancelCreate} disabled={busy}>
+              ← Cambiar destino
+            </button>
+            <button id="filepub-create-repo-btn" className="btn btn-success" onClick={onCreateRepoAndPublish} disabled={busy}>
+              {busy ? <><span className="spinner spinner-sm" /> Creando...</> : `➕ Crear repo y publicar`}
+            </button>
+          </div>
+        ) : (
+          <div className="modal-footer">
+            <button id="filepub-cancel-btn" className="btn btn-danger" onClick={onCancel} disabled={busy}>❌ Cancelar</button>
+            <button id="filepub-commit-btn" className="btn btn-secondary" onClick={() => onCommit(repo.trim())} disabled={busy || !repoOk}>
+              📥 Commit directo
+            </button>
+            <button id="filepub-draftpr-btn" className="btn btn-secondary" onClick={() => onDraftPr(repo.trim())} disabled={busy || !repoOk}>
+              🔀 Draft PR
+            </button>
+            <button id="filepub-release-btn" className="btn btn-success" onClick={() => onRelease(repo.trim(), version.trim())} disabled={busy || !repoOk}>
+              {busy ? <><span className="spinner spinner-sm" /> Publicando...</> : '🏷️ Crear Release'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

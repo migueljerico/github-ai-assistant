@@ -6,9 +6,9 @@ import { getProvider } from './services/providers';
 import {
   runDocumentRepo, runLoadRepoContext, runSummarizeThread, runCommitDocs, runCreateDraftPr,
   runSend, runConfirmAction, runCancelAction, runAttachFile,
-  runGenerateFileDoc, runPublishFileDoc, runCreateFileRelease,
+  runGenerateFileDoc, runCreateRepo, runStartPublish, runPublishFileDocByKind,
 } from './services/assistantActions';
-import type { RepoContext, FileContext } from './services/assistantActions';
+import type { RepoContext, FileContext, PublishKind } from './services/assistantActions';
 import { resolveRepoRef } from './utils/repoRef';
 import Header from './components/layout/Header';
 import HistoryPanel from './components/layout/HistoryPanel';
@@ -66,6 +66,10 @@ export default function App() {
   // #28 Fase 2 - Documentación generada del archivo, pendiente de publicar
   const [filePublish, setFilePublish] = useState<{ fileName: string; doc: string } | null>(null);
   const [isPublishingFile, setIsPublishingFile] = useState(false);
+  // #28 fix - El repo destino no existe: oferta de crearlo y publicar el kind pendiente
+  const [repoMissing, setRepoMissing] = useState<
+    { owner: string; repo: string; kind: 'commit' | 'draftpr' | 'release'; version?: string } | null
+  >(null);
 
   // 🔥 OPCIÓN D - Modo override: 'auto' | 'chat' | 'action'
   // El setter aún no está cableado a la UI; de momento queda fijado en 'auto'.
@@ -166,37 +170,52 @@ export default function App() {
     if (doc) setFilePublish({ fileName: fileContext.name, doc });
   }, [fileContext, token, user, provider, apiKey, model, providerName, addMessage, updateMessage, addEntry, updateEntry]);
 
-  // ── #28 Fase 2: publicar la doc generada como commit directo o Draft PR ──────
-  const handlePublishFileDoc = useCallback(async (repoInput: string, draft: boolean) => {
+  // ── #28 Fase 2: publicar la doc generada (commit / Draft PR / Release) ────────
+  // La lógica (pre-chequeo de existencia + flujo de repo inexistente) vive en
+  // assistantActions (testeable); App solo cablea estado/UI (patrón #42).
+  const startPublish = useCallback(async (
+    repoInput: string, kind: PublishKind, version?: string,
+  ) => {
     if (!filePublish || !token || !user) return;
     const ref = resolveRepoRef(repoInput, user.login);
+    const target = { owner: ref.owner, repo: ref.repo, fileName: filePublish.fileName, doc: filePublish.doc, kind, version };
+    const deps = { token, user, providerName, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading };
     setIsPublishingFile(true);
     try {
-      await runPublishFileDoc(
-        { token, user, providerName, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
-        ref.owner, ref.repo, filePublish.fileName, filePublish.doc, { draft },
-      );
+      const result = await runStartPublish(deps, target, ref.owner === user.login);
+      if (result === 'repo-missing') setRepoMissing({ owner: ref.owner, repo: ref.repo, kind, version });
+      else if (result === 'published') setFilePublish(null);
     } finally {
       setIsPublishingFile(false);
-      setFilePublish(null);
     }
   }, [filePublish, token, user, providerName, addMessage, updateMessage, addEntry, updateEntry]);
 
-  // ── #28 Fase 2: publicar la doc generada como GitHub Release ─────────────────
-  const handleCreateFileRelease = useCallback(async (repoInput: string, version: string) => {
-    if (!filePublish || !token || !user) return;
-    const ref = resolveRepoRef(repoInput, user.login);
+  const handlePublishFileDoc = useCallback((repoInput: string, draft: boolean) => {
+    void startPublish(repoInput, draft ? 'draftpr' : 'commit');
+  }, [startPublish]);
+
+  const handleCreateFileRelease = useCallback((repoInput: string, version: string) => {
+    void startPublish(repoInput, 'release', version);
+  }, [startPublish]);
+
+  // ── #28 fix: confirmar la creación del repo inexistente y publicar ───────────
+  const handleConfirmCreateRepo = useCallback(async () => {
+    if (!repoMissing || !filePublish || !token || !user) return;
+    const { owner, repo, kind, version } = repoMissing;
+    const deps = { token, user, providerName, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading };
     setIsPublishingFile(true);
     try {
-      await runCreateFileRelease(
-        { token, user, providerName, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
-        ref.owner, ref.repo, filePublish.fileName, filePublish.doc, version || undefined,
-      );
+      const ok = await runCreateRepo(deps, repo);
+      if (!ok) return; // error ya notificado; el modal sigue abierto
+      setRepoMissing(null);
+      await runPublishFileDocByKind(deps, { owner, repo, fileName: filePublish.fileName, doc: filePublish.doc, kind, version });
+      setFilePublish(null);
     } finally {
       setIsPublishingFile(false);
-      setFilePublish(null);
     }
-  }, [filePublish, token, user, providerName, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [repoMissing, filePublish, token, user, providerName, addMessage, updateMessage, addEntry, updateEntry]);
+
+  const handleCancelCreateRepo = useCallback(() => setRepoMissing(null), []);
 
   // ── Document repo ──────────────────────────────────────────────────────────
   const handleDocumentRepo = useCallback(async (repoInput: string) => {
@@ -339,10 +358,13 @@ export default function App() {
           fileName={filePublish.fileName}
           doc={filePublish.doc}
           busy={isPublishingFile}
+          repoMissing={repoMissing}
           onCommit={(repo) => handlePublishFileDoc(repo, false)}
           onDraftPr={(repo) => handlePublishFileDoc(repo, true)}
           onRelease={handleCreateFileRelease}
-          onCancel={() => setFilePublish(null)}
+          onCreateRepoAndPublish={handleConfirmCreateRepo}
+          onCancelCreate={handleCancelCreateRepo}
+          onCancel={() => { setRepoMissing(null); setFilePublish(null); }}
         />
       )}
     </>

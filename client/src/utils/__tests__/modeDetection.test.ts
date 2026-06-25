@@ -45,4 +45,20 @@ describe('modeDetection', () => {
       expect(resolveMode('crea un README en el repo', 'auto', true)).toBe('action');
     });
   });
+
+  describe('resolveMode — auto CON archivo adjunto (#28 fix, siempre chat)', () => {
+    it('petición de hablar del archivo → chat aunque la frase contenga "subir"', () => {
+      // Bug real: "el PBIX que acabo de subir" caía a action por el verbo "subir".
+      expect(resolveMode('háblame del informe, modelo y consultas del PBIX que acabo de subir', 'auto', false, true)).toBe('chat');
+    });
+    it('verbos de acción incidentales → chat (ningún acción lee un archivo local)', () => {
+      expect(resolveMode('crea un resumen y lista las hojas del Excel adjunto', 'auto', false, true)).toBe('chat');
+    });
+    it('chat aunque además haya contexto de repo', () => {
+      expect(resolveMode('actualiza esto', 'auto', true, true)).toBe('chat');
+    });
+    it('el override manual de acción se respeta aun con archivo adjunto', () => {
+      expect(resolveMode('crea un issue', 'action', false, true)).toBe('action');
+    });
+  });
 });

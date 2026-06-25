@@ -5,6 +5,7 @@ import {
   getUser,
   createRepo,
   getRepo,
+  repoExists,
   getBranchSha,
   getFileContents,
   createOrUpdateFile,
@@ -259,6 +260,23 @@ describe('github.ts', () => {
         'https://api.github.com/repos/testuser/myrepo',
         expect.any(Object)
       );
+    });
+  });
+
+  describe('repoExists', () => {
+    it('devuelve true si el repo existe (200)', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ name: 'r' }) } as any);
+      await expect(repoExists('tok', 'me', 'r')).resolves.toBe(true);
+    });
+
+    it('devuelve false ante un 404', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce({ ok: false, status: 404, json: async () => ({ message: 'Not Found' }) } as any);
+      await expect(repoExists('tok', 'me', 'r')).resolves.toBe(false);
+    });
+
+    it('propaga otros errores (p. ej. 500)', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({ message: 'boom' }) } as any);
+      await expect(repoExists('tok', 'me', 'r')).rejects.toThrow();
     });
   });
 

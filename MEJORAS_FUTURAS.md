@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v3.4.0 · Junio 2026
+**Actualizado a:** v3.4.1 · Junio 2026
 
 ---
 
