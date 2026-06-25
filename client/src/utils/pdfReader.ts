@@ -5,15 +5,23 @@
 
 import { readPDFAdvanced } from './pdfAdvanced';
 
-/** Extensiones admitidas al adjuntar archivos (#28): PDF + texto/código + hojas de cálculo. */
+/** Extensiones admitidas al adjuntar archivos (#28): PDF + texto/código + hojas de cálculo + Power BI. */
 export const SUPPORTED_FILE_EXTENSIONS = [
   'pdf', 'txt', 'md', 'markdown', 'json', 'csv', 'yaml', 'yml',
   'js', 'jsx', 'ts', 'tsx', 'py', 'html', 'css', 'xml', 'log', 'env',
   'xlsx', 'xls', // #28 Fase 3a — hojas de cálculo (Excel) vía SheetJS
+  'pbix', 'pbit', // #28 Fase 3b — Power BI (ZIP); solo se lee la estructura JSON
 ];
 
 /** Tamaño máximo de archivo adjunto (5 MB). */
 export const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
+
+/** Tamaño máximo para Power BI (25 MB): los .pbix reales pesan más por los datos
+ *  embebidos, pero solo leemos el ZIP (partes JSON), no el dataset binario. */
+export const MAX_POWERBI_SIZE_BYTES = 25 * 1024 * 1024;
+
+/** Extensiones de Power BI (cap de tamaño mayor). */
+const POWERBI_EXTENSIONS = ['pbix', 'pbit'];
 
 /**
  * Valida que el archivo se pueda procesar. Lanza un error en lenguaje claro
@@ -24,12 +32,13 @@ export function assertSupportedFile(file: File): void {
   if (!SUPPORTED_FILE_EXTENSIONS.includes(ext)) {
     throw new Error(
       `No puedo leer archivos «.${ext || '?'}» todavía. Por ahora acepto PDF, hojas de cálculo ` +
-      `(Excel, CSV) y archivos de texto/código (pdf, xlsx, csv, txt, md, json, código fuente…).`,
+      `(Excel, CSV), archivos Power BI (.pbix, .pbit) y archivos de texto/código.`,
     );
   }
-  if (file.size > MAX_FILE_SIZE_BYTES) {
+  const maxBytes = POWERBI_EXTENSIONS.includes(ext) ? MAX_POWERBI_SIZE_BYTES : MAX_FILE_SIZE_BYTES;
+  if (file.size > maxBytes) {
     const mb = (file.size / 1024 / 1024).toFixed(1);
-    throw new Error(`El archivo pesa ${mb} MB y el máximo es ${MAX_FILE_SIZE_BYTES / 1024 / 1024} MB. Prueba con uno más pequeño.`);
+    throw new Error(`El archivo pesa ${mb} MB y el máximo es ${maxBytes / 1024 / 1024} MB. Prueba con uno más pequeño.`);
   }
 }
 

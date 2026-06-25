@@ -6,6 +6,7 @@ import {
   formatFileContentForAI,
   assertSupportedFile,
   MAX_FILE_SIZE_BYTES,
+  MAX_POWERBI_SIZE_BYTES,
 } from '../pdfReader';
 
 /** Crea un File a partir de una cadena UTF-8. */
@@ -91,6 +92,11 @@ describe('assertSupportedFile (#28)', () => {
     expect(() => assertSupportedFile(fileFrom('x', 'export.csv'))).not.toThrow();
   });
 
+  it('acepta archivos Power BI .pbix/.pbit (#28 Fase 3b)', () => {
+    expect(() => assertSupportedFile(fileFrom('x', 'informe.pbix'))).not.toThrow();
+    expect(() => assertSupportedFile(fileFrom('x', 'plantilla.pbit'))).not.toThrow();
+  });
+
   it('rechaza extensiones no soportadas con mensaje claro', () => {
     expect(() => assertSupportedFile(fileFrom('x', 'app.exe'))).toThrow(/\.exe/);
     expect(() => assertSupportedFile(fileFrom('x', 'foto.png'))).toThrow(/no puedo leer/i);
@@ -100,5 +106,16 @@ describe('assertSupportedFile (#28)', () => {
     const big = fileFrom('x', 'grande.txt');
     Object.defineProperty(big, 'size', { value: MAX_FILE_SIZE_BYTES + 1 });
     expect(() => assertSupportedFile(big)).toThrow(/máximo/i);
+  });
+
+  it('Power BI usa un cap de tamaño mayor (25 MB)', () => {
+    // Un .pbix por encima del cap genérico (5 MB) pero por debajo del suyo: válido.
+    const pbix = fileFrom('x', 'informe.pbix');
+    Object.defineProperty(pbix, 'size', { value: MAX_FILE_SIZE_BYTES + 1 });
+    expect(() => assertSupportedFile(pbix)).not.toThrow();
+    // Por encima de su propio cap: rechazado.
+    const huge = fileFrom('x', 'enorme.pbix');
+    Object.defineProperty(huge, 'size', { value: MAX_POWERBI_SIZE_BYTES + 1 });
+    expect(() => assertSupportedFile(huge)).toThrow(/máximo/i);
   });
 });

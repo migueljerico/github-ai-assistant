@@ -12,7 +12,7 @@ probar, y las convenciones que es fácil romper sin querer.
 
 ## 1. Visión general
 
-**GitHub AI Assistant** (v3.2.0) es una app web que permite operar la **GitHub
+**GitHub AI Assistant** (v3.3.0) es una app web que permite operar la **GitHub
 REST API en lenguaje natural** a través de un proveedor de IA (Google Gemini o
 Groq Cloud). El usuario escribe una instrucción, la IA propone una acción, y
 **cada operación de escritura se confirma manualmente** antes de ejecutarse.
@@ -139,6 +139,7 @@ se guarda ni se loguea en el servidor.
 │   │   ├── hooks/            # useChat, useActions
 │   │   ├── utils/            # formatResult, repoRef (resolveRepoRef), pdfReader/pdfAdvanced,
 │   │   │                     #   spreadsheetReader (Excel/CSV vía SheetJS #28 Fase 3a),
+│   │   │                     #   powerbiReader (.pbix/.pbit vía fflate: informe + modelo/DAX #28 Fase 3b),
 │   │   │                     #   releaseGenerator/releaseAssets, instructionSuggestions,
 │   │   │                     #   rateLimitHandler, modeDetection (chat vs action), modelLabels
 │   │   ├── components/       # Agrupados por feature:

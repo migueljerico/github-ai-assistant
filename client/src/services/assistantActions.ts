@@ -20,6 +20,7 @@ import { resolveMode } from '../utils/modeDetection';
 import { resolveRepoRef } from '../utils/repoRef';
 import { readFileContent, formatFileContentForAI, assertSupportedFile } from '../utils/pdfReader';
 import { readSpreadsheet, SPREADSHEET_SAMPLE_ROWS } from '../utils/spreadsheetReader';
+import { readPowerBI } from '../utils/powerbiReader';
 import { formatResultData } from '../utils/formatResult';
 import type { ChatMessage, HistoryEntry, RepoAnalysis, GitHubRepo, PendingAction } from '../types';
 
@@ -424,6 +425,20 @@ export async function runAttachFile(deps: ChatDeps, file: File): Promise<FileCon
         content: truncated
           ? `📎 Cargado **${file.name}** — ${summary}. Es grande, así que analizaré una **muestra de las primeras ${SPREADSHEET_SAMPLE_ROWS} filas**. Si necesitas cálculos sobre el dataset completo, dime qué quieres calcular (sumas, medias, filtros…).`
           : `📎 Adjuntado **${file.name}** — ${summary}. Pregúntame lo que quieras sobre los datos o pídeme que lo documente.`,
+        isLoading: false,
+      });
+      return { name: file.name, contextText };
+    }
+
+    // #28 Fase 3b — Power BI (.pbix/.pbit): informe (páginas/visuales) + modelo/DAX
+    // (solo .pbit). Extrae solo la estructura JSON del ZIP (Zero-Storage).
+    if (ext === 'pbix' || ext === 'pbit') {
+      const { text, summary, truncated } = await readPowerBI(file);
+      const contextText = `\n\n--- Estructura del archivo Power BI: ${file.name} (${ext}) ---\n${text}\n--- Fin del archivo ---\n`;
+      updateMessage(loadingId, {
+        content: truncated
+          ? `📎 Cargado **${file.name}** — ${summary}. Es grande, así que incluyo una **muestra acotada** de su estructura. Si necesitas más detalle de alguna parte, dímelo.`
+          : `📎 Adjuntado **${file.name}** — ${summary}. Pregúntame lo que quieras sobre el informe o el modelo, o pídeme que lo documente.`,
         isLoading: false,
       });
       return { name: file.name, contextText };
