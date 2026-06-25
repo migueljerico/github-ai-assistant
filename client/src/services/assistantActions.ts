@@ -11,7 +11,7 @@
 
 import { generateRepoDocs, generateFileDoc, buildRepoContextSummary, callAI, parseGeminiAction, CHAT_PROMPT, ACTION_PROMPT, chatPromptWithContext } from './gemini';
 import type { AIProviderConfig } from './gemini';
-import { fetchRepoTreeRecursive, getFileContents, decodeBase64, createRepo, GitHubAPIError } from './github';
+import { fetchRepoTreeRecursive, getFileContents, decodeBase64, createRepo, repoExists, GitHubAPIError } from './github';
 import { writeDocFiles, createDocsDraftPr, publishFileDoc } from './docPublisher';
 import { summarizeThread, parseThreadInput, listOpenThreads, formatThreadList } from './threadSummary';
 import { executeAction, executeActionMultiRepo } from './actionExecutor';
@@ -583,4 +583,60 @@ export async function runCreateFileRelease(
     addMessage({ role: 'assistant', content: `❌ Error al crear el release: ${describePublishError(err, owner, repo)}` });
     updateEntry(histId, { status: 'error', description: `Error al crear release en ${owner}/${repo}` });
   }
+}
+
+/** Forma de publicar la doc del archivo adjunto. */
+export type PublishKind = 'commit' | 'draftpr' | 'release';
+
+/** Datos para publicar la doc generada en un repo concreto. */
+export interface PublishTarget {
+  owner: string;
+  repo: string;
+  fileName: string;
+  doc: string;
+  kind: PublishKind;
+  version?: string;
+}
+
+/** Despacha la publicación según el `kind` (commit / Draft PR / Release). */
+export async function runPublishFileDocByKind(deps: ChatDeps, t: PublishTarget): Promise<void> {
+  if (t.kind === 'release') {
+    await runCreateFileRelease(deps, t.owner, t.repo, t.fileName, t.doc, t.version);
+  } else {
+    await runPublishFileDoc(deps, t.owner, t.repo, t.fileName, t.doc, { draft: t.kind === 'draftpr' });
+  }
+}
+
+/** Resultado de iniciar la publicación. `repo-missing` → App ofrece crear el repo. */
+export type StartPublishResult = 'published' | 'repo-missing' | 'handled';
+
+/**
+ * Inicia la publicación comprobando antes que el repo destino existe (evita el crudo
+ * "Not Found"). Si no existe y es de la cuenta del usuario, devuelve `repo-missing`
+ * para que App ofrezca crearlo; si es de otra cuenta o hay error, lo notifica y
+ * devuelve `handled`. Si existe, publica y devuelve `published`.
+ */
+export async function runStartPublish(
+  deps: ChatDeps,
+  target: PublishTarget,
+  isOwnAccount: boolean,
+): Promise<StartPublishResult> {
+  const { token, addMessage } = deps;
+  const { owner, repo } = target;
+  let exists: boolean;
+  try {
+    exists = await repoExists(token, owner, repo);
+  } catch (err) {
+    addMessage({ role: 'assistant', content: `❌ No pude comprobar el repositorio **${owner}/${repo}**: ${(err as Error).message}` });
+    return 'handled';
+  }
+  if (!exists) {
+    if (!isOwnAccount) {
+      addMessage({ role: 'assistant', content: `❌ No encontré **${owner}/${repo}** y solo puedo crear repositorios en tu cuenta. Créalo en GitHub o elige otro destino.` });
+      return 'handled';
+    }
+    return 'repo-missing';
+  }
+  await runPublishFileDocByKind(deps, target);
+  return 'published';
 }

@@ -21,6 +21,7 @@ vi.mock('../github', () => {
     getFileContents: vi.fn(),
     decodeBase64: vi.fn((s: string) => `decoded(${s})`),
     createRepo: vi.fn(),
+    repoExists: vi.fn(),
     GitHubAPIError,
   };
 });
@@ -60,7 +61,7 @@ import { generateRepoDocs, generateFileDoc, buildRepoContextSummary, callAI, par
 import { assertSupportedFile, readFileContent } from '../../utils/pdfReader';
 import { readSpreadsheet } from '../../utils/spreadsheetReader';
 import { readPowerBI } from '../../utils/powerbiReader';
-import { fetchRepoTreeRecursive, getFileContents, createRepo } from '../github';
+import { fetchRepoTreeRecursive, getFileContents, createRepo, repoExists } from '../github';
 import { writeDocFiles, createDocsDraftPr, publishFileDoc } from '../docPublisher';
 import { summarizeThread, parseThreadInput, listOpenThreads, formatThreadList } from '../threadSummary';
 import { executeAction, executeActionMultiRepo } from '../actionExecutor';
@@ -80,6 +81,8 @@ import {
   runPublishFileDoc,
   runCreateFileRelease,
   runCreateRepo,
+  runStartPublish,
+  runPublishFileDocByKind,
 } from '../assistantActions';
 
 const CONFIG = { provider: 'groq' as const, apiKey: 'k', model: 'm' };
@@ -721,5 +724,78 @@ describe('runCreateRepo (#28 fix)', () => {
       content: expect.stringContaining('No pude crear'),
     }));
     expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'error' }));
+  });
+});
+
+describe('runPublishFileDocByKind (#28 fix)', () => {
+  const target = (kind: 'commit' | 'draftpr' | 'release', version?: string) =>
+    ({ owner: 'me', repo: 'r', fileName: 'a.md', doc: '# D', kind, version });
+
+  it('commit → publishFileDoc sin draft', async () => {
+    vi.mocked(publishFileDoc).mockResolvedValue({ pr: null, branchName: null } as any);
+    await runPublishFileDocByKind(makeDeps(), target('commit'));
+    expect(publishFileDoc).toHaveBeenCalledWith('tok', 'me', 'r', 'docs/a.md', '# D', { draft: false });
+  });
+
+  it('draftpr → publishFileDoc con draft', async () => {
+    vi.mocked(publishFileDoc).mockResolvedValue({ pr: { number: 1, html_url: 'u' }, branchName: 'b' } as any);
+    await runPublishFileDocByKind(makeDeps(), target('draftpr'));
+    expect(publishFileDoc).toHaveBeenCalledWith('tok', 'me', 'r', 'docs/a.md', '# D', { draft: true });
+  });
+
+  it('release → createGitHubRelease', async () => {
+    vi.mocked(createGitHubRelease).mockResolvedValue({ url: 'http://rel', id: 1 } as any);
+    await runPublishFileDocByKind(makeDeps(), target('release', 'v2.0.0'));
+    expect(createGitHubRelease).toHaveBeenCalledWith('tok', 'me', 'r', expect.objectContaining({ version: 'v2.0.0' }));
+  });
+});
+
+describe('runStartPublish (#28 fix)', () => {
+  const target = { owner: 'me', repo: 'r', fileName: 'a.md', doc: '# D', kind: 'commit' as const };
+
+  it('repo existe → publica y devuelve "published"', async () => {
+    vi.mocked(repoExists).mockResolvedValue(true);
+    vi.mocked(publishFileDoc).mockResolvedValue({ pr: null, branchName: null } as any);
+    const deps = makeDeps();
+
+    const res = await runStartPublish(deps, target, true);
+
+    expect(res).toBe('published');
+    expect(publishFileDoc).toHaveBeenCalled();
+  });
+
+  it('repo no existe y es de la cuenta → "repo-missing" sin publicar', async () => {
+    vi.mocked(repoExists).mockResolvedValue(false);
+    const deps = makeDeps();
+
+    const res = await runStartPublish(deps, target, true);
+
+    expect(res).toBe('repo-missing');
+    expect(publishFileDoc).not.toHaveBeenCalled();
+  });
+
+  it('repo no existe y es de otra cuenta → "handled" + aviso claro', async () => {
+    vi.mocked(repoExists).mockResolvedValue(false);
+    const deps = makeDeps();
+
+    const res = await runStartPublish(deps, { ...target, owner: 'otra' }, false);
+
+    expect(res).toBe('handled');
+    expect(deps.addMessage).toHaveBeenCalledWith(expect.objectContaining({
+      content: expect.stringContaining('solo puedo crear repositorios en tu cuenta'),
+    }));
+    expect(publishFileDoc).not.toHaveBeenCalled();
+  });
+
+  it('error al comprobar → "handled" + aviso', async () => {
+    vi.mocked(repoExists).mockRejectedValue(new Error('boom'));
+    const deps = makeDeps();
+
+    const res = await runStartPublish(deps, target, true);
+
+    expect(res).toBe('handled');
+    expect(deps.addMessage).toHaveBeenCalledWith(expect.objectContaining({
+      content: expect.stringContaining('No pude comprobar'),
+    }));
   });
 });

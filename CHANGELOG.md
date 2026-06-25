@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Publicar/crear release en un repo inexistente ya no muestra "Not Found"** — Al documentar y publicar, si el repositorio destino no existe en tu cuenta, en vez del crudo *"Not Found"* se **ofrece crearlo y publicar** (confirmación en el modal; usa `auto_init` para que quede listo). Si el destino es de otra cuenta/organización, se explica en lenguaje claro que solo se pueden crear repos en tu cuenta. Mensajes de error 404 traducidos a lenguaje llano (principio rector).
 
 ### Testing
-- `resolveMode` con archivo adjunto → chat (incl. caso "subir"); `runSend` pasa `hasFileContext`; `runCreateRepo` éxito/error; oferta de crear repo en `FilePublishModal`. Cliente: **324 tests**.
+- `resolveMode` con archivo adjunto → chat (incl. caso "subir"); `runSend` pasa `hasFileContext`; `runCreateRepo`, `runStartPublish` y `runPublishFileDocByKind` (lógica de publicación extraída de App.tsx, patrón #42); `repoExists`; oferta de crear repo en `FilePublishModal`. Cliente: **334 tests**.
 
 ## [3.4.0] — 2026-06-25
 
