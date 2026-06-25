@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.4.2] — 2026-06-25
+
+### Fixed / Improved
+- **Power Query (M) robusto en Power BI — completa #28 Fase 3b-bis** — La extracción de consultas solo funcionaba con el `DataMashup` binario, así que en los `.pbix` **modernos** (formato *enhanced metadata*, donde el M va dentro del modelo binario) no aparecía nada y la IA decía no tener visibilidad del Power Query. Ahora se extrae el M de dos fuentes:
+  - **`.pbit` → `DataModelSchema`** (particiones `source.type:'m'`): el `.pbit` que ya hay que exportar para el DAX trae el Power Query en JSON legible. Vía fiable y completa.
+  - **`DataMashup` XML/base64 antiguo** (además del binario [MS-QDEFF]): cubre los `.pbix` viejos.
+  - **Aviso honesto en `.pbix` moderno**: cuando el modelo va en binario y no se pudo leer el M, el mensaje indica que **DAX y consultas** están en el modelo binario → exporta `.pbit` para ambos (antes solo mencionaba el DAX).
+  - `powerbiReader.ts`: `extractModelMashup` (particiones), `parseMashupBinary`/`tryXmlMashup` (refactor + variante XML); precedencia DataMashup → particiones del schema.
+
+### Testing
+- Tests de Power Query desde particiones de `.pbit`, `DataMashup` XML/base64, aviso honesto en `.pbix` moderno y precedencia. Cliente: **338 tests**.
+
 ## [3.4.1] — 2026-06-25
 
 ### Fixed

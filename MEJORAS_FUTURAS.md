@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v3.4.1 · Junio 2026
+**Actualizado a:** v3.4.2 · Junio 2026
 
 ---
 
@@ -61,8 +61,9 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 > **Fase 3b-bis** (v3.4.0): **Power Query (M)** del `DataMashup` (blob binario con un
 > ZIP anidado cuyo `Formulas/Section1.m` lleva las consultas) — nombres de consulta
 > + código **M** (orígenes/transformaciones), que **rescata el `.pbix`**.
-> **Pendiente menor**: la variante **XML/base64 antigua** del `DataMashup` no se
-> parsea (la mayoría de archivos usan la binaria, ya soportada); se ignora sin romper.
+> **Robustez (v3.4.2):** el M se extrae del `DataMashup` (binario **y** la variante
+> XML/base64 antigua) y, en `.pbit`, de las **particiones** del `DataModelSchema`. Única
+> limitación restante: en un `.pbix` moderno el M va en el modelo binario → exporta `.pbit`.
 
 ---
 
@@ -88,7 +89,7 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 - ✅ CI con GitHub Actions ejecutando tests (cliente + servidor) automáticamente
 - ✅ Badge de Codecov en README
 - ✅ Cobertura actual: **≈64%** (ver Codecov para el valor exacto)
-- ✅ 314 tests en el cliente. Implementados para:
+- ✅ 338 tests en el cliente. Implementados para:
   - `AuthContext.tsx` (login, logout, OAuth flow, Zero-Storage)
   - `AIProviderContext.tsx` (conexión/desconexión de proveedores)
   - `providers.ts` (registro de proveedores, detección de modelos 🆓, caché, `pickDefaultModel`)
@@ -328,8 +329,10 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 > **#28** cubierto en su **norte** por las Fases 1 (v3.0.0, adjuntar como contexto) y
 > 2 (v3.1.0, documentar→publicar). **Más formatos:** Fase 3a (v3.2.0, Excel/CSV) y
-> Fase 3b MVP (v3.3.0, Power BI .pbix/.pbit) y **Fase 3b-bis** (v3.4.0, Power Query M
-> del `DataMashup`). Pendiente menor: variante XML/base64 antigua del `DataMashup`.
+> Fase 3b MVP (v3.3.0, Power BI .pbix/.pbit) y **Fase 3b-bis** (v3.4.0 + robustez v3.4.2:
+> Power Query M del `DataMashup` binario/XML **y** de las particiones del `DataModelSchema`
+> de `.pbit`). Única limitación restante: en un `.pbix` moderno el M va en el modelo binario
+> (no legible) → exporta `.pbit`.
 > Imágenes/visión: descartada.
 
 > **Nota de numeración:** los huecos en #16, #29, #30, #31, #43 y #47 son intencionados — esos ítems se fusionaron o descartaron en revisiones del roadmap y sus números no se reutilizan (convención del documento). #16 se fusionó en #42; #29 en #40.

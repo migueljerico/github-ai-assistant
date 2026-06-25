@@ -228,7 +228,8 @@ describe('readPowerBI — Power Query / M (#28 Fase 3b-bis)', () => {
     const res = await readPowerBI(fakeFile('raro.pbix'));
 
     expect(res.text).toContain('Página "P"');
-    expect(res.text).not.toContain('Power Query');
+    expect(res.text).not.toContain('Consultas (Power Query / M)'); // no se extrajo sección de consultas
+    expect(res.summary).not.toContain('Consultas:');
   });
 
   it('archivo solo con DataMashup (sin informe ni modelo): no lanza y devuelve el M', async () => {
@@ -238,5 +239,71 @@ describe('readPowerBI — Power Query / M (#28 Fase 3b-bis)', () => {
 
     expect(res.text).toContain('- Solo');
     expect(res.summary).toContain('Consultas: 1');
+  });
+
+  // ── Robustez (#3b-bis-2): .pbit (particiones) + DataMashup XML legacy + aviso ──
+
+  /** DataModelSchema con particiones M (cada consulta = partición `source.type:'m'`). */
+  function schemaWithQueries(queries: Array<{ name: string; expr: string }>): string {
+    return JSON.stringify({
+      model: { tables: queries.map(q => ({
+        name: q.name,
+        partitions: [{ name: q.name, source: { type: 'm', expression: q.expr } }],
+      })) },
+    });
+  }
+
+  /** DataMashup en la variante XML/base64 antigua (envuelve el binario en <PackageOPC>). */
+  function buildXmlDataMashup(): Uint8Array {
+    const inner = new Uint8Array(120); inner[0] = 0x50; inner[1] = 0x4b; // 'PK'
+    const bin = new Uint8Array(8 + inner.length);
+    new DataView(bin.buffer).setUint32(4, inner.length, true);
+    bin.set(inner, 8);
+    const b64 = btoa(String.fromCharCode(...bin));
+    return new TextEncoder().encode(`<DataMashup><PackageOPC>${b64}</PackageOPC></DataMashup>`);
+  }
+
+  it('.pbit: extrae Power Query de las particiones del DataModelSchema', async () => {
+    mockZip({ 'DataModelSchema': u16le(schemaWithQueries([
+      { name: 'Empleados', expr: 'let Source = Sql.Database("srv","hr") in Source' },
+      { name: 'Calendario', expr: 'let Source = #date(2020,1,1) in Source' },
+    ])) });
+
+    const res = await readPowerBI(fakeFile('informe.pbit'));
+
+    expect(res.text).toContain('Consultas (Power Query / M)');
+    expect(res.text).toContain('- Empleados');
+    expect(res.text).toContain('Sql.Database("srv","hr")');
+    expect(res.summary).toContain('Consultas: 2');
+  });
+
+  it('.pbix con DataMashup XML/base64 antiguo: lo decodifica y extrae el M', async () => {
+    mockMashup({ 'DataMashup': buildXmlDataMashup() }, sectionDoc([{ name: 'Origen' }]));
+
+    const res = await readPowerBI(fakeFile('viejo.pbix'));
+
+    expect(res.text).toContain('Consultas (Power Query / M)');
+    expect(res.text).toContain('- Origen');
+  });
+
+  it('.pbix moderno (sin schema ni DataMashup): el aviso menciona DAX y Power Query', async () => {
+    mockZip({ 'Report/Layout': u16le(layout([{ name: 'P', visuals: ['card'] }])), 'DataModel': new Uint8Array([1, 2, 3]) });
+
+    const res = await readPowerBI(fakeFile('moderno.pbix'));
+
+    expect(res.text).toContain('consultas de Power Query');
+    expect(res.summary).toContain('Power Query');
+  });
+
+  it('precedencia: con DataMashup legible se usa ese, no las particiones del schema', async () => {
+    mockMashup({
+      'DataMashup': buildDataMashup(),
+      'DataModelSchema': u16le(schemaWithQueries([{ name: 'DesdeSchema', expr: 'let x=1 in x' }])),
+    }, sectionDoc([{ name: 'DesdeMashup' }]));
+
+    const res = await readPowerBI(fakeFile('ambos.pbit'));
+
+    expect(res.text).toContain('- DesdeMashup');
+    expect(res.text).not.toContain('- DesdeSchema');
   });
 });
