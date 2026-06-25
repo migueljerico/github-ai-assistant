@@ -7,6 +7,7 @@
 import {
   getFileContents,
   createOrUpdateFile,
+  createOrUpdateBinaryFile,
   getRepo,
   getBranchSha,
   createBranch,
@@ -70,6 +71,29 @@ export async function writeDocFiles(
   await createOrUpdateFile(token, owner, repo, MANUAL_PATH, manualTecnico, MANUAL_MESSAGE, manualSha, branch);
 }
 
+/** Sanea el nombre de un fichero para usarlo como ruta de repo (sin espacios raros). */
+function sanitizeRepoPath(name: string): string {
+  return name.replace(/[^\w.-]+/g, '_').replace(/_+/g, '_') || 'archivo';
+}
+
+/**
+ * Commitea el archivo fuente original (binario: .pbit/.pbix/.xlsx…) en la raíz del
+ * repo, junto a la documentación (#28 Fase 4a). Así el README puede referenciarlo de
+ * verdad. Actualiza por SHA si ya existe.
+ */
+async function commitSourceFile(
+  token: string,
+  owner: string,
+  repo: string,
+  file: File,
+  branch?: string
+): Promise<void> {
+  const path = sanitizeRepoPath(file.name);
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const sha = await getExistingSha(token, owner, repo, path);
+  await createOrUpdateBinaryFile(token, owner, repo, path, bytes, `feat: añade ${path} (archivo fuente)`, sha, branch);
+}
+
 /** Resultado de publicar un fichero suelto (#28 Fase 2). */
 export interface PublishFileResult {
   /** El PR creado (solo en modo Draft PR); `null` en commit directo. */
@@ -90,7 +114,7 @@ export async function publishFileDoc(
   repo: string,
   path: string,
   content: string,
-  options: { draft?: boolean } = {},
+  options: { draft?: boolean; sourceFile?: File } = {},
   now: number = Date.now()
 ): Promise<PublishFileResult> {
   const message = `docs: ${path} generado por el Asistente de IA`;
@@ -99,6 +123,7 @@ export async function publishFileDoc(
     // Commit directo a la rama por defecto.
     const sha = await getExistingSha(token, owner, repo, path);
     await createOrUpdateFile(token, owner, repo, path, content, message, sha);
+    if (options.sourceFile) await commitSourceFile(token, owner, repo, options.sourceFile);
     return { pr: null, branchName: null };
   }
 
@@ -111,6 +136,7 @@ export async function publishFileDoc(
 
   const sha = await getExistingSha(token, owner, repo, path);
   await createOrUpdateFile(token, owner, repo, path, content, message, sha, branchName);
+  if (options.sourceFile) await commitSourceFile(token, owner, repo, options.sourceFile, branchName);
 
   const pr = await createPullRequest(
     token,

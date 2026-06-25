@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   decodeBase64,
   encodeBase64,
+  encodeBase64Bytes,
+  createOrUpdateBinaryFile,
   getUser,
   createRepo,
   getRepo,
@@ -58,6 +60,36 @@ describe('github.ts', () => {
       const encoded = encodeBase64(text);
       const decoded = decodeBase64(encoded);
       expect(decoded).toBe(text);
+    });
+  });
+
+  describe('encodeBase64Bytes (binario, #28 4a)', () => {
+    it('codifica bytes crudos a Base64', () => {
+      const bytes = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0xff, 0x00]);
+      const encoded = encodeBase64Bytes(bytes);
+      // Verificación independiente.
+      expect(encoded).toBe(btoa('PK\x03\x04\xff\x00'));
+    });
+
+    it('maneja arrays grandes sin desbordar la pila', () => {
+      const bytes = new Uint8Array(100_000).fill(65); // 'A'
+      expect(() => encodeBase64Bytes(bytes)).not.toThrow();
+      expect(encodeBase64Bytes(bytes).length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('createOrUpdateBinaryFile (#28 4a)', () => {
+    it('hace PUT con el base64 de los bytes y la rama indicada', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ commit: { sha: 'c1' }, content: {} }) } as any);
+      const bytes = new Uint8Array([1, 2, 3]);
+
+      await createOrUpdateBinaryFile('tok', 'me', 'r', 'informe.pbit', bytes, 'msg', 'sha1', 'rama');
+
+      const [, init] = vi.mocked(fetch).mock.calls[0];
+      const body = JSON.parse((init as RequestInit).body as string);
+      expect(body.content).toBe(encodeBase64Bytes(bytes));
+      expect(body.sha).toBe('sha1');
+      expect(body.branch).toBe('rama');
     });
   });
 

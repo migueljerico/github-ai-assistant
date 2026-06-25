@@ -35,14 +35,14 @@ describe('FilePublishModal (#28 Fase 2)', () => {
     const props = setup();
     fireEvent.change(screen.getByPlaceholderText(/repo destino/), { target: { value: 'owner/repo' } });
     fireEvent.click(screen.getByRole('button', { name: /Commit directo/ }));
-    expect(props.onCommit).toHaveBeenCalledWith('owner/repo');
+    expect(props.onCommit).toHaveBeenCalledWith('owner/repo', true);
   });
 
   it('Draft PR invoca onDraftPr con el repo introducido', () => {
     const props = setup();
     fireEvent.change(screen.getByPlaceholderText(/repo destino/), { target: { value: 'mi-repo' } });
     fireEvent.click(screen.getByRole('button', { name: /Draft PR/ }));
-    expect(props.onDraftPr).toHaveBeenCalledWith('mi-repo');
+    expect(props.onDraftPr).toHaveBeenCalledWith('mi-repo', true);
   });
 
   it('Crear Release invoca onRelease con repo y versión', () => {
@@ -50,14 +50,32 @@ describe('FilePublishModal (#28 Fase 2)', () => {
     fireEvent.change(screen.getByPlaceholderText(/repo destino/), { target: { value: 'owner/repo' } });
     fireEvent.change(screen.getByPlaceholderText(/versión/), { target: { value: 'v2.0.0' } });
     fireEvent.click(screen.getByRole('button', { name: /Crear Release/ }));
-    expect(props.onRelease).toHaveBeenCalledWith('owner/repo', 'v2.0.0');
+    expect(props.onRelease).toHaveBeenCalledWith('owner/repo', 'v2.0.0', true);
+  });
+
+  it('con archivo fuente: checkbox de subir original (activado por defecto) y se puede desmarcar (v3.6.0)', () => {
+    const props = setup({ sourceFileName: 'informe.pbit' });
+    fireEvent.change(screen.getByPlaceholderText(/repo destino/), { target: { value: 'owner/repo' } });
+    expect(screen.getByText(/informe\.pbit/)).toBeInTheDocument();
+    // Por defecto activado → uploadSource true.
+    fireEvent.click(screen.getByRole('button', { name: /Commit directo/ }));
+    expect(props.onCommit).toHaveBeenLastCalledWith('owner/repo', true);
+    // Desmarcar → uploadSource false.
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('button', { name: /Commit directo/ }));
+    expect(props.onCommit).toHaveBeenLastCalledWith('owner/repo', false);
+  });
+
+  it('sin archivo fuente no muestra el checkbox', () => {
+    setup();
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
   });
 
   it('initialRepo precarga el input del repo y permite publicar directamente (v3.5.0)', () => {
     const props = setup({ initialRepo: 'powerbi-gestion-people' });
     expect(screen.getByPlaceholderText(/repo destino/)).toHaveValue('powerbi-gestion-people');
     fireEvent.click(screen.getByRole('button', { name: /Commit directo/ }));
-    expect(props.onCommit).toHaveBeenCalledWith('powerbi-gestion-people');
+    expect(props.onCommit).toHaveBeenCalledWith('powerbi-gestion-people', true);
   });
 
   it('Cancelar invoca onCancel', () => {

@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.6.0] — 2026-06-25
+
+### Added
+- **Subir el archivo fuente al publicar (#28 Fase 4a)** — Al documentar y publicar un archivo adjunto, ahora puedes **subir también el archivo original** (`.pbit`/`.pbix`/`.xlsx`/…) al repositorio, no solo el Markdown. Checkbox en el modal (*"📎 Subir también el archivo original"*, activado por defecto). En **commit/Draft PR** el binario se commitea en la raíz (junto a la doc); en **Release** se adjunta como **asset** descargable. Así el README deja de referenciar un `.pbit` que no existía. Nuevos `encodeBase64Bytes` + `createOrUpdateBinaryFile` (`services/github.ts`) y reutilización de `utils/releaseAssets.ts`.
+
+### Fixed
+- **La documentación ya no inventa autor/año** — El prompt de `generateRepoDocs` forzaba un footer `Desarrollado por @[autor] · [año]` que el modelo rellenaba inventando (p. ej. *"· 2024"*). Ahora se **inyectan el `owner` real y el año actual**, así que el footer es correcto.
+
+### Notes
+- **Reescribir/actualizar documentación existente ya funcionaba**: al re-documentar y publicar sobre un repo, los ficheros se **actualizan por SHA** (`getExistingSha` + `createOrUpdateFile`), no hace falta editar a mano.
+
+### Testing
+- `encodeBase64Bytes`/`createOrUpdateBinaryFile`, `publishFileDoc` con `sourceFile` (doc + binario), `runCreateFileRelease` subiendo el asset, `generateRepoDocs` con autor/año reales, y el checkbox del modal. Cliente: **360 tests**.
+
 ## [3.5.0] — 2026-06-25
 
 ### Added

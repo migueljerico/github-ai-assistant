@@ -8,11 +8,13 @@ interface FilePublishModalProps {
   busy: boolean;
   /** Repo destino precargado (p. ej. al pedir "publícalo en X" por lenguaje natural). */
   initialRepo?: string;
+  /** Nombre del archivo fuente adjunto: si está, se ofrece subirlo junto a la doc (#28 4a). */
+  sourceFileName?: string;
   /** Si está, el repo destino no existe: se ofrece crearlo y publicar (#28 fix). */
   repoMissing?: { owner: string; repo: string } | null;
-  onCommit: (repo: string) => void;
-  onDraftPr: (repo: string) => void;
-  onRelease: (repo: string, version: string) => void;
+  onCommit: (repo: string, uploadSource: boolean) => void;
+  onDraftPr: (repo: string, uploadSource: boolean) => void;
+  onRelease: (repo: string, version: string, uploadSource: boolean) => void;
   /** Confirmar la creación del repo inexistente y publicar el `kind` pendiente. */
   onCreateRepoAndPublish?: () => void;
   /** Descartar la oferta de crear repo (volver a editar el destino). */
@@ -29,6 +31,7 @@ export default function FilePublishModal({
   doc,
   busy,
   initialRepo,
+  sourceFileName,
   repoMissing,
   onCommit,
   onDraftPr,
@@ -39,6 +42,7 @@ export default function FilePublishModal({
 }: FilePublishModalProps) {
   const [repo, setRepo] = useState(initialRepo ?? '');
   const [version, setVersion] = useState('');
+  const [uploadSource, setUploadSource] = useState(true);
   const repoOk = repo.trim().length > 0;
 
   return (
@@ -79,6 +83,18 @@ export default function FilePublishModal({
             />
           </div>
 
+          {sourceFileName && (
+            <label id="filepub-upload-source" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px', fontSize: '0.85rem', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={uploadSource}
+                onChange={e => setUploadSource(e.target.checked)}
+                disabled={busy}
+              />
+              📎 Subir también el archivo original (<strong>{sourceFileName}</strong>) al repositorio
+            </label>
+          )}
+
           {repoMissing && (
             <div
               id="filepub-repo-missing"
@@ -105,13 +121,13 @@ export default function FilePublishModal({
         ) : (
           <div className="modal-footer">
             <button id="filepub-cancel-btn" className="btn btn-danger" onClick={onCancel} disabled={busy}>❌ Cancelar</button>
-            <button id="filepub-commit-btn" className="btn btn-secondary" onClick={() => onCommit(repo.trim())} disabled={busy || !repoOk}>
+            <button id="filepub-commit-btn" className="btn btn-secondary" onClick={() => onCommit(repo.trim(), uploadSource)} disabled={busy || !repoOk}>
               📥 Commit directo
             </button>
-            <button id="filepub-draftpr-btn" className="btn btn-secondary" onClick={() => onDraftPr(repo.trim())} disabled={busy || !repoOk}>
+            <button id="filepub-draftpr-btn" className="btn btn-secondary" onClick={() => onDraftPr(repo.trim(), uploadSource)} disabled={busy || !repoOk}>
               🔀 Draft PR
             </button>
-            <button id="filepub-release-btn" className="btn btn-success" onClick={() => onRelease(repo.trim(), version.trim())} disabled={busy || !repoOk}>
+            <button id="filepub-release-btn" className="btn btn-success" onClick={() => onRelease(repo.trim(), version.trim(), uploadSource)} disabled={busy || !repoOk}>
               {busy ? <><span className="spinner spinner-sm" /> Publicando...</> : '🏷️ Crear Release'}
             </button>
           </div>

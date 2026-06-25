@@ -16,6 +16,7 @@ import { writeDocFiles, createDocsDraftPr, publishFileDoc } from './docPublisher
 import { summarizeThread, parseThreadInput, listOpenThreads, formatThreadList } from './threadSummary';
 import { executeAction, executeActionMultiRepo } from './actionExecutor';
 import { createGitHubRelease, suggestNextVersion } from '../utils/releaseGenerator';
+import { uploadReleaseAsset, getMimeType } from '../utils/releaseAssets';
 import { resolveMode } from '../utils/modeDetection';
 import { resolveRepoRef } from '../utils/repoRef';
 import { readFileContent, formatFileContentForAI, assertSupportedFile } from '../utils/pdfReader';
@@ -55,6 +56,8 @@ export interface SendDeps extends ChatDeps {
 export interface FileContext {
   name: string;
   contextText: string;
+  /** El `File` original, para poder subirlo al repo al publicar (#28 Fase 4a). */
+  file?: File;
 }
 
 /** Parámetros (estado de App) que `runSend` necesita leer en cada envío. */
@@ -540,18 +543,19 @@ export async function runPublishFileDoc(
   repo: string,
   fileName: string,
   doc: string,
-  opts: { draft?: boolean },
+  opts: { draft?: boolean; sourceFile?: File },
 ): Promise<void> {
   const { token, addMessage, addEntry, updateEntry } = deps;
   const path = docPathFor(fileName);
   const histId = addEntry({ status: 'pending', description: `Publicando ${path} en ${owner}/${repo}`, repo: `${owner}/${repo}` });
   try {
-    const { pr } = await publishFileDoc(token, owner, repo, path, doc, { draft: opts.draft });
+    const { pr } = await publishFileDoc(token, owner, repo, path, doc, { draft: opts.draft, sourceFile: opts.sourceFile });
+    const extra = opts.sourceFile ? ` y el archivo **${opts.sourceFile.name}**` : '';
     addMessage({
       role: 'assistant',
       content: pr
-        ? `✅ Draft PR [#${pr.number}](${pr.html_url}) con \`${path}\` en **${owner}/${repo}**. Revísalo antes de mergear.`
-        : `✅ \`${path}\` commiteado en **${owner}/${repo}**.`,
+        ? `✅ Draft PR [#${pr.number}](${pr.html_url}) con \`${path}\`${extra} en **${owner}/${repo}**. Revísalo antes de mergear.`
+        : `✅ \`${path}\`${extra} commiteado en **${owner}/${repo}**.`,
     });
     updateEntry(histId, { status: 'completed', description: `Documentación publicada en ${owner}/${repo}` });
   } catch (err) {
@@ -568,17 +572,29 @@ export async function runCreateFileRelease(
   fileName: string,
   doc: string,
   version?: string,
+  sourceFile?: File,
 ): Promise<void> {
   const { token, addMessage, addEntry, updateEntry } = deps;
   const histId = addEntry({ status: 'pending', description: `Creando release en ${owner}/${repo}`, repo: `${owner}/${repo}` });
   try {
     const tag = version?.trim() || await suggestNextVersion(token, owner, repo);
-    const { url } = await createGitHubRelease(token, owner, repo, {
+    const { url, id } = await createGitHubRelease(token, owner, repo, {
       version: tag,
       title: `${tag} — ${fileName}`,
       body: doc,
     });
     addMessage({ role: 'assistant', content: `✅ Release [${tag}](${url}) creado en **${owner}/${repo}** con la documentación de ${fileName}.` });
+    // Adjunta el archivo fuente como asset del release (#28 Fase 4a). No-fatal: si
+    // falla, el release ya está creado, solo se avisa.
+    if (sourceFile) {
+      try {
+        const asset = { name: sourceFile.name, file: sourceFile, contentType: getMimeType(sourceFile.name) };
+        const { url: assetUrl } = await uploadReleaseAsset(token, owner, repo, id, asset);
+        addMessage({ role: 'assistant', content: `📦 Archivo **${sourceFile.name}** adjuntado al release: [descargar](${assetUrl}).` });
+      } catch (assetErr) {
+        addMessage({ role: 'assistant', content: `⚠️ El release se creó, pero no pude adjuntar **${sourceFile.name}**: ${(assetErr as Error).message}` });
+      }
+    }
     updateEntry(histId, { status: 'completed', description: `Release ${tag} creado en ${owner}/${repo}` });
   } catch (err) {
     addMessage({ role: 'assistant', content: `❌ Error al crear el release: ${describePublishError(err, owner, repo)}` });
@@ -597,14 +613,16 @@ export interface PublishTarget {
   doc: string;
   kind: PublishKind;
   version?: string;
+  /** Archivo fuente original a subir junto a la doc (#28 Fase 4a). */
+  sourceFile?: File;
 }
 
 /** Despacha la publicación según el `kind` (commit / Draft PR / Release). */
 export async function runPublishFileDocByKind(deps: ChatDeps, t: PublishTarget): Promise<void> {
   if (t.kind === 'release') {
-    await runCreateFileRelease(deps, t.owner, t.repo, t.fileName, t.doc, t.version);
+    await runCreateFileRelease(deps, t.owner, t.repo, t.fileName, t.doc, t.version, t.sourceFile);
   } else {
-    await runPublishFileDoc(deps, t.owner, t.repo, t.fileName, t.doc, { draft: t.kind === 'draftpr' });
+    await runPublishFileDoc(deps, t.owner, t.repo, t.fileName, t.doc, { draft: t.kind === 'draftpr', sourceFile: t.sourceFile });
   }
 }
 
