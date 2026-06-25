@@ -8,16 +8,16 @@
 //   • Informe (`Report/Layout`, en pbix y pbit): páginas + tipos de visual.
 //   • Modelo de datos (`DataModelSchema`, SOLO en pbit): tablas, columnas y
 //     medidas DAX.
-//   • Power Query / M (`DataMashup`, en pbix y pbit — #28 Fase 3b-bis): nombres de
-//     consulta + código M (orígenes y transformaciones). El `DataMashup` es un blob
-//     binario con cabecera de longitud y un ZIP anidado (OPC) cuyo
-//     `Formulas/Section1.m` contiene el M. Esto rescata el .pbix: aunque su modelo
-//     no sea legible, sí se explica de dónde salen los datos y cómo se transforman.
+//   • Power Query / M (#28 Fase 3b-bis): nombres de consulta + código M (orígenes y
+//     transformaciones), desde dos fuentes — (a) el `DataMashup` (binario [MS-QDEFF]
+//     o la variante XML/base64 antigua), presente en .pbix con consultas embebidas; y
+//     (b) las particiones del `DataModelSchema` (solo .pbit), la vía fiable cuando el
+//     .pbix es moderno.
 // Qué NO (limitación honesta, principio rector):
 //   • El modelo de un .pbix va en `DataModel` (binario VertiPaq propietario), no
-//     legible en navegador → se avisa y se sugiere exportar como plantilla .pbit.
-//   • La variante XML/base64 antigua del `DataMashup` no se parsea (se ignora sin
-//     romper el resto de la extracción).
+//     legible en navegador. En los .pbix modernos el Power Query (M) también va dentro
+//     de ese binario → se avisa y se sugiere exportar como plantilla .pbit (que trae
+//     DAX y M en JSON legible).
 //
 // Riesgo de tokens (lección Fase 3a): un modelo puede tener muchas tablas/medidas
 // → mismo patrón que spreadsheetReader: muestra acotada (caps + presupuesto de
@@ -176,11 +176,88 @@ function extractModel(schema: unknown): ModelInfo {
 
 interface MashupInfo { queries: number; names: string[]; mText: string; truncated: boolean }
 
+/** Decodifica una cadena base64 a bytes (navegador/jsdom: `atob`). */
+function base64ToBytes(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+/** Decodifica bytes como texto probando UTF-8 y, si parece UTF-16, UTF-16LE. */
+function decodeText(bytes: Uint8Array): string {
+  // Heurística: muchos bytes nulos en posiciones pares ⇒ UTF-16LE.
+  if (bytes.length >= 2 && bytes[1] === 0x00 && bytes[0] !== 0x00) {
+    let t = new TextDecoder('utf-16le').decode(bytes);
+    if (t.charCodeAt(0) === 0xfeff) t = t.slice(1);
+    return t;
+  }
+  return decodeUtf8(bytes);
+}
+
+/** Construye el `MashupInfo` a partir del documento `section` de M (nombres + caps). */
+function buildMashupFromSection(section: string): MashupInfo | null {
+  const text = section.trim();
+  if (!text) return null;
+
+  // Cada consulta es una entrada `shared <Nombre> = …;`. El nombre puede venir entre
+  // comillas (`#"Mi Consulta"`) o como identificador simple.
+  const names: string[] = [];
+  const re = /\bshared\s+(#"((?:[^"]|"")*)"|[A-Za-z_][\w.]*)/g;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(text)) !== null) {
+    names.push(match[2] !== undefined ? match[2].replace(/""/g, '"') : match[1]);
+  }
+
+  let truncated = false;
+  let shownNames = names;
+  if (names.length > MAX_QUERIES) { shownNames = names.slice(0, MAX_QUERIES); truncated = true; }
+
+  let mText = text;
+  if (mText.length > MAX_M_CHARS) { mText = mText.slice(0, MAX_M_CHARS); truncated = true; }
+
+  return { queries: names.length, names: shownNames, mText, truncated };
+}
+
 /**
- * Extrae el Power Query (M) del blob `DataMashup` (#28 Fase 3b-bis). El `DataMashup`
- * es binario: `[versión int32 LE][longitud int32 LE][ZIP anidado]…`; ese ZIP contiene
- * `Formulas/Section1.m` con todas las consultas. Devuelve `null` (sin romper nada) si
- * no hay DataMashup o si no es la variante binaria legible (p. ej. XML/base64 antigua).
+ * Núcleo binario del `DataMashup` (formato [MS-QDEFF]): `[versión int32 LE]
+ * [longitud int32 LE][ZIP de package parts]…`; ese ZIP contiene `Formulas/Section1.m`.
+ */
+function parseMashupBinary(
+  bytes: Uint8Array,
+  unzipSync: (data: Uint8Array) => Record<string, Uint8Array>,
+): MashupInfo | null {
+  if (bytes.length < 8) return null;
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const partsLength = view.getUint32(4, true);
+  if (partsLength <= 0 || 8 + partsLength > bytes.length) return null;
+
+  const innerZip = unzipSync(bytes.subarray(8, 8 + partsLength));
+  const sectionEntry = findEntry(innerZip, 'Formulas/Section1.m');
+  if (!sectionEntry) return null;
+  return buildMashupFromSection(decodeUtf8(sectionEntry));
+}
+
+/**
+ * Variante antigua del `DataMashup`: un XML que envuelve el paquete binario como
+ * **base64**. Localiza el blob base64 más largo, lo decodifica y lo parsea como binario.
+ */
+function tryXmlMashup(
+  entry: Uint8Array,
+  unzipSync: (data: Uint8Array) => Record<string, Uint8Array>,
+): MashupInfo | null {
+  const text = decodeText(entry);
+  if (!text.includes('<')) return null; // no parece XML
+  const b64 = text.match(/[A-Za-z0-9+/]{100,}={0,2}/g)?.sort((a, b) => b.length - a.length)[0];
+  if (!b64) return null;
+  return parseMashupBinary(base64ToBytes(b64), unzipSync);
+}
+
+/**
+ * Extrae el Power Query (M) del blob `DataMashup` (#28 Fase 3b-bis). Soporta el formato
+ * binario [MS-QDEFF] y la variante XML/base64 antigua. Devuelve `null` (sin romper nada)
+ * si no hay DataMashup o no es legible (p. ej. en `.pbix` modernos el M va en el modelo
+ * binario; ahí se intenta luego `extractModelMashup` sobre el `DataModelSchema` del .pbit).
  */
 function extractMashup(
   zip: Record<string, Uint8Array>,
@@ -188,43 +265,51 @@ function extractMashup(
 ): MashupInfo | null {
   const entry = findEntry(zip, 'DataMashup');
   if (!entry) return null;
-
   try {
-    // Cabecera: 4 bytes de versión (se ignora) + 4 bytes de longitud (int32 LE) del
-    // ZIP de "package parts". El resto (permisos/metadata) no nos interesa.
-    const view = new DataView(entry.buffer, entry.byteOffset, entry.byteLength);
-    const partsLength = view.getUint32(4, true);
-    if (partsLength <= 0 || 8 + partsLength > entry.byteLength) return null;
-
-    const innerZip = unzipSync(entry.subarray(8, 8 + partsLength));
-    const sectionEntry = findEntry(innerZip, 'Formulas/Section1.m');
-    if (!sectionEntry) return null;
-
-    const section = decodeUtf8(sectionEntry).trim();
-    if (!section) return null;
-
-    // Cada consulta es una entrada `shared <Nombre> = …;`. El nombre puede venir entre
-    // comillas (`#"Mi Consulta"`) o como identificador simple.
-    const names: string[] = [];
-    const re = /\bshared\s+(#"((?:[^"]|"")*)"|[A-Za-z_][\w.]*)/g;
-    let match: RegExpExecArray | null;
-    while ((match = re.exec(section)) !== null) {
-      // Grupo 2 = contenido entre comillas (sin `#"`…`"`); si no, el identificador simple.
-      names.push(match[2] !== undefined ? match[2].replace(/""/g, '"') : match[1]);
-    }
-
-    let truncated = false;
-    let shownNames = names;
-    if (names.length > MAX_QUERIES) { shownNames = names.slice(0, MAX_QUERIES); truncated = true; }
-
-    let mText = section;
-    if (mText.length > MAX_M_CHARS) { mText = mText.slice(0, MAX_M_CHARS); truncated = true; }
-
-    return { queries: names.length, names: shownNames, mText, truncated };
+    return parseMashupBinary(entry, unzipSync) ?? tryXmlMashup(entry, unzipSync);
   } catch {
     // Variante no soportada o blob ilegible: se ignora sin romper informe/modelo.
     return null;
   }
+}
+
+/**
+ * Extrae el Power Query (M) del `DataModelSchema` (solo `.pbit`): el M vive en las
+ * **particiones** de cada tabla (`partitions[].source` con `type: 'm'` y `expression`).
+ * Es la vía fiable para los `.pbix` modernos (basta exportar el informe como `.pbit`).
+ */
+function extractModelMashup(schema: unknown): MashupInfo | null {
+  const tables = (schema as { model?: { tables?: unknown[] } })?.model?.tables;
+  if (!Array.isArray(tables)) return null;
+
+  const names: string[] = [];
+  const blocks: string[] = [];
+  for (const table of tables) {
+    const t = table as {
+      name?: string;
+      partitions?: Array<{ name?: string; source?: { type?: string; expression?: unknown } }>;
+    };
+    const partitions = Array.isArray(t.partitions) ? t.partitions : [];
+    for (const p of partitions) {
+      if (p?.source?.type !== 'm') continue;
+      const expr = daxToString(p.source.expression);
+      if (!expr) continue;
+      const name = p.name || t.name || 'Consulta sin nombre';
+      names.push(name);
+      blocks.push(`// ${name}\n${expr}`);
+    }
+  }
+
+  if (names.length === 0) return null;
+
+  let truncated = false;
+  let shownNames = names;
+  if (names.length > MAX_QUERIES) { shownNames = names.slice(0, MAX_QUERIES); truncated = true; }
+
+  let mText = blocks.join('\n\n');
+  if (mText.length > MAX_M_CHARS) { mText = mText.slice(0, MAX_M_CHARS); truncated = true; }
+
+  return { queries: names.length, names: shownNames, mText, truncated };
 }
 
 /**
@@ -251,14 +336,18 @@ export async function readPowerBI(file: File): Promise<PowerBIResult> {
     catch { report = null; }
   }
 
-  let model: ModelInfo | null = null;
+  // Decodificar el DataModelSchema (solo .pbit) una vez: lo usan el modelo (DAX) y el
+  // Power Query (particiones M).
+  let schemaJson: unknown = null;
   if (schemaEntry) {
-    try { model = extractModel(decodeUtf16Json(schemaEntry)); }
-    catch { model = null; }
+    try { schemaJson = decodeUtf16Json(schemaEntry); }
+    catch { schemaJson = null; }
   }
+  const model: ModelInfo | null = schemaJson ? extractModel(schemaJson) : null;
 
-  // Power Query (M): presente en pbix y pbit (cuando hay consultas) — #28 Fase 3b-bis.
-  const mashup = extractMashup(zip, unzipSync);
+  // Power Query (M) — #28 Fase 3b-bis/3b-bis-2: del DataMashup (binario o XML antiguo)
+  // y, si no, de las particiones del DataModelSchema (.pbit).
+  const mashup = extractMashup(zip, unzipSync) ?? (schemaJson ? extractModelMashup(schemaJson) : null);
 
   if (!report && !model && !mashup) {
     throw new Error('No encontré el informe ni el modelo dentro del archivo Power BI. Asegúrate de exportar un .pbix o una plantilla .pbit válidos.');
@@ -279,13 +368,20 @@ export async function readPowerBI(file: File): Promise<PowerBIResult> {
     sections.push(`## Modelo de datos\n\n${model.blocks.join('\n\n')}`);
     summaryParts.push(`Modelo: ${model.tables} tabla(s), ${model.measures} medida(s)`);
   } else {
-    // .pbix sin DataModelSchema: el modelo va en binario VertiPaq (no legible).
+    // .pbix sin DataModelSchema: el modelo va en binario VertiPaq (no legible). Si
+    // tampoco pudimos leer el Power Query (.pbix moderno: el M también va en el binario),
+    // el aviso lo menciona; si sí hay consultas (p. ej. .pbix antiguo con DataMashup), no.
+    const extra = mashup
+      ? 'tablas, columnas y medidas DAX'
+      : 'tablas, columnas, **medidas DAX** y las **consultas de Power Query (M)** (en los .pbix modernos también van en el modelo binario)';
     sections.push(
-      '## Modelo de datos\n\n_El modelo de un .pbix está en formato binario (VertiPaq) no legible ' +
-      'en el navegador. Para incluir tablas, columnas y medidas DAX, exporta el informe como ' +
-      'plantilla **.pbit** (Power BI Desktop → Archivo → Exportar → Plantilla de Power BI)._',
+      `## Modelo de datos\n\n_El modelo de un .pbix está en formato binario (VertiPaq) no legible ` +
+      `en el navegador. Para incluir ${extra}, exporta el informe como plantilla **.pbit** ` +
+      `(Power BI Desktop → Archivo → Exportar → Plantilla de Power BI)._`,
     );
-    summaryParts.push('Modelo en formato binario (exporta como .pbit para el DAX)');
+    summaryParts.push(mashup
+      ? 'Modelo en formato binario (exporta como .pbit para el DAX)'
+      : 'Modelo y consultas en formato binario (exporta como .pbit para DAX y Power Query)');
   }
 
   if (mashup) {
