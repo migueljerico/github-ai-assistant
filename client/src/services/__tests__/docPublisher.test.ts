@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('../github', () => ({
   getFileContents: vi.fn(),
   createOrUpdateFile: vi.fn(),
+  createOrUpdateBinaryFile: vi.fn(),
   getRepo: vi.fn(),
   getBranchSha: vi.fn(),
   createBranch: vi.fn(),
@@ -13,6 +14,7 @@ vi.mock('../github', () => ({
 import {
   getFileContents,
   createOrUpdateFile,
+  createOrUpdateBinaryFile,
   getRepo,
   getBranchSha,
   createBranch,
@@ -145,6 +147,25 @@ describe('docPublisher', () => {
         TOKEN, OWNER, REPO, expect.any(String), 'docs/file-456', 'main', expect.any(String), true
       );
       expect(result).toEqual({ pr: { number: 9, html_url: 'http://pr/9' }, branchName: 'docs/file-456' });
+    });
+
+    it('con sourceFile commitea también el binario (doc + archivo fuente) — #28 4a', async () => {
+      vi.mocked(getFileContents).mockResolvedValue({ sha: 'existing' } as any);
+      vi.mocked(createOrUpdateFile).mockResolvedValue({ commit: { sha: 'c' } } as any);
+      vi.mocked(createOrUpdateBinaryFile).mockResolvedValue({ commit: { sha: 'b' } } as any);
+      const sourceFile = {
+        name: 'informe miguel.pbit',
+        arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+      } as unknown as File;
+
+      await publishFileDoc(TOKEN, OWNER, REPO, 'docs/notas.md', '# Doc', { sourceFile });
+
+      expect(createOrUpdateFile).toHaveBeenCalledTimes(1); // el doc
+      expect(createOrUpdateBinaryFile).toHaveBeenCalledTimes(1); // el binario
+      // nombre saneado (sin espacios) en la raíz
+      const args = vi.mocked(createOrUpdateBinaryFile).mock.calls[0];
+      expect(args[3]).toBe('informe_miguel.pbit');
+      expect(args[4]).toBeInstanceOf(Uint8Array);
     });
   });
 });

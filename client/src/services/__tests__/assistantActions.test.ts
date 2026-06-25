@@ -34,6 +34,10 @@ vi.mock('../../utils/releaseGenerator', () => ({
   createGitHubRelease: vi.fn(),
   suggestNextVersion: vi.fn(),
 }));
+vi.mock('../../utils/releaseAssets', () => ({
+  uploadReleaseAsset: vi.fn(),
+  getMimeType: vi.fn(() => 'application/octet-stream'),
+}));
 vi.mock('../threadSummary', () => ({
   summarizeThread: vi.fn(),
   parseThreadInput: vi.fn(),
@@ -66,6 +70,7 @@ import { writeDocFiles, createDocsDraftPr, publishFileDoc } from '../docPublishe
 import { summarizeThread, parseThreadInput, listOpenThreads, formatThreadList } from '../threadSummary';
 import { executeAction, executeActionMultiRepo } from '../actionExecutor';
 import { createGitHubRelease, suggestNextVersion } from '../../utils/releaseGenerator';
+import { uploadReleaseAsset } from '../../utils/releaseAssets';
 import { resolveMode } from '../../utils/modeDetection';
 import {
   runDocumentRepo,
@@ -637,11 +642,24 @@ describe('runPublishFileDoc (#28 Fase 2)', () => {
 
     await runPublishFileDoc(deps, 'owner', 'repo', 'notas.txt', '# Doc', { draft: false });
 
-    expect(publishFileDoc).toHaveBeenCalledWith('tok', 'owner', 'repo', 'docs/notas.md', '# Doc', { draft: false });
+    expect(publishFileDoc).toHaveBeenCalledWith('tok', 'owner', 'repo', 'docs/notas.md', '# Doc', { draft: false, sourceFile: undefined });
     expect(deps.addMessage).toHaveBeenCalledWith(expect.objectContaining({
       content: expect.stringContaining('`docs/notas.md` commiteado'),
     }));
     expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'completed' }));
+  });
+
+  it('reenvía el sourceFile a publishFileDoc y lo menciona (#28 4a)', async () => {
+    vi.mocked(publishFileDoc).mockResolvedValue({ pr: null, branchName: null });
+    const deps = makeDeps();
+    const sourceFile = { name: 'informe.pbit' } as unknown as File;
+
+    await runPublishFileDoc(deps, 'owner', 'repo', 'informe.pbit', '# Doc', { draft: false, sourceFile });
+
+    expect(publishFileDoc).toHaveBeenCalledWith('tok', 'owner', 'repo', 'docs/informe.md', '# Doc', { draft: false, sourceFile });
+    expect(deps.addMessage).toHaveBeenCalledWith(expect.objectContaining({
+      content: expect.stringContaining('informe.pbit'),
+    }));
   });
 
   it('Draft PR: muestra el enlace al PR', async () => {
@@ -694,6 +712,20 @@ describe('runCreateFileRelease (#28 Fase 2)', () => {
 
     expect(suggestNextVersion).not.toHaveBeenCalled();
     expect(createGitHubRelease).toHaveBeenCalledWith('tok', 'owner', 'repo', expect.objectContaining({ version: 'v9.9.9' }));
+  });
+
+  it('con sourceFile lo sube como asset del release (#28 4a)', async () => {
+    vi.mocked(createGitHubRelease).mockResolvedValue({ url: 'http://rel', id: 77 } as any);
+    vi.mocked(uploadReleaseAsset).mockResolvedValue({ url: 'http://asset', name: 'informe.pbit' });
+    const deps = makeDeps();
+    const sourceFile = { name: 'informe.pbit' } as unknown as File;
+
+    await runCreateFileRelease(deps, 'owner', 'repo', 'informe.pbit', '# D', 'v1.0.0', sourceFile);
+
+    expect(uploadReleaseAsset).toHaveBeenCalledWith('tok', 'owner', 'repo', 77, expect.objectContaining({ name: 'informe.pbit', file: sourceFile }));
+    expect(deps.addMessage).toHaveBeenCalledWith(expect.objectContaining({
+      content: expect.stringContaining('adjuntado al release'),
+    }));
   });
 
   it('ante un error marca la entrada como error', async () => {

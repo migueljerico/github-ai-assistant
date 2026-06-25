@@ -183,6 +183,47 @@ export function encodeBase64(text: string): string {
 }
 
 /**
+ * Codifica BYTES crudos a Base64 (para subir binarios: .pbit, .xlsx, imágenes…).
+ * Procesa por chunks para no desbordar la pila con `String.fromCharCode(...bytes)`.
+ */
+export function encodeBase64Bytes(bytes: Uint8Array): string {
+  let binary = '';
+  const CHUNK = 0x8000; // 32 KB por pasada
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
+
+/**
+ * Crea o actualiza un fichero BINARIO en el repo (a diferencia de
+ * `createOrUpdateFile`, que codifica un string de texto). Sube los bytes tal cual.
+ */
+export async function createOrUpdateBinaryFile(
+  token: string,
+  owner: string,
+  repo: string,
+  path: string,
+  bytes: Uint8Array,
+  message: string,
+  sha?: string,
+  branch?: string
+): Promise<{ commit: { sha: string }; content: GitHubFile }> {
+  const body: Record<string, unknown> = {
+    message,
+    content: encodeBase64Bytes(bytes),
+  };
+  if (sha) body.sha = sha;
+  if (branch) body.branch = branch;
+
+  return ghFetch(token, `/repos/${owner}/${repo}/contents/${path}`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+/**
  * Create or update a file in a repository.
  *
  * - If `sha` is provided, this is an **update** (the SHA must match the current file).

@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v3.5.0 · Junio 2026
+**Actualizado a:** v3.6.0 · Junio 2026
 
 ---
 
@@ -32,6 +32,7 @@ Estado del código, mejoras pendientes y roadmap del proyecto.
 | 28 | Archivos locales — **Fase 3a**: hojas de cálculo Excel/CSV (muestra de filas + aviso de tokens) | utils/spreadsheetReader.ts (SheetJS/xlsx), utils/pdfReader.ts, services/assistantActions.ts (runAttachFile) | v3.2.0 |
 | 28 | Archivos locales — **Fase 3b (MVP)**: Power BI .pbix/.pbit (informe = páginas/visuales; modelo/DAX de .pbit) | utils/powerbiReader.ts (fflate), utils/pdfReader.ts, services/assistantActions.ts (runAttachFile) | v3.3.0 |
 | 28 | Archivos locales — **Fase 3b-bis**: Power Query (M) del `DataMashup` (nombres de consulta + código M; orígenes/transformaciones, rescata el .pbix) | utils/powerbiReader.ts (extractMashup, fflate) | v3.4.0 |
+| 28 | Archivos locales — **Fase 4a**: subir el archivo fuente al publicar (binario en commit/Draft PR o asset de Release) + doc sin inventar autor/año | services/github.ts (createOrUpdateBinaryFile), docPublisher.ts, releaseAssets.ts, gemini.ts | v3.6.0 |
 
 ---
 
@@ -64,6 +65,10 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 > **Robustez (v3.4.2):** el M se extrae del `DataMashup` (binario **y** la variante
 > XML/base64 antigua) y, en `.pbit`, de las **particiones** del `DataModelSchema`. Única
 > limitación restante: en un `.pbix` moderno el M va en el modelo binario → exporta `.pbit`.
+> **Fase 4a (v3.6.0):** al publicar se sube también el **archivo fuente** (binario en
+> commit/Draft PR o asset de Release) y la doc ya no inventa autor/año. **Fase 4b (pendiente):**
+> adjuntar **imágenes** (screenshots → `/screenshots`, sin analizar) y **multi-archivo**
+> (dataset → `/data`) para publicar el proyecto completo.
 
 ---
 

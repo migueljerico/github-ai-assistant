@@ -9,6 +9,7 @@ import {
   isTransientAIError,
   withTransientRetry,
   generateFileDoc,
+  generateRepoDocs,
 } from '../gemini';
 
 describe('gemini.ts - Utilidades', () => {
@@ -455,5 +456,29 @@ describe('generateFileDoc - documentar archivo adjunto (#28 Fase 2)', () => {
     // Contenido no vacío para callAI, pero que al quitar los fences queda vacío.
     mockContent('```markdown\n```');
     await expect(generateFileDoc('a.md', 'x', config)).rejects.toThrow(/no devolvió documentación/);
+  });
+});
+
+describe('generateRepoDocs - no inventar autor/año (#28 4a)', () => {
+  beforeEach(() => { vi.restoreAllMocks(); });
+
+  it('inyecta el owner real y el año actual en el footer, sin placeholders', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: '{"readme":"R","manualTecnico":"M"}' } }] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await generateRepoDocs(
+      'migueljerico/powerbi-gestion-people',
+      [{ path: 'README.md', content: '# x' }],
+      { provider: 'groq', apiKey: 'k', model: 'llama' },
+    );
+
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    const sysMsg = body.messages.find((m: { role: string }) => m.role === 'system');
+    expect(sysMsg.content).toContain(`@migueljerico · ${new Date().getFullYear()}`);
+    expect(sysMsg.content).not.toContain('[autor]');
+    expect(sysMsg.content).not.toContain('[año]');
   });
 });

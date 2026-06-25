@@ -511,6 +511,9 @@ export async function generateRepoDocs(
   }
 
   const primaryLanguage = detectPrimaryLanguage(files);
+  // Autor y año REALES (no dejar que el modelo los invente — caso real: footer "· 2024").
+  const docOwner = repoName.includes('/') ? repoName.split('/')[0] : repoName;
+  const docYear = new Date().getFullYear();
 
   // ── Rich system prompt with structure template ────────────────────────────
   const docSystemPrompt = `Eres un experto en documentación técnica de software de nivel profesional.
@@ -537,7 +540,8 @@ REQUISITOS OBLIGATORIOS PARA EL README.md
    📁 Estructura del proyecto (árbol de carpetas formateado en bloque de código)
    🛠️ Tecnologías (tabla: Herramienta | Versión/Detalle | Uso en el proyecto)
    📚 Contexto formativo o motivación del proyecto (si aplica)
-   Footer: <p align="center">Desarrollado por @[autor] · [año]</p>
+   Footer EXACTO (NO inventes autor ni año; usa EXACTAMENTE estos valores reales):
+   <p align="center">Desarrollado por @${docOwner} · ${docYear}</p>
 
 3. CALIDAD:
    - Usa el contenido REAL del código para las explicaciones (nombres de funciones, rutas, comandos)
