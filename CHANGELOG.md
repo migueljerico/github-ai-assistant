@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.0] — 2026-06-25
+
+### Added
+- **Adjuntar archivos Power BI `.pbix`/`.pbit` — #28 Fase 3b (MVP)** — Ahora puedes adjuntar un informe de Power BI y trabajar con él en lenguaje natural (preguntar, documentar, publicar). Un `.pbix`/`.pbit` es un **ZIP**; se abre en el navegador con **`fflate`** (Zero-Storage; lazy en su propio chunk) y se extrae **solo la estructura JSON**:
+  - **Informe** (`Report/Layout`, en `.pbix` y `.pbit`): páginas y tipos de visual.
+  - **Modelo de datos** (`DataModelSchema`, **solo `.pbit`**): tablas, columnas y **medidas DAX**.
+  - **Limitación honesta (principio rector):** el modelo de un `.pbix` va en formato **binario VertiPaq** (no legible en navegador) → se avisa y se sugiere exportar como plantilla **`.pbit`** para incluir el DAX. El **Power Query (M)** del `DataMashup` queda para una fase **3b-bis**.
+  - **Control de tokens:** muestra acotada (caps de páginas/tablas/medidas + presupuesto de caracteres) con aviso en el chat cuando se trunca.
+  - Nuevo `utils/powerbiReader.ts` (`readPowerBI`); `runAttachFile` enruta `.pbix`/`.pbit` y compone el aviso. Cap de tamaño mayor para Power BI (25 MB) porque solo se lee el ZIP, no el dataset binario.
+
+### Testing
+- Tests de `readPowerBI` (informe, modelo/DAX de `.pbit`, aviso de modelo binario en `.pbix`, caps/truncado, DAX como array, ZIP corrupto/sin partes), `assertSupportedFile` (`.pbix`/`.pbit` + cap de 25 MB) y `runAttachFile` con Power BI. Cliente: **308 tests**.
+
 ## [3.2.0] — 2026-06-24
 
 ### Added

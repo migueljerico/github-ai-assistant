@@ -46,10 +46,12 @@ vi.mock('../../utils/spreadsheetReader', () => ({
   readSpreadsheet: vi.fn(),
   SPREADSHEET_SAMPLE_ROWS: 100,
 }));
+vi.mock('../../utils/powerbiReader', () => ({ readPowerBI: vi.fn() }));
 
 import { generateRepoDocs, generateFileDoc, buildRepoContextSummary, callAI, parseGeminiAction, chatPromptWithContext } from '../gemini';
 import { assertSupportedFile, readFileContent } from '../../utils/pdfReader';
 import { readSpreadsheet } from '../../utils/spreadsheetReader';
+import { readPowerBI } from '../../utils/powerbiReader';
 import { fetchRepoTreeRecursive, getFileContents } from '../github';
 import { writeDocFiles, createDocsDraftPr, publishFileDoc } from '../docPublisher';
 import { summarizeThread, parseThreadInput, listOpenThreads, formatThreadList } from '../threadSummary';
@@ -508,6 +510,42 @@ describe('runAttachFile (#28)', () => {
     }));
     const msg = vi.mocked(deps.updateMessage).mock.calls[0][1] as { content: string };
     expect(msg.content).not.toContain('muestra de las primeras');
+  });
+
+  it('Power BI .pbit: usa readPowerBI y devuelve el contexto (#28 Fase 3b)', async () => {
+    vi.mocked(assertSupportedFile).mockReturnValue(undefined);
+    vi.mocked(readPowerBI).mockResolvedValue({
+      text: '## Informe\n### Página "Ventas"...',
+      summary: 'Informe: 2 páginas, 8 visuales · Modelo: 3 tablas, 12 medidas',
+      truncated: false,
+    });
+    const deps = makeDeps();
+
+    const ctx = await runAttachFile(deps, new File(['x'], 'informe.pbit'));
+
+    expect(readPowerBI).toHaveBeenCalled();
+    expect(readFileContent).not.toHaveBeenCalled();
+    expect(ctx).toEqual({ name: 'informe.pbit', contextText: expect.stringContaining('Power BI') });
+    expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', expect.objectContaining({
+      content: expect.stringContaining('Modelo: 3 tablas'),
+      isLoading: false,
+    }));
+  });
+
+  it('Power BI grande: avisa de muestra acotada cuando truncado', async () => {
+    vi.mocked(assertSupportedFile).mockReturnValue(undefined);
+    vi.mocked(readPowerBI).mockResolvedValue({
+      text: '## Informe...',
+      summary: 'Informe: 40 páginas, 300 visuales',
+      truncated: true,
+    });
+    const deps = makeDeps();
+
+    await runAttachFile(deps, new File(['x'], 'grande.pbix'));
+
+    expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', expect.objectContaining({
+      content: expect.stringContaining('muestra acotada'),
+    }));
   });
 });
 
