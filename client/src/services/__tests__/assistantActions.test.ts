@@ -600,11 +600,20 @@ describe('runGenerateFileDoc (#28 Fase 2)', () => {
 
     const doc = await runGenerateFileDoc(deps, CONFIG, FILE_CTX);
 
-    expect(generateFileDoc).toHaveBeenCalledWith('notas.txt', 'contenido', CONFIG);
+    expect(generateFileDoc).toHaveBeenCalledWith('notas.txt', 'contenido', CONFIG, undefined);
     expect(doc).toBe('# Doc generada');
     expect(deps.addMessage).toHaveBeenCalled();
     expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', expect.objectContaining({ isLoading: false }));
     expect(deps.setIsChatLoading).toHaveBeenLastCalledWith(false);
+  });
+
+  it('reenvía la conversación a generateFileDoc (v3.5.0)', async () => {
+    vi.mocked(generateFileDoc).mockResolvedValue('# Doc');
+    const deps = makeDeps();
+
+    await runGenerateFileDoc(deps, CONFIG, FILE_CTX, 'Usuario: hola');
+
+    expect(generateFileDoc).toHaveBeenCalledWith('notas.txt', 'contenido', CONFIG, 'Usuario: hola');
   });
 
   it('ante un error muestra el mensaje y devuelve null', async () => {

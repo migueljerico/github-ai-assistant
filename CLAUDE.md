@@ -12,7 +12,7 @@ probar, y las convenciones que es fácil romper sin querer.
 
 ## 1. Visión general
 
-**GitHub AI Assistant** (v3.4.2) es una app web que permite operar la **GitHub
+**GitHub AI Assistant** (v3.5.0) es una app web que permite operar la **GitHub
 REST API en lenguaje natural** a través de un proveedor de IA (Google Gemini o
 Groq Cloud). El usuario escribe una instrucción, la IA propone una acción, y
 **cada operación de escritura se confirma manualmente** antes de ejecutarse.
@@ -100,10 +100,19 @@ se guarda ni se loguea en el servidor.
 `App.tsx` decide entre dos modos con heurísticas (`isConversationRequest` /
 `isActionRequest`), o con un override manual (`modeOverride`):
 
-- **chat** → usa `CHAT_PROMPT`: responde en Markdown como consultor, nunca
-  genera JSON ni ejecuta acciones.
+- **chat** → usa `CHAT_PROMPT`: responde en Markdown, nunca genera JSON ni ejecuta
+  acciones. **Tono (v3.5.0, rector):** habla al usuario en lenguaje **natural y
+  accesible**, adaptado a su nivel (no como "senior/arquitecto"). El registro
+  profesional se reserva para el **documento** generado (`generateFileDoc`), no para
+  el chat.
 - **action** → usa `ACTION_PROMPT` (alias de `SYSTEM_PROMPT`): responde solo con
   el JSON de la acción.
+
+> **Documentar/publicar desde lenguaje natural (#28, v3.5.0):** antes del chat,
+> `handleSend` usa `utils/intentDetection.ts` (`detectDocPublishIntent` +
+> `routeUserMessage`) para detectar órdenes como *"documéntalo"* o *"publícalo en X"*
+> y enrutarlas a los flujos reales (generar doc → `FilePublishModal`), en vez de
+> dejarlo en una respuesta de chat. El doc puede incorporar la conversación.
 
 ---
 
@@ -141,7 +150,8 @@ se guarda ni se loguea en el servidor.
 │   │   │                     #   spreadsheetReader (Excel/CSV vía SheetJS #28 Fase 3a),
 │   │   │                     #   powerbiReader (.pbix/.pbit vía fflate: informe + modelo/DAX + Power Query/M del DataMashup #28 Fase 3b/3b-bis),
 │   │   │                     #   releaseGenerator/releaseAssets, instructionSuggestions,
-│   │   │                     #   rateLimitHandler, modeDetection (chat vs action), modelLabels
+│   │   │                     #   rateLimitHandler, modeDetection (chat vs action),
+│   │   │                     #   intentDetection (documentar/publicar desde NL #28 v3.5.0), modelLabels
 │   │   ├── components/       # Agrupados por feature:
 │   │   │                     #   auth/ ai-provider/ chat/ confirm/ layout/
 │   │   │                     #   multi-repo/ templates/

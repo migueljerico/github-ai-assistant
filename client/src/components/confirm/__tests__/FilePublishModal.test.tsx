@@ -53,6 +53,13 @@ describe('FilePublishModal (#28 Fase 2)', () => {
     expect(props.onRelease).toHaveBeenCalledWith('owner/repo', 'v2.0.0');
   });
 
+  it('initialRepo precarga el input del repo y permite publicar directamente (v3.5.0)', () => {
+    const props = setup({ initialRepo: 'powerbi-gestion-people' });
+    expect(screen.getByPlaceholderText(/repo destino/)).toHaveValue('powerbi-gestion-people');
+    fireEvent.click(screen.getByRole('button', { name: /Commit directo/ }));
+    expect(props.onCommit).toHaveBeenCalledWith('powerbi-gestion-people');
+  });
+
   it('Cancelar invoca onCancel', () => {
     const props = setup();
     fireEvent.click(screen.getByRole('button', { name: /Cancelar/ }));

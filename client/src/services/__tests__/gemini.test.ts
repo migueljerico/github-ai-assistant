@@ -441,6 +441,16 @@ describe('generateFileDoc - documentar archivo adjunto (#28 Fase 2)', () => {
     expect(doc).toBe('# Título\ncuerpo');
   });
 
+  it('incorpora la conversación al prompt cuando se aporta (v3.5.0)', async () => {
+    const fetchMock = mockContent('# Doc');
+    await generateFileDoc('a.md', 'x', config, 'Usuario: soy estudiante\n\nAsistente: vale');
+
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    const userMsg = body.messages.find((m: { role: string }) => m.role === 'user');
+    expect(userMsg.content).toContain('CONVERSACIÓN PREVIA');
+    expect(userMsg.content).toContain('soy estudiante');
+  });
+
   it('lanza un error claro si tras limpiar fences no queda documentación', async () => {
     // Contenido no vacío para callAI, pero que al quitar los fences queda vacío.
     mockContent('```markdown\n```');
