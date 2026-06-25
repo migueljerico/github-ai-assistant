@@ -113,6 +113,24 @@ export async function createRepo(
   });
 }
 
+/**
+ * Comprueba si un repositorio existe y es accesible con el token. Devuelve `false`
+ * solo ante un 404 (no existe o sin acceso); cualquier otro error se propaga.
+ */
+export async function repoExists(
+  token: string,
+  owner: string,
+  repo: string
+): Promise<boolean> {
+  try {
+    await getRepo(token, owner, repo);
+    return true;
+  } catch (err) {
+    if (err instanceof GitHubAPIError && err.status === 404) return false;
+    throw err;
+  }
+}
+
 // ── Files ─────────────────────────────────────────────────────────────────────
 
 /**

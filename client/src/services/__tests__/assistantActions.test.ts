@@ -11,11 +11,19 @@ vi.mock('../gemini', () => ({
   CHAT_PROMPT: 'CHAT_PROMPT',
   ACTION_PROMPT: 'ACTION_PROMPT',
 }));
-vi.mock('../github', () => ({
-  fetchRepoTreeRecursive: vi.fn(),
-  getFileContents: vi.fn(),
-  decodeBase64: vi.fn((s: string) => `decoded(${s})`),
-}));
+vi.mock('../github', () => {
+  class GitHubAPIError extends Error {
+    status: number;
+    constructor(message: string, status: number) { super(message); this.status = status; }
+  }
+  return {
+    fetchRepoTreeRecursive: vi.fn(),
+    getFileContents: vi.fn(),
+    decodeBase64: vi.fn((s: string) => `decoded(${s})`),
+    createRepo: vi.fn(),
+    GitHubAPIError,
+  };
+});
 vi.mock('../docPublisher', () => ({
   writeDocFiles: vi.fn(),
   createDocsDraftPr: vi.fn(),
@@ -52,7 +60,7 @@ import { generateRepoDocs, generateFileDoc, buildRepoContextSummary, callAI, par
 import { assertSupportedFile, readFileContent } from '../../utils/pdfReader';
 import { readSpreadsheet } from '../../utils/spreadsheetReader';
 import { readPowerBI } from '../../utils/powerbiReader';
-import { fetchRepoTreeRecursive, getFileContents } from '../github';
+import { fetchRepoTreeRecursive, getFileContents, createRepo } from '../github';
 import { writeDocFiles, createDocsDraftPr, publishFileDoc } from '../docPublisher';
 import { summarizeThread, parseThreadInput, listOpenThreads, formatThreadList } from '../threadSummary';
 import { executeAction, executeActionMultiRepo } from '../actionExecutor';
@@ -71,6 +79,7 @@ import {
   runGenerateFileDoc,
   runPublishFileDoc,
   runCreateFileRelease,
+  runCreateRepo,
 } from '../assistantActions';
 
 const CONFIG = { provider: 'groq' as const, apiKey: 'k', model: 'm' };
@@ -299,6 +308,23 @@ describe('runSend', () => {
 
     expect(deps.updateMessage).toHaveBeenCalledWith('msg-2', { content: 'x'.repeat(60), isLoading: false });
     expect(executeAction).not.toHaveBeenCalled();
+  });
+
+  it('pasa hasRepoContext y hasFileContext por separado a resolveMode (#28 fix)', async () => {
+    // Con archivo adjunto, resolveMode debe recibir hasFileContext=true (4º arg) para
+    // forzar chat — independientemente del formato (todos producen un fileContext).
+    vi.mocked(resolveMode).mockReturnValue('chat');
+    vi.mocked(callAI).mockResolvedValue('texto');
+    vi.mocked(parseGeminiAction).mockReturnValue(null);
+    const deps = makeDeps();
+
+    await runSend(deps, CONFIG, {
+      ...SEND_PARAMS,
+      userText: 'háblame del PBIX que acabo de subir',
+      fileContext: { name: 'x.pbix', contextText: 'CTX' },
+    });
+
+    expect(resolveMode).toHaveBeenCalledWith('háblame del PBIX que acabo de subir', 'auto', false, true);
   });
 
   it('modo acción sin JSON: muestra texto plano', async () => {
@@ -665,6 +691,35 @@ describe('runCreateFileRelease (#28 Fase 2)', () => {
 
     await runCreateFileRelease(deps, 'owner', 'repo', 'a.md', '# D');
 
+    expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'error' }));
+  });
+});
+
+describe('runCreateRepo (#28 fix)', () => {
+  it('crea el repo y devuelve true', async () => {
+    vi.mocked(createRepo).mockResolvedValue({ full_name: 'me/nuevo' } as any);
+    const deps = makeDeps();
+
+    const ok = await runCreateRepo(deps, 'nuevo');
+
+    expect(ok).toBe(true);
+    expect(createRepo).toHaveBeenCalledWith('tok', 'nuevo', expect.any(String));
+    expect(deps.addMessage).toHaveBeenCalledWith(expect.objectContaining({
+      content: expect.stringContaining('creado'),
+    }));
+    expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'completed' }));
+  });
+
+  it('ante un error devuelve false y avisa', async () => {
+    vi.mocked(createRepo).mockRejectedValue(new Error('name already exists'));
+    const deps = makeDeps();
+
+    const ok = await runCreateRepo(deps, 'nuevo');
+
+    expect(ok).toBe(false);
+    expect(deps.addMessage).toHaveBeenCalledWith(expect.objectContaining({
+      content: expect.stringContaining('No pude crear'),
+    }));
     expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'error' }));
   });
 });

@@ -51,6 +51,12 @@ export function isActionRequest(message: string): boolean {
  * Decide el modo final.
  * - Si hay override manual ('chat'/'action'), se respeta.
  * - En 'auto':
+ *   - CON archivo adjunto (#28): SIEMPRE chat. Un archivo local vive solo en el
+ *     navegador y ninguna acción de GitHub puede leerlo; lo único que se hace con
+ *     él es conversar o documentarlo (con su botón). Así evitamos que verbos
+ *     incidentales de la frase (p. ej. "el PBIX que acabo de *subir*") lo desvíen a
+ *     modo acción y produzcan un endpoint con placeholders inútil. Para operar sobre
+ *     GitHub con un archivo adjunto, el usuario usa el toggle manual de Acción.
  *   - SIN contexto de repo: chat solo si parece conversación y no acción
  *     (comportamiento conservador histórico).
  *   - CON contexto de repo cargado (#41): se sesga a chat (el usuario cargó el
@@ -61,8 +67,11 @@ export function resolveMode(
   message: string,
   override: ModeOverride,
   hasRepoContext: boolean,
+  hasFileContext = false,
 ): ChatMode {
   if (override !== 'auto') return override;
+
+  if (hasFileContext) return 'chat';
 
   const isConversation = isConversationRequest(message);
   const isAction = isActionRequest(message);

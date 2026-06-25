@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.4.1] — 2026-06-25
+
+### Fixed
+- **Archivo adjunto + lenguaje natural ya responde en chat** — Con un archivo adjunto (PDF, Excel/CSV, Power BI, texto/código…), pedir *"háblame del informe/modelo/consultas…"* caía a **modo acción** y proponía un `GET /repos/OWNER/REPO/…` con placeholders inútil (porque la frase contenía verbos incidentales como "subir"). Ahora, con un archivo adjunto el modo automático **siempre responde en chat** usando el contexto del archivo; las acciones de GitHub siguen disponibles con el toggle manual de Acción. El arreglo es **transversal a todos los formatos** (depende de que haya archivo, no del tipo).
+- **Publicar/crear release en un repo inexistente ya no muestra "Not Found"** — Al documentar y publicar, si el repositorio destino no existe en tu cuenta, en vez del crudo *"Not Found"* se **ofrece crearlo y publicar** (confirmación en el modal; usa `auto_init` para que quede listo). Si el destino es de otra cuenta/organización, se explica en lenguaje claro que solo se pueden crear repos en tu cuenta. Mensajes de error 404 traducidos a lenguaje llano (principio rector).
+
+### Testing
+- `resolveMode` con archivo adjunto → chat (incl. caso "subir"); `runSend` pasa `hasFileContext`; `runCreateRepo` éxito/error; oferta de crear repo en `FilePublishModal`. Cliente: **324 tests**.
+
 ## [3.4.0] — 2026-06-25
 
 ### Added
