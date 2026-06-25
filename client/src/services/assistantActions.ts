@@ -473,12 +473,13 @@ export async function runGenerateFileDoc(
   deps: ChatDeps,
   config: AIProviderConfig,
   fileContext: FileContext,
+  conversation?: string,
 ): Promise<string | null> {
   const { providerName, addMessage, updateMessage, setIsChatLoading } = deps;
   setIsChatLoading(true);
   const loadingId = addMessage({ role: 'assistant', content: `📝 Generando documentación de **${fileContext.name}** con ${providerName}...`, isLoading: true });
   try {
-    const doc = await generateFileDoc(fileContext.name, fileContext.contextText, config);
+    const doc = await generateFileDoc(fileContext.name, fileContext.contextText, config, conversation);
     updateMessage(loadingId, { content: `✅ Documentación de **${fileContext.name}** lista. Elige cómo publicarla.`, isLoading: false });
     return doc;
   } catch (err) {

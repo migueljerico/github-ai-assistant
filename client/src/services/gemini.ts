@@ -73,24 +73,22 @@ El frontend se encargará de la confirmación y ejecución.
 IMPORTANTE: responde SOLO con el JSON, sin texto adicional, sin markdown, sin \`\`\`json.`;
 
 // ── CHAT PROMPT (Opción D - Modo conversacional) ──────────────────────────────
-export const CHAT_PROMPT = `Eres un desarrollador senior experto en arquitectura de software, GitHub y mejores prácticas.
+export const CHAT_PROMPT = `Eres un asistente que ayuda a personas a trabajar con sus repositorios y archivos, MUCHAS DE ELLAS SIN EXPERIENCIA técnica.
 
-Tu comportamiento es CONVERSAR y DAR OPINIONES en texto normal (Markdown).
+TONO (importante): háblale al usuario en lenguaje NATURAL, claro y cercano. NO te dirijas a él como si fuera un desarrollador senior o un arquitecto; no presupongas que sabe de programación ni de GitHub. Adapta el nivel a cómo se describa (si dice que es estudiante o principiante, explica con sencillez y sin jerga; define los términos técnicos la primera vez). Sé útil y con criterio, pero accesible.
 
-✅ Responde directamente con:
-- Opiniones constructivas sobre código y arquitectura
-- Análisis de patrones y mejores prácticas
-- Consejos sobre seguridad, rendimiento y mantenibilidad
-- Explicaciones técnicas detalladas
-- Recomendaciones personalizadas
+✅ Puedes:
+- Dar tu opinión y análisis sobre el código, los datos o el archivo en contexto
+- Explicar conceptos y buenas prácticas en palabras llanas
+- Recomendar mejoras y siguientes pasos
+
+📌 Capacidad real de la app: esta app PUEDE documentar y publicar en GitHub por ti (generar la documentación y subirla como commit, Draft PR o Release), SIEMPRE con tu confirmación. Por eso, si el usuario te pide "documenta esto" o "publícalo en el repo X", NO le des instrucciones manuales de git ni le digas que no tienes acceso de escritura: se hará desde la propia app. Solo confírmale en lenguaje natural que se encarga de ello.
 
 ❌ NUNCA generes JSON en este modo
 ❌ NUNCA digas "necesito leer el repo primero"
-❌ NUNCA ejecutes acciones de la API
 ❌ NUNCA uses bloques de código JSON
 
-Eres un consultor experto - DA TU OPINIÓN directamente con tu conocimiento.
-Responde en Markdown con formato rico (títulos, listas, negritas, código).`;
+Responde en Markdown con formato claro (títulos, listas, negritas), pero con tono natural y accesible.`;
 
 // ── ACTION PROMPT (Opción D - Modo acción explícito) ──────────────────────────
 export const ACTION_PROMPT = SYSTEM_PROMPT; // Alias para claridad
@@ -662,8 +660,9 @@ export async function generateFileDoc(
   fileName: string,
   content: string,
   config: AIProviderConfig,
+  conversation?: string,
 ): Promise<string> {
-  const docSystemPrompt = `Eres un experto en documentación técnica. A partir del contenido de un archivo, redacta documentación clara y útil EN ESPAÑOL, en **Markdown**, con estas secciones:
+  const docSystemPrompt = `Eres un experto en documentación técnica con registro PROFESIONAL. A partir del contenido de un archivo, redacta documentación clara y útil EN ESPAÑOL, en **Markdown**, con estas secciones:
 
 # {Título descriptivo del documento}
 ## 📋 Resumen
@@ -675,9 +674,11 @@ export async function generateFileDoc(
 ## ✅ Conclusiones / siguientes pasos
 (si aplica.)
 
-Reglas: básate ÚNICAMENTE en el contenido aportado; no inventes. Responde SOLO con el Markdown, sin texto introductorio ni bloques de código externos que envuelvan todo.`;
+Reglas: básate ÚNICAMENTE en el contenido aportado (y, si se incluye, en la conversación con el usuario); no inventes. ${conversation ? 'INCORPORA los puntos relevantes de la conversación con el usuario que aparece abajo, sin contradecir el contenido del archivo. ' : ''}Responde SOLO con el Markdown, sin texto introductorio ni bloques de código externos que envuelvan todo.`;
 
-  const userMessage = `Archivo: ${fileName}\n\nCONTENIDO:\n${content}`;
+  const userMessage = conversation
+    ? `Archivo: ${fileName}\n\nCONTENIDO:\n${content}\n\n--- CONVERSACIÓN PREVIA CON EL USUARIO (para enriquecer la documentación) ---\n${conversation}\n--- Fin de la conversación ---`
+    : `Archivo: ${fileName}\n\nCONTENIDO:\n${content}`;
 
   const raw = await callAI(
     [{ role: 'user', content: userMessage }],

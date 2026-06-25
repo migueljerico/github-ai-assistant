@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.5.0] — 2026-06-25
+
+### Added
+- **Documentar y publicar desde lenguaje natural** — Ahora, con un archivo o repo en contexto, pedir en el chat *"documéntalo"* o *"publícalo en el repo X"* **dispara el flujo real** (generar la documentación y abrir el modal de publicar), en vez de quedarse en una respuesta de chat. *"Publícalo en X"* abre el modal con el **repo precargado** (eliges Commit / Draft PR / Release; si el repo no existe, se ofrece crearlo). Nuevo `utils/intentDetection.ts` (`detectDocPublishIntent` + `routeUserMessage`), enrutado fino en `handleSend`.
+- **El documento incorpora la conversación** — `generateFileDoc` admite la conversación previa para que la documentación refleje lo charlado (opinión, matices), sin contradecir el contenido del archivo.
+
+### Changed
+- **Tono del chat más natural y accesible (principio rector)** — El asistente deja de dirigirse al usuario como *"desarrollador senior/arquitecto"*: ahora habla en **lenguaje claro y cercano**, adaptado al nivel del usuario (si dice que es estudiante/principiante, explica con sencillez). El registro **profesional/senior se reserva para el documento generado**, no para el chat. Además, el `CHAT_PROMPT` ya sabe que la app puede documentar y publicar con confirmación, así que **no vuelve a decir "no tengo acceso de escritura"** ni a dar comandos `git` manuales.
+
+### Testing
+- `intentDetection` (document/publish/null + extracción de repo + `routeUserMessage`), `generateFileDoc` con conversación, `runGenerateFileDoc` reenviando la conversación, `FilePublishModal` con `initialRepo`. Cliente: **351 tests**.
+
 ## [3.4.2] — 2026-06-25
 
 ### Fixed / Improved

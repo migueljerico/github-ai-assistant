@@ -6,6 +6,8 @@ interface FilePublishModalProps {
   /** Documentación (Markdown) generada a partir del archivo adjunto. */
   doc: string;
   busy: boolean;
+  /** Repo destino precargado (p. ej. al pedir "publícalo en X" por lenguaje natural). */
+  initialRepo?: string;
   /** Si está, el repo destino no existe: se ofrece crearlo y publicar (#28 fix). */
   repoMissing?: { owner: string; repo: string } | null;
   onCommit: (repo: string) => void;
@@ -26,6 +28,7 @@ export default function FilePublishModal({
   fileName,
   doc,
   busy,
+  initialRepo,
   repoMissing,
   onCommit,
   onDraftPr,
@@ -34,7 +37,7 @@ export default function FilePublishModal({
   onCancelCreate,
   onCancel,
 }: FilePublishModalProps) {
-  const [repo, setRepo] = useState('');
+  const [repo, setRepo] = useState(initialRepo ?? '');
   const [version, setVersion] = useState('');
   const repoOk = repo.trim().length > 0;
 

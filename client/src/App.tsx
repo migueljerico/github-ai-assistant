@@ -10,6 +10,7 @@ import {
 } from './services/assistantActions';
 import type { RepoContext, FileContext, PublishKind } from './services/assistantActions';
 import { resolveRepoRef } from './utils/repoRef';
+import { detectDocPublishIntent, routeUserMessage } from './utils/intentDetection';
 import Header from './components/layout/Header';
 import HistoryPanel from './components/layout/HistoryPanel';
 import TemplatePanel from './components/templates/TemplatePanel';
@@ -66,6 +67,8 @@ export default function App() {
   // #28 Fase 2 - Documentación generada del archivo, pendiente de publicar
   const [filePublish, setFilePublish] = useState<{ fileName: string; doc: string } | null>(null);
   const [isPublishingFile, setIsPublishingFile] = useState(false);
+  // Repo destino precargado en el modal al pedir "publícalo en X" por lenguaje natural
+  const [publishInitialRepo, setPublishInitialRepo] = useState<string | undefined>(undefined);
   // #28 fix - El repo destino no existe: oferta de crearlo y publicar el kind pendiente
   const [repoMissing, setRepoMissing] = useState<
     { owner: string; repo: string; kind: 'commit' | 'draftpr' | 'release'; version?: string } | null
@@ -84,19 +87,6 @@ export default function App() {
   const updateMessage = useCallback((id: string, update: Partial<ChatMessage>) => {
     setMessages(prev => prev.map(m => m.id === id ? { ...m, ...update } : m));
   }, []);
-
-  // ── Send message to AI (Opción D - con detección de modo) ──────────────────
-  const handleSend = useCallback(async () => {
-    // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto
-    if (!inputValue.trim() || !token || !user || !provider || !apiKey || !model) return;
-    const userText = inputValue.trim();
-    setInputValue('');
-    await runSend(
-      { token, user, providerName, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading, setConversationHistory, setPendingAction },
-      { provider, apiKey, model },
-      { userText, conversationHistory, modeOverride, repoContext, fileContext, multiRepoEnabled, selectedRepos },
-    );
-  }, [inputValue, token, user, provider, apiKey, model, providerName, conversationHistory, multiRepoEnabled, selectedRepos, modeOverride, repoContext, fileContext, addMessage, updateMessage, addEntry, updateEntry]);
 
   // ── Confirm action ─────────────────────────────────────────────────────────
   const handleConfirm = useCallback(async () => {
@@ -159,15 +149,21 @@ export default function App() {
   }, [addMessage]);
 
   // ── #28 Fase 2: documentar el archivo adjunto y abrir el modal de publicación ─
-  const handleDocumentAndPublishFile = useCallback(async () => {
+  // `conversation` enriquece el doc con lo charlado; `initialRepo` precarga el modal
+  // (al pedir "publícalo en X" por lenguaje natural).
+  const handleDocumentAndPublishFile = useCallback(async (conversation?: string, initialRepo?: string) => {
     // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto
     if (!fileContext || !token || !user || !provider || !apiKey || !model) return;
     const doc = await runGenerateFileDoc(
       { token, user, providerName, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
       { provider, apiKey, model },
       fileContext,
+      conversation,
     );
-    if (doc) setFilePublish({ fileName: fileContext.name, doc });
+    if (doc) {
+      setPublishInitialRepo(initialRepo);
+      setFilePublish({ fileName: fileContext.name, doc });
+    }
   }, [fileContext, token, user, provider, apiKey, model, providerName, addMessage, updateMessage, addEntry, updateEntry]);
 
   // ── #28 Fase 2: publicar la doc generada (commit / Draft PR / Release) ────────
@@ -228,6 +224,40 @@ export default function App() {
     );
     if (analysis) setDocAnalysis(analysis);
   }, [token, user, provider, apiKey, model, providerName, addMessage, updateMessage, addEntry, updateEntry]);
+
+  // ── Send message to AI (Opción D - con detección de modo) ──────────────────
+  // Antes del chat, detecta órdenes en lenguaje natural de DOCUMENTAR/PUBLICAR y las
+  // enruta a los flujos reales (en vez de dejarlo en una respuesta de chat). La
+  // decisión vive en utils/intentDetection (testeable); aquí solo se cablea.
+  const handleSend = useCallback(async () => {
+    // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto
+    if (!inputValue.trim() || !token || !user || !provider || !apiKey || !model) return;
+    const userText = inputValue.trim();
+    setInputValue('');
+
+    const intent = detectDocPublishIntent(userText);
+    const route = routeUserMessage(intent, { hasFile: fileContext !== null, hasRepo: repoContext !== null });
+    if (route !== 'chat') {
+      addMessage({ role: 'user', content: userText });
+      const conversation = conversationHistory.map(m => `${m.role === 'user' ? 'Usuario' : 'Asistente'}: ${m.content}`).join('\n\n');
+      if (route === 'document-file') {
+        await handleDocumentAndPublishFile(conversation);
+      } else if (route === 'publish-file') {
+        const repo = intent?.kind === 'publish' ? intent.repo : undefined;
+        await handleDocumentAndPublishFile(conversation, repo);
+      } else if (route === 'document-repo') {
+        const repo = repoContext?.repoName ?? (intent?.kind === 'publish' ? intent.repo : undefined);
+        if (repo) await handleDocumentRepo(repo);
+      }
+      return;
+    }
+
+    await runSend(
+      { token, user, providerName, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading, setConversationHistory, setPendingAction },
+      { provider, apiKey, model },
+      { userText, conversationHistory, modeOverride, repoContext, fileContext, multiRepoEnabled, selectedRepos },
+    );
+  }, [inputValue, token, user, provider, apiKey, model, providerName, conversationHistory, multiRepoEnabled, selectedRepos, modeOverride, repoContext, fileContext, addMessage, updateMessage, addEntry, updateEntry, handleDocumentAndPublishFile, handleDocumentRepo]);
 
   // ── Resumir hilo (#32) ───────────────────────────────────────────────────────
   const handleSummarizeThread = useCallback(async (input: string) => {
@@ -358,13 +388,14 @@ export default function App() {
           fileName={filePublish.fileName}
           doc={filePublish.doc}
           busy={isPublishingFile}
+          initialRepo={publishInitialRepo}
           repoMissing={repoMissing}
           onCommit={(repo) => handlePublishFileDoc(repo, false)}
           onDraftPr={(repo) => handlePublishFileDoc(repo, true)}
           onRelease={handleCreateFileRelease}
           onCreateRepoAndPublish={handleConfirmCreateRepo}
           onCancelCreate={handleCancelCreateRepo}
-          onCancel={() => { setRepoMissing(null); setFilePublish(null); }}
+          onCancel={() => { setRepoMissing(null); setFilePublish(null); setPublishInitialRepo(undefined); }}
         />
       )}
     </>
