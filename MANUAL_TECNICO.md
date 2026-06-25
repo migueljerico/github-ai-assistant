@@ -79,7 +79,7 @@ github-ai-assistant/
 │       │   ├── pdfReader.ts        # Lectura de archivos adjuntos: PDF/texto + assertSupportedFile (#28)
 │       │   ├── pdfAdvanced.ts      # Extracción de PDF con pdfjs-dist (fallback básico) (#28)
 │       │   ├── spreadsheetReader.ts # Excel/CSV con SheetJS: muestra de filas + aviso de tokens (#28 Fase 3a)
-│       │   ├── powerbiReader.ts    # Power BI .pbix/.pbit (ZIP vía fflate): informe + modelo/DAX (#28 Fase 3b)
+│       │   ├── powerbiReader.ts    # Power BI .pbix/.pbit (ZIP vía fflate): informe + modelo/DAX + Power Query/M del DataMashup (#28 Fase 3b/3b-bis)
 │       │   └── modeDetection.ts    # Detección de modo chat vs action
 │       └── types/index.ts          # Tipos compartidos TypeScript
 ├── server/

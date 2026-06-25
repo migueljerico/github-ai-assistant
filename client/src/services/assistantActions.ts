@@ -430,15 +430,16 @@ export async function runAttachFile(deps: ChatDeps, file: File): Promise<FileCon
       return { name: file.name, contextText };
     }
 
-    // #28 Fase 3b — Power BI (.pbix/.pbit): informe (páginas/visuales) + modelo/DAX
-    // (solo .pbit). Extrae solo la estructura JSON del ZIP (Zero-Storage).
+    // #28 Fase 3b/3b-bis — Power BI (.pbix/.pbit): informe (páginas/visuales),
+    // modelo/DAX (solo .pbit) y Power Query / M (orígenes y transformaciones).
+    // Extrae solo la estructura del ZIP (Zero-Storage).
     if (ext === 'pbix' || ext === 'pbit') {
       const { text, summary, truncated } = await readPowerBI(file);
       const contextText = `\n\n--- Estructura del archivo Power BI: ${file.name} (${ext}) ---\n${text}\n--- Fin del archivo ---\n`;
       updateMessage(loadingId, {
         content: truncated
           ? `📎 Cargado **${file.name}** — ${summary}. Es grande, así que incluyo una **muestra acotada** de su estructura. Si necesitas más detalle de alguna parte, dímelo.`
-          : `📎 Adjuntado **${file.name}** — ${summary}. Pregúntame lo que quieras sobre el informe o el modelo, o pídeme que lo documente.`,
+          : `📎 Adjuntado **${file.name}** — ${summary}. Pregúntame lo que quieras sobre el informe, el modelo o los orígenes/consultas (Power Query), o pídeme que lo documente.`,
         isLoading: false,
       });
       return { name: file.name, contextText };

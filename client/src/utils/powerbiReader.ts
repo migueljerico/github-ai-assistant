@@ -4,14 +4,20 @@
 // `fflate` (import dinámico → chunk propio, como xlsx/pdfjs) para abrirlo y
 // extraer las partes legibles en JSON. Sin dependencias de React.
 //
-// Qué se extrae (MVP):
+// Qué se extrae:
 //   • Informe (`Report/Layout`, en pbix y pbit): páginas + tipos de visual.
 //   • Modelo de datos (`DataModelSchema`, SOLO en pbit): tablas, columnas y
 //     medidas DAX.
+//   • Power Query / M (`DataMashup`, en pbix y pbit — #28 Fase 3b-bis): nombres de
+//     consulta + código M (orígenes y transformaciones). El `DataMashup` es un blob
+//     binario con cabecera de longitud y un ZIP anidado (OPC) cuyo
+//     `Formulas/Section1.m` contiene el M. Esto rescata el .pbix: aunque su modelo
+//     no sea legible, sí se explica de dónde salen los datos y cómo se transforman.
 // Qué NO (limitación honesta, principio rector):
 //   • El modelo de un .pbix va en `DataModel` (binario VertiPaq propietario), no
 //     legible en navegador → se avisa y se sugiere exportar como plantilla .pbit.
-//   • Power Query (M) del `DataMashup` (zip anidado) queda para una 3b-bis.
+//   • La variante XML/base64 antigua del `DataMashup` no se parsea (se ignora sin
+//     romper el resto de la extracción).
 //
 // Riesgo de tokens (lección Fase 3a): un modelo puede tener muchas tablas/medidas
 // → mismo patrón que spreadsheetReader: muestra acotada (caps + presupuesto de
@@ -28,6 +34,10 @@ export const MAX_TABLES = 30;
 export const MAX_COLUMNS_PER_TABLE = 30;
 /** Tope de medidas (con DAX) que se listan por tabla. */
 export const MAX_MEASURES_PER_TABLE = 40;
+/** Tope de nombres de consulta (Power Query) que se listan. */
+export const MAX_QUERIES = 40;
+/** Presupuesto propio del bloque de código M (para que no desplace al informe/modelo). */
+export const MAX_M_CHARS = 6000;
 /** Presupuesto total de caracteres del texto (evita reventar el contexto del LLM). */
 export const MAX_POWERBI_CHARS = 14000;
 
@@ -46,6 +56,13 @@ function decodeUtf16Json(bytes: Uint8Array): unknown {
   // Quita el BOM (U+FEFF) si TextDecoder no lo eliminó.
   if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
   return JSON.parse(text);
+}
+
+/** Decodifica un entry UTF-8 (con posible BOM) como texto plano (p. ej. el `.m`). */
+function decodeUtf8(bytes: Uint8Array): string {
+  let text = new TextDecoder('utf-8').decode(bytes);
+  if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+  return text;
 }
 
 /** Busca un entry del zip por clave exacta o por su nombre final (case-insensitive). */
@@ -157,6 +174,59 @@ function extractModel(schema: unknown): ModelInfo {
   return { tables: tables.length, measures: totalMeasures, blocks, truncated };
 }
 
+interface MashupInfo { queries: number; names: string[]; mText: string; truncated: boolean }
+
+/**
+ * Extrae el Power Query (M) del blob `DataMashup` (#28 Fase 3b-bis). El `DataMashup`
+ * es binario: `[versión int32 LE][longitud int32 LE][ZIP anidado]…`; ese ZIP contiene
+ * `Formulas/Section1.m` con todas las consultas. Devuelve `null` (sin romper nada) si
+ * no hay DataMashup o si no es la variante binaria legible (p. ej. XML/base64 antigua).
+ */
+function extractMashup(
+  zip: Record<string, Uint8Array>,
+  unzipSync: (data: Uint8Array) => Record<string, Uint8Array>,
+): MashupInfo | null {
+  const entry = findEntry(zip, 'DataMashup');
+  if (!entry) return null;
+
+  try {
+    // Cabecera: 4 bytes de versión (se ignora) + 4 bytes de longitud (int32 LE) del
+    // ZIP de "package parts". El resto (permisos/metadata) no nos interesa.
+    const view = new DataView(entry.buffer, entry.byteOffset, entry.byteLength);
+    const partsLength = view.getUint32(4, true);
+    if (partsLength <= 0 || 8 + partsLength > entry.byteLength) return null;
+
+    const innerZip = unzipSync(entry.subarray(8, 8 + partsLength));
+    const sectionEntry = findEntry(innerZip, 'Formulas/Section1.m');
+    if (!sectionEntry) return null;
+
+    const section = decodeUtf8(sectionEntry).trim();
+    if (!section) return null;
+
+    // Cada consulta es una entrada `shared <Nombre> = …;`. El nombre puede venir entre
+    // comillas (`#"Mi Consulta"`) o como identificador simple.
+    const names: string[] = [];
+    const re = /\bshared\s+(#"((?:[^"]|"")*)"|[A-Za-z_][\w.]*)/g;
+    let match: RegExpExecArray | null;
+    while ((match = re.exec(section)) !== null) {
+      // Grupo 2 = contenido entre comillas (sin `#"`…`"`); si no, el identificador simple.
+      names.push(match[2] !== undefined ? match[2].replace(/""/g, '"') : match[1]);
+    }
+
+    let truncated = false;
+    let shownNames = names;
+    if (names.length > MAX_QUERIES) { shownNames = names.slice(0, MAX_QUERIES); truncated = true; }
+
+    let mText = section;
+    if (mText.length > MAX_M_CHARS) { mText = mText.slice(0, MAX_M_CHARS); truncated = true; }
+
+    return { queries: names.length, names: shownNames, mText, truncated };
+  } catch {
+    // Variante no soportada o blob ilegible: se ignora sin romper informe/modelo.
+    return null;
+  }
+}
+
 /**
  * Lee un archivo Power BI (.pbix/.pbit) y devuelve el informe (páginas/visuales)
  * y, si es .pbit, el modelo de datos (tablas, columnas, medidas DAX), junto con un
@@ -187,7 +257,10 @@ export async function readPowerBI(file: File): Promise<PowerBIResult> {
     catch { model = null; }
   }
 
-  if (!report && !model) {
+  // Power Query (M): presente en pbix y pbit (cuando hay consultas) — #28 Fase 3b-bis.
+  const mashup = extractMashup(zip, unzipSync);
+
+  if (!report && !model && !mashup) {
     throw new Error('No encontré el informe ni el modelo dentro del archivo Power BI. Asegúrate de exportar un .pbix o una plantilla .pbit válidos.');
   }
 
@@ -213,6 +286,18 @@ export async function readPowerBI(file: File): Promise<PowerBIResult> {
       'plantilla **.pbit** (Power BI Desktop → Archivo → Exportar → Plantilla de Power BI)._',
     );
     summaryParts.push('Modelo en formato binario (exporta como .pbit para el DAX)');
+  }
+
+  if (mashup) {
+    truncated = truncated || mashup.truncated;
+    const nameList = mashup.names.length
+      ? mashup.names.map(n => `- ${n}`).join('\n')
+      : '_(sin nombres de consulta detectados)_';
+    sections.push(
+      `## Consultas (Power Query / M)\n\n${mashup.queries} consulta(s):\n${nameList}\n\n` +
+      '```m\n' + mashup.mText + '\n```',
+    );
+    summaryParts.push(`Consultas: ${mashup.queries}`);
   }
 
   let text = sections.join('\n\n');

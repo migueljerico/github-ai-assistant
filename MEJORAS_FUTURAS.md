@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v3.3.0 · Junio 2026
+**Actualizado a:** v3.4.0 · Junio 2026
 
 ---
 
@@ -31,6 +31,7 @@ Estado del código, mejoras pendientes y roadmap del proyecto.
 | 28 | Archivos locales — **Fase 2**: documentar el archivo y publicarlo (commit / Draft PR / GitHub Release) | services/gemini.ts (generateFileDoc), services/docPublisher.ts (publishFileDoc), services/assistantActions.ts, components/confirm/FilePublishModal.tsx | v3.1.0 |
 | 28 | Archivos locales — **Fase 3a**: hojas de cálculo Excel/CSV (muestra de filas + aviso de tokens) | utils/spreadsheetReader.ts (SheetJS/xlsx), utils/pdfReader.ts, services/assistantActions.ts (runAttachFile) | v3.2.0 |
 | 28 | Archivos locales — **Fase 3b (MVP)**: Power BI .pbix/.pbit (informe = páginas/visuales; modelo/DAX de .pbit) | utils/powerbiReader.ts (fflate), utils/pdfReader.ts, services/assistantActions.ts (runAttachFile) | v3.3.0 |
+| 28 | Archivos locales — **Fase 3b-bis**: Power Query (M) del `DataMashup` (nombres de consulta + código M; orígenes/transformaciones, rescata el .pbix) | utils/powerbiReader.ts (extractMashup, fflate) | v3.4.0 |
 
 ---
 
@@ -57,8 +58,11 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 > `Report/Layout`) y, en `.pbit`, el **modelo de datos** (`DataModelSchema`:
 > tablas/columnas/**medidas DAX** en JSON). El modelo de un `.pbix` va en binario
 > propietario VertiPaq (no legible) → se avisa y se sugiere exportar como `.pbit`.
-> **Pendiente — Fase 3b-bis**: extraer el **Power Query (M)** del `DataMashup`
-> (zip anidado con prefijo de longitud, decodificación de bytes a medida).
+> **Fase 3b-bis** (v3.4.0): **Power Query (M)** del `DataMashup` (blob binario con un
+> ZIP anidado cuyo `Formulas/Section1.m` lleva las consultas) — nombres de consulta
+> + código **M** (orígenes/transformaciones), que **rescata el `.pbix`**.
+> **Pendiente menor**: la variante **XML/base64 antigua** del `DataMashup` no se
+> parsea (la mayoría de archivos usan la binaria, ya soportada); se ignora sin romper.
 
 ---
 
@@ -84,7 +88,7 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 - ✅ CI con GitHub Actions ejecutando tests (cliente + servidor) automáticamente
 - ✅ Badge de Codecov en README
 - ✅ Cobertura actual: **≈64%** (ver Codecov para el valor exacto)
-- ✅ 308 tests en el cliente. Implementados para:
+- ✅ 314 tests en el cliente. Implementados para:
   - `AuthContext.tsx` (login, logout, OAuth flow, Zero-Storage)
   - `AIProviderContext.tsx` (conexión/desconexión de proveedores)
   - `providers.ts` (registro de proveedores, detección de modelos 🆓, caché, `pickDefaultModel`)
@@ -96,7 +100,7 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
   - `threadSummary.ts` (resumen de hilos #32: `parseThreadInput`, issue vs PR, hilo vacío) + wrappers de comentarios en `github.ts` (paginación)
   - `assistantActions.ts` (#42: orquestación del chat — `runSend`, `runConfirmAction`, `runCancelAction` y los flujos de botón; ~98%) + `repoRef.ts` (`resolveRepoRef`) + `DocModal.tsx`
   - `modeDetection.ts` (chat vs action; sesgo a chat con contexto de repo)
-  - `formatResult.ts`, `releaseGenerator.ts`, `pdfReader.ts`, `pdfAdvanced.ts`, `spreadsheetReader.ts` (#28 Fase 3a), `powerbiReader.ts` (#28 Fase 3b)
+  - `formatResult.ts`, `releaseGenerator.ts`, `pdfReader.ts`, `pdfAdvanced.ts`, `spreadsheetReader.ts` (#28 Fase 3a), `powerbiReader.ts` (#28 Fase 3b/3b-bis)
   - Hooks: `useChat`, `useActions`
   - Componentes React: `ChatArea`, `ChatInput`, `ConfirmModal`, `Header`, `TemplatePanel`, `AIProviderPanel`, `AIProviderBadge`, `RepoContextButton`
   - Servidor: `rateLimit.test.js`
@@ -324,8 +328,9 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 > **#28** cubierto en su **norte** por las Fases 1 (v3.0.0, adjuntar como contexto) y
 > 2 (v3.1.0, documentar→publicar). **Más formatos:** Fase 3a (v3.2.0, Excel/CSV) y
-> Fase 3b MVP (v3.3.0, Power BI .pbix/.pbit). Pendiente menor: **Fase 3b-bis**
-> (Power Query M del `DataMashup`). Imágenes/visión: descartada.
+> Fase 3b MVP (v3.3.0, Power BI .pbix/.pbit) y **Fase 3b-bis** (v3.4.0, Power Query M
+> del `DataMashup`). Pendiente menor: variante XML/base64 antigua del `DataMashup`.
+> Imágenes/visión: descartada.
 
 > **Nota de numeración:** los huecos en #16, #29, #30, #31, #43 y #47 son intencionados — esos ítems se fusionaron o descartaron en revisiones del roadmap y sus números no se reutilizan (convención del documento). #16 se fusionó en #42; #29 en #40.
 
