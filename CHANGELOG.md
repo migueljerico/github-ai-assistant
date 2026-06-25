@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.6.1] — 2026-06-25
+
+### Fixed
+- **El chat ya no salta a "documentar" cuando pides análisis o preguntas** — Frases como *"ayúdame a documentar **analizando** el informe"* o preguntas (*"¿lo puedes documentar?"*) abrían directamente el modal de Documentar/Publicar, saltándose la conversación. Ahora `detectDocPublishIntent` ignora las peticiones **exploratorias** (preguntas `¿…?` o con tono de análisis/ayuda: *analiza, opinión, ayúdame, revisa…*) y solo abre el modal ante **órdenes claras** (*"documéntalo"*, *"publícalo en X"*). Nuevo helper `isExploratory` en `utils/intentDetection.ts`.
+- **El chat responde con honestidad cuando pides algo no soportado** — Al preguntar por subir **varios archivos** o **imágenes** (aún no disponible), la app pasaba a acción e ignoraba la pregunta. Ahora el `CHAT_PROMPT` conoce sus **límites** (un archivo a la vez; sin imágenes/multiarchivo todavía) y lo **dice con claridad**, proponiendo la alternativa, en vez de ignorarlo.
+
 ## [3.6.0] — 2026-06-25
 
 ### Added

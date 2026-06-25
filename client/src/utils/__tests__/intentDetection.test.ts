@@ -1,11 +1,31 @@
 import { describe, it, expect } from 'vitest';
-import { detectDocPublishIntent, routeUserMessage } from '../intentDetection';
+import { detectDocPublishIntent, routeUserMessage, isExploratory } from '../intentDetection';
+
+describe('isExploratory (#28 v3.6.1)', () => {
+  it('preguntas → true', () => {
+    expect(isExploratory('¿puedo subir varios archivos?')).toBe(true);
+    expect(isExploratory('¿lo puedes documentar tú directamente?')).toBe(true);
+  });
+  it('tono de análisis/ayuda → true', () => {
+    expect(isExploratory('ayúdame a documentar analizando el informe')).toBe(true);
+    expect(isExploratory('dame tu opinión y revisa el modelo')).toBe(true);
+  });
+  it('órdenes claras → false', () => {
+    expect(isExploratory('documéntalo, por favor')).toBe(false);
+    expect(isExploratory('publícalo en el repo mi-repo')).toBe(false);
+  });
+});
 
 describe('detectDocPublishIntent', () => {
-  it('detecta documentar', () => {
+  it('detecta documentar (órdenes claras)', () => {
     expect(detectDocPublishIntent('documéntalo, por favor')).toEqual({ kind: 'document' });
-    expect(detectDocPublishIntent('¿lo puedes documentar tú directamente?')).toEqual({ kind: 'document' });
     expect(detectDocPublishIntent('genera el readme del proyecto')).toEqual({ kind: 'document' });
+  });
+
+  it('peticiones exploratorias/preguntas → null (conversar primero)', () => {
+    expect(detectDocPublishIntent('ayúdame a documentar analizando el informe')).toBeNull();
+    expect(detectDocPublishIntent('¿lo puedes documentar tú directamente?')).toBeNull();
+    expect(detectDocPublishIntent('¿puedo subir varios archivos para documentar mejor?')).toBeNull();
   });
 
   it('detecta publicar y extrae el repo', () => {

@@ -333,6 +333,15 @@ describe('Contexto de repo para chat (#41)', () => {
       expect(prompt).toContain('BASA tu opinión');
     });
   });
+
+  describe('CHAT_PROMPT — límites honestos (#28 v3.6.1)', () => {
+    it('declara el límite de un archivo a la vez y sin imágenes/multiarchivo todavía', () => {
+      expect(CHAT_PROMPT).toMatch(/LÍMITES/i);
+      expect(CHAT_PROMPT).toMatch(/UN archivo/i);
+      expect(CHAT_PROMPT).toMatch(/IMÁGENES|VARIOS archivos/i);
+      expect(CHAT_PROMPT).toMatch(/NUNCA ignores/i);
+    });
+  });
 });
 
 // ── #38: Streaming (SSE) ──────────────────────────────────────────────────────

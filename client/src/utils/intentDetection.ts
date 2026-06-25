@@ -43,11 +43,36 @@ function extractRepo(message: string): string | undefined {
   return m2 ? m2[1] : undefined;
 }
 
+// Marcadores de petición EXPLORATORIA: el usuario quiere conversar/analizar o está
+// PREGUNTANDO, no dando una orden. En esos casos no se enruta a documentar/publicar
+// (se atiende en chat), aunque la frase contenga "documentar" (#28 v3.6.1).
+const EXPLORATORY_KEYWORDS = [
+  'analiza', 'analizar', 'analizando', 'analízalo', 'analizalo',
+  'opina', 'opinión', 'opinion', 'opinas', 'qué te parece', 'que te parece',
+  'revisa', 'revísalo', 'revisalo', 'evalúa', 'evalua', 'valora', 'valoración',
+  'explica', 'explícame', 'explicame', 'comenta', 'echa un vistazo', 'échale un vistazo',
+  'ayúdame', 'ayudame', 'ayudarme', 'me gustaría', 'me gustaria',
+];
+
 /**
- * Detecta si el mensaje es una orden de documentar o publicar. Publicar tiene
- * prioridad. Devuelve `null` si no hay tal orden (se tratará como chat normal).
+ * `true` si el mensaje es exploratorio: una PREGUNTA (`?`/`¿`) o con tono de
+ * análisis/ayuda. Sirve para NO saltar a documentar/publicar y conversar primero.
+ */
+export function isExploratory(message: string): boolean {
+  if (message.includes('?') || message.includes('¿')) return true;
+  const lower = message.toLowerCase();
+  return EXPLORATORY_KEYWORDS.some(k => lower.includes(k));
+}
+
+/**
+ * Detecta si el mensaje es una ORDEN de documentar o publicar. Publicar tiene
+ * prioridad. Devuelve `null` si es exploratorio (pregunta/análisis) o si no hay tal
+ * orden — en ambos casos se trata como chat.
  */
 export function detectDocPublishIntent(message: string): DocPublishIntent | null {
+  // Conversar primero: las peticiones de análisis/ayuda o preguntas no abren el modal.
+  if (isExploratory(message)) return null;
+
   const lower = message.toLowerCase();
 
   if (PUBLISH_KEYWORDS.some(k => lower.includes(k))) {
