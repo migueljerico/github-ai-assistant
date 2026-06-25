@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.4.0] — 2026-06-25
+
+### Added
+- **Power Query (M) de archivos Power BI — #28 Fase 3b-bis** — Al adjuntar un `.pbix`/`.pbit` ahora también se extraen las **consultas de Power Query** (orígenes y transformaciones): nombres de consulta + código **M**. Esto **rescata el `.pbix`**: aunque su modelo siga en binario VertiPaq (no legible), ya se puede explicar **de dónde salen los datos y cómo se transforman**, en lenguaje natural.
+  - El **M** vive en el blob binario `DataMashup` (cabecera de longitud + un **ZIP anidado** cuyo `Formulas/Section1.m` contiene las consultas). Se lee en el navegador con `fflate` (Zero-Storage), reutilizando el mismo chunk lazy de la Fase 3b.
+  - **Control de tokens:** se listan hasta `MAX_QUERIES` nombres y el código M se acota a un presupuesto propio (`MAX_M_CHARS`) para que no desplace al informe/modelo; se marca `truncated` cuando se recorta.
+  - **Limitación honesta (principio rector):** la variante **XML/base64 antigua** del `DataMashup` no se parsea (se ignora sin romper el resto de la extracción).
+  - `powerbiReader.ts` gana `extractMashup`; `runAttachFile` invita a preguntar también por los orígenes/consultas.
+
+### Testing
+- Tests de `extractMashup` vía `readPowerBI` (extracción de nombres + M, normalización de nombres `#"…"`, caps `MAX_M_CHARS`/`MAX_QUERIES` con truncado, `DataMashup` corrupto ignorado sin romper el informe, archivo solo con consultas). Cliente: **314 tests**.
+
 ## [3.3.0] — 2026-06-25
 
 ### Added
