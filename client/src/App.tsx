@@ -4,7 +4,7 @@ import { useHistory } from './context/HistoryContext';
 import { useAIProvider } from './context/AIProviderContext';
 import { getProvider } from './services/providers';
 import {
-  runDocumentRepo, runLoadRepoContext, runSummarizeThread, runCommitDocs, runCreateDraftPr,
+  runDocumentRepo, runLoadRepoContext, runSummarizeThread, runCommitDocs, runCreateDraftPr, runCreateRepoRelease,
   runSend, runConfirmAction, runCancelAction, runAttachFile,
   runGenerateFileDoc, runCreateRepo, runStartPublish, runPublishFileDocByKind, formatConversation,
 } from './services/assistantActions';
@@ -56,6 +56,7 @@ export default function App() {
   const [docAnalysis, setDocAnalysis] = useState<RepoAnalysis | null>(null);
   const [isCommittingDocs, setIsCommittingDocs] = useState(false);
   const [isCreatingDraftPr, setIsCreatingDraftPr] = useState(false);
+  const [isCreatingRepoRelease, setIsCreatingRepoRelease] = useState(false);
 
   // #41 - Contexto de repo activo para opiniones de chat fundamentadas
   const [repoContext, setRepoContext] = useState<RepoContext | null>(null);
@@ -293,6 +294,22 @@ export default function App() {
     }
   }, [docAnalysis, token, user, providerName, addMessage, updateMessage, addEntry, updateEntry]);
 
+  // ── Crear Release con la documentación del repo (#28 Parte A v3.8.0) ─────────
+  const handleCreateRepoRelease = useCallback(async (version: string) => {
+    if (!docAnalysis || !token || !user) return;
+    setIsCreatingRepoRelease(true);
+    try {
+      await runCreateRepoRelease(
+        { token, user, providerName, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+        docAnalysis,
+        version || undefined,
+      );
+    } finally {
+      setIsCreatingRepoRelease(false);
+      setDocAnalysis(null);
+    }
+  }, [docAnalysis, token, user, providerName, addMessage, updateMessage, addEntry, updateEntry]);
+
   return (
     <>
       <Header
@@ -368,9 +385,11 @@ export default function App() {
           analysis={docAnalysis}
           onConfirm={handleCommitDocs}
           onCreateDraftPr={handleCreateDraftPr}
+          onCreateRelease={handleCreateRepoRelease}
           onCancel={() => setDocAnalysis(null)}
           isCommitting={isCommittingDocs}
           isCreatingDraftPr={isCreatingDraftPr}
+          isCreatingRelease={isCreatingRepoRelease}
         />
       )}
 

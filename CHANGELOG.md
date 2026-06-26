@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.8.0] — 2026-06-26
+
+### Added
+- **Crear Release al documentar un repositorio** — El flujo de *"Documentar repo"* (que genera README + MANUAL_TECNICO) ahora ofrece también **🏷️ Crear Release**, además de commit directo y Draft PR. Se crea un GitHub Release con la documentación generada como notas (versión indicada o **sugerida** automáticamente). Así el flujo de repo iguala al del archivo adjunto. Nueva `runCreateRepoRelease` (reutiliza `createGitHubRelease`/`suggestNextVersion`); `DocModal` con botón de Release + campo de versión.
+
+### Testing
+- `runCreateRepoRelease` (versión sugerida/indicada, error) + `DocModal` (botón Release). Cliente: **357 tests**.
+
 ## [3.7.1] — 2026-06-26
 
 ### Security
