@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.10.0] — 2026-06-26
+
+### Changed
+- **Flujos de documentación unificados** — Los dos modales de documentación —*"🤖 Documentar repo"* (`DocModal`) y *"📤 Documentar y publicar archivo"* (`FilePublishModal`)— compartían los mismos botones de publicación (commit / Draft PR / Release + versión) pero con código duplicado que había ido divergiendo. Ahora ambos usan un **componente compartido `PublishActions`**, garantizando **las mismas capacidades, etiquetas y estados** en los dos sitios (commit directo, Draft PR, Crear Release con versión sugerida, y la oferta de crear un repo inexistente). Cada modal mantiene su cuerpo propio (pestañas README/MANUAL vs. preview + repo + fuente/extras), porque las entradas son distintas (un repo entero vs. un archivo adjunto).
+- **Subtítulos que aclaran qué flujo usar** — Cada modal recuerda dónde está el otro flujo (en *"Documentar repo"*: para un archivo suelto usa 📤; en *"Documentar y publicar"*: para un repo entero usa 🤖), para evitar confusiones.
+
+### Testing
+- Nuevo `PublishActions.test.tsx` (acciones, versión, `busy`, `publishDisabled`, spinners, oferta de crear repo) y ajuste de los tests de `DocModal`/`FilePublishModal` a las etiquetas unificadas. Cliente: **369 tests**.
+
 ## [3.9.0] — 2026-06-26
 
 ### Added

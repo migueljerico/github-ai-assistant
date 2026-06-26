@@ -43,7 +43,7 @@ describe('DocModal (#42)', () => {
 
   it('los botones invocan sus callbacks', () => {
     const props = setup();
-    fireEvent.click(screen.getByRole('button', { name: /Hacer commit directo/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Commit directo/ }));
     fireEvent.click(screen.getByRole('button', { name: /Crear Draft PR/ }));
     fireEvent.click(screen.getByRole('button', { name: /Cancelar/ }));
     expect(props.onConfirm).toHaveBeenCalledTimes(1);
