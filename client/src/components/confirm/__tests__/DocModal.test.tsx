@@ -17,9 +17,11 @@ function setup(overrides: Partial<React.ComponentProps<typeof DocModal>> = {}) {
     analysis,
     onConfirm: vi.fn(),
     onCreateDraftPr: vi.fn(),
+    onCreateRelease: vi.fn(),
     onCancel: vi.fn(),
     isCommitting: false,
     isCreatingDraftPr: false,
+    isCreatingRelease: false,
     ...overrides,
   };
   render(<DocModal {...props} />);
@@ -53,6 +55,13 @@ describe('DocModal (#42)', () => {
     setup({ isCommitting: true });
     expect(screen.getByRole('button', { name: /Haciendo commit/ })).toBeDisabled();
     expect(screen.getByRole('button', { name: /Crear Draft PR/ })).toBeDisabled();
+  });
+
+  it('Crear Release invoca onCreateRelease con la versión escrita (#28 v3.8.0)', () => {
+    const props = setup();
+    fireEvent.change(screen.getByPlaceholderText(/versión release/), { target: { value: 'v2.0.0' } });
+    fireEvent.click(screen.getByRole('button', { name: /Crear Release/ }));
+    expect(props.onCreateRelease).toHaveBeenCalledWith('v2.0.0');
   });
 
   it('muestra el aviso cuando el repo está truncado', () => {

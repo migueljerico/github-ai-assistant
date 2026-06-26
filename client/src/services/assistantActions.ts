@@ -268,6 +268,35 @@ export async function runCreateDraftPr(deps: ChatDeps, analysis: RepoAnalysis): 
   }
 }
 
+/**
+ * Crea un GitHub Release a partir de la documentación generada de un repo (#28
+ * Parte A v3.8.0). Usa el README como notas. Versión vacía → sugerida. Reutiliza
+ * `suggestNextVersion`/`createGitHubRelease`.
+ */
+export async function runCreateRepoRelease(
+  deps: ChatDeps,
+  analysis: RepoAnalysis,
+  version?: string,
+): Promise<void> {
+  const { token, user, addMessage, addEntry, updateEntry } = deps;
+  const { owner, repo } = resolveRepoRef(analysis.repoName, user.login);
+  const histId = addEntry({ status: 'pending', description: `Creando release en ${analysis.repoName}`, repo: analysis.repoName });
+
+  try {
+    const tag = version?.trim() || await suggestNextVersion(token, owner, repo);
+    const { url } = await createGitHubRelease(token, owner, repo, {
+      version: tag,
+      title: `${tag} — ${repo}`,
+      body: analysis.readme,
+    });
+    addMessage({ role: 'assistant', content: `✅ Release [${tag}](${url}) creado en **${analysis.repoName}** con la documentación generada.` });
+    updateEntry(histId, { status: 'completed', description: `Release ${tag} creado en ${analysis.repoName}` });
+  } catch (err) {
+    addMessage({ role: 'assistant', content: `❌ Error al crear el release: ${describePublishError(err, owner, repo)}` });
+    updateEntry(histId, { status: 'error', description: `Error al crear release en ${analysis.repoName}` });
+  }
+}
+
 // ── Núcleo del chat (Fase 3) ────────────────────────────────────────────────────
 
 /**

@@ -88,6 +88,7 @@ import {
   runCreateRepo,
   runStartPublish,
   runPublishFileDocByKind,
+  runCreateRepoRelease,
   formatConversation,
 } from '../assistantActions';
 
@@ -752,6 +753,42 @@ describe('runCreateFileRelease (#28 Fase 2)', () => {
 
     await runCreateFileRelease(deps, 'owner', 'repo', 'a.md', '# D');
 
+    expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'error' }));
+  });
+});
+
+describe('runCreateRepoRelease (#28 v3.8.0)', () => {
+  const ANALYSIS_R = {
+    readme: '# README', manualTecnico: '# Manual', filesAnalyzed: 3, totalFiles: 3,
+    truncated: false, repoName: 'owner/repo',
+  };
+
+  it('usa la versión sugerida si no se indica y crea el release con el README como notas', async () => {
+    vi.mocked(suggestNextVersion).mockResolvedValue('v1.2.0');
+    vi.mocked(createGitHubRelease).mockResolvedValue({ url: 'http://rel', id: 1 } as any);
+    const deps = makeDeps();
+
+    await runCreateRepoRelease(deps, ANALYSIS_R as any);
+
+    expect(suggestNextVersion).toHaveBeenCalledWith('tok', 'owner', 'repo');
+    expect(createGitHubRelease).toHaveBeenCalledWith('tok', 'owner', 'repo', expect.objectContaining({
+      version: 'v1.2.0',
+      body: '# README',
+    }));
+    expect(deps.addMessage).toHaveBeenCalledWith(expect.objectContaining({
+      content: expect.stringContaining('[v1.2.0](http://rel)'),
+    }));
+    expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'completed' }));
+  });
+
+  it('respeta la versión indicada y, ante error, marca la entrada como error', async () => {
+    vi.mocked(createGitHubRelease).mockRejectedValue(new Error('boom'));
+    const deps = makeDeps();
+
+    await runCreateRepoRelease(deps, ANALYSIS_R as any, 'v9.9.9');
+
+    expect(suggestNextVersion).not.toHaveBeenCalled();
+    expect(createGitHubRelease).toHaveBeenCalledWith('tok', 'owner', 'repo', expect.objectContaining({ version: 'v9.9.9' }));
     expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'error' }));
   });
 });
