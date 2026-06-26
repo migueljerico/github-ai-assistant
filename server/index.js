@@ -5,6 +5,7 @@ import rateLimit from 'express-rate-limit';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { randomUUID } from 'node:crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -150,7 +151,9 @@ app.get('/auth/github', (req, res) => {
   // Fix #1: Generate a random state, store it in the session, and send it to
   // GitHub. The callback will verify it matches before exchanging the code.
   // This prevents CSRF attacks on the OAuth flow.
-  const state = Math.random().toString(36).substring(2) + Date.now().toString(36);
+  // Seguridad: el `state` anti-CSRF debe ser IMPREDECIBLE → CSPRNG (`randomUUID`,
+  // 122 bits), no `Math.random()` (xorshift128+, no criptográfico).
+  const state = randomUUID();
   req.session.oauthState = state;
 
   // BALA DE PLATA: Si el host contiene 'run.app', forzamos el https sí o sí
