@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { RepoAnalysis } from '../../types';
+import PublishActions from './PublishActions';
 
 // ── Props ──────────────────────────────────────────────────────────────────────
 interface DocModalProps {
@@ -41,7 +42,11 @@ export default function DocModal({
             <div className="modal-title">Documentación generada para {analysis.repoName}</div>
             <div className="modal-subtitle">
               Analicé {analysis.filesAnalyzed} archivo{analysis.filesAnalyzed !== 1 ? 's' : ''}.
-              Revisa el contenido antes de hacer commit.
+              Revisa el contenido antes de publicarlo.
+              <br />
+              <small style={{ opacity: 0.7 }}>
+                ¿Querías documentar un archivo suelto (con su fuente y extras)? Adjúntalo y usa 📤 Documentar y publicar.
+              </small>
             </div>
           </div>
           <button id="doc-modal-close-btn" className="btn btn-ghost btn-icon" onClick={onCancel} style={{ marginLeft: 'auto' }}>✕</button>
@@ -64,28 +69,18 @@ export default function DocModal({
             {activeTab === 'readme' ? analysis.readme : analysis.manualTecnico}
           </div>
         </div>
-        <div className="modal-footer" style={{ flexWrap: 'wrap', gap: '8px' }}>
-          <input
-            id="doc-version-input"
-            className="input"
-            type="text"
-            placeholder="versión release (vacío = sugerida)"
-            value={version}
-            onChange={e => setVersion(e.target.value)}
-            disabled={busy}
-            style={{ flex: '1 1 160px', fontSize: '0.85rem', padding: '8px 10px' }}
-          />
-          <button id="doc-cancel-btn" className="btn btn-danger" onClick={onCancel} disabled={busy}>❌ Cancelar</button>
-          <button id="doc-draft-pr-btn" className="btn btn-secondary" onClick={onCreateDraftPr} disabled={busy}>
-            {isCreatingDraftPr ? <><span className="spinner spinner-sm" /> Creando Draft PR...</> : '🔀 Crear Draft PR'}
-          </button>
-          <button id="doc-release-btn" className="btn btn-secondary" onClick={() => onCreateRelease(version.trim())} disabled={busy}>
-            {isCreatingRelease ? <><span className="spinner spinner-sm" /> Creando Release...</> : '🏷️ Crear Release'}
-          </button>
-          <button id="doc-confirm-btn" className="btn btn-success" onClick={onConfirm} disabled={busy}>
-            {isCommitting ? <><span className="spinner spinner-sm" /> Haciendo commit...</> : '✅ Hacer commit directo'}
-          </button>
-        </div>
+        <PublishActions
+          version={version}
+          onVersionChange={setVersion}
+          onCommit={onConfirm}
+          onDraftPr={onCreateDraftPr}
+          onRelease={() => onCreateRelease(version.trim())}
+          onCancel={onCancel}
+          busy={busy}
+          isCommitting={isCommitting}
+          isCreatingDraftPr={isCreatingDraftPr}
+          isCreatingRelease={isCreatingRelease}
+        />
       </div>
     </div>
   );

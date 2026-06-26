@@ -105,7 +105,7 @@ describe('FilePublishModal (#28 Fase 2)', () => {
     setup({ busy: true });
     fireEvent.change(screen.getByPlaceholderText(/repo destino/), { target: { value: 'owner/repo' } });
     expect(screen.getByRole('button', { name: /Commit directo/ })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /Publicando/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Crear Release/ })).toBeDisabled();
   });
 
   describe('oferta de crear repo inexistente (#28 fix)', () => {

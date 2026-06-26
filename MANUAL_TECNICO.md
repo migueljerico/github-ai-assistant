@@ -1,6 +1,6 @@
 # 📖 Manual Técnico — GitHub AI Assistant
 
-**Versión:** v3.9.0 · Junio 2026
+**Versión:** v3.10.0 · Junio 2026
 
 ---
 
@@ -59,7 +59,8 @@ github-ai-assistant/
 │       │   ├── auth/        # OAuth / PAT / UserBadge
 │       │   ├── chat/        # ChatArea, ChatInput, ChatMessage, DocumentRepoButton,
 │       │   │                #   ThreadSummaryButton, FileAttachButton, RepoContextButton
-│       │   ├── confirm/     # ConfirmModal, DocModal (repo), FilePublishModal (archivo)
+│       │   ├── confirm/     # ConfirmModal, DocModal (repo), FilePublishModal (archivo),
+│       │   │                #   PublishActions (barra commit/Draft PR/Release compartida)
 │       │   ├── layout/      # Header, HistoryPanel, AIProviderBadge
 │       │   ├── multi-repo/  # RepoSelector
 │       │   └── templates/   # TemplatePanel + templateData.ts
@@ -462,7 +463,7 @@ gcloud run deploy github-ai-assistant \
 - **CI:** GitHub Actions (`.github/workflows/ci.yml`) ejecuta en cada push/PR a `main`
   el lint, los tests del cliente con cobertura y los tests del servidor
   (job `server-test`). Ver "Pipeline CI/CD" en la sección de despliegue.
-- **Cobertura actual:** ~60% (ver Codecov para el valor exacto) · 361 tests en el cliente
+- **Cobertura actual:** ~60% (ver Codecov para el valor exacto) · 369 tests en el cliente
 
 ### Módulos testeados
 
@@ -478,7 +479,7 @@ gcloud run deploy github-ai-assistant \
 | `threadSummary.ts` | Resumen de hilos issue/PR (#32): parseo, issue vs PR, hilo vacío | ✅ |
 | `assistantActions.ts` | Orquestación del chat (#42): `runSend`, `runConfirmAction`, `runCancelAction`; documentar/publicar archivo (`runPublishFileDoc`/`runCreateFileRelease`/`runCreateRepoRelease`) y `runAttachFile` (~98%) | ✅ |
 | `repoRef.ts` | `resolveRepoRef` (owner/repo vs repo) | ✅ |
-| `DocModal.tsx` / `FilePublishModal.tsx` | Pestañas/preview, callbacks, versión, extras, oferta de crear repo, estado busy | ✅ |
+| `DocModal.tsx` / `FilePublishModal.tsx` / `PublishActions.tsx` | Pestañas/preview, callbacks, versión, extras, oferta de crear repo, estado busy; barra de acciones compartida (v3.10.0) | ✅ |
 | `modeDetection.ts` | Chat vs action; sesgo a chat con contexto de repo/archivo | ✅ |
 | `formatResult.ts` | Arrays, objetos, strings, JSON | ✅ |
 | `releaseGenerator.ts` / `releaseAssets.ts` | createGitHubRelease, notas, suggestNextVersion; subida/validación de assets | ✅ |

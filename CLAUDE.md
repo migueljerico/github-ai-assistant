@@ -12,7 +12,7 @@ probar, y las convenciones que es fácil romper sin querer.
 
 ## 1. Visión general
 
-**GitHub AI Assistant** (v3.9.0) es una app web que permite operar la **GitHub
+**GitHub AI Assistant** (v3.10.0) es una app web que permite operar la **GitHub
 REST API en lenguaje natural** a través de un proveedor de IA (Google Gemini o
 Groq Cloud). El usuario escribe una instrucción, la IA propone una acción, y
 **cada operación de escritura se confirma manualmente** antes de ejecutarse.
@@ -155,6 +155,9 @@ se guarda ni se loguea en el servidor.
 │   │   ├── components/       # Agrupados por feature:
 │   │   │                     #   auth/ ai-provider/ chat/ confirm/ layout/
 │   │   │                     #   multi-repo/ templates/
+│   │   │                     #   confirm/: ConfirmModal, DocModal (repo), FilePublishModal
+│   │   │                     #   (archivo) y PublishActions (barra commit/Draft PR/Release
+│   │   │                     #   compartida por ambos flujos de documentación, v3.10.0)
 │   │   └── types/index.ts    # Tipos TypeScript compartidos
 │   ├── vite.config.ts        # Dev server :5173, proxy /auth → :3001
 │   ├── vitest.config.ts      # jsdom + cobertura v8

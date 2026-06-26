@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import PublishActions from './PublishActions';
 
 // ── Props ──────────────────────────────────────────────────────────────────────
 interface FilePublishModalProps {
@@ -44,7 +45,14 @@ export default function FilePublishModal({
   const [version, setVersion] = useState('');
   const [uploadSource, setUploadSource] = useState(true);
   const [extras, setExtras] = useState<File[]>([]);
+  // Qué acción se está ejecutando, para mostrar el spinner en el botón correcto
+  // (el padre solo expone un `busy` único).
+  const [pending, setPending] = useState<'commit' | 'draftpr' | 'release' | null>(null);
   const repoOk = repo.trim().length > 0;
+
+  const doCommit = () => { setPending('commit'); onCommit(repo.trim(), uploadSource, extras); };
+  const doDraftPr = () => { setPending('draftpr'); onDraftPr(repo.trim(), uploadSource, extras); };
+  const doRelease = () => { setPending('release'); onRelease(repo.trim(), version.trim(), uploadSource, extras); };
 
   // Destino sugerido de un extra (imágenes→screenshots/, datos→data/, resto→raíz).
   const destFor = (name: string): string => {
@@ -67,6 +75,10 @@ export default function FilePublishModal({
             <div className="modal-title">Documentar y publicar — {fileName}</div>
             <div className="modal-subtitle">
               Revisa la documentación generada, indica el repositorio destino y elige cómo publicarla.
+              <br />
+              <small style={{ opacity: 0.7 }}>
+                ¿Querías documentar un repositorio entero (README + MANUAL)? Usa 🤖 Documentar repo.
+              </small>
             </div>
           </div>
           <button id="filepub-close-btn" className="btn btn-ghost btn-icon" onClick={onCancel} style={{ marginLeft: 'auto' }}>✕</button>
@@ -84,15 +96,6 @@ export default function FilePublishModal({
               value={repo}
               onChange={e => setRepo(e.target.value)}
               style={{ flex: '1 1 220px', fontSize: '0.85rem', padding: '8px 10px' }}
-            />
-            <input
-              id="filepub-version-input"
-              className="input"
-              type="text"
-              placeholder="versión release (vacío = sugerida)"
-              value={version}
-              onChange={e => setVersion(e.target.value)}
-              style={{ flex: '1 1 180px', fontSize: '0.85rem', padding: '8px 10px' }}
             />
           </div>
 
@@ -140,29 +143,22 @@ export default function FilePublishModal({
           )}
         </div>
 
-        {repoMissing ? (
-          <div className="modal-footer">
-            <button id="filepub-create-cancel-btn" className="btn btn-secondary" onClick={onCancelCreate} disabled={busy}>
-              ← Cambiar destino
-            </button>
-            <button id="filepub-create-repo-btn" className="btn btn-success" onClick={onCreateRepoAndPublish} disabled={busy}>
-              {busy ? <><span className="spinner spinner-sm" /> Creando...</> : `➕ Crear repo y publicar`}
-            </button>
-          </div>
-        ) : (
-          <div className="modal-footer">
-            <button id="filepub-cancel-btn" className="btn btn-danger" onClick={onCancel} disabled={busy}>❌ Cancelar</button>
-            <button id="filepub-commit-btn" className="btn btn-secondary" onClick={() => onCommit(repo.trim(), uploadSource, extras)} disabled={busy || !repoOk}>
-              📥 Commit directo
-            </button>
-            <button id="filepub-draftpr-btn" className="btn btn-secondary" onClick={() => onDraftPr(repo.trim(), uploadSource, extras)} disabled={busy || !repoOk}>
-              🔀 Draft PR
-            </button>
-            <button id="filepub-release-btn" className="btn btn-success" onClick={() => onRelease(repo.trim(), version.trim(), uploadSource, extras)} disabled={busy || !repoOk}>
-              {busy ? <><span className="spinner spinner-sm" /> Publicando...</> : '🏷️ Crear Release'}
-            </button>
-          </div>
-        )}
+        <PublishActions
+          version={version}
+          onVersionChange={setVersion}
+          onCommit={doCommit}
+          onDraftPr={doDraftPr}
+          onRelease={doRelease}
+          onCancel={onCancel}
+          busy={busy}
+          isCommitting={busy && pending === 'commit'}
+          isCreatingDraftPr={busy && pending === 'draftpr'}
+          isCreatingRelease={busy && pending === 'release'}
+          publishDisabled={!repoOk}
+          repoMissing={repoMissing}
+          onCreateRepoAndPublish={onCreateRepoAndPublish}
+          onCancelCreate={onCancelCreate}
+        />
       </div>
     </div>
   );
