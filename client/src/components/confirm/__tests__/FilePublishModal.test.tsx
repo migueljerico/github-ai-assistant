@@ -35,14 +35,14 @@ describe('FilePublishModal (#28 Fase 2)', () => {
     const props = setup();
     fireEvent.change(screen.getByPlaceholderText(/repo destino/), { target: { value: 'owner/repo' } });
     fireEvent.click(screen.getByRole('button', { name: /Commit directo/ }));
-    expect(props.onCommit).toHaveBeenCalledWith('owner/repo', true);
+    expect(props.onCommit).toHaveBeenCalledWith('owner/repo', true, []);
   });
 
   it('Draft PR invoca onDraftPr con el repo introducido', () => {
     const props = setup();
     fireEvent.change(screen.getByPlaceholderText(/repo destino/), { target: { value: 'mi-repo' } });
     fireEvent.click(screen.getByRole('button', { name: /Draft PR/ }));
-    expect(props.onDraftPr).toHaveBeenCalledWith('mi-repo', true);
+    expect(props.onDraftPr).toHaveBeenCalledWith('mi-repo', true, []);
   });
 
   it('Crear Release invoca onRelease con repo y versión', () => {
@@ -50,7 +50,7 @@ describe('FilePublishModal (#28 Fase 2)', () => {
     fireEvent.change(screen.getByPlaceholderText(/repo destino/), { target: { value: 'owner/repo' } });
     fireEvent.change(screen.getByPlaceholderText(/versión/), { target: { value: 'v2.0.0' } });
     fireEvent.click(screen.getByRole('button', { name: /Crear Release/ }));
-    expect(props.onRelease).toHaveBeenCalledWith('owner/repo', 'v2.0.0', true);
+    expect(props.onRelease).toHaveBeenCalledWith('owner/repo', 'v2.0.0', true, []);
   });
 
   it('con archivo fuente: checkbox de subir original (activado por defecto) y se puede desmarcar (v3.6.0)', () => {
@@ -59,11 +59,11 @@ describe('FilePublishModal (#28 Fase 2)', () => {
     expect(screen.getByText(/informe\.pbit/)).toBeInTheDocument();
     // Por defecto activado → uploadSource true.
     fireEvent.click(screen.getByRole('button', { name: /Commit directo/ }));
-    expect(props.onCommit).toHaveBeenLastCalledWith('owner/repo', true);
-    // Desmarcar → uploadSource false.
-    fireEvent.click(screen.getByRole('checkbox'));
+    expect(props.onCommit).toHaveBeenLastCalledWith('owner/repo', true, []);
+    // Desmarcar → uploadSource false. (El checkbox de subir-original es el primero.)
+    fireEvent.click(screen.getAllByRole('checkbox')[0]);
     fireEvent.click(screen.getByRole('button', { name: /Commit directo/ }));
-    expect(props.onCommit).toHaveBeenLastCalledWith('owner/repo', false);
+    expect(props.onCommit).toHaveBeenLastCalledWith('owner/repo', false, []);
   });
 
   it('sin archivo fuente no muestra el checkbox', () => {
@@ -71,11 +71,28 @@ describe('FilePublishModal (#28 Fase 2)', () => {
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
   });
 
+  it('extras: muestra los añadidos con su destino y los pasa al publicar (#28 4b)', () => {
+    const props = setup();
+    fireEvent.change(screen.getByPlaceholderText(/repo destino/), { target: { value: 'owner/repo' } });
+    const png = new File(['x'], 'captura.png');
+    const xlsx = new File(['y'], 'datos.xlsx');
+    // El input de extras es el único <input type="file">.
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(fileInput, { target: { files: [png, xlsx] } });
+
+    expect(screen.getByText('captura.png')).toBeInTheDocument();
+    expect(screen.getByText('screenshots/')).toBeInTheDocument();
+    expect(screen.getByText('data/')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Commit directo/ }));
+    expect(props.onCommit).toHaveBeenCalledWith('owner/repo', true, [png, xlsx]);
+  });
+
   it('initialRepo precarga el input del repo y permite publicar directamente (v3.5.0)', () => {
     const props = setup({ initialRepo: 'powerbi-gestion-people' });
     expect(screen.getByPlaceholderText(/repo destino/)).toHaveValue('powerbi-gestion-people');
     fireEvent.click(screen.getByRole('button', { name: /Commit directo/ }));
-    expect(props.onCommit).toHaveBeenCalledWith('powerbi-gestion-people', true);
+    expect(props.onCommit).toHaveBeenCalledWith('powerbi-gestion-people', true, []);
   });
 
   it('Cancelar invoca onCancel', () => {

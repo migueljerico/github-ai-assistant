@@ -12,9 +12,9 @@ interface FilePublishModalProps {
   sourceFileName?: string;
   /** Si está, el repo destino no existe: se ofrece crearlo y publicar (#28 fix). */
   repoMissing?: { owner: string; repo: string } | null;
-  onCommit: (repo: string, uploadSource: boolean) => void;
-  onDraftPr: (repo: string, uploadSource: boolean) => void;
-  onRelease: (repo: string, version: string, uploadSource: boolean) => void;
+  onCommit: (repo: string, uploadSource: boolean, extras: File[]) => void;
+  onDraftPr: (repo: string, uploadSource: boolean, extras: File[]) => void;
+  onRelease: (repo: string, version: string, uploadSource: boolean, extras: File[]) => void;
   /** Confirmar la creación del repo inexistente y publicar el `kind` pendiente. */
   onCreateRepoAndPublish?: () => void;
   /** Descartar la oferta de crear repo (volver a editar el destino). */
@@ -43,7 +43,20 @@ export default function FilePublishModal({
   const [repo, setRepo] = useState(initialRepo ?? '');
   const [version, setVersion] = useState('');
   const [uploadSource, setUploadSource] = useState(true);
+  const [extras, setExtras] = useState<File[]>([]);
   const repoOk = repo.trim().length > 0;
+
+  // Destino sugerido de un extra (imágenes→screenshots/, datos→data/, resto→raíz).
+  const destFor = (name: string): string => {
+    const ext = name.split('.').pop()?.toLowerCase() || '';
+    if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'].includes(ext)) return 'screenshots/';
+    if (['xlsx', 'xls', 'csv', 'json', 'parquet'].includes(ext)) return 'data/';
+    return 'raíz';
+  };
+
+  const addExtras = (files: FileList | null) => {
+    if (files) setExtras(prev => [...prev, ...Array.from(files)]);
+  };
 
   return (
     <div className="overlay" role="dialog" aria-modal="true">
@@ -95,6 +108,24 @@ export default function FilePublishModal({
             </label>
           )}
 
+          {/* #28 Fase 4b — extras para subir (imágenes→screenshots/, datos→data/, resto→raíz) */}
+          <div style={{ marginTop: '10px', fontSize: '0.85rem' }}>
+            <label id="filepub-add-extras" className="btn btn-secondary" style={{ cursor: 'pointer', display: 'inline-block', padding: '6px 10px' }}>
+              ➕ Añadir archivos para subir (imágenes, datos…)
+              <input type="file" multiple style={{ display: 'none' }} disabled={busy} onChange={e => { addExtras(e.target.files); e.target.value = ''; }} />
+            </label>
+            {extras.length > 0 && (
+              <ul id="filepub-extras-list" style={{ margin: '8px 0 0', paddingLeft: '18px' }}>
+                {extras.map((f, i) => (
+                  <li key={`${f.name}-${i}`}>
+                    <strong>{f.name}</strong> → <code>{destFor(f.name)}</code>
+                    <button type="button" className="repo-context-clear" disabled={busy} onClick={() => setExtras(prev => prev.filter((_, j) => j !== i))} aria-label={`Quitar ${f.name}`} style={{ marginLeft: '6px' }}>✕</button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
           {repoMissing && (
             <div
               id="filepub-repo-missing"
@@ -121,13 +152,13 @@ export default function FilePublishModal({
         ) : (
           <div className="modal-footer">
             <button id="filepub-cancel-btn" className="btn btn-danger" onClick={onCancel} disabled={busy}>❌ Cancelar</button>
-            <button id="filepub-commit-btn" className="btn btn-secondary" onClick={() => onCommit(repo.trim(), uploadSource)} disabled={busy || !repoOk}>
+            <button id="filepub-commit-btn" className="btn btn-secondary" onClick={() => onCommit(repo.trim(), uploadSource, extras)} disabled={busy || !repoOk}>
               📥 Commit directo
             </button>
-            <button id="filepub-draftpr-btn" className="btn btn-secondary" onClick={() => onDraftPr(repo.trim(), uploadSource)} disabled={busy || !repoOk}>
+            <button id="filepub-draftpr-btn" className="btn btn-secondary" onClick={() => onDraftPr(repo.trim(), uploadSource, extras)} disabled={busy || !repoOk}>
               🔀 Draft PR
             </button>
-            <button id="filepub-release-btn" className="btn btn-success" onClick={() => onRelease(repo.trim(), version.trim(), uploadSource)} disabled={busy || !repoOk}>
+            <button id="filepub-release-btn" className="btn btn-success" onClick={() => onRelease(repo.trim(), version.trim(), uploadSource, extras)} disabled={busy || !repoOk}>
               {busy ? <><span className="spinner spinner-sm" /> Publicando...</> : '🏷️ Crear Release'}
             </button>
           </div>

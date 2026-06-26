@@ -76,22 +76,52 @@ function sanitizeRepoPath(name: string): string {
   return name.replace(/[^\w.-]+/g, '_').replace(/_+/g, '_') || 'archivo';
 }
 
+const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp']);
+const DATA_EXTS = new Set(['xlsx', 'xls', 'csv', 'json', 'parquet']);
+
 /**
- * Commitea el archivo fuente original (binario: .pbit/.pbix/.xlsx…) en la raíz del
- * repo, junto a la documentación (#28 Fase 4a). Así el README puede referenciarlo de
- * verdad. Actualiza por SHA si ya existe.
+ * Ruta destino en el repo para un archivo "extra" (#28 Fase 4b), según su tipo:
+ * imágenes/capturas → `screenshots/`, datos (Excel/CSV…) → `data/`, el resto → raíz.
  */
-async function commitSourceFile(
+export function uploadPathFor(fileName: string): string {
+  const safe = sanitizeRepoPath(fileName);
+  const ext = fileName.split('.').pop()?.toLowerCase() || '';
+  if (IMAGE_EXTS.has(ext)) return `screenshots/${safe}`;
+  if (DATA_EXTS.has(ext)) return `data/${safe}`;
+  return safe;
+}
+
+/** Commitea un archivo binario en `path` (actualiza por SHA si existe). */
+async function commitBinaryAt(
   token: string,
   owner: string,
   repo: string,
   file: File,
+  path: string,
   branch?: string
 ): Promise<void> {
-  const path = sanitizeRepoPath(file.name);
   const bytes = new Uint8Array(await file.arrayBuffer());
   const sha = await getExistingSha(token, owner, repo, path);
-  await createOrUpdateBinaryFile(token, owner, repo, path, bytes, `feat: añade ${path} (archivo fuente)`, sha, branch);
+  await createOrUpdateBinaryFile(token, owner, repo, path, bytes, `feat: añade ${path}`, sha, branch);
+}
+
+/**
+ * Commitea el archivo fuente (en la raíz) y los extras (imágenes→`screenshots/`,
+ * datos→`data/`, resto→raíz) junto a la documentación (#28 Fase 4a/4b).
+ */
+async function commitExtras(
+  token: string,
+  owner: string,
+  repo: string,
+  opts: { sourceFile?: File; extraFiles?: File[] },
+  branch?: string
+): Promise<void> {
+  if (opts.sourceFile) {
+    await commitBinaryAt(token, owner, repo, opts.sourceFile, sanitizeRepoPath(opts.sourceFile.name), branch);
+  }
+  for (const extra of opts.extraFiles ?? []) {
+    await commitBinaryAt(token, owner, repo, extra, uploadPathFor(extra.name), branch);
+  }
 }
 
 /** Resultado de publicar un fichero suelto (#28 Fase 2). */
@@ -114,7 +144,7 @@ export async function publishFileDoc(
   repo: string,
   path: string,
   content: string,
-  options: { draft?: boolean; sourceFile?: File } = {},
+  options: { draft?: boolean; sourceFile?: File; extraFiles?: File[] } = {},
   now: number = Date.now()
 ): Promise<PublishFileResult> {
   const message = `docs: ${path} generado por el Asistente de IA`;
@@ -123,7 +153,7 @@ export async function publishFileDoc(
     // Commit directo a la rama por defecto.
     const sha = await getExistingSha(token, owner, repo, path);
     await createOrUpdateFile(token, owner, repo, path, content, message, sha);
-    if (options.sourceFile) await commitSourceFile(token, owner, repo, options.sourceFile);
+    await commitExtras(token, owner, repo, options);
     return { pr: null, branchName: null };
   }
 
@@ -136,7 +166,7 @@ export async function publishFileDoc(
 
   const sha = await getExistingSha(token, owner, repo, path);
   await createOrUpdateFile(token, owner, repo, path, content, message, sha, branchName);
-  if (options.sourceFile) await commitSourceFile(token, owner, repo, options.sourceFile, branchName);
+  await commitExtras(token, owner, repo, options, branchName);
 
   const pr = await createPullRequest(
     token,
