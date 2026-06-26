@@ -52,6 +52,18 @@ export interface SendDeps extends ChatDeps {
   setPendingAction: (action: PendingAction | null) => void;
 }
 
+/**
+ * Formatea el historial de conversación a texto plano (Usuario/Asistente), para
+ * pasarlo como contexto al documentar (#28 v3.7.0). Vacío si no hay historial.
+ */
+export function formatConversation(
+  history: Array<{ role: 'user' | 'assistant'; content: string }>,
+): string {
+  return history
+    .map(m => `${m.role === 'user' ? 'Usuario' : 'Asistente'}: ${m.content}`)
+    .join('\n\n');
+}
+
 /** Archivo local adjunto como contexto del chat (#28, Fase 1). */
 export interface FileContext {
   name: string;
@@ -418,6 +430,9 @@ export async function runAttachFile(deps: ChatDeps, file: File): Promise<FileCon
   try {
     assertSupportedFile(file);
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
+    // Guía explícita del flujo (#28 v3.7.0): conversar primero, y documentar/publicar
+    // con el botón — ya no se adivina por palabras clave.
+    const docHint = 'Cuando quieras **documentarlo y publicarlo**, pulsa **📤 Documentar y publicar** (abajo): ahí eliges commit, Draft PR o Release, e incluso subir el propio archivo al repo.';
 
     // #28 Fase 3a — hojas de cálculo: muestra de filas + aviso de tokens (evita 400).
     if (ext === 'xlsx' || ext === 'xls' || ext === 'csv') {
@@ -428,8 +443,8 @@ export async function runAttachFile(deps: ChatDeps, file: File): Promise<FileCon
       const contextText = `\n\n--- Datos del archivo adjunto: ${file.name} (hoja de cálculo) ---\n${text}\n--- Fin del archivo ---\n`;
       updateMessage(loadingId, {
         content: truncated
-          ? `📎 Cargado **${file.name}** — ${summary}. Es grande, así que analizaré una **muestra de las primeras ${SPREADSHEET_SAMPLE_ROWS} filas**. Si necesitas cálculos sobre el dataset completo, dime qué quieres calcular (sumas, medias, filtros…).`
-          : `📎 Adjuntado **${file.name}** — ${summary}. Pregúntame lo que quieras sobre los datos o pídeme que lo documente.`,
+          ? `📎 Cargado **${file.name}** — ${summary}. Es grande, así que analizaré una **muestra de las primeras ${SPREADSHEET_SAMPLE_ROWS} filas**. Pregúntame lo que quieras sobre los datos. ${docHint}`
+          : `📎 Adjuntado **${file.name}** — ${summary}. Pregúntame lo que quieras sobre los datos o pídeme tu opinión/análisis. ${docHint}`,
         isLoading: false,
       });
       return { name: file.name, contextText };
@@ -443,8 +458,8 @@ export async function runAttachFile(deps: ChatDeps, file: File): Promise<FileCon
       const contextText = `\n\n--- Estructura del archivo Power BI: ${file.name} (${ext}) ---\n${text}\n--- Fin del archivo ---\n`;
       updateMessage(loadingId, {
         content: truncated
-          ? `📎 Cargado **${file.name}** — ${summary}. Es grande, así que incluyo una **muestra acotada** de su estructura. Si necesitas más detalle de alguna parte, dímelo.`
-          : `📎 Adjuntado **${file.name}** — ${summary}. Pregúntame lo que quieras sobre el informe, el modelo o los orígenes/consultas (Power Query), o pídeme que lo documente.`,
+          ? `📎 Cargado **${file.name}** — ${summary}. Es grande, así que incluyo una **muestra acotada** de su estructura. Pregúntame por el informe, el modelo o las consultas (Power Query). ${docHint}`
+          : `📎 Adjuntado **${file.name}** — ${summary}. Pregúntame lo que quieras sobre el informe, el modelo o los orígenes/consultas (Power Query), o pídeme tu opinión/análisis. ${docHint}`,
         isLoading: false,
       });
       return { name: file.name, contextText };
@@ -457,7 +472,7 @@ export async function runAttachFile(deps: ChatDeps, file: File): Promise<FileCon
     const contextText = formatFileContentForAI(file.name, content);
     const kb = Math.max(1, Math.round(file.size / 1024));
     updateMessage(loadingId, {
-      content: `📎 Adjuntado **${file.name}** (${kb} KB). Pregúntame lo que quieras sobre él o pídeme que lo documente.`,
+      content: `📎 Adjuntado **${file.name}** (${kb} KB). Pregúntame lo que quieras sobre él o pídeme tu opinión/análisis. ${docHint}`,
       isLoading: false,
     });
     return { name: file.name, contextText };

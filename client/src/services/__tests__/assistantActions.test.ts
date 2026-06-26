@@ -88,9 +88,24 @@ import {
   runCreateRepo,
   runStartPublish,
   runPublishFileDocByKind,
+  formatConversation,
 } from '../assistantActions';
 
 const CONFIG = { provider: 'groq' as const, apiKey: 'k', model: 'm' };
+
+describe('formatConversation (#28 v3.7.0)', () => {
+  it('formatea el historial como Usuario/Asistente', () => {
+    const out = formatConversation([
+      { role: 'user', content: 'hola' },
+      { role: 'assistant', content: 'qué tal' },
+    ]);
+    expect(out).toBe('Usuario: hola\n\nAsistente: qué tal');
+  });
+
+  it('historial vacío → cadena vacía', () => {
+    expect(formatConversation([])).toBe('');
+  });
+});
 
 function makeDeps() {
   let n = 0;
@@ -544,6 +559,8 @@ describe('runAttachFile (#28)', () => {
     }));
     const msg = vi.mocked(deps.updateMessage).mock.calls[0][1] as { content: string };
     expect(msg.content).not.toContain('muestra de las primeras');
+    // #28 v3.7.0: el mensaje guía explica el botón explícito de documentar/publicar.
+    expect(msg.content).toContain('Documentar y publicar');
   });
 
   it('Power BI .pbit: usa readPowerBI y devuelve el contexto (#28 Fase 3b)', async () => {

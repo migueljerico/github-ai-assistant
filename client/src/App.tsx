@@ -6,11 +6,10 @@ import { getProvider } from './services/providers';
 import {
   runDocumentRepo, runLoadRepoContext, runSummarizeThread, runCommitDocs, runCreateDraftPr,
   runSend, runConfirmAction, runCancelAction, runAttachFile,
-  runGenerateFileDoc, runCreateRepo, runStartPublish, runPublishFileDocByKind,
+  runGenerateFileDoc, runCreateRepo, runStartPublish, runPublishFileDocByKind, formatConversation,
 } from './services/assistantActions';
 import type { RepoContext, FileContext, PublishKind } from './services/assistantActions';
 import { resolveRepoRef } from './utils/repoRef';
-import { detectDocPublishIntent, routeUserMessage } from './utils/intentDetection';
 import Header from './components/layout/Header';
 import HistoryPanel from './components/layout/HistoryPanel';
 import TemplatePanel from './components/templates/TemplatePanel';
@@ -229,38 +228,28 @@ export default function App() {
   }, [token, user, provider, apiKey, model, providerName, addMessage, updateMessage, addEntry, updateEntry]);
 
   // ── Send message to AI (Opción D - con detección de modo) ──────────────────
-  // Antes del chat, detecta órdenes en lenguaje natural de DOCUMENTAR/PUBLICAR y las
-  // enruta a los flujos reales (en vez de dejarlo en una respuesta de chat). La
-  // decisión vive en utils/intentDetection (testeable); aquí solo se cablea.
+  // Con un archivo adjunto, resolveMode (en runSend) fuerza SIEMPRE chat: el archivo
+  // se conversa/analiza. Documentar/publicar es EXPLÍCITO (botón "📤 Documentar y
+  // publicar"), no se adivina por palabras clave (se quitó esa heurística frágil).
   const handleSend = useCallback(async () => {
     // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto
     if (!inputValue.trim() || !token || !user || !provider || !apiKey || !model) return;
     const userText = inputValue.trim();
     setInputValue('');
 
-    const intent = detectDocPublishIntent(userText);
-    const route = routeUserMessage(intent, { hasFile: fileContext !== null, hasRepo: repoContext !== null });
-    if (route !== 'chat') {
-      addMessage({ role: 'user', content: userText });
-      const conversation = conversationHistory.map(m => `${m.role === 'user' ? 'Usuario' : 'Asistente'}: ${m.content}`).join('\n\n');
-      if (route === 'document-file') {
-        await handleDocumentAndPublishFile(conversation);
-      } else if (route === 'publish-file') {
-        const repo = intent?.kind === 'publish' ? intent.repo : undefined;
-        await handleDocumentAndPublishFile(conversation, repo);
-      } else if (route === 'document-repo') {
-        const repo = repoContext?.repoName ?? (intent?.kind === 'publish' ? intent.repo : undefined);
-        if (repo) await handleDocumentRepo(repo);
-      }
-      return;
-    }
-
     await runSend(
       { token, user, providerName, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading, setConversationHistory, setPendingAction },
       { provider, apiKey, model },
       { userText, conversationHistory, modeOverride, repoContext, fileContext, multiRepoEnabled, selectedRepos },
     );
-  }, [inputValue, token, user, provider, apiKey, model, providerName, conversationHistory, multiRepoEnabled, selectedRepos, modeOverride, repoContext, fileContext, addMessage, updateMessage, addEntry, updateEntry, handleDocumentAndPublishFile, handleDocumentRepo]);
+  }, [inputValue, token, user, provider, apiKey, model, providerName, conversationHistory, multiRepoEnabled, selectedRepos, modeOverride, repoContext, fileContext, addMessage, updateMessage, addEntry, updateEntry]);
+
+  // Texto plano de la conversación, como contexto al documentar (el doc refleja lo
+  // charlado). La lógica vive en formatConversation (testeable).
+  const buildConversationText = useCallback(
+    () => formatConversation(conversationHistory),
+    [conversationHistory],
+  );
 
   // ── Resumir hilo (#32) ───────────────────────────────────────────────────────
   const handleSummarizeThread = useCallback(async (input: string) => {
@@ -356,7 +345,7 @@ export default function App() {
             fileContextName={fileContext?.name ?? null}
             onAttachFile={handleAttachFile}
             onClearFile={handleClearFile}
-            onPublishFile={handleDocumentAndPublishFile}
+            onPublishFile={() => handleDocumentAndPublishFile(buildConversationText())}
           />
         </div>
 

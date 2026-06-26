@@ -341,6 +341,11 @@ describe('Contexto de repo para chat (#41)', () => {
       expect(CHAT_PROMPT).toMatch(/IMÁGENES|VARIOS archivos/i);
       expect(CHAT_PROMPT).toMatch(/NUNCA ignores/i);
     });
+
+    it('para documentar/publicar dirige al botón explícito (#28 v3.7.0)', () => {
+      expect(CHAT_PROMPT).toMatch(/Documentar y publicar/i);
+      expect(CHAT_PROMPT).toMatch(/bot[oó]n/i);
+    });
   });
 });
 
