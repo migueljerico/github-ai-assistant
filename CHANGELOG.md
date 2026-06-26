@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.9.0] — 2026-06-26
+
+### Added
+- **Subir imágenes y datos extra al publicar (#28 Fase 4b)** — En *"📤 Documentar y publicar"*, además del archivo original, ahora puedes **añadir archivos extra** (capturas, dataset…) que se publican junto a la documentación. Se colocan **por tipo**: imágenes (`png/jpg/gif/webp/svg…`) → `screenshots/`, datos (`xlsx/xls/csv/json…`) → `data/`, el resto → raíz. En **commit/Draft PR** se commitean (binario); en **Release** se adjuntan como **assets**. El modal muestra cada extra con su destino. Así se publica el **proyecto completo** (doc + fuente + capturas + dataset). Nuevo `uploadPathFor` (ruta por tipo); `publishFileDoc`/`runPublishFileDoc`/`runCreateFileRelease` aceptan `extraFiles`.
+
+### Testing
+- `uploadPathFor`, `publishFileDoc` con extras (cada uno a su ruta), release subiendo extras como assets, y el modal mostrando/!pasando los extras. Cliente: **361 tests**.
+
 ## [3.8.0] — 2026-06-26
 
 ### Added

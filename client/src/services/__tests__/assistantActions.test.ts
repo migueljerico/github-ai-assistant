@@ -667,16 +667,18 @@ describe('runPublishFileDoc (#28 Fase 2)', () => {
     expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'completed' }));
   });
 
-  it('reenvía el sourceFile a publishFileDoc y lo menciona (#28 4a)', async () => {
+  it('reenvía sourceFile + extraFiles a publishFileDoc y avisa del nº de adjuntos (#28 4a/4b)', async () => {
     vi.mocked(publishFileDoc).mockResolvedValue({ pr: null, branchName: null });
     const deps = makeDeps();
     const sourceFile = { name: 'informe.pbit' } as unknown as File;
+    const extraFiles = [{ name: 'captura.png' } as unknown as File];
 
-    await runPublishFileDoc(deps, 'owner', 'repo', 'informe.pbit', '# Doc', { draft: false, sourceFile });
+    await runPublishFileDoc(deps, 'owner', 'repo', 'informe.pbit', '# Doc', { draft: false, sourceFile, extraFiles });
 
-    expect(publishFileDoc).toHaveBeenCalledWith('tok', 'owner', 'repo', 'docs/informe.md', '# Doc', { draft: false, sourceFile });
+    expect(publishFileDoc).toHaveBeenCalledWith('tok', 'owner', 'repo', 'docs/informe.md', '# Doc', { draft: false, sourceFile, extraFiles });
+    // 1 fuente + 1 extra = 2 adjuntos.
     expect(deps.addMessage).toHaveBeenCalledWith(expect.objectContaining({
-      content: expect.stringContaining('informe.pbit'),
+      content: expect.stringContaining('2 archivo(s) adjunto(s)'),
     }));
   });
 
@@ -744,6 +746,19 @@ describe('runCreateFileRelease (#28 Fase 2)', () => {
     expect(deps.addMessage).toHaveBeenCalledWith(expect.objectContaining({
       content: expect.stringContaining('adjuntado al release'),
     }));
+  });
+
+  it('sube el sourceFile y los extras como assets del release (#28 4b)', async () => {
+    vi.mocked(createGitHubRelease).mockResolvedValue({ url: 'http://rel', id: 5 } as any);
+    vi.mocked(uploadReleaseAsset).mockResolvedValue({ url: 'http://asset', name: 'x' });
+    const deps = makeDeps();
+    const sourceFile = { name: 'informe.pbit' } as unknown as File;
+    const extraFiles = [{ name: 'captura.png' } as unknown as File, { name: 'datos.xlsx' } as unknown as File];
+
+    await runCreateFileRelease(deps, 'owner', 'repo', 'informe.pbit', '# D', 'v1.0.0', sourceFile, extraFiles);
+
+    const names = vi.mocked(uploadReleaseAsset).mock.calls.map(c => (c[4] as { name: string }).name);
+    expect(names).toEqual(['informe.pbit', 'captura.png', 'datos.xlsx']);
   });
 
   it('ante un error marca la entrada como error', async () => {

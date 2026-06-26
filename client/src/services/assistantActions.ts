@@ -587,14 +587,15 @@ export async function runPublishFileDoc(
   repo: string,
   fileName: string,
   doc: string,
-  opts: { draft?: boolean; sourceFile?: File },
+  opts: { draft?: boolean; sourceFile?: File; extraFiles?: File[] },
 ): Promise<void> {
   const { token, addMessage, addEntry, updateEntry } = deps;
   const path = docPathFor(fileName);
   const histId = addEntry({ status: 'pending', description: `Publicando ${path} en ${owner}/${repo}`, repo: `${owner}/${repo}` });
   try {
-    const { pr } = await publishFileDoc(token, owner, repo, path, doc, { draft: opts.draft, sourceFile: opts.sourceFile });
-    const extra = opts.sourceFile ? ` y el archivo **${opts.sourceFile.name}**` : '';
+    const { pr } = await publishFileDoc(token, owner, repo, path, doc, { draft: opts.draft, sourceFile: opts.sourceFile, extraFiles: opts.extraFiles });
+    const nExtra = (opts.sourceFile ? 1 : 0) + (opts.extraFiles?.length ?? 0);
+    const extra = nExtra > 0 ? ` + ${nExtra} archivo(s) adjunto(s)` : '';
     addMessage({
       role: 'assistant',
       content: pr
@@ -617,6 +618,7 @@ export async function runCreateFileRelease(
   doc: string,
   version?: string,
   sourceFile?: File,
+  extraFiles?: File[],
 ): Promise<void> {
   const { token, addMessage, addEntry, updateEntry } = deps;
   const histId = addEntry({ status: 'pending', description: `Creando release en ${owner}/${repo}`, repo: `${owner}/${repo}` });
@@ -628,15 +630,16 @@ export async function runCreateFileRelease(
       body: doc,
     });
     addMessage({ role: 'assistant', content: `✅ Release [${tag}](${url}) creado en **${owner}/${repo}** con la documentación de ${fileName}.` });
-    // Adjunta el archivo fuente como asset del release (#28 Fase 4a). No-fatal: si
-    // falla, el release ya está creado, solo se avisa.
-    if (sourceFile) {
+    // Adjunta el archivo fuente + extras como assets del release (#28 Fase 4a/4b).
+    // No-fatal: si alguno falla, el release ya está creado, solo se avisa.
+    const assets = [...(sourceFile ? [sourceFile] : []), ...(extraFiles ?? [])];
+    for (const file of assets) {
       try {
-        const asset = { name: sourceFile.name, file: sourceFile, contentType: getMimeType(sourceFile.name) };
+        const asset = { name: file.name, file, contentType: getMimeType(file.name) };
         const { url: assetUrl } = await uploadReleaseAsset(token, owner, repo, id, asset);
-        addMessage({ role: 'assistant', content: `📦 Archivo **${sourceFile.name}** adjuntado al release: [descargar](${assetUrl}).` });
+        addMessage({ role: 'assistant', content: `📦 **${file.name}** adjuntado al release: [descargar](${assetUrl}).` });
       } catch (assetErr) {
-        addMessage({ role: 'assistant', content: `⚠️ El release se creó, pero no pude adjuntar **${sourceFile.name}**: ${(assetErr as Error).message}` });
+        addMessage({ role: 'assistant', content: `⚠️ El release se creó, pero no pude adjuntar **${file.name}**: ${(assetErr as Error).message}` });
       }
     }
     updateEntry(histId, { status: 'completed', description: `Release ${tag} creado en ${owner}/${repo}` });
@@ -659,14 +662,16 @@ export interface PublishTarget {
   version?: string;
   /** Archivo fuente original a subir junto a la doc (#28 Fase 4a). */
   sourceFile?: File;
+  /** Extras a subir (imágenes→screenshots/, datos→data/, resto→raíz) — #28 Fase 4b. */
+  extraFiles?: File[];
 }
 
 /** Despacha la publicación según el `kind` (commit / Draft PR / Release). */
 export async function runPublishFileDocByKind(deps: ChatDeps, t: PublishTarget): Promise<void> {
   if (t.kind === 'release') {
-    await runCreateFileRelease(deps, t.owner, t.repo, t.fileName, t.doc, t.version, t.sourceFile);
+    await runCreateFileRelease(deps, t.owner, t.repo, t.fileName, t.doc, t.version, t.sourceFile, t.extraFiles);
   } else {
-    await runPublishFileDoc(deps, t.owner, t.repo, t.fileName, t.doc, { draft: t.kind === 'draftpr', sourceFile: t.sourceFile });
+    await runPublishFileDoc(deps, t.owner, t.repo, t.fileName, t.doc, { draft: t.kind === 'draftpr', sourceFile: t.sourceFile, extraFiles: t.extraFiles });
   }
 }
 

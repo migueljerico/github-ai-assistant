@@ -20,7 +20,7 @@ import {
   createBranch,
   createPullRequest,
 } from '../github';
-import { writeDocFiles, buildDocsPrBody, createDocsDraftPr, publishFileDoc } from '../docPublisher';
+import { writeDocFiles, buildDocsPrBody, createDocsDraftPr, publishFileDoc, uploadPathFor } from '../docPublisher';
 
 const TOKEN = 'tok';
 const OWNER = 'owner';
@@ -167,5 +167,28 @@ describe('docPublisher', () => {
       expect(args[3]).toBe('informe_miguel.pbit');
       expect(args[4]).toBeInstanceOf(Uint8Array);
     });
+
+    it('con extraFiles commitea cada uno a su ruta por tipo — #28 4b', async () => {
+      vi.mocked(getFileContents).mockResolvedValue({ sha: 'x' } as any);
+      vi.mocked(createOrUpdateFile).mockResolvedValue({ commit: { sha: 'c' } } as any);
+      vi.mocked(createOrUpdateBinaryFile).mockResolvedValue({ commit: { sha: 'b' } } as any);
+      const mk = (name: string) => ({ name, arrayBuffer: async () => new Uint8Array([1]).buffer }) as unknown as File;
+      const extraFiles = [mk('captura.png'), mk('datos.xlsx'), mk('notas.txt')];
+
+      await publishFileDoc(TOKEN, OWNER, REPO, 'docs/notas.md', '# Doc', { extraFiles });
+
+      const paths = vi.mocked(createOrUpdateBinaryFile).mock.calls.map(c => c[3]);
+      expect(paths).toEqual(['screenshots/captura.png', 'data/datos.xlsx', 'notas.txt']);
+    });
+  });
+});
+
+describe('uploadPathFor (#28 4b)', () => {
+  it('imágenes → screenshots/, datos → data/, resto → raíz', () => {
+    expect(uploadPathFor('captura.PNG')).toBe('screenshots/captura.PNG');
+    expect(uploadPathFor('mi foto.jpg')).toBe('screenshots/mi_foto.jpg');
+    expect(uploadPathFor('Empleados.xlsx')).toBe('data/Empleados.xlsx');
+    expect(uploadPathFor('datos.csv')).toBe('data/datos.csv');
+    expect(uploadPathFor('LICENSE.txt')).toBe('LICENSE.txt');
   });
 });
