@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.7.1] — 2026-06-26
+
+### Security
+- **`state` de OAuth con generador criptográficamente seguro** — El parámetro `state` anti-CSRF del flujo de login (`server/index.js`) se generaba con `Math.random()` (no criptográfico, predecible). Ahora se usa `crypto.randomUUID()` (CSPRNG, 122 bits). El mecanismo ya era correcto (state en sesión, validado *single-use* en el callback); solo se endurece la fuente de aleatoriedad. **Requiere redeploy del servidor.**
+
 ## [3.7.0] — 2026-06-25
 
 ### Changed
