@@ -88,9 +88,24 @@ import {
   runCreateRepo,
   runStartPublish,
   runPublishFileDocByKind,
+  formatConversation,
 } from '../assistantActions';
 
 const CONFIG = { provider: 'groq' as const, apiKey: 'k', model: 'm' };
+
+describe('formatConversation (#28 v3.7.0)', () => {
+  it('formatea el historial como Usuario/Asistente', () => {
+    const out = formatConversation([
+      { role: 'user', content: 'hola' },
+      { role: 'assistant', content: 'qué tal' },
+    ]);
+    expect(out).toBe('Usuario: hola\n\nAsistente: qué tal');
+  });
+
+  it('historial vacío → cadena vacía', () => {
+    expect(formatConversation([])).toBe('');
+  });
+});
 
 function makeDeps() {
   let n = 0;

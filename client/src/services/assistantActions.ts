@@ -52,6 +52,18 @@ export interface SendDeps extends ChatDeps {
   setPendingAction: (action: PendingAction | null) => void;
 }
 
+/**
+ * Formatea el historial de conversación a texto plano (Usuario/Asistente), para
+ * pasarlo como contexto al documentar (#28 v3.7.0). Vacío si no hay historial.
+ */
+export function formatConversation(
+  history: Array<{ role: 'user' | 'assistant'; content: string }>,
+): string {
+  return history
+    .map(m => `${m.role === 'user' ? 'Usuario' : 'Asistente'}: ${m.content}`)
+    .join('\n\n');
+}
+
 /** Archivo local adjunto como contexto del chat (#28, Fase 1). */
 export interface FileContext {
   name: string;

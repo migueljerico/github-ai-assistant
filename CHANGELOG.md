@@ -14,8 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Notes
 - *Si "documentar" no te ofrecía Release ni subía el `.pbit`:* era porque se usaba **"Documentar repo"** (genera README + MANUAL_TECNICO) en vez de **"📤 Documentar y publicar"** del archivo adjunto, que sí tiene Release y subida del archivo. La guía de la UI ahora lo deja claro.
 
-### Testing
-- Eliminado `intentDetection.test.ts`; `CHAT_PROMPT` y el mensaje guía de `runAttachFile` cubiertos. Cliente: **352 tests**.
+### Testing / CI
+- Eliminado `intentDetection.test.ts`; `CHAT_PROMPT`, el mensaje guía de `runAttachFile` y `formatConversation` cubiertos. Cliente: **354 tests**.
+- **`codecov.yml`**: se excluyen de cobertura `App.tsx` y `main.tsx` (glue/entry sin lógica; la lógica vive en módulos testeados). Evita que PRs de solo-cableado fallen el `patch` por líneas de App intrínsecamente a 0% — venía repitiéndose.
 
 ## [3.6.1] — 2026-06-25
 

@@ -1,0 +1,21 @@
+# Configuración de Codecov.
+#
+# `App.tsx` y `main.tsx` son **glue/entry points**: cableado de estado + JSX, sin
+# lógica de negocio (toda la lógica vive en `services/` y `utils/`, que SÍ se testean
+# — ver convención en CLAUDE.md §5). Por diseño están a ~0% de cobertura, lo que
+# tumbaba el `patch` en PRs de solo-cableado. Se excluyen para que el patch mida la
+# lógica real y no el glue.
+ignore:
+  - "client/src/App.tsx"
+  - "client/src/main.tsx"
+
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
+    patch:
+      default:
+        target: auto
+        threshold: 1%

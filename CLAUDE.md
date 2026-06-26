@@ -269,6 +269,10 @@ clave de Gemini o Groq desde el navegador en tiempo de ejecución.
   tests de `client/`** (Node 24, `npm install` + `npm run test:coverage`) y sube
   cobertura a Codecov. Hay un test del servidor
   (`server/__tests__/rateLimit.test.js`) que el CI no ejecuta.
+- **Codecov (`codecov.yml`):** `App.tsx` y `main.tsx` están **excluidos** de cobertura
+  (glue/entry sin lógica). Mantén la lógica en `services/`/`utils/` testeados; si metes
+  lógica en `App.tsx` no se medirá (otra razón para no hacerlo). No quites la exclusión
+  sin motivo: evita que PRs de solo-cableado fallen el `patch` por el ~0% de App.
 
 ---
 

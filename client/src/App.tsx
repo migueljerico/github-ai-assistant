@@ -6,7 +6,7 @@ import { getProvider } from './services/providers';
 import {
   runDocumentRepo, runLoadRepoContext, runSummarizeThread, runCommitDocs, runCreateDraftPr,
   runSend, runConfirmAction, runCancelAction, runAttachFile,
-  runGenerateFileDoc, runCreateRepo, runStartPublish, runPublishFileDocByKind,
+  runGenerateFileDoc, runCreateRepo, runStartPublish, runPublishFileDocByKind, formatConversation,
 } from './services/assistantActions';
 import type { RepoContext, FileContext, PublishKind } from './services/assistantActions';
 import { resolveRepoRef } from './utils/repoRef';
@@ -244,10 +244,10 @@ export default function App() {
     );
   }, [inputValue, token, user, provider, apiKey, model, providerName, conversationHistory, multiRepoEnabled, selectedRepos, modeOverride, repoContext, fileContext, addMessage, updateMessage, addEntry, updateEntry]);
 
-  // Construye un texto plano con la conversación, para pasarlo como contexto al
-  // documentar (el doc refleja lo charlado).
+  // Texto plano de la conversación, como contexto al documentar (el doc refleja lo
+  // charlado). La lógica vive en formatConversation (testeable).
   const buildConversationText = useCallback(
-    () => conversationHistory.map(m => `${m.role === 'user' ? 'Usuario' : 'Asistente'}: ${m.content}`).join('\n\n'),
+    () => formatConversation(conversationHistory),
     [conversationHistory],
   );
 
