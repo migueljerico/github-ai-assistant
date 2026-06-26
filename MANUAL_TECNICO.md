@@ -1,6 +1,6 @@
 # 📖 Manual Técnico — GitHub AI Assistant
 
-**Versión:** v3.3.0 · Junio 2026
+**Versión:** v3.9.0 · Junio 2026
 
 ---
 
@@ -21,10 +21,11 @@ La aplicación sigue una arquitectura de **backend thin** deliberada: el servido
 │  └────────┬────────┘  └──────┬────────┘  └─────────────────┘  │
 │           │                  │                                  │
 │  ┌────────▼─────────────────▼──────────────────────────────┐   │
-│  │  App.tsx — Orquestador principal                        │   │
-│  │  handleSend → callAI → parseAction → ConfirmModal       │   │
-│  │  handleConfirm → executeAction → HistoryContext         │   │
-│  │  handleDocumentRepo → fetchRepoTreeRecursive → DocModal │   │
+│  │  App.tsx (wrappers finos) → services/assistantActions   │   │
+│  │  runSend → callAI → parseAction → ConfirmModal          │   │
+│  │  runConfirmAction → executeAction → HistoryContext      │   │
+│  │  runDocumentRepo → fetchRepoTreeRecursive → DocModal    │   │
+│  │  runAttachFile (PDF/Excel/PowerBI) → FilePublishModal   │   │
 │  └────────────────────────────────────────────────────────┘   │
 └──────────────┬────────────────────────────────────┬───────────┘
                │ /auth/github · /auth/callback      │ fetch()
@@ -56,8 +57,9 @@ github-ai-assistant/
 │       ├── components/
 │       │   ├── ai-provider/ # Panel conexión de IA
 │       │   ├── auth/        # OAuth / PAT / UserBadge
-│       │   ├── chat/        # ChatArea, ChatInput, ChatMessage, DocRepoButton
-│       │   ├── confirm/     # ConfirmModal
+│       │   ├── chat/        # ChatArea, ChatInput, ChatMessage, DocumentRepoButton,
+│       │   │                #   ThreadSummaryButton, FileAttachButton, RepoContextButton
+│       │   ├── confirm/     # ConfirmModal, DocModal (repo), FilePublishModal (archivo)
 │       │   ├── layout/      # Header, HistoryPanel, AIProviderBadge
 │       │   ├── multi-repo/  # RepoSelector
 │       │   └── templates/   # TemplatePanel + templateData.ts
@@ -69,9 +71,10 @@ github-ai-assistant/
 │       │   ├── github.ts           # Wrapper GitHub REST API v3
 │       │   ├── providers.ts        # Registro de proveedores (Gemini/Groq/OpenRouter)
 │       │   ├── gemini.ts           # Cliente unificado (callAI, OpenAI-compatible + proxy)
-│       │   ├── assistantActions.ts # Orquestación del chat (runSend/Confirm/Cancel + botones) #42
+│       │   ├── assistantActions.ts # Orquestación del chat (runSend/Confirm/Cancel + botones) #42;
+│       │   │                        #   documentar+publicar archivo (commit/Draft PR/Release + fuente/extras) #28
 │       │   ├── threadSummary.ts    # Resumen de hilos de issues/PRs (#32)
-│       │   ├── docPublisher.ts     # Publicación de docs: commit directo / Draft PR (#45)
+│       │   ├── docPublisher.ts     # Publica docs: commit/Draft PR; publishFileDoc + binarios/extras (#28/#45)
 │       │   └── actionExecutor.ts   # Ejecutor de acciones confirmadas
 │       ├── utils/
 │       │   ├── formatResult.ts     # Formateador de resultados de API
@@ -80,11 +83,13 @@ github-ai-assistant/
 │       │   ├── pdfAdvanced.ts      # Extracción de PDF con pdfjs-dist (fallback básico) (#28)
 │       │   ├── spreadsheetReader.ts # Excel/CSV con SheetJS: muestra de filas + aviso de tokens (#28 Fase 3a)
 │       │   ├── powerbiReader.ts    # Power BI .pbix/.pbit (ZIP vía fflate): informe + modelo/DAX + Power Query/M del DataMashup (#28 Fase 3b/3b-bis)
+│       │   ├── releaseGenerator.ts # createGitHubRelease + suggestNextVersion + notas
+│       │   ├── releaseAssets.ts    # Subida de assets a uploads.github.com (validación + MIME)
 │       │   └── modeDetection.ts    # Detección de modo chat vs action
 │       └── types/index.ts          # Tipos compartidos TypeScript
 ├── server/
 │   └── index.js              # Express: OAuth + proxy Gemini + rate limit + static
-├── Dockerfile                # Multi-stage build (Node 20 Alpine)
+├── Dockerfile                # Multi-stage build (Node 22 Alpine)
 ├── .env.example              # Plantilla de variables de entorno
 └── .gitignore
 ```
@@ -96,7 +101,7 @@ github-ai-assistant/
 ```
 Usuario escribe en el chat "Crea un repositorio público llamado mi-proyecto"
 ↓
-App.tsx → handleSend()
+App.tsx (wrapper fino) → services/assistantActions.ts → runSend()
   Construye el historial de conversación
   Llama a callAI(messages, provider, apiKey, model) → gemini.ts
 ↓
@@ -119,12 +124,29 @@ parseGeminiAction() valida el JSON
 requiereConfirmacion === true → Se abre ConfirmModal con descripción
 Usuario pulsa "✅ Confirmar y ejecutar"
 ↓
-handleConfirm() → executeAction()
+runConfirmAction() → executeAction()
   actionExecutor.ts → resolveEndpoint() → createRepo() en github.ts
   → POST https://api.github.com/user/repos → Token Bearer del usuario en el header
 ↓
 Resultado → HistoryContext.addEntry()
 Mensaje de éxito/error en el chat
+```
+
+### Flujo de documentar y publicar
+
+Hay **dos flujos de documentación** (que la ronda v3.10.0 unifica en sus controles):
+
+```
+A) "Documentar repo" (DocModal)
+   runDocumentRepo → fetchRepoTreeRecursive + generateRepoDocs (README + MANUAL)
+   → DocModal → commit directo (writeDocFiles) | Draft PR (createDocsDraftPr)
+                | Release (runCreateRepoRelease, body = README)
+
+B) "📤 Documentar y publicar archivo" (FilePublishModal)
+   runAttachFile (PDF/Excel/Power BI) → fileContext (solo en memoria)
+   → 📤 botón → generateFileDoc (incorpora la conversación)
+   → FilePublishModal → commit | Draft PR (publishFileDoc) | Release (runCreateFileRelease)
+     + sube el archivo fuente y extras (imágenes→screenshots/, datos→data/)
 ```
 
 ---
@@ -211,9 +233,17 @@ Server → { text } → Frontend
 | `getUser()` | GET | `/user` |
 | `listAllRepos()` | GET | `/user/repos?per_page=100&page=N` |
 | `createRepo()` | POST | `/user/repos` |
+| `getRepo()` / `repoExists()` | GET | `/repos/{owner}/{repo}` |
+| `getBranchSha()` | GET | `/repos/{owner}/{repo}/git/ref/heads/{branch}` |
+| `createBranch()` | POST | `/repos/{owner}/{repo}/git/refs` |
 | `getFileContents()` | GET | `/repos/{owner}/{repo}/contents/{path}` |
 | `createOrUpdateFile()` | PUT | `/repos/{owner}/{repo}/contents/{path}` |
+| `createOrUpdateBinaryFile()` | PUT | `/repos/{owner}/{repo}/contents/{path}` (bytes en Base64) |
 | `deleteFile()` | DELETE | `/repos/{owner}/{repo}/contents/{path}` |
+| `createPullRequest()` | POST | `/repos/{owner}/{repo}/pulls` (admite `draft`) |
+| `createGitHubRelease()` | POST | `/repos/{owner}/{repo}/releases` |
+| `uploadReleaseAsset()` | POST | `uploads.github.com/.../releases/{id}/assets` |
+| `getIssueOrPr()` / comentarios | GET | `/repos/{owner}/{repo}/issues/{n}` (+ `/comments`, `/pulls/{n}/comments`) |
 | `fetchRepoTreeRecursive()` | GET | `/repos/{owner}/{repo}/git/trees/{branch}?recursive=1` |
 
 ### Paginación automática
@@ -309,7 +339,7 @@ export function AIProviderProvider({ children }: { children: React.ReactNode }) 
 ### Flujo OAuth completo
 
 1. Frontend → `window.location.href = '/auth/github'`
-2. Express → genera `state` aleatorio, lo guarda en sesión
+2. Express → genera `state` con **CSPRNG** (`randomUUID()` de `node:crypto`, no `Math.random()`), lo guarda en sesión
 3. Express → redirect a GitHub con `client_id` + `scope` + `state`
 4. GitHub → muestra pantalla de autorización al usuario
 5. Usuario aprueba → GitHub redirige a `/auth/callback?code=XXX&state=YYY`
@@ -363,18 +393,26 @@ const uid = () => crypto.randomUUID();
 
 Esto garantiza IDs únicos y protege contra posibles colisiones en sesiones largas.
 
+El mismo criterio aplica al **`state` anti-CSRF del flujo OAuth** (v3.7.1): el servidor lo
+genera con `randomUUID()` de `node:crypto` (CSPRNG, 122 bits impredecibles) y lo valida un
+solo uso en el callback, en lugar del antiguo `Math.random()` (no criptográfico, predecible).
+
 ---
 
 ## 🚀 Despliegue — Dockerfile y Cloud Run
 
 ### Dockerfile multi-stage
 
-- **Stage 1 (builder):** `node:20-alpine` → `npm ci` → `npm run build` (Vite)
+- **Stage 1 (builder):** `node:22-alpine` → `npm ci` → `npm run build` (Vite)
   Produce: `client/dist/` (archivos estáticos)
-- **Stage 2 (production):** `node:20-alpine` → `npm install --omit=dev`
+- **Stage 2 (production):** `node:22-alpine` → `npm install --omit=dev`
   Copia: `server/` + `client/dist/`
   Expone: `$PORT` (8080 en Cloud Run)
   CMD: `node server/index.js`
+
+> **Node 22 (no bajar a 20):** `pdfjs-dist@6` exige Node `>=22.13`. Con `node:20` npm
+> omitía `pdfjs-dist` en silencio (es `optionalDependency`) y `tsc` fallaba en el build.
+> Debe seguir alineado con CI (Node 24) y el entorno local.
 
 ### Variables de entorno en producción
 
@@ -424,7 +462,7 @@ gcloud run deploy github-ai-assistant \
 - **CI:** GitHub Actions (`.github/workflows/ci.yml`) ejecuta en cada push/PR a `main`
   el lint, los tests del cliente con cobertura y los tests del servidor
   (job `server-test`). Ver "Pipeline CI/CD" en la sección de despliegue.
-- **Cobertura actual:** ≈64% (ver Codecov para el valor exacto) · 269 tests en el cliente
+- **Cobertura actual:** ~60% (ver Codecov para el valor exacto) · 361 tests en el cliente
 
 ### Módulos testeados
 
@@ -434,19 +472,20 @@ gcloud run deploy github-ai-assistant \
 | `AIProviderContext.tsx` | Connect/disconnect, Zero-Storage | ✅ |
 | `providers.ts` | Registro, detección de modelos 🆓, caché de catálogo, `pickDefaultModel` | ✅ |
 | `actionExecutor.ts` | GET, POST, PUT, DELETE, PATCH, multi-repo | ✅ |
-| `github.ts` | Base64, ghFetch, getUser, createRepo, getRepo, getBranchSha | ✅ |
-| `gemini.ts` | parseGeminiAction, detectPrimaryLanguage, temperatura por modo, contexto de repo (#41), enrutado OpenRouter, reintento transitorio (`withTransientRetry`) | ✅ |
-| `docPublisher.ts` | Commit directo / Draft PR (#45) | ✅ |
+| `github.ts` | Base64 (texto + binario), ghFetch, getUser, createRepo, repoExists, getRepo, getBranchSha, createBranch, createPullRequest | ✅ |
+| `gemini.ts` | parseGeminiAction, detectPrimaryLanguage, temperatura por modo, contexto de repo (#41), `generateFileDoc` (incorpora conversación), enrutado OpenRouter, reintento transitorio (`withTransientRetry`) | ✅ |
+| `docPublisher.ts` | Commit directo / Draft PR (#45); `publishFileDoc` + binarios/extras (`uploadPathFor`) (#28) | ✅ |
 | `threadSummary.ts` | Resumen de hilos issue/PR (#32): parseo, issue vs PR, hilo vacío | ✅ |
-| `assistantActions.ts` | Orquestación del chat (#42): `runSend` (chat/acción, confirmación, solo lectura, PUT, error), `runConfirmAction` (single/multi-repo), `runCancelAction` + flujos de botón (~98%) | ✅ |
+| `assistantActions.ts` | Orquestación del chat (#42): `runSend`, `runConfirmAction`, `runCancelAction`; documentar/publicar archivo (`runPublishFileDoc`/`runCreateFileRelease`/`runCreateRepoRelease`) y `runAttachFile` (~98%) | ✅ |
 | `repoRef.ts` | `resolveRepoRef` (owner/repo vs repo) | ✅ |
-| `DocModal.tsx` | Pestañas README/MANUAL, callbacks, estado busy | ✅ |
-| `modeDetection.ts` | Chat vs action; sesgo a chat con contexto de repo | ✅ |
+| `DocModal.tsx` / `FilePublishModal.tsx` | Pestañas/preview, callbacks, versión, extras, oferta de crear repo, estado busy | ✅ |
+| `modeDetection.ts` | Chat vs action; sesgo a chat con contexto de repo/archivo | ✅ |
 | `formatResult.ts` | Arrays, objetos, strings, JSON | ✅ |
-| `releaseGenerator.ts` | createGitHubRelease, notas, suggestNextVersion | ✅ |
-| `pdfReader.ts` / `pdfAdvanced.ts` | Extracción/limpieza de texto, fallback | ✅ |
+| `releaseGenerator.ts` / `releaseAssets.ts` | createGitHubRelease, notas, suggestNextVersion; subida/validación de assets | ✅ |
+| `pdfReader.ts` / `pdfAdvanced.ts` | Extracción/limpieza de texto, fallback, `assertSupportedFile` | ✅ |
+| `spreadsheetReader.ts` / `powerbiReader.ts` | Excel/CSV (muestra de filas); Power BI informe + DAX + Power Query/M | ✅ |
 | Hooks | `useChat`, `useActions` | ✅ |
-| Componentes React | ChatArea, ChatInput, ConfirmModal, Header, TemplatePanel, AIProviderPanel, AIProviderBadge, RepoContextButton | ✅ |
+| Componentes React | ChatArea, ChatInput, ChatMessage, ConfirmModal, Header, TemplatePanel, AIProviderPanel, AIProviderBadge, RepoContextButton, FileAttachButton, ThreadSummaryButton | ✅ |
 | Servidor | `rateLimit.test.js` (rate limiter del proxy) | ✅ |
 
 ### Ejecutar tests localmente
@@ -464,7 +503,6 @@ Ver [MEJORAS_FUTURAS.md](./MEJORAS_FUTURAS.md) para el detalle completo.
 
 | Limitación | Impacto | Solución planificada |
 |---|---|---|
-| DocModal embebido en App.tsx | Dificulta el mantenimiento | Extraer a componente (#42) |
 | Truncamiento por caracteres (2000) | Corta código a mitad | Truncamiento por líneas (#20) |
 | SessionWarningBanner no implementado | Sin aviso de caducidad | Banner de advertencia (#22) |
 | Prompts incrustados en código | Dificulta edición/i18n | Migrar a archivos .md (#23) |
