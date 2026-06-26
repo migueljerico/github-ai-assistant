@@ -544,6 +544,8 @@ describe('runAttachFile (#28)', () => {
     }));
     const msg = vi.mocked(deps.updateMessage).mock.calls[0][1] as { content: string };
     expect(msg.content).not.toContain('muestra de las primeras');
+    // #28 v3.7.0: el mensaje guía explica el botón explícito de documentar/publicar.
+    expect(msg.content).toContain('Documentar y publicar');
   });
 
   it('Power BI .pbit: usa readPowerBI y devuelve el contexto (#28 Fase 3b)', async () => {

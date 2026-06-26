@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.7.0] — 2026-06-25
+
+### Changed
+- **Documentar/publicar es ahora EXPLÍCITO, no se adivina (refactor)** — Se elimina la detección de intención por palabras clave (`utils/intentDetection.ts`), que era frágil y causaba bugs recurrentes (el chat saltaba a "acción"/modal sin querer). Ahora, con un archivo adjunto, **el chat siempre conversa/analiza**; para documentar y publicar se usa el botón **📤 Documentar y publicar** (commit, Draft PR o Release, e incluso subir el archivo original), que ya **incorpora la conversación** mantenida como contexto del documento.
+- **La UI explica el flujo** — Al adjuntar un archivo, el mensaje de confirmación deja claro el camino: *conversar/analizar primero → pulsar 📤 para documentar y publicar*. El `CHAT_PROMPT`, si le pides documentar por texto, te dirige al botón en lugar de adivinar.
+
+### Notes
+- *Si "documentar" no te ofrecía Release ni subía el `.pbit`:* era porque se usaba **"Documentar repo"** (genera README + MANUAL_TECNICO) en vez de **"📤 Documentar y publicar"** del archivo adjunto, que sí tiene Release y subida del archivo. La guía de la UI ahora lo deja claro.
+
+### Testing
+- Eliminado `intentDetection.test.ts`; `CHAT_PROMPT` y el mensaje guía de `runAttachFile` cubiertos. Cliente: **352 tests**.
+
 ## [3.6.1] — 2026-06-25
 
 ### Fixed

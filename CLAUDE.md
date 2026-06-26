@@ -12,7 +12,7 @@ probar, y las convenciones que es fácil romper sin querer.
 
 ## 1. Visión general
 
-**GitHub AI Assistant** (v3.6.1) es una app web que permite operar la **GitHub
+**GitHub AI Assistant** (v3.7.0) es una app web que permite operar la **GitHub
 REST API en lenguaje natural** a través de un proveedor de IA (Google Gemini o
 Groq Cloud). El usuario escribe una instrucción, la IA propone una acción, y
 **cada operación de escritura se confirma manualmente** antes de ejecutarse.
@@ -108,11 +108,12 @@ se guarda ni se loguea en el servidor.
 - **action** → usa `ACTION_PROMPT` (alias de `SYSTEM_PROMPT`): responde solo con
   el JSON de la acción.
 
-> **Documentar/publicar desde lenguaje natural (#28, v3.5.0):** antes del chat,
-> `handleSend` usa `utils/intentDetection.ts` (`detectDocPublishIntent` +
-> `routeUserMessage`) para detectar órdenes como *"documéntalo"* o *"publícalo en X"*
-> y enrutarlas a los flujos reales (generar doc → `FilePublishModal`), en vez de
-> dejarlo en una respuesta de chat. El doc puede incorporar la conversación.
+> **Documentar/publicar es EXPLÍCITO (#28, v3.7.0):** con un archivo adjunto el chat
+> **siempre conversa/analiza** (`resolveMode` fuerza chat). Documentar/publicar se hace
+> con el botón **📤 "Documentar y publicar"** → `FilePublishModal` (commit / Draft PR /
+> Release + subir el archivo), que incorpora la conversación como contexto. Se eliminó
+> la antigua detección de intención por palabras clave (`intentDetection.ts`): era frágil
+> y causó bugs repetidos. **No la reintroduzcas** — ver la convención de §5.
 
 ---
 
@@ -150,8 +151,7 @@ se guarda ni se loguea en el servidor.
 │   │   │                     #   spreadsheetReader (Excel/CSV vía SheetJS #28 Fase 3a),
 │   │   │                     #   powerbiReader (.pbix/.pbit vía fflate: informe + modelo/DAX + Power Query/M del DataMashup #28 Fase 3b/3b-bis),
 │   │   │                     #   releaseGenerator/releaseAssets, instructionSuggestions,
-│   │   │                     #   rateLimitHandler, modeDetection (chat vs action),
-│   │   │                     #   intentDetection (documentar/publicar desde NL #28 v3.5.0), modelLabels
+│   │   │                     #   rateLimitHandler, modeDetection (chat vs action), modelLabels
 │   │   ├── components/       # Agrupados por feature:
 │   │   │                     #   auth/ ai-provider/ chat/ confirm/ layout/
 │   │   │                     #   multi-repo/ templates/
@@ -211,6 +211,12 @@ Ejecutar **un solo test**: `cd client && npm run test:run -- src/services/github
   URLs, etc.); nunca dejes un error de formato como callejón sin salida.
 - **Proponer → confirmar → ejecutar:** ver §2. Las escrituras pasan siempre por
   `ConfirmModal`.
+- **UI explícita > heurística por palabras clave (anti-bugs, v3.7.0):** para acciones
+  con efecto (documentar, publicar, release…) **prefiere un control de UI explícito**
+  (botón/modal) a adivinar la intención del usuario por keywords. La detección de
+  intención (`intentDetection.ts`) se eliminó porque era frágil y reintrodujo el mismo
+  bug ronda tras ronda. Si crees necesitar heurística de lenguaje, reconsidéralo: casi
+  siempre un botón claro es más robusto y predecible.
 - **Resolución de placeholders:** la IA a veces emite endpoints con
   `{owner}`/`{repo}`/`{username}`; `resolveEndpoint()` en `actionExecutor.ts` los
   sustituye antes de llamar a la API. Mantén esa red de seguridad.
@@ -280,6 +286,20 @@ clave de Gemini o Groq desde el navegador en tiempo de ejecución.
 En producción: `NODE_ENV=production`, `PORT=8080`, `HEALTHCHECK` sobre
 `/health`. El catch-all sirve `index.html` para el routing de la SPA (devuelve
 404 para `/api/*` y `/auth/*`).
+
+### Flujo de trabajo de releases (rutina fija)
+
+El flujo con el usuario es siempre el mismo, **no lo cambies**:
+
+1. Desarrollar en la rama de feature, abrir PR, **vigilarlo** hasta merge (CI verde).
+2. **Tras CADA merge**, sin que haga falta pedirlo, **preparar las notas de release**
+   para que el usuario las publique: **tag `vX.Y.Z`**, **target `main`**, **título** y
+   **cuerpo en lenguaje de usuario** (Markdown, novedades en claro, no técnico). El bump
+   de versión (`package.json` ×2 + lockfiles) va en el propio PR.
+3. El usuario publica el release y confirma el despliegue de Cloud Build antes de probar.
+
+> El usuario lo pidió explícitamente: *"el release como siempre"*. Hazlo de forma
+> proactiva tras el merge.
 
 ---
 
