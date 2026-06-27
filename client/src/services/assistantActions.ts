@@ -9,7 +9,7 @@
  * núcleo del chat `runSend`/`runConfirmAction`/`runCancelAction` (Fase 3).
  */
 
-import { generateRepoDocs, generateFileDoc, buildRepoContextSummary, callAI, parseGeminiAction, CHAT_PROMPT, ACTION_PROMPT, chatPromptWithContext } from './gemini';
+import { generateRepoDocs, generateFileDoc, buildRepoContextSummary, callAI, parseGeminiAction, isAbortError, CHAT_PROMPT, ACTION_PROMPT, chatPromptWithContext } from './gemini';
 import type { AIProviderConfig } from './gemini';
 import { fetchRepoTreeRecursive, getFileContents, decodeBase64, createRepo, repoExists, GitHubAPIError } from './github';
 import { writeDocFiles, createDocsDraftPr, publishFileDoc } from './docPublisher';
@@ -82,6 +82,8 @@ export interface SendParams {
   fileContext: FileContext | null;
   multiRepoEnabled: boolean;
   selectedRepos: GitHubRepo[];
+  /** #40: si se pasa, permite cancelar la generación en curso (botón Detener). */
+  signal?: AbortSignal;
 }
 
 /**
@@ -334,12 +336,14 @@ export async function runSend(deps: SendDeps, config: AIProviderConfig, params: 
 
   // #38: en modo chat (texto Markdown largo) mostramos la respuesta en streaming,
   // token a token. En modo acción la respuesta es JSON → no se streamea (se vería feo).
+  // #40: rastreamos el texto parcial para conservarlo si el usuario pulsa Detener.
+  let lastText = '';
   const onToken = finalMode === 'chat'
-    ? (textSoFar: string) => updateMessage(loadingId, { content: textSoFar, isLoading: true })
+    ? (textSoFar: string) => { lastText = textSoFar; updateMessage(loadingId, { content: textSoFar, isLoading: true }); }
     : undefined;
 
   try {
-    const rawResponse = await callAI(newHistory, systemPrompt, config.provider, config.apiKey, config.model, finalMode, onToken);
+    const rawResponse = await callAI(newHistory, systemPrompt, config.provider, config.apiKey, config.model, finalMode, onToken, params.signal);
 
     // Modo chat: forzar texto, nunca ejecutar.
     if (finalMode === 'chat') {
@@ -400,7 +404,16 @@ export async function runSend(deps: SendDeps, config: AIProviderConfig, params: 
       }
     }
   } catch (err) {
-    updateMessage(loadingId, { content: ` Error al contactar con el asistente: ${(err as Error).message}`, isLoading: false });
+    // #40: si el usuario pulsó Detener, no es un error: conserva lo ya generado
+    // (si lo hay) y márcalo como detenido, sin burbuja de error roja.
+    if (isAbortError(err)) {
+      updateMessage(loadingId, {
+        content: lastText ? `${lastText}\n\n⏹️ _(detenido)_` : '⏹️ Generación detenida.',
+        isLoading: false,
+      });
+    } else {
+      updateMessage(loadingId, { content: ` Error al contactar con el asistente: ${(err as Error).message}`, isLoading: false });
+    }
   } finally {
     setIsChatLoading(false);
   }

@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v3.12.0 · Junio 2026
+**Actualizado a:** v3.13.0 · Junio 2026
 
 ---
 
@@ -35,6 +35,9 @@ Estado del código, mejoras pendientes y roadmap del proyecto.
 | 28 | Archivos locales — **Fase 4a**: subir el archivo fuente al publicar (binario en commit/Draft PR o asset de Release) + doc sin inventar autor/año | services/github.ts (createOrUpdateBinaryFile), docPublisher.ts, releaseAssets.ts, gemini.ts | v3.6.0 |
 | 28 | Archivos locales — **Fase 4b**: subir archivos extra al publicar (imágenes→screenshots/, datos→data/, resto→raíz; commit/Draft PR o assets de Release) | docPublisher.ts (uploadPathFor), assistantActions.ts, FilePublishModal.tsx | v3.9.0 |
 | 28 | Archivos locales — **documentos Word (.docx)**: ZIP OOXML; se extrae el texto de `word/document.xml` (párrafos, listas y tablas) vía fflate, con muestra acotada | utils/docxReader.ts (readDocx, docxXmlToText), utils/pdfReader.ts, services/assistantActions.ts (runAttachFile) | v3.11.0 |
+| 20 | Documentación de repos truncada por líneas (no por caracteres) | services/gemini.ts (truncateByLines) | v3.11.1 |
+| 23 | System prompts en archivos `.md` externos (?raw) | services/gemini.ts, prompts/*.md | v3.11.2 |
+| — | #40 (parcial): recordar proveedor/modelo (sin la key) + botón Detener (cancelar generación) | AIProviderContext.tsx, utils/providerPrefs.ts, gemini.ts, App.tsx, ChatInput.tsx | v3.12.0 / v3.13.0 |
 | — | Crear Release desde "Documentar repo" (además de commit/Draft PR) | assistantActions.ts (runCreateRepoRelease), DocModal.tsx | v3.8.0 |
 | — | Unificar los controles de los dos flujos de documentación (barra compartida commit/Draft PR/Release) | components/confirm/PublishActions.tsx, DocModal.tsx, FilePublishModal.tsx | v3.10.0 |
 | — | Seguridad: `state` de OAuth con CSPRNG (crypto.randomUUID) | server/index.js | v3.7.1 |
@@ -113,27 +116,17 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 ### 🟡 Media Prioridad
 
-#### #20 — Truncamiento semántico por líneas en generateRepoDocs()
-**Esfuerzo:** 2h
-
-**Problema actual:** `generateRepoDocs()` trunca archivos a 2000 caracteres, cortando código a mitad de función.
-**Solución propuesta:** Truncar a 80 líneas preservando imports y firmas de funciones. Los Markdown conservan encabezados e introducción.
-
-**Beneficio:** Documentación más coherente y útil; contexto preservado.
-
----
-
 #### #26 — Mantener y expandir cobertura de tests con Codecov
 **Esfuerzo:** Continuo (2-4h por sprint)
 
-**Estado actual (v3.12.0):** ✅ Infraestructura completa implementada
+**Estado actual (v3.13.0):** ✅ Infraestructura completa implementada
 
 **Progreso realizado:**
 - ✅ Configuración de Vitest + Codecov
 - ✅ CI con GitHub Actions ejecutando tests (cliente + servidor) automáticamente
 - ✅ Badge de Codecov en README
 - ✅ Cobertura actual: **~60%** (ver Codecov para el valor exacto)
-- ✅ 392 tests en el cliente. Implementados para:
+- ✅ 401 tests en el cliente. Implementados para:
   - `AuthContext.tsx` (login, logout, OAuth flow, Zero-Storage)
   - `AIProviderContext.tsx` (conexión/desconexión de proveedores)
   - `providers.ts` (registro de proveedores, detección de modelos 🆓, caché, `pickDefaultModel`)
@@ -299,17 +292,6 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 ---
 
-#### #23 — Migrar prompts largos a archivos externos
-**Esfuerzo:** 2h
-
-**Problema actual:** Los system prompts están incrustados como template literals en los archivos `.ts`, dificultando su edición y lectura.
-
-**Solución propuesta:** Mover todos los prompts a `client/src/prompts/` como archivos `.md` y cargarlos en runtime con `import ... as text`.
-
-**Beneficio:** Edición sin tocar código TypeScript; base para futura internacionalización de prompts.
-
----
-
 #### #24 — Internacionalización (i18n) con i18next
 **Esfuerzo:** 3–4h
 
@@ -333,21 +315,22 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 ---
 
-#### #40 — Robustez de red e IA/UX (reintentos, cancelación, validación, persistencia)
-**Esfuerzo:** ~6h (agrupa 4 sub-tareas)
+#### #40 — Robustez de red e IA/UX (sub-tareas restantes)
+**Esfuerzo:** ~3h (Sprint 2)
 
-**Problema actual:** Las llamadas a GitHub/Gemini/Groq fallan silenciosamente ante errores temporales (rate limits, timeouts, 5xx); no se puede abortar una generación larga; `parseGeminiAction()` solo valida 3 campos del JSON de acción; y el usuario debe re-seleccionar proveedor y modelo en cada recarga.
+**Entregado ya:** ✅ reintentos transitorios en `callAI` (v2.7.3) · ✅ recordar proveedor/modelo
+sin guardar la key (v3.12.0) · ✅ **botón Detener** para cancelar la generación con `AbortController` (v3.13.0).
 
-**Solución propuesta:**
-- **Reintentos con backoff:** wrapper `fetchWithRetry()` (máx. 3 intentos, backoff exponencial 1s/2s/4s, logging por reintento, error final descriptivo) en las llamadas a GitHub/Gemini/Groq.
-  - ✅ **Parcial (v2.7.3):** `callAI` ya reintenta con backoff ante errores **transitorios** de los proveedores de IA (`withTransientRetry`/`isTransientAIError`: 503 "high demand", "Provider returned error", red). Falta extenderlo a las llamadas a GitHub (`ghFetch`) y unificar en un `fetchWithRetry` genérico.
-- **Cancelación:** `AbortController` en `callAI()` + botón "Detener" mientras genera. Ahorra cuota y mejora la UX.
-- **Validación estricta:** validar el JSON de acción con `zod` y una allowlist de métodos/endpoints, reforzando la garantía *proponer → confirmar → ejecutar*.
-- **Persistencia parcial:** guardar **proveedor + modelo** (NUNCA la API key) en `sessionStorage`, respetando Zero-Storage, para no re-seleccionarlos en cada recarga.
+**Pendiente (Sprint 2):**
+- **Reintentos en GitHub:** extender el backoff a `ghFetch` (`github.ts`) y unificar en un
+  `fetchWithRetry` genérico (hoy solo reintentan las llamadas a la IA).
+- **Validación estricta:** validar el JSON de acción con `zod` + allowlist de métodos/endpoints,
+  reforzando *proponer → confirmar → ejecutar*.
 
-**Beneficio:** Robustez ante red inestable (menos fallos silenciosos); más control para el usuario; defensa adicional ante respuestas malformadas de la IA; mejor experiencia de reconexión.
+**Beneficio:** más robustez ante red inestable en GitHub y defensa extra ante respuestas
+malformadas de la IA.
 
-**Nota:** absorbe el antiguo #29 (reintentos con backoff) como primera sub-tarea.
+**Nota:** absorbió el antiguo #29 (reintentos con backoff).
 
 ---
 
@@ -367,9 +350,9 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 | Prioridad | Total | ✅ Resueltos | ⏳ Pendientes |
 |---|---|---|---|
 | 🔴 Alta | 8 | 8 (#1, #2, #13, #14, #27, #45, #15, #28) | 0 |
-| 🟡 Media | 15 | 10 (#12, #17, #18, #19, #21, #37, #41, #32, #42, #38) | 5 (#20, #26, #39, #44, #49) |
-| 🟢 Baja | 11 | 0 | 11 (#22, #23, #24, #25, #33, #34, #35, #36, #40, #46, #48) |
-| **TOTAL** | **34** | **18** | **16** |
+| 🟡 Media | 15 | 11 (#12, #17, #18, #19, #21, #37, #41, #32, #42, #38, #20) | 4 (#26, #39, #44, #49) |
+| 🟢 Baja | 11 | 1 (#23) | 10 (#22, #24, #25, #33, #34, #35, #36, #40, #46, #48) |
+| **TOTAL** | **34** | **20** | **14** |
 
 > **#28** cubierto en su **norte** por las Fases 1 (v3.0.0, adjuntar como contexto) y
 > 2 (v3.1.0, documentar→publicar). **Más formatos:** Fase 3a (v3.2.0, Excel/CSV) y

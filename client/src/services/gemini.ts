@@ -121,6 +121,11 @@ const TRANSIENT_STATUS = new Set([500, 502, 503, 504]);
 const TRANSIENT_PATTERN =
   /overloaded|high demand|currently experiencing|service unavailable|provider returned error|temporarily|try again|failed to fetch|network|timeout|econnreset/i;
 
+/** ¿El error viene de cancelar la petición (AbortController)? Nunca se reintenta. */
+export function isAbortError(err: unknown): boolean {
+  return (err as { name?: string })?.name === 'AbortError';
+}
+
 /** ¿El error es transitorio y merece la pena reintentar? */
 export function isTransientAIError(err: unknown): boolean {
   const e = err as { status?: number; transient?: boolean; message?: string };
@@ -143,6 +148,8 @@ export async function withTransientRetry<T>(
     try {
       return await fn();
     } catch (err) {
+      // Una cancelación (AbortController) NUNCA se reintenta: se propaga al instante.
+      if (isAbortError(err)) throw err;
       // En el último intento, o si el error no es transitorio, se propaga.
       if (attempt >= retries || !isTransientAIError(err)) throw err;
       await new Promise(r => setTimeout(r, baseDelayMs * 2 ** attempt));
@@ -212,6 +219,7 @@ async function callOpenAICompatible(
   mode?: 'chat' | 'action',  // ← OPCIÓN D: ajusta la temperatura según el modo
   extraHeaders?: Record<string, string>,
   onToken?: (textSoFar: string) => void,  // ← #38: streaming opcional
+  signal?: AbortSignal,  // ← #40: permite cancelar la petición (botón Detener)
 ): Promise<string> {
   // Modo chat necesita más creatividad (0.7); modo acción debe ser determinista
   // para producir JSON estable (0.1). Por defecto se mantiene el comportamiento
@@ -241,6 +249,7 @@ async function callOpenAICompatible(
       ...extraHeaders,
     },
     body: JSON.stringify(body),
+    signal,
   });
 
   if (!res.ok) {
@@ -287,6 +296,7 @@ async function callGeminiDirect(
   systemPrompt: string,
   mode?: 'chat' | 'action',  // ← NUEVO: modo opcional
   onToken?: (textSoFar: string) => void,  // ← #38: streaming opcional (vía proxy SSE)
+  signal?: AbortSignal,  // ← #40: permite cancelar la petición (botón Detener)
 ): Promise<string> {
   const stream = Boolean(onToken);
   const body: Record<string, unknown> = { apiKey, model, messages, systemPrompt };
@@ -299,6 +309,7 @@ async function callGeminiDirect(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
+    signal,
   });
 
   if (!res.ok) {
@@ -339,6 +350,7 @@ export async function callAI(
   model: string,
   mode?: 'chat' | 'action',  // ← NUEVO: modo opcional
   onToken?: (textSoFar: string) => void,  // ← #38: si se pasa, la respuesta llega en streaming
+  signal?: AbortSignal,  // ← #40: cancelación de la petición (botón Detener)
 ): Promise<string> {
   const def = getProvider(provider);
   // Reintento ante errores transitorios del servidor (503 "high demand",
@@ -348,8 +360,8 @@ export async function callAI(
   // reintento, el stream reinicia y sobrescribe la burbuja sin duplicar.
   return withTransientRetry(() =>
     def.transport === 'gemini-proxy'
-      ? callGeminiDirect(apiKey, model, messages, systemPrompt, mode, onToken)
-      : callOpenAICompatible(def.chatEndpoint!, apiKey, model, messages, systemPrompt, mode, def.extraHeaders, onToken),
+      ? callGeminiDirect(apiKey, model, messages, systemPrompt, mode, onToken, signal)
+      : callOpenAICompatible(def.chatEndpoint!, apiKey, model, messages, systemPrompt, mode, def.extraHeaders, onToken, signal),
   );
 }
 

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useAuth } from './context/AuthContext';
 import { useHistory } from './context/HistoryContext';
 import { useAIProvider } from './context/AIProviderContext';
@@ -232,18 +232,27 @@ export default function App() {
   // Con un archivo adjunto, resolveMode (en runSend) fuerza SIEMPRE chat: el archivo
   // se conversa/analiza. Documentar/publicar es EXPLÍCITO (botón "📤 Documentar y
   // publicar"), no se adivina por palabras clave (se quitó esa heurística frágil).
+  // #40: controlador para cancelar la generación en curso (botón Detener).
+  const abortRef = useRef<AbortController | null>(null);
+
   const handleSend = useCallback(async () => {
     // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto
     if (!inputValue.trim() || !token || !user || !provider || !apiKey || !model) return;
     const userText = inputValue.trim();
     setInputValue('');
 
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     await runSend(
       { token, user, providerName, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading, setConversationHistory, setPendingAction },
       { provider, apiKey, model },
-      { userText, conversationHistory, modeOverride, repoContext, fileContext, multiRepoEnabled, selectedRepos },
+      { userText, conversationHistory, modeOverride, repoContext, fileContext, multiRepoEnabled, selectedRepos, signal: controller.signal },
     );
   }, [inputValue, token, user, provider, apiKey, model, providerName, conversationHistory, multiRepoEnabled, selectedRepos, modeOverride, repoContext, fileContext, addMessage, updateMessage, addEntry, updateEntry]);
+
+  // #40: cancela la petición en vuelo; runSend mostrará "⏹️ detenido".
+  const handleStop = useCallback(() => abortRef.current?.abort(), []);
 
   // Texto plano de la conversación, como contexto al documentar (el doc refleja lo
   // charlado). La lógica vive en formatConversation (testeable).
@@ -348,6 +357,7 @@ export default function App() {
             value={inputValue}
             onChange={setInputValue}
             onSend={handleSend}
+            onStop={handleStop}
             isLoading={isChatLoading}
             disabled={!isAuthenticated}
             multiRepoEnabled={multiRepoEnabled}

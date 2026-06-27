@@ -7,6 +7,7 @@ import {
   chatPromptWithContext,
   CHAT_PROMPT,
   isTransientAIError,
+  isAbortError,
   withTransientRetry,
   generateFileDoc,
   generateRepoDocs,
@@ -291,6 +292,40 @@ describe('Reintento ante errores transitorios (v2.7.3)', () => {
       await expect(withTransientRetry(fn, 2, 0)).rejects.toThrow(/high demand/);
       expect(fn).toHaveBeenCalledTimes(3); // intento inicial + 2 reintentos
     });
+  });
+});
+
+describe('Cancelación de la generación (#40)', () => {
+  beforeEach(() => { vi.restoreAllMocks(); });
+
+  it('isAbortError detecta solo los AbortError', () => {
+    expect(isAbortError({ name: 'AbortError' })).toBe(true);
+    expect(isAbortError(new Error('otra cosa'))).toBe(false);
+    expect(isAbortError({ status: 503 })).toBe(false);
+  });
+
+  it('callAI reenvía el AbortSignal al fetch', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: 'ok' } }] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const controller = new AbortController();
+
+    await callAI([{ role: 'user', content: 'Hola' }], 'system', 'groq', 'k', 'm', 'chat', undefined, controller.signal);
+
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    expect(init.signal).toBe(controller.signal);
+  });
+
+  it('un AbortError NO se reintenta: se propaga al instante', async () => {
+    const fetchMock = vi.fn().mockRejectedValue(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      callAI([{ role: 'user', content: 'Hola' }], 'system', 'groq', 'k', 'm', 'chat'),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    expect(fetchMock).toHaveBeenCalledTimes(1); // sin reintentos
   });
 });
 
