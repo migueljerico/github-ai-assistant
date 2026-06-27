@@ -98,6 +98,21 @@ Responde en Markdown con formato claro (títulos, listas, negritas), pero con to
 // ── ACTION PROMPT (Opción D - Modo acción explícito) ──────────────────────────
 export const ACTION_PROMPT = SYSTEM_PROMPT; // Alias para claridad
 
+// ── #20: Truncado por LÍNEAS (no por caracteres) ──────────────────────────────
+/**
+ * Trunca el contenido a las primeras `maxLines` líneas, preservando el inicio del
+ * archivo (imports y firmas de funciones) y añadiendo una nota de cuántas líneas se
+ * omitieron. Cortar por caracteres parte funciones a la mitad y deja código sin
+ * sentido para el modelo (#20); cortar por líneas mantiene unidades completas.
+ * Función pura (testeable).
+ */
+export function truncateByLines(content: string, maxLines: number): string {
+  const lines = content.split('\n');
+  if (lines.length <= maxLines) return content;
+  const shown = lines.slice(0, maxLines).join('\n');
+  return `${shown}\n[... ${lines.length - maxLines} líneas más ...]`;
+}
+
 // ── #41: Contexto de repo para opiniones de chat fundamentadas ────────────────
 /**
  * Construye un resumen compacto del repositorio para fundamentar las opiniones
@@ -117,14 +132,7 @@ export function buildRepoContextSummary(
   const bodies = files
     .filter(f => f.content)
     .slice(0, maxFiles)
-    .map(f => {
-      const lines = (f.content || '').split('\n');
-      const shown = lines.slice(0, maxLines).join('\n');
-      const rest = lines.length > maxLines
-        ? `\n[... ${lines.length - maxLines} líneas más ...]`
-        : '';
-      return `### ${f.path}\n\`\`\`\n${shown}${rest}\n\`\`\``;
-    })
+    .map(f => `### ${f.path}\n\`\`\`\n${truncateByLines(f.content || '', maxLines)}\n\`\`\``)
     .join('\n\n');
 
   return `Repositorio: ${repoName}\nArchivos analizados: ${files.length}\n\n` +
@@ -586,11 +594,8 @@ No incluyas ningún texto fuera del JSON. No uses bloques de código externos.`;
   const treeOverview = files.map(f => f.path).join('\n');
   const fileContents = files
     .filter(f => f.content) // Solo archivos con contenido
-    .map(f =>
-      `### ${f.path}\n` +
-      (f.content || '').slice(0, 2000) +
-      ((f.content || '').length > 2000 ? '\n[... truncado a 2000 chars ...]' : '')
-    )
+    // #20: truncado por líneas (preserva imports/firmas) en vez de cortar a 2000 chars.
+    .map(f => `### ${f.path}\n${truncateByLines(f.content || '', 80)}`)
     .join('\n\n---\n\n');
 
   const userMessage =

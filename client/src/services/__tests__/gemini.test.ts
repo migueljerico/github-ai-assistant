@@ -10,6 +10,7 @@ import {
   withTransientRetry,
   generateFileDoc,
   generateRepoDocs,
+  truncateByLines,
 } from '../gemini';
 
 describe('gemini.ts - Utilidades', () => {
@@ -494,5 +495,42 @@ describe('generateRepoDocs - no inventar autor/año (#28 4a)', () => {
     expect(sysMsg.content).toContain(`@migueljerico · ${new Date().getFullYear()}`);
     expect(sysMsg.content).not.toContain('[autor]');
     expect(sysMsg.content).not.toContain('[año]');
+  });
+
+  it('trunca el contenido de los archivos por LÍNEAS, no por caracteres (#20)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: '{"readme":"R","manualTecnico":"M"}' } }] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const longFile = Array.from({ length: 200 }, (_, i) => `linea ${i}`).join('\n');
+    await generateRepoDocs(
+      'owner/repo',
+      [{ path: 'src/big.ts', content: longFile }],
+      { provider: 'groq', apiKey: 'k', model: 'llama' },
+    );
+
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    const userMsg = body.messages.find((m: { role: string }) => m.role === 'user');
+    expect(userMsg.content).toContain('líneas más');         // truncado por líneas
+    expect(userMsg.content).not.toContain('truncado a 2000 chars'); // ya no por chars
+    expect(userMsg.content).toContain('linea 0');            // preserva el inicio (imports/firmas)
+  });
+});
+
+describe('truncateByLines (#20)', () => {
+  it('devuelve el contenido intacto si no supera maxLines', () => {
+    expect(truncateByLines('a\nb\nc', 80)).toBe('a\nb\nc');
+  });
+
+  it('trunca a las primeras maxLines líneas y anota cuántas se omitieron', () => {
+    const content = Array.from({ length: 100 }, (_, i) => `L${i}`).join('\n');
+    const out = truncateByLines(content, 80);
+    const lines = out.split('\n');
+    expect(lines[0]).toBe('L0');        // preserva el inicio (imports/firmas)
+    expect(lines[79]).toBe('L79');      // hasta la línea 80
+    expect(out).toContain('[... 20 líneas más ...]');
+    expect(out).not.toContain('L80');   // no incluye el resto
   });
 });
