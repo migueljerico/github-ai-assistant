@@ -65,6 +65,12 @@ herramienta**: si el trabajo continúa en otro entorno, este es el orden de refe
   hito grande aparte). #26 (cobertura) es transversal: sube con cada sprint.
 - **🗑️ Candidatos a poda:** **#33** (sugerir revisores) y **#35** (auto-labels) — nicho/fuera del núcleo.
 
+> **Cómo se prioriza (criterios):** un ítem pasa de **backlog → sprint** por su **valor para el
+> usuario** y su **encaje con la misión** (asistente NL para no técnicos, *propón→confirma→ejecuta*),
+> no por su complejidad. Los **candidatos a poda** no son un descarte definitivo: se revisan si surge
+> demanda real. Las **propuestas externas** (otras IAs) se filtran con **validación cruzada** — se
+> incorpora lo accionable, se reformula lo dudoso y se descartan los elogios (ver § dogfooding del README).
+
 > **⚠️ Nota durable sobre revisiones externas (no es un sprint).** El backend de **un solo
 > `server/index.js`** (thin: OAuth + proxy Gemini + estático, ~244 líneas) y los módulos de cliente
 > cohesivos de ~700 líneas (`gemini.ts`, `assistantActions.ts`, `github.ts`) son **decisiones de
@@ -183,10 +189,37 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 - Frecuencia de commits (línea temporal) — API de commits de GitHub.
 - Deuda técnica: conteo de `TODO`/`FIXME` extraídos del árbol de archivos (reutiliza `fetchRepoTreeRecursive` de `github.ts`).
 - Distribución de lenguajes (donut chart) — reutiliza `detectPrimaryLanguage` (`gemini.ts`).
+- **Densidad de documentación**: código fuente vs. documentación (READMEs/manuales) — métrica visual que justifica usar el botón de Documentar (*sugerencia de Gemma 4 31B, dogfooding*).
+- **Métricas de IA**: uso de tokens / latencia por proveedor (*sugerencia de Gemini 2.5 Flash, dogfooding*).
+- Cobertura de tests (lectura del badge/Codecov).
 
 **Beneficio:** Demostrar skills de Análisis de Datos aplicados a DevOps; aprovechar la experiencia previa con Power BI para diseñar dashboards en web.
 
 **Nota:** ítem de **escaparate** (Análisis de Datos), no núcleo de gestión de GitHub. Es el primer candidato a soltar si se quiere enfocar más el roadmap.
+
+---
+
+#### #50 — Presupuesto de contexto ajustado (que quepa en modelos con TPM bajo)
+**Esfuerzo:** 2–3h
+**Origen:** **dogfooding** — al pedir opinión del roadmap con el repo cargado, **Groq (tier gratuito) rechazó la petición por límite TPM** (`Request too large`: ~16-20k tokens pedidos vs. límite 6-12k). Gemini sí lo aguantó.
+
+**Problema actual:** con un repo grande cargado como contexto (#41/#49), el bloque de contexto (árbol completo + contenido de los 12 archivos más relevantes a 80 líneas) puede superar el límite de tokens por minuto de los modelos pequeños (Groq free), que devuelven error.
+
+**Solución propuesta:** como **#49 ya selecciona los archivos relevantes**, enviar **menos** contenido sin perder calidad: bajar el top-N (12 → ~6-8) y/o aplicar un **tope de tokens/caracteres** al bloque de contexto; opcionalmente **adaptativo por proveedor** (más margen en Gemini, menos en Groq). Incluir el **fix del mensaje de error de Groq duplicado** (hoy el hint se concatena dos veces).
+
+**Beneficio:** que el chat con repo cargado funcione también en Groq y otros modelos con TPM bajo; menos coste de tokens.
+
+---
+
+#### #51 — "Archivos consultados para esta respuesta" (transparencia del contextRanker)
+**Esfuerzo:** 2–3h
+**Origen:** sugerencia de **Gemma 4 31B** (OpenRouter), **dogfooding**.
+
+**Problema actual:** con #49 la IA responde basándose en los archivos que el `contextRanker` selecciona, pero el usuario no ve **cuáles**; queda como "caja negra".
+
+**Solución propuesta:** mostrar bajo la respuesta del chat una lista plegable de **"Archivos consultados para esta respuesta"** (los rankeados que se enviaron). `runSend` ya calcula esa lista (`rankFilesByQuery`); solo hay que propagarla al mensaje y renderizarla.
+
+**Beneficio:** transparencia y confianza; el usuario entiende qué partes de su código leyó la IA.
 
 ---
 
@@ -269,9 +302,9 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 **Problema actual:** La app es 100% en español.
 
-**Solución propuesta:** Añadir soporte EN mínimo con `i18next` + `react-i18next`. Strings de UI, system prompts adaptados al idioma, selector en header.
+**Solución propuesta:** Añadir soporte **inglés** (primer idioma objetivo, por ser el dominante en el ecosistema GitHub — *sugerencia de Gemini 2.5 Flash*) con `i18next` + `react-i18next`. Strings de UI, system prompts adaptados al idioma, selector en header.
 
-**Dependencia:** Recomendable completar #23 antes — facilita la i18n de prompts.
+**Dependencia:** Recomendable completar #23 antes — facilita la i18n de prompts (los prompts ya viven en `prompts/*.md` desde v3.11.2 → bastaría con `chat.en.md`, etc.).
 
 ---
 
@@ -317,14 +350,42 @@ malformadas de la IA.
 
 ---
 
+#### #52 — Modo Auditoría de Seguridad (flujo/template)
+**Esfuerzo:** 3–4h
+**Origen:** sugerencia de **Gemma 4 31B** (OpenRouter), **dogfooding**.
+
+**Problema actual:** la app gestiona y documenta repos, pero no ayuda a **asegurarlos**.
+
+**Solución propuesta:** un botón/plantilla con un prompt especializado que, sobre el repo cargado como contexto, revise: **secrets expuestos** (claves/tokens en el código), **dependencias obsoletas** y **falta de validación de inputs**. Encaja con `utils/instructionSuggestions.ts` (plantillas de instrucción).
+
+**Beneficio:** pasar de "gestionar el repo" a "asegurar el repo"; muy vendible en un portfolio.
+
+**Caveat:** es una ayuda **orientativa vía LLM**, no una garantía de seguridad ni un escáner formal (no sustituye a herramientas como `gitleaks`/Dependabot). Comunicarlo con honestidad en la UI.
+
+---
+
+#### #53 — Sugerir mensaje de commit semántico (a validar encaje)
+**Esfuerzo:** 2–3h
+**Origen:** sugerencia de **Gemma 4 31B** (OpenRouter), **reformulada**, **dogfooding**.
+
+**Problema actual:** el usuario no técnico no siempre escribe buenos mensajes de commit (Conventional Commits), lo que luego afecta al changelog automático (#34).
+
+**Caveat de encaje:** la app **no tiene working tree/staging local** (opera la GitHub API, no es un cliente git con "cambios pendientes"), así que la idea original de "analizar el diff pendiente" no aplica tal cual.
+
+**Solución propuesta (reformulada):** sugerir el mensaje **en el momento de subir/crear un archivo** (proponer un `feat:`/`docs:`… en el `ConfirmModal` a partir de la acción y el contenido), o a partir de **commits recientes** (reutiliza `compareCommits` de #34). **Pendiente de validar** que aporte valor real dado el modelo de la app.
+
+**Beneficio:** mantener el repo limpio y un historial que alimente bien el changelog.
+
+---
+
 ## 📊 Resumen
 
 | Prioridad | Total | ✅ Resueltos | ⏳ Pendientes |
 |---|---|---|---|
 | 🔴 Alta | 8 | 8 (#1, #2, #13, #14, #27, #45, #15, #28) | 0 |
-| 🟡 Media | 15 | 12 (#12, #17, #18, #19, #21, #37, #41, #32, #42, #38, #20, #49) | 3 (#26, #39, #44) |
-| 🟢 Baja | 11 | 2 (#23, #34) | 9 (#22, #24, #25, #33, #35, #36, #40, #46, #48) |
-| **TOTAL** | **34** | **22** | **12** |
+| 🟡 Media | 17 | 12 (#12, #17, #18, #19, #21, #37, #41, #32, #42, #38, #20, #49) | 5 (#26, #39, #44, #50, #51) |
+| 🟢 Baja | 13 | 2 (#23, #34) | 11 (#22, #24, #25, #33, #35, #36, #40, #46, #48, #52, #53) |
+| **TOTAL** | **38** | **22** | **16** |
 
 > **#28** cubierto en su **norte** por las Fases 1 (v3.0.0, adjuntar como contexto) y
 > 2 (v3.1.0, documentar→publicar). **Más formatos:** Fase 3a (v3.2.0, Excel/CSV) y
