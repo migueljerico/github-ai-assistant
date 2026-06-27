@@ -342,6 +342,38 @@ describe('github.ts', () => {
     });
   });
 
+  describe('fetchRepoTreeRecursive (#49)', () => {
+    it('expone allPaths (todos los blobs) y descarga los docs de raíz por su prioridad', async () => {
+      vi.mocked(fetch).mockImplementation(((url: any) => {
+        const u = String(url);
+        if (u.includes('/git/trees/')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              truncated: false,
+              tree: [
+                { path: 'README.md', type: 'blob', size: 10, sha: '1' },
+                { path: 'MEJORAS_FUTURAS.md', type: 'blob', size: 10, sha: '2' },
+                { path: 'src/a.ts', type: 'blob', size: 10, sha: '3' },
+                { path: 'src', type: 'tree', size: 0, sha: '4' },
+              ],
+            }),
+          });
+        }
+        // getFileContents
+        return Promise.resolve({ ok: true, json: async () => ({ content: btoa('x'), encoding: 'base64' }) });
+      }) as any);
+
+      const { fetchRepoTreeRecursive } = await import('../github');
+      const res = await fetchRepoTreeRecursive('tok', 'o', 'r', 'main');
+
+      expect(res.allPaths).toEqual(expect.arrayContaining(['README.md', 'MEJORAS_FUTURAS.md', 'src/a.ts']));
+      expect(res.allPaths).not.toContain('src'); // las entradas 'tree' no cuentan
+      // MEJORAS_FUTURAS.md (prioridad subida en #49) entra entre los archivos con contenido
+      expect(res.files.map(f => f.path)).toContain('MEJORAS_FUTURAS.md');
+    });
+  });
+
   describe('repoExists', () => {
     it('devuelve true si el repo existe (200)', async () => {
       vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ name: 'r' }) } as any);

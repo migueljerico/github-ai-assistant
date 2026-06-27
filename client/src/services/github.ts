@@ -338,7 +338,7 @@ const BINARY_EXTENSIONS = new Set([
 ]);
 
 /** Maximum number of files to fetch content for in one "document repo" call */
-const MAX_FILES = 80;
+const MAX_FILES = 120;
 
 /** Maximum file size to include (in bytes). Files larger than this are skipped. */
 const MAX_FILE_SIZE = 50 * 1024; // 50 KB
@@ -370,6 +370,9 @@ function priorityScore(path: string): number {
   const lower = path.toLowerCase();
   if (lower.match(/^readme/i)) return 0;
   if (lower === 'package.json') return 1;
+  // #49: los docs de raíz (roadmap, manual, changelog, contributing) son contexto
+  // valioso y antes caían fuera del cap por su baja prioridad; súbelos junto a package.json.
+  if (/^(mejoras_futuras|manual_tecnico|changelog|contributing|claude)\.md$/i.test(lower)) return 1;
   if (lower.startsWith('src/')) return 2;
   if (lower.match(/\.(json|yaml|yml|toml|env\.example)$/)) return 3;
   if (lower.match(/\.(js|ts|jsx|tsx|py|go|rs|java|rb|php|cs)$/)) return 4;
@@ -391,6 +394,8 @@ export interface FetchTreeResult {
   totalScanned: number;
   /** True if the repo was too large and some files were not included */
   truncated: boolean;
+  /** #49: rutas de TODOS los archivos de texto elegibles (árbol completo, sin contenido). */
+  allPaths: string[];
 }
 
 /**
@@ -438,7 +443,11 @@ export async function fetchRepoTreeRecursive(
     }
   }
 
-  return { files: results, totalScanned: allFiles.length, truncated };
+  // #49: el árbol COMPLETO de paths (todos los blobs de texto elegibles, sin el cap de
+  // contenido) para que el modelo conozca TODOS los archivos del repo, no solo los 120.
+  const allPaths = allFiles.map(f => f.path);
+
+  return { files: results, totalScanned: allFiles.length, truncated, allPaths };
 }
 
 

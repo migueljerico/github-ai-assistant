@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.15.0] — 2026-06-27
+
+### Changed
+- **El asistente elige los archivos relevantes a tu pregunta (#49)** — Antes, al cargar un repo como contexto, solo "veía" los ~80 archivos de mayor prioridad y los `.md` de raíz (MEJORAS_FUTURAS, MANUAL_TECNICO, CHANGELOG…) se quedaban fuera, hasta el punto de **negar que un archivo existiera**. Ahora: (1) el modelo recibe el **árbol COMPLETO** de archivos del repo; (2) en cada pregunta se **seleccionan los archivos más relevantes** (ranking léxico BM25, en memoria — Zero-Storage) para enviar su contenido, así que preguntar por un archivo concreto lo trae al contexto; (3) sube la prioridad de los docs de raíz y el cap de contenido (80→120); (4) regla anti-alucinación: si un archivo está en la estructura pero sin contenido cargado, **no niega que exista**. Nuevo `utils/contextRanker.ts` (`rankFilesByQuery`); `fetchRepoTreeRecursive` expone `allPaths`; `RepoContext` guarda los archivos en memoria; `runSend` re-selecciona por turno.
+
+### Testing
+- `contextRanker` (boost por nombre de archivo, ranking por contenido, topN, query vacía), `buildRepoContextSummary` con árbol completo, `fetchRepoTreeRecursive` (`allPaths` + prioridad de docs), `chatPromptWithContext` (regla anti-negación), `runSend` (re-selección por pregunta). Cliente: **429 tests**.
+
 ## [3.14.0] — 2026-06-27
 
 ### Added

@@ -69,21 +69,25 @@ export function truncateByLines(content: string, maxLines: number): string {
 export function buildRepoContextSummary(
   repoName: string,
   files: Array<{ path: string; content?: string }>,
-  opts: { maxFiles?: number; maxLinesPerFile?: number } = {},
+  opts: { maxFiles?: number; maxLinesPerFile?: number; allPaths?: string[] } = {},
 ): string {
   const maxFiles = opts.maxFiles ?? 12;
   const maxLines = opts.maxLinesPerFile ?? 80;
 
-  const tree = files.map(f => f.path).join('\n');
+  // #49: la ESTRUCTURA muestra el árbol COMPLETO del repo (`allPaths`) si se pasa, no
+  // solo los archivos cuyo contenido se incluye. Así el modelo conoce TODOS los archivos
+  // y no niega que existan. El CONTENIDO son los `files` (ya seleccionados por relevancia).
+  const treePaths = opts.allPaths && opts.allPaths.length ? opts.allPaths : files.map(f => f.path);
+  const tree = treePaths.join('\n');
   const bodies = files
     .filter(f => f.content)
     .slice(0, maxFiles)
     .map(f => `### ${f.path}\n\`\`\`\n${truncateByLines(f.content || '', maxLines)}\n\`\`\``)
     .join('\n\n');
 
-  return `Repositorio: ${repoName}\nArchivos analizados: ${files.length}\n\n` +
-    `ESTRUCTURA DEL PROYECTO:\n\`\`\`\n${tree}\n\`\`\`\n\n` +
-    `CONTENIDO DE ARCHIVOS CLAVE:\n\n${bodies}`;
+  return `Repositorio: ${repoName}\nArchivos en el repo: ${treePaths.length}\n\n` +
+    `ESTRUCTURA DEL PROYECTO (todos los archivos):\n\`\`\`\n${tree}\n\`\`\`\n\n` +
+    `CONTENIDO DE LOS ARCHIVOS MÁS RELEVANTES A LA PREGUNTA:\n\n${bodies}`;
 }
 
 /**
@@ -101,7 +105,11 @@ Tienes acceso al código y la estructura REALES de su repositorio. Reglas:
 - NO des consejos genéricos de plantilla ni asumas carencias que el contexto
   desmiente (si hay tests, documentación, CI/CD, medidas de seguridad, etc.,
   reconócelo explícitamente).
-- Si algo no aparece en el contexto, dilo en lugar de inventarlo.
+- La sección ESTRUCTURA lista TODOS los archivos del repositorio. Si te preguntan por un
+  archivo que SÍ está en ESTRUCTURA pero cuyo CONTENIDO no se incluye aquí, NO niegues que
+  exista: di que está en el repo pero que no tienes su contenido cargado ahora mismo, y
+  ofrece analizarlo (el usuario puede preguntarte específicamente por él).
+- Si algo no aparece NI en la estructura ni en el contenido, dilo en lugar de inventarlo.
 
 ${contextSummary}`;
 }
