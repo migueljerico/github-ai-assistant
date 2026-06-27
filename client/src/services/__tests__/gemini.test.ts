@@ -50,6 +50,29 @@ describe('gemini.ts - Utilidades', () => {
       const result = parseGeminiAction('{"foo":"bar"}');
       expect(result).toBeNull();
     });
+
+    // #40 — validación estricta (allowlist de método/tipo + endpoint relativo)
+    it('rechaza un método fuera de la allowlist', () => {
+      expect(parseGeminiAction('{"tipo":"lectura","accion":"x","metodo":"FETCH","endpoint":"/user"}')).toBeNull();
+    });
+
+    it('rechaza un tipo inválido', () => {
+      expect(parseGeminiAction('{"tipo":"inventado","accion":"x","metodo":"GET","endpoint":"/user"}')).toBeNull();
+    });
+
+    it('rechaza un endpoint absoluto (host externo)', () => {
+      expect(parseGeminiAction('{"tipo":"lectura","accion":"x","metodo":"GET","endpoint":"http://evil.com/x"}')).toBeNull();
+    });
+
+    it('rechaza un endpoint que no empieza por "/"', () => {
+      expect(parseGeminiAction('{"tipo":"lectura","accion":"x","metodo":"GET","endpoint":"user/repos"}')).toBeNull();
+    });
+
+    it('acepta una acción válida con endpoint relativo', () => {
+      const a = parseGeminiAction('{"tipo":"listado","accion":"Listar repos","metodo":"GET","endpoint":"/user/repos","requiereConfirmacion":false}');
+      expect(a).not.toBeNull();
+      expect(a?.metodo).toBe('GET');
+    });
   });
 
   describe('detectPrimaryLanguage', () => {

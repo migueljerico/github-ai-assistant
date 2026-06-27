@@ -1,5 +1,6 @@
 import type { GitHubUser, GitHubRepo, GitHubFile } from '../types';
 import { isRateLimitError, enhanceErrorWithRateLimit, parseRateLimitHeaders } from '../utils/rateLimitHandler';
+import { withTransientRetry } from '../utils/retry';
 
 const BASE = 'https://api.github.com';
 
@@ -41,27 +42,31 @@ export class GitHubAPIError extends Error {
  * @throws GitHubAPIError with rate limit info if applicable
  */
 export async function ghFetch<T>(token: string, path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    ...options,
-    headers: { ...headers(token), ...(options?.headers as Record<string, string> || {}) },
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    const errorMessage = body.message || `GitHub API ${res.status}: ${path}`;
-    
-    // Check for rate limit error
-    if (isRateLimitError(res.status)) {
-      const rateLimitInfo = parseRateLimitHeaders(res);
-      const enhancedMessage = enhanceErrorWithRateLimit(res, errorMessage);
-      throw new GitHubAPIError(enhancedMessage, res.status, {
-        resetTime: rateLimitInfo.resetTime,
-        remainingSeconds: rateLimitInfo.remainingSeconds,
-      });
+  // #40: reintenta ante fallos transitorios de GitHub (5xx, red); NUNCA ante 4xx
+  // (401/403/404/422) ni cancelaciones — `withTransientRetry` lo decide por status/patrón.
+  return withTransientRetry(async () => {
+    const res = await fetch(`${BASE}${path}`, {
+      ...options,
+      headers: { ...headers(token), ...(options?.headers as Record<string, string> || {}) },
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      const errorMessage = body.message || `GitHub API ${res.status}: ${path}`;
+
+      // Check for rate limit error
+      if (isRateLimitError(res.status)) {
+        const rateLimitInfo = parseRateLimitHeaders(res);
+        const enhancedMessage = enhanceErrorWithRateLimit(res, errorMessage);
+        throw new GitHubAPIError(enhancedMessage, res.status, {
+          resetTime: rateLimitInfo.resetTime,
+          remainingSeconds: rateLimitInfo.remainingSeconds,
+        });
+      }
+
+      throw new GitHubAPIError(errorMessage, res.status);
     }
-    
-    throw new GitHubAPIError(errorMessage, res.status);
-  }
-  return res.json();
+    return res.json() as Promise<T>;
+  });
 }
 
 // ── Repos ─────────────────────────────────────────────────────────────────────

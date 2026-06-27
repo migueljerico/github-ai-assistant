@@ -27,6 +27,7 @@
 
 import type { GeminiAction } from '../types';
 import { getProvider, type AIProviderType } from './providers';
+import { withTransientRetry, isAbortError, isTransientError } from '../utils/retry';
 // #23: los system prompts viven en archivos `.md` (mantenibilidad + base para i18n).
 // Se cargan como texto crudo con el import `?raw` de Vite. `.trimEnd()` evita que un
 // salto de línea final del archivo cambie el prompt respecto al literal original.
@@ -120,50 +121,12 @@ export interface Message {
   content: string;
 }
 
-// ── Reintento ante errores transitorios ───────────────────────────────────────
-// Los proveedores de IA fallan a menudo con errores TRANSITORIOS del servidor
-// (Gemini: 503 "high demand, try again later"; OpenRouter free: "Provider returned
-// error"). Suelen resolverse al segundo intento, así que reintentamos con backoff
-// corto SOLO en esos casos — nunca ante 4xx no recuperables (key inválida, 400).
-const TRANSIENT_STATUS = new Set([500, 502, 503, 504]);
-const TRANSIENT_PATTERN =
-  /overloaded|high demand|currently experiencing|service unavailable|provider returned error|temporarily|try again|failed to fetch|network|timeout|econnreset/i;
-
-/** ¿El error viene de cancelar la petición (AbortController)? Nunca se reintenta. */
-export function isAbortError(err: unknown): boolean {
-  return (err as { name?: string })?.name === 'AbortError';
-}
-
-/** ¿El error es transitorio y merece la pena reintentar? */
-export function isTransientAIError(err: unknown): boolean {
-  const e = err as { status?: number; transient?: boolean; message?: string };
-  if (e?.transient) return true;
-  if (typeof e?.status === 'number' && TRANSIENT_STATUS.has(e.status)) return true;
-  return TRANSIENT_PATTERN.test(e?.message ?? '');
-}
-
-/**
- * Ejecuta `fn` reintentando ante errores transitorios con backoff exponencial.
- * Por defecto: hasta 2 reintentos (800ms, 1600ms). Los errores no transitorios se
- * propagan de inmediato.
- */
-export async function withTransientRetry<T>(
-  fn: () => Promise<T>,
-  retries = 2,
-  baseDelayMs = 800,
-): Promise<T> {
-  for (let attempt = 0; ; attempt++) {
-    try {
-      return await fn();
-    } catch (err) {
-      // Una cancelación (AbortController) NUNCA se reintenta: se propaga al instante.
-      if (isAbortError(err)) throw err;
-      // En el último intento, o si el error no es transitorio, se propaga.
-      if (attempt >= retries || !isTransientAIError(err)) throw err;
-      await new Promise(r => setTimeout(r, baseDelayMs * 2 ** attempt));
-    }
-  }
-}
+// ── Reintento ante errores transitorios (#40) ─────────────────────────────────
+// La lógica de reintento vive ahora en `utils/retry.ts` (genérica, compartida con
+// las llamadas a GitHub). Se importa arriba para uso interno (callAI) y se re-exporta
+// aquí para no romper imports/tests previos. `isTransientAIError` = alias histórico.
+export { withTransientRetry, isAbortError };
+export { isTransientError as isTransientAIError };
 
 // ── Types for repo documentation generation (exportados para tests) ───────────
 export type RepoFile = { path: string; content?: string };
@@ -407,6 +370,28 @@ export async function validateProviderKey(
 }
 
 // ── Response parsing ──────────────────────────────────────────────────────────
+// #40: allowlists para validar el JSON de acción antes de proponer→confirmar→ejecutar.
+const ALLOWED_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
+const ALLOWED_TYPES = new Set(['lectura', 'escritura', 'creacion', 'listado', 'borrado']);
+
+/**
+ * Valida la forma de una acción ya parseada (#40). Refuerza la garantía
+ * propón→confirma→ejecuta: método y tipo dentro de una allowlist, y el endpoint —si
+ * viene— debe ser un path RELATIVO (empieza por `/`, sin `://`) para que nunca apunte
+ * a un host externo. Función pura.
+ */
+function isValidAction(a: Record<string, unknown>): boolean {
+  if (!a.tipo || !a.accion || !a.metodo) return false;
+  if (typeof a.metodo !== 'string' || !ALLOWED_METHODS.has(a.metodo.toUpperCase())) return false;
+  if (typeof a.tipo !== 'string' || !ALLOWED_TYPES.has(a.tipo)) return false;
+  if (a.endpoint !== undefined && a.endpoint !== null) {
+    if (typeof a.endpoint !== 'string') return false;
+    if (a.endpoint.includes('://') || !a.endpoint.startsWith('/')) return false;
+  }
+  if (a.requiereConfirmacion !== undefined && typeof a.requiereConfirmacion !== 'boolean') return false;
+  return true;
+}
+
 export function parseGeminiAction(rawText: string): GeminiAction | null {
   try {
     const cleaned = rawText
@@ -414,7 +399,9 @@ export function parseGeminiAction(rawText: string): GeminiAction | null {
       .replace(/\s*```\s*$/, '')
       .trim();
     const parsed = JSON.parse(cleaned);
-    if (!parsed.tipo || !parsed.accion || !parsed.metodo) return null;
+    // #40: validación estricta (allowlist de método/tipo + endpoint relativo). Si no
+    // cumple, se trata como respuesta conversacional (null), igual que un JSON inválido.
+    if (!isValidAction(parsed)) return null;
     return parsed as GeminiAction;
   } catch {
     return null;

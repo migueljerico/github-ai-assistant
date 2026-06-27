@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.16.0] — 2026-06-27
+
+### Changed
+- **Más robustez de red y de la acción propuesta (#40, cierra Sprint 2)** — (1) Las **llamadas a GitHub** (`ghFetch`) ahora **reintentan** automáticamente ante fallos puntuales de red o errores 5xx del servidor (con backoff corto); **nunca** reintentan errores 4xx (401/403/404/422) ni cancelaciones. (2) **Validación más estricta del JSON de acción** antes de *proponer→confirmar→ejecutar*: el método debe estar en una allowlist (`GET/POST/PUT/PATCH/DELETE`), el tipo en otra, y el endpoint —si viene— debe ser un **path relativo** (empieza por `/`, sin `://`) para que nunca apunte a un host externo; si no cumple, se trata como respuesta conversacional. El mecanismo de reintento se extrajo a `utils/retry.ts` (compartido por IA y GitHub).
+
+### Testing
+- `ghFetch` reintenta un 503 y no reintenta un 404; `parseGeminiAction` rechaza método/tipo fuera de la allowlist y endpoints absolutos o no relativos. Cliente: **436 tests**.
+
 ## [3.15.0] — 2026-06-27
 
 ### Changed

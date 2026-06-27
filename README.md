@@ -10,7 +10,7 @@
 ![OpenRouter](https://img.shields.io/badge/OpenRouter-6566F1?style=for-the-badge&logo=openai&logoColor=white)
 ![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
 ![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
-![Versión](https://img.shields.io/badge/Versión-v3.15.0-blue?style=for-the-badge)
+![Versión](https://img.shields.io/badge/Versión-v3.16.0-blue?style=for-the-badge)
 ![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)
 [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
 
@@ -304,7 +304,7 @@ npm run test:coverage # Tests con reporte de cobertura
 
 ### Cobertura actual
 
-- **Cobertura total:** ~60% (429 tests en el cliente; ver Codecov para el valor exacto)
+- **Cobertura total:** ~60% (436 tests en el cliente; ver Codecov para el valor exacto)
 - **Módulos testeados:** AuthContext, AIProviderContext, providers, actionExecutor, github, gemini, assistantActions, docPublisher, threadSummary, modeDetection, formatResult, repoRef, releaseGenerator, releaseAssets, pdfReader, pdfAdvanced, spreadsheetReader, powerbiReader, docxReader, useChat, useActions, ChatArea, ChatInput, ChatMessage, ConfirmModal, DocModal, FilePublishModal, PublishActions, FileAttachButton, Header, TemplatePanel, AIProviderPanel, AIProviderBadge, RepoContextButton, ThreadSummaryButton — más los tests del servidor (rate limiter)
 - **Badge con cobertura actual:** [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
 

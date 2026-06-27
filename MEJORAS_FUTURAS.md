@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v3.15.0 · Junio 2026
+**Actualizado a:** v3.16.0 · Junio 2026
 
 ---
 
@@ -39,7 +39,7 @@ Estado del código, mejoras pendientes y roadmap del proyecto.
 | 23 | System prompts en archivos `.md` externos (?raw) | services/gemini.ts, prompts/*.md | v3.11.2 |
 | 34 | Changelog automático de un repo (agrupar por prefijo + pulir con IA; burbuja de chat) | services/changelogGenerator.ts, github.ts (compareCommits/getLatestReleaseTag), ChangelogButton.tsx | v3.14.0 |
 | 49 | Selección de archivos relevantes a la pregunta (ranking léxico BM25 + árbol completo; deja de "no ver" archivos) | utils/contextRanker.ts, github.ts (allPaths), gemini.ts (buildRepoContextSummary), assistantActions.ts (runSend) | v3.15.0 |
-| — | #40 (parcial): recordar proveedor/modelo (sin la key) + botón Detener (cancelar generación) | AIProviderContext.tsx, utils/providerPrefs.ts, gemini.ts, App.tsx, ChatInput.tsx | v3.12.0 / v3.13.0 |
+| 40 | Robustez de red e IA/UX: reintentos transitorios (IA + GitHub), botón Detener, recordar proveedor/modelo, validación estricta del JSON de acción | utils/retry.ts, gemini.ts, github.ts (ghFetch), AIProviderContext.tsx, providerPrefs.ts, App.tsx, ChatInput.tsx | v2.7.3–v3.16.0 |
 | — | Crear Release desde "Documentar repo" (además de commit/Draft PR) | assistantActions.ts (runCreateRepoRelease), DocModal.tsx | v3.8.0 |
 | — | Unificar los controles de los dos flujos de documentación (barra compartida commit/Draft PR/Release) | components/confirm/PublishActions.tsx, DocModal.tsx, FilePublishModal.tsx | v3.10.0 |
 | — | Seguridad: `state` de OAuth con CSPRNG (crypto.randomUUID) | server/index.js | v3.7.1 |
@@ -55,9 +55,9 @@ herramienta**: si el trabajo continúa en otro entorno, este es el orden de refe
   **#20** (documentación sin cortar funciones, truncado por líneas) ✅ · **#23** (prompts a archivos
   `.md`) ✅ · **#40 parcial** (botón **Detener** + recordar proveedor/modelo) ✅ · **#34** (changelog
   automático de releases) ✅.
-- **🥈 Sprint 2 — Calidad de IA / contexto:** **#49** (seleccionar archivos relevantes del repo
-  antes de llamar al LLM) ✅ **(v3.15.0)** · resto de **#40** (validación `zod` + reintentos en
-  `ghFetch`) — pendiente.
+- **🥈 Sprint 2 — Calidad de IA / contexto — ✅ COMPLETADO (v3.15.0–v3.16.0):** **#49** (seleccionar
+  archivos relevantes del repo antes de llamar al LLM) ✅ **(v3.15.0)** · resto de **#40** (reintentos
+  en `ghFetch` + validación estricta de la acción — sin `zod`) ✅ **(v3.16.0)**.
 - **🥉 Sprint 3 — UI robusta + escaparate de datos:** **#39** (ErrorBoundary + a11y) · **#44**
   (dashboard "Salud del Código" con Recharts — pieza de escaparate Análisis de Datos).
 - **🏅 Sprint 4 — Alcance e i18n:** **#23→#24** (inglés) · **#46** (export/import de conversación).
@@ -127,14 +127,14 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 #### #26 — Mantener y expandir cobertura de tests con Codecov
 **Esfuerzo:** Continuo (2-4h por sprint)
 
-**Estado actual (v3.15.0):** ✅ Infraestructura completa implementada
+**Estado actual (v3.16.0):** ✅ Infraestructura completa implementada
 
 **Progreso realizado:**
 - ✅ Configuración de Vitest + Codecov
 - ✅ CI con GitHub Actions ejecutando tests (cliente + servidor) automáticamente
 - ✅ Badge de Codecov en README
 - ✅ Cobertura actual: **~60%** (ver Codecov para el valor exacto)
-- ✅ 429 tests en el cliente. Implementados para:
+- ✅ 436 tests en el cliente. Implementados para:
   - `AuthContext.tsx` (login, logout, OAuth flow, Zero-Storage)
   - `AIProviderContext.tsx` (conexión/desconexión de proveedores)
   - `providers.ts` (registro de proveedores, detección de modelos 🆓, caché, `pickDefaultModel`)
@@ -320,25 +320,6 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 ---
 
-#### #40 — Robustez de red e IA/UX (sub-tareas restantes)
-**Esfuerzo:** ~3h (Sprint 2)
-
-**Entregado ya:** ✅ reintentos transitorios en `callAI` (v2.7.3) · ✅ recordar proveedor/modelo
-sin guardar la key (v3.12.0) · ✅ **botón Detener** para cancelar la generación con `AbortController` (v3.13.0).
-
-**Pendiente (Sprint 2):**
-- **Reintentos en GitHub:** extender el backoff a `ghFetch` (`github.ts`) y unificar en un
-  `fetchWithRetry` genérico (hoy solo reintentan las llamadas a la IA).
-- **Validación estricta:** validar el JSON de acción con `zod` + allowlist de métodos/endpoints,
-  reforzando *proponer → confirmar → ejecutar*.
-
-**Beneficio:** más robustez ante red inestable en GitHub y defensa extra ante respuestas
-malformadas de la IA.
-
-**Nota:** absorbió el antiguo #29 (reintentos con backoff).
-
----
-
 #### #48 — Revisión bajo demanda de cambios recientes ("Sync Repo Status")
 **Esfuerzo:** 3–4h
 
@@ -384,8 +365,8 @@ malformadas de la IA.
 |---|---|---|---|
 | 🔴 Alta | 8 | 8 (#1, #2, #13, #14, #27, #45, #15, #28) | 0 |
 | 🟡 Media | 17 | 12 (#12, #17, #18, #19, #21, #37, #41, #32, #42, #38, #20, #49) | 5 (#26, #39, #44, #50, #51) |
-| 🟢 Baja | 13 | 2 (#23, #34) | 11 (#22, #24, #25, #33, #35, #36, #40, #46, #48, #52, #53) |
-| **TOTAL** | **38** | **22** | **16** |
+| 🟢 Baja | 13 | 3 (#23, #34, #40) | 10 (#22, #24, #25, #33, #35, #36, #46, #48, #52, #53) |
+| **TOTAL** | **38** | **23** | **15** |
 
 > **#28** cubierto en su **norte** por las Fases 1 (v3.0.0, adjuntar como contexto) y
 > 2 (v3.1.0, documentar→publicar). **Más formatos:** Fase 3a (v3.2.0, Excel/CSV) y
