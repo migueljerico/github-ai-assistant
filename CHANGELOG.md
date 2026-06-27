@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.18.0] — 2026-06-27
+
+### Added
+- **Panel "📊 Salud del código" (#44, cierra Sprint 3)** — Nuevo botón que, dado un repo (`owner/repo` o solo el nombre), abre un **dashboard visual** con tres métricas: **distribución de lenguajes** (a partir del árbol completo del repo), **frecuencia de commits** por semana (últimas 12) y **deuda técnica** (recuento de `TODO`/`FIXME`/`HACK`/`XXX` y archivos con más marcadores). Gráficas con **Recharts**, cargadas en su **propio chunk** (import dinámico, como xlsx/pdfjs) para no engordar el bundle inicial; todo en cliente (Zero-Storage). Nuevos `utils/codeHealth.ts` (helpers puros), `github.ts` (`listCommitDates`), `runCodeHealth` y `components/dashboard/{CodeHealthModal,CodeHealthCharts}` + `CodeHealthButton`. El modal reutiliza el `useModalDialog` (a11y) de v3.17.0.
+
+### Testing
+- `codeHealth` (distribución de lenguajes, deuda técnica, commits por semana), `listCommitDates`, `runCodeHealth` (happy/error), `CodeHealthButton` y `CodeHealthModal` (resumen + a11y). Cliente: **462 tests**.
+
 ## [3.17.0] — 2026-06-27
 
 ### Added

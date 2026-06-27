@@ -23,6 +23,8 @@ vi.mock('../github', () => {
     decodeBase64: vi.fn((s: string) => `decoded(${s})`),
     createRepo: vi.fn(),
     repoExists: vi.fn(),
+    getRepo: vi.fn(),
+    listCommitDates: vi.fn(),
     GitHubAPIError,
   };
 });
@@ -69,7 +71,7 @@ import { assertSupportedFile, readFileContent } from '../../utils/pdfReader';
 import { readSpreadsheet } from '../../utils/spreadsheetReader';
 import { readPowerBI } from '../../utils/powerbiReader';
 import { readDocx } from '../../utils/docxReader';
-import { fetchRepoTreeRecursive, getFileContents, createRepo, repoExists } from '../github';
+import { fetchRepoTreeRecursive, getFileContents, createRepo, repoExists, getRepo, listCommitDates } from '../github';
 import { writeDocFiles, createDocsDraftPr, publishFileDoc } from '../docPublisher';
 import { summarizeThread, parseThreadInput, listOpenThreads, formatThreadList } from '../threadSummary';
 import { generateChangelog } from '../changelogGenerator';
@@ -82,6 +84,7 @@ import {
   runLoadRepoContext,
   runSummarizeThread,
   runGenerateChangelog,
+  runCodeHealth,
   runCommitDocs,
   runCreateDraftPr,
   runSend,
@@ -270,6 +273,43 @@ describe('runGenerateChangelog (#34)', () => {
     await runGenerateChangelog(deps, CONFIG, 'owner/repo');
 
     expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', expect.objectContaining({ content: expect.stringContaining('No hay commits nuevos'), isLoading: false }));
+    expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'error' }));
+  });
+});
+
+describe('runCodeHealth (#44)', () => {
+  it('reúne lenguajes, deuda y commits del repo', async () => {
+    vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({
+      files: [{ path: 'src/a.ts', content: '// TODO: x' }, { path: 'src/b.py', content: 'ok' }],
+      totalScanned: 2,
+      truncated: false,
+      allPaths: ['src/a.ts', 'src/b.py', 'README.md'],
+    } as any);
+    vi.mocked(listCommitDates).mockResolvedValue([new Date().toISOString()]);
+    const deps = makeDeps();
+
+    const result = await runCodeHealth(deps, 'owner/repo');
+
+    expect(result).not.toBeNull();
+    expect(result!.repoName).toBe('owner/repo');
+    expect(result!.languages).toContainEqual({ language: 'TypeScript', count: 1 });
+    expect(result!.debt.total).toBe(1);
+    expect(result!.commits.reduce((a, w) => a + w.count, 0)).toBe(1);
+    expect(getRepo).toHaveBeenCalledWith('tok', 'owner', 'repo');
+    expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'completed' }));
+  });
+
+  it('devuelve null y marca error si falla la descarga', async () => {
+    vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
+    vi.mocked(fetchRepoTreeRecursive).mockRejectedValue(new Error('boom'));
+    vi.mocked(listCommitDates).mockResolvedValue([]);
+    const deps = makeDeps();
+
+    const result = await runCodeHealth(deps, 'owner/repo');
+
+    expect(result).toBeNull();
+    expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', expect.objectContaining({ content: expect.stringContaining('boom'), isLoading: false }));
     expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'error' }));
   });
 });

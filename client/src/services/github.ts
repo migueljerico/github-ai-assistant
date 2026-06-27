@@ -133,6 +133,16 @@ export async function listRecentCommits(token: string, owner: string, repo: stri
   return data.map(c => ({ sha: c.sha, message: c.commit.message }));
 }
 
+/** Fechas (ISO) de los commits recientes — para el dashboard de salud (#44). */
+export async function listCommitDates(token: string, owner: string, repo: string, perPage = 100): Promise<string[]> {
+  const data = await ghFetch<Array<{ commit: { author?: { date?: string }; committer?: { date?: string } } }>>(
+    token, `/repos/${owner}/${repo}/commits?per_page=${perPage}`,
+  );
+  return data
+    .map(c => c.commit.author?.date ?? c.commit.committer?.date)
+    .filter((d): d is string => !!d);
+}
+
 /**
  * Create a new repository for the authenticated user.
  * @param token - GitHub OAuth token or PAT (requires `repo` scope)

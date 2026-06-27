@@ -1,6 +1,6 @@
 # 📖 Manual Técnico — GitHub AI Assistant
 
-**Versión:** v3.17.0 · Junio 2026
+**Versión:** v3.18.0 · Junio 2026
 
 ---
 
@@ -11,7 +11,7 @@ La aplicación sigue una arquitectura de **backend thin** deliberada: el servido
 ```
 ┌────────────────────────────────────────────────────────────────┐
 │  FRONTEND (cliente)                                            │
-│  React 18 · TypeScript · Vite · memoria React (Zero-Storage)   │
+│  React 18 · TypeScript · Vite · Recharts · memoria React (Zero-Storage) │
 │                                                                │
 │  ┌─────────────────┐  ┌───────────────┐  ┌─────────────────┐  │
 │  │  Autenticación  │  │   Chat + IA   │  │   UI Auxiliar   │  │
@@ -88,6 +88,7 @@ github-ai-assistant/
 │       │   ├── releaseGenerator.ts # createGitHubRelease + suggestNextVersion + notas
 │       │   ├── releaseAssets.ts    # Subida de assets a uploads.github.com (validación + MIME)
 │       │   ├── contextRanker.ts    # #49: rankFilesByQuery (BM25) — elige los archivos relevantes a la pregunta
+│       │   ├── codeHealth.ts       # #44: métricas puras del dashboard (lenguajes/deuda/commits por semana)
 │       │   ├── retry.ts            # #40: withTransientRetry/isTransientError/isAbortError (IA + GitHub)
 │       │   └── modeDetection.ts    # Detección de modo chat vs action
 │       └── types/index.ts          # Tipos compartidos TypeScript

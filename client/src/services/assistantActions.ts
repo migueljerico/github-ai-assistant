@@ -11,8 +11,9 @@
 
 import { generateRepoDocs, generateFileDoc, buildRepoContextSummary, callAI, parseGeminiAction, isAbortError, CHAT_PROMPT, ACTION_PROMPT, chatPromptWithContext } from './gemini';
 import type { AIProviderConfig } from './gemini';
-import { fetchRepoTreeRecursive, getFileContents, decodeBase64, createRepo, repoExists, GitHubAPIError, type RepoTreeFile } from './github';
+import { fetchRepoTreeRecursive, getFileContents, decodeBase64, createRepo, repoExists, getRepo, listCommitDates, GitHubAPIError, type RepoTreeFile } from './github';
 import { rankFilesByQuery } from '../utils/contextRanker';
+import { languageDistribution, countTechnicalDebt, commitsByWeek, type LanguageSlice, type TechnicalDebt, type CommitWeek } from '../utils/codeHealth';
 import { writeDocFiles, createDocsDraftPr, publishFileDoc } from './docPublisher';
 import { summarizeThread, parseThreadInput, listOpenThreads, formatThreadList } from './threadSummary';
 import { generateChangelog } from './changelogGenerator';
@@ -40,6 +41,16 @@ export interface RepoContext {
   files: RepoTreeFile[];
   /** #49: rutas de TODOS los archivos del repo (árbol completo, sin contenido). */
   allPaths: string[];
+}
+
+/** Datos del dashboard "Salud del Código" (#44). */
+export interface CodeHealth {
+  repoName: string;
+  languages: LanguageSlice[];
+  debt: TechnicalDebt;
+  commits: CommitWeek[];
+  filesAnalyzed: number;
+  truncated: boolean;
 }
 
 /** Dependencias inyectadas (estado de chat e historial) que usan las acciones. */
@@ -268,6 +279,52 @@ export async function runGenerateChangelog(deps: ChatDeps, config: AIProviderCon
   } catch (err) {
     updateMessage(loadingId, { content: `❌ ${(err as Error).message}`, isLoading: false });
     updateEntry(histId, { status: 'error', description: `Error al generar changelog de ${ref}` });
+  } finally {
+    setIsChatLoading(false);
+  }
+}
+
+/**
+ * Salud del código (#44): reúne distribución de lenguajes, frecuencia de commits y
+ * deuda técnica de un repo. Devuelve el objeto para que App abra el modal, o `null`
+ * si falló. Reutiliza fetchRepoTreeRecursive (árbol + contenidos) y listCommitDates.
+ */
+export async function runCodeHealth(deps: ChatDeps, repoInput: string): Promise<CodeHealth | null> {
+  const { token, user, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading } = deps;
+  const { owner, repo } = resolveRepoRef(repoInput, user.login);
+  if (!repo) {
+    addMessage({ role: 'assistant', content: '❌ Indícame el repositorio, p. ej. `owner/repo` o solo el nombre del repo.' });
+    return null;
+  }
+
+  setIsChatLoading(true);
+  const ref = `${owner}/${repo}`;
+  const loadingId = addMessage({ role: 'assistant', content: `📊 Analizando la salud de **${ref}**...`, isLoading: true });
+  const histId = addEntry({ status: 'pending', description: `Salud del código de ${ref}`, repo: ref });
+
+  try {
+    const meta = await getRepo(token, owner, repo);
+    const [tree, dates] = await Promise.all([
+      fetchRepoTreeRecursive(token, owner, repo, meta.default_branch),
+      listCommitDates(token, owner, repo),
+    ]);
+
+    const health: CodeHealth = {
+      repoName: ref,
+      languages: languageDistribution(tree.allPaths ?? tree.files.map(f => f.path)),
+      debt: countTechnicalDebt(tree.files),
+      commits: commitsByWeek(dates),
+      filesAnalyzed: tree.files.length,
+      truncated: tree.truncated,
+    };
+
+    updateMessage(loadingId, { content: `📊 Salud del código de **${ref}** lista — revisa el panel.`, isLoading: false });
+    updateEntry(histId, { status: 'completed', description: `Salud del código de ${ref}` });
+    return health;
+  } catch (err) {
+    updateMessage(loadingId, { content: `❌ ${(err as Error).message}`, isLoading: false });
+    updateEntry(histId, { status: 'error', description: `Error al analizar la salud de ${ref}` });
+    return null;
   } finally {
     setIsChatLoading(false);
   }
