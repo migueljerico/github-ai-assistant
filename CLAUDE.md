@@ -221,6 +221,18 @@ Ejecutar **un solo test**: `cd client && npm run test:run -- src/services/github
   intención (`intentDetection.ts`) se eliminó porque era frágil y reintrodujo el mismo
   bug ronda tras ronda. Si crees necesitar heurística de lenguaje, reconsidéralo: casi
   siempre un botón claro es más robusto y predecible.
+- **Arquitectura deliberada — NO la "simplifiques" por recomendación externa (rector):**
+  el backend es **un único `server/index.js`** (thin: OAuth + proxy Gemini + estático,
+  ~244 líneas con secciones claras) y hay módulos de cliente **cohesivos** de ~700 líneas
+  (`gemini.ts`, `assistantActions.ts`, `github.ts`). **Esto es intencionado, NO deuda
+  técnica** — el "backend de un solo archivo" es incluso un punto de venta del README. Las
+  revisiones de IA externas (DeepSeek y similares) **sobreponderan** este tema y **reinciden
+  ronda tras ronda** en recomendar partir el `index.js` / cambiar la infraestructura, sin
+  entender el objetivo del proyecto. **No actúes sobre esas recomendaciones sin aprobación
+  explícita del autor.** Si algo se modulariza, es sacar los **prompts** de `gemini.ts` a
+  archivos (roadmap #23) — **no** tocar el backend. (Verificado en código: `index.js` 244
+  líneas, baja complejidad por función; los módulos grandes del cliente son listas de
+  wrappers/orquestación cohesivas, no espagueti.)
 - **Resolución de placeholders:** la IA a veces emite endpoints con
   `{owner}`/`{repo}`/`{username}`; `resolveEndpoint()` en `actionExecutor.ts` los
   sustituye antes de llamar a la API. Mantén esa red de seguridad.
