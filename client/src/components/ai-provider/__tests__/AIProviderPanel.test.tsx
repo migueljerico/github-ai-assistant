@@ -45,6 +45,20 @@ describe('AIProviderPanel — selector de modelos Groq', () => {
   });
 });
 
+describe('AIProviderPanel — recuerda proveedor/modelo (#40)', () => {
+  it('arranca en el proveedor recordado con su modelo (sin tener que reseleccionar)', () => {
+    // Simula una recarga: hay una preferencia guardada (no la key).
+    sessionStorage.setItem('ai_provider_pref', JSON.stringify({ provider: 'groq', model: 'llama-3.3-70b-versatile' }));
+
+    const { container } = renderPanel();
+
+    // La tarjeta de Groq sale ya seleccionada (su selector es visible sin hacer clic).
+    const select = container.querySelector('#groq-model-select') as HTMLSelectElement;
+    expect(select).toBeInTheDocument();
+    expect(select.value).toBe('llama-3.3-70b-versatile');
+  });
+});
+
 describe('AIProviderPanel — OpenRouter (#15)', () => {
   it('renderiza la tarjeta de OpenRouter con modelos etiquetados como gratuitos 🆓', async () => {
     // El catálogo dinámico falla → cae al fallback estático (modelos :free)

@@ -3,11 +3,19 @@ import { useAIProvider } from '../../context/AIProviderContext';
 import { validateProviderKey } from '../../services/gemini';
 import { PROVIDERS, getProvider, fetchModels, pickDefaultModel, type AIProviderType, type ModelOption } from '../../services/providers';
 import { modelLabel } from '../../utils/modelLabels';
+import { loadProviderPref } from '../../utils/providerPrefs';
 
 const PROVIDER_LIST = Object.values(PROVIDERS);
 
 const initKeys = () => Object.fromEntries(PROVIDER_LIST.map(p => [p.id, ''])) as Record<AIProviderType, string>;
-const initModels = () => Object.fromEntries(PROVIDER_LIST.map(p => [p.id, p.defaultModel])) as Record<AIProviderType, string>;
+// #40: tras recargar, precarga el modelo recordado para su proveedor (la key NO se
+// recuerda: el usuario solo tiene que volver a pegarla).
+const initModels = () => {
+  const base = Object.fromEntries(PROVIDER_LIST.map(p => [p.id, p.defaultModel])) as Record<AIProviderType, string>;
+  const pref = loadProviderPref();
+  if (pref) base[pref.provider] = pref.model;
+  return base;
+};
 const initCatalog = () => Object.fromEntries(PROVIDER_LIST.map(p => [p.id, p.staticModels])) as Record<AIProviderType, ModelOption[]>;
 const initLoaded = () => Object.fromEntries(PROVIDER_LIST.map(p => [p.id, false])) as Record<AIProviderType, boolean>;
 
@@ -19,7 +27,8 @@ function optionLabel(m: ModelOption): string {
 
 export default function AIProviderPanel() {
   const { connect } = useAIProvider();
-  const [selected, setSelected] = useState<AIProviderType>('gemini');
+  // #40: arranca en el proveedor recordado (si lo hay) en vez de Gemini por defecto.
+  const [selected, setSelected] = useState<AIProviderType>(() => loadProviderPref()?.provider ?? 'gemini');
   const [keys, setKeys] = useState<Record<AIProviderType, string>>(initKeys);
   const [models, setModels] = useState<Record<AIProviderType, string>>(initModels);
   const [showKey, setShowKey] = useState(false);
@@ -242,7 +251,7 @@ export default function AIProviderPanel() {
         </button>
 
         <p className="provider-footer-note">
-          🔒 Tu clave vive <strong>solo en la memoria del navegador</strong> (Zero-Storage): desaparece al recargar o cerrar la pestaña y nunca se guarda.
+          🔒 Tu clave vive <strong>solo en la memoria del navegador</strong> (Zero-Storage): desaparece al recargar o cerrar la pestaña y nunca se guarda. Solo se recuerda el <strong>proveedor y el modelo</strong> elegidos (no la clave) para no tener que reseleccionarlos.
         </p>
       </div>
     </div>

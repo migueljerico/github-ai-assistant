@@ -79,6 +79,32 @@ describe('AIProviderContext', () => {
     expect(result.current.model).toBe('gemini-2.0-flash');
   });
 
+  it('al conectar recuerda proveedor+modelo en sessionStorage (no la key) — #40', () => {
+    const { result } = renderHook(() => useAIProvider(), {
+      wrapper: AIProviderContextProvider,
+    });
+
+    act(() => {
+      result.current.connect('groq', 'secret-key', 'llama-3.3-70b');
+    });
+
+    const raw = sessionStorage.getItem('ai_provider_pref') || '';
+    expect(JSON.parse(raw)).toEqual({ provider: 'groq', model: 'llama-3.3-70b' });
+    expect(raw).not.toContain('secret-key'); // la API key NUNCA se guarda
+  });
+
+  it('al desconectar borra la preferencia guardada — #40', () => {
+    const { result } = renderHook(() => useAIProvider(), {
+      wrapper: AIProviderContextProvider,
+    });
+
+    act(() => { result.current.connect('gemini', 'k', 'gemini-2.5-flash'); });
+    expect(sessionStorage.getItem('ai_provider_pref')).not.toBeNull();
+
+    act(() => { result.current.disconnect(); });
+    expect(sessionStorage.getItem('ai_provider_pref')).toBeNull();
+  });
+
   it('debería mantener el estado entre renders', () => {
     const { result, rerender } = renderHook(() => useAIProvider(), {
       wrapper: AIProviderContextProvider,

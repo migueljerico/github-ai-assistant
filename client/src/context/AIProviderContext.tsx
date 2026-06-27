@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
 import type { AIProviderType } from '../services/providers';
+import { saveProviderPref, clearProviderPref } from '../utils/providerPrefs';
 
 export type { AIProviderType };
 
@@ -36,6 +37,8 @@ export function AIProviderContextProvider({ children }: { children: ReactNode })
     setApiKey(k);
     setModel(m);
     setConnectedAt(Date.now());
+    // #40: recuerda SOLO proveedor + modelo (no la key) para no re-seleccionarlos al recargar
+    saveProviderPref(p, m);
   };
 
   const disconnect = () => {
@@ -44,6 +47,7 @@ export function AIProviderContextProvider({ children }: { children: ReactNode })
     setApiKey(null);
     setModel(null);
     setConnectedAt(null);
+    clearProviderPref(); // #40: olvida la preferencia al desconectar
   };
 
   return (

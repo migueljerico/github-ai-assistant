@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.12.0] — 2026-06-27
+
+### Added
+- **Recuerda el proveedor y el modelo al recargar (#40)** — Tras un F5 ya no hay que volver a elegir proveedor (Gemini/Groq/OpenRouter) ni modelo: la app los **pre-selecciona** automáticamente. Solo hay que **volver a pegar la API key** (que sigue sin guardarse en ningún sitio). Se persiste **únicamente** `{ provider, model }` —datos no secretos— en `sessionStorage`; la clave **NUNCA** se almacena, así que el modelo **Zero-Storage se mantiene intacto**. Nuevo `utils/providerPrefs.ts` (save/load/clear); cableado en `AIProviderContext` (guarda al conectar, borra al desconectar) y `AIProviderPanel` (pre-selecciona al cargar).
+
+### Testing
+- `providerPrefs` (roundtrip, proveedor inválido, JSON corrupto, no guarda la key), `AIProviderContext` (conectar persiste / desconectar borra; la key nunca se guarda) y `AIProviderPanel` (arranca en el proveedor recordado). Cliente: **392 tests**.
+
 ## [3.11.2] — 2026-06-27
 
 ### Changed
