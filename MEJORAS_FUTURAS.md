@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v3.18.0 · Junio 2026
+**Actualizado a:** v3.19.0 · Junio 2026
 
 ---
 
@@ -42,6 +42,7 @@ Estado del código, mejoras pendientes y roadmap del proyecto.
 | 40 | Robustez de red e IA/UX: reintentos transitorios (IA + GitHub), botón Detener, recordar proveedor/modelo, validación estricta del JSON de acción | utils/retry.ts, gemini.ts, github.ts (ghFetch), AIProviderContext.tsx, providerPrefs.ts, App.tsx, ChatInput.tsx | v2.7.3–v3.16.0 |
 | 39 | ErrorBoundary (red de seguridad de UI ante errores de render) + accesibilidad de los modales (Esc, focus-trap, foco restaurado, aria-labelledby) | components/ErrorBoundary.tsx, hooks/useModalDialog.ts, main.tsx, components/confirm/{ConfirmModal,DocModal,FilePublishModal}.tsx | v3.17.0 |
 | 44 | Dashboard "Salud del Código" (distribución de lenguajes, commits/semana, deuda técnica TODO/FIXME) con gráficas Recharts (chunk propio, lazy) | utils/codeHealth.ts, github.ts (listCommitDates), assistantActions.ts (runCodeHealth), components/dashboard/{CodeHealthModal,CodeHealthCharts}.tsx, CodeHealthButton.tsx | v3.18.0 |
+| 46 | Exportar/importar la conversación a JSON (recuperar contexto entre sesiones sin romper Zero-Storage; recarga el repo de contexto al importar) | utils/conversationIO.ts, components/chat/ConversationIOButton.tsx, App.tsx, ChatInput.tsx | v3.19.0 |
 | — | Crear Release desde "Documentar repo" (además de commit/Draft PR) | assistantActions.ts (runCreateRepoRelease), DocModal.tsx | v3.8.0 |
 | — | Unificar los controles de los dos flujos de documentación (barra compartida commit/Draft PR/Release) | components/confirm/PublishActions.tsx, DocModal.tsx, FilePublishModal.tsx | v3.10.0 |
 | — | Seguridad: `state` de OAuth con CSPRNG (crypto.randomUUID) | server/index.js | v3.7.1 |
@@ -63,7 +64,8 @@ herramienta**: si el trabajo continúa en otro entorno, este es el orden de refe
 - **🥉 Sprint 3 — UI robusta + escaparate de datos — ✅ COMPLETADO (v3.17.0–v3.18.0):** **#39**
   (ErrorBoundary + a11y) ✅ **(v3.17.0)** · **#44** (dashboard "Salud del Código" con Recharts — pieza de
   escaparate Análisis de Datos) ✅ **(v3.18.0)**.
-- **🏅 Sprint 4 — Alcance e i18n:** **#23→#24** (inglés) · **#46** (export/import de conversación).
+- **🏅 Sprint 4 — Alcance e i18n (en curso):** **#46** (export/import de conversación) ✅ **(v3.19.0)** ·
+  queda **#23→#24** (inglés) — ronda dedicada (decisión de dependencia: `i18next` vs ligero).
 - **📋 Backlog:** #25 (logs/health), #22 (aviso de sesión), #48 (sync repo), **#36** (GitHub App —
   hito grande aparte). #26 (cobertura) es transversal: sube con cada sprint.
 - **🗑️ Candidatos a poda:** **#33** (sugerir revisores) y **#35** (auto-labels) — nicho/fuera del núcleo.
@@ -209,22 +211,6 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 ---
 
-#### #46 — Exportar/importar conversación (memoria entre sesiones, Zero-Storage)
-**Esfuerzo:** 4–5h
-
-**Problema actual:** Al recargar la página (F5), se pierde el historial de conversación por la arquitectura Zero-Storage.
-
-**Solución propuesta (compatible con Zero-Storage):**
-- Botón **"Exportar conversación"** → descarga un JSON con el historial (y, opcionalmente, el repo de contexto activo de #41).
-- Botón **"Importar"** → restaura ese estado en una sesión nueva.
-- **Nada se auto-persiste** en el navegador (ni IndexedDB ni localStorage): el usuario controla el fichero.
-
-**Beneficio:** Recuperar el contexto de sesiones anteriores ("¿qué estábamos haciendo con este repo?") sin romper Zero-Storage.
-
-**Nota:** reemplaza la propuesta original (IndexedDB + cifrado con clave derivada del `access_token`), descartada porque (1) contradice el modelo Zero-Storage del README ("ni IndexedDB") y (2) no funcionaría entre sesiones, ya que el token cambia en cada sesión y la clave de descifrado dejaría de coincidir.
-
----
-
 #### #33 — Sugerir revisores de código basándose en historial
 **Esfuerzo:** 4h
 
@@ -336,8 +322,8 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 |---|---|---|---|
 | 🔴 Alta | 8 | 8 (#1, #2, #13, #14, #27, #45, #15, #28) | 0 |
 | 🟡 Media | 17 | 14 (#12, #17, #18, #19, #21, #37, #41, #32, #42, #38, #20, #49, #39, #44) | 3 (#26, #50, #51) |
-| 🟢 Baja | 13 | 3 (#23, #34, #40) | 10 (#22, #24, #25, #33, #35, #36, #46, #48, #52, #53) |
-| **TOTAL** | **38** | **25** | **13** |
+| 🟢 Baja | 13 | 4 (#23, #34, #40, #46) | 9 (#22, #24, #25, #33, #35, #36, #48, #52, #53) |
+| **TOTAL** | **38** | **26** | **12** |
 
 > **#28** cubierto en su **norte** por las Fases 1 (v3.0.0, adjuntar como contexto) y
 > 2 (v3.1.0, documentar→publicar). **Más formatos:** Fase 3a (v3.2.0, Excel/CSV) y

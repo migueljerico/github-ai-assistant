@@ -1,6 +1,6 @@
 # 📖 Manual Técnico — GitHub AI Assistant
 
-**Versión:** v3.18.0 · Junio 2026
+**Versión:** v3.19.0 · Junio 2026
 
 ---
 
@@ -89,6 +89,7 @@ github-ai-assistant/
 │       │   ├── releaseAssets.ts    # Subida de assets a uploads.github.com (validación + MIME)
 │       │   ├── contextRanker.ts    # #49: rankFilesByQuery (BM25) — elige los archivos relevantes a la pregunta
 │       │   ├── codeHealth.ts       # #44: métricas puras del dashboard (lenguajes/deuda/commits por semana)
+│       │   ├── conversationIO.ts   # #46: serializar/parsear la conversación (export/import JSON, Zero-Storage)
 │       │   ├── retry.ts            # #40: withTransientRetry/isTransientError/isAbortError (IA + GitHub)
 │       │   └── modeDetection.ts    # Detección de modo chat vs action
 │       └── types/index.ts          # Tipos compartidos TypeScript

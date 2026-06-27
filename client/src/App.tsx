@@ -10,6 +10,7 @@ import {
 } from './services/assistantActions';
 import type { RepoContext, FileContext, PublishKind, CodeHealth } from './services/assistantActions';
 import { resolveRepoRef } from './utils/repoRef';
+import { serializeConversation, parseConversation, conversationFilename } from './utils/conversationIO';
 import Header from './components/layout/Header';
 import HistoryPanel from './components/layout/HistoryPanel';
 import TemplatePanel from './components/templates/TemplatePanel';
@@ -295,6 +296,31 @@ export default function App() {
     if (result) setCodeHealth(result);
   }, [token, user, providerName, addMessage, updateMessage, addEntry, updateEntry]);
 
+  // ── Exportar / importar conversación (#46, Zero-Storage) ─────────────────────
+  const handleExportConversation = useCallback(() => {
+    const json = serializeConversation(messages, conversationHistory, repoContext?.repoName ?? null);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = conversationFilename(repoContext?.repoName ?? null);
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [messages, conversationHistory, repoContext]);
+
+  const handleImportConversation = useCallback(async (file: File) => {
+    try {
+      const text = await file.text();
+      const { messages: imported, conversationHistory: history, repoContextName } = parseConversation(text);
+      setMessages(imported);
+      setConversationHistory(history);
+      addMessage({ role: 'assistant', content: `📂 Conversación importada — ${imported.length} mensaje${imported.length !== 1 ? 's' : ''} restaurado${imported.length !== 1 ? 's' : ''}.` });
+      if (repoContextName && token && user) handleLoadRepoContext(repoContextName);
+    } catch (err) {
+      addMessage({ role: 'assistant', content: `❌ ${(err as Error).message}` });
+    }
+  }, [token, user, addMessage, handleLoadRepoContext]);
+
   // ── Commit docs (commit directo a la rama por defecto) ───────────────────────
   const handleCommitDocs = useCallback(async () => {
     if (!docAnalysis || !token || !user) return;
@@ -390,6 +416,9 @@ export default function App() {
             onSummarizeThread={handleSummarizeThread}
             onGenerateChangelog={handleGenerateChangelog}
             onCodeHealth={handleCodeHealth}
+            onExportConversation={handleExportConversation}
+            onImportConversation={handleImportConversation}
+            hasMessages={messages.length > 0}
             repoContextName={repoContext?.repoName ?? null}
             onLoadRepoContext={handleLoadRepoContext}
             onClearRepoContext={handleClearRepoContext}

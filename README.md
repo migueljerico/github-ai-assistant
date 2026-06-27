@@ -10,7 +10,7 @@
 ![OpenRouter](https://img.shields.io/badge/OpenRouter-6566F1?style=for-the-badge&logo=openai&logoColor=white)
 ![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
 ![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
-![Versión](https://img.shields.io/badge/Versión-v3.18.0-blue?style=for-the-badge)
+![Versión](https://img.shields.io/badge/Versión-v3.19.0-blue?style=for-the-badge)
 ![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)
 [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
 
@@ -91,6 +91,7 @@ El proyecto evolucionó de un prototipo en **Google AI Studio** a una aplicació
 | 📝 **Resume hilos de issues/PRs** | Introduce `owner/repo#42` y la IA resume la discusión (TL;DR · puntos clave · decisiones/pendientes · tono); en PRs incluye los comentarios de revisión |
 | 📋 **Genera el changelog de un repo** | Indica `owner/repo` y reúne los commits **desde el último release** (o los recientes), los agrupa por tipo (Novedades, Correcciones…) y la IA los redacta en **lenguaje de usuario** — listo para tus notas de publicación |
 | 📊 **Salud del código (dashboard visual)** | Indica `owner/repo` y abre un panel con gráficas: **distribución de lenguajes**, **commits por semana** y **deuda técnica** (TODO/FIXME/HACK/XXX) — todo en cliente, sin enviar tu código a ningún servidor |
+| 💾 **Exporta e importa la conversación** | Descarga la conversación como JSON y recupérala en otra sesión (p. ej. tras recargar) — sin romper Zero-Storage: nada se auto-persiste, el fichero lo controlas tú |
 | ⏹️ **Detener la generación** | Cancela una respuesta en curso al instante; se conserva lo ya escrito |
 | 🔑 **Multi-proveedor de IA** | **Groq Cloud**, **Google Gemini** y **OpenRouter** (pasarela a OpenAI, Claude, Llama… con modelos 🆓 gratuitos y de pago) — usas tu propia clave |
 | 🔒 **Autenticación OAuth** | Flujo GitHub OAuth completo con fallback a PAT manual |
