@@ -20,6 +20,7 @@ import {
   getLatestReleaseTag,
   compareCommits,
   listRecentCommits,
+  listCommitDates,
 } from '../github';
 
 // Mock de fetch global
@@ -356,6 +357,22 @@ describe('github.ts', () => {
 
       expect(out).toEqual([{ sha: 'c', message: 'docs: z' }]);
       expect(fetch).toHaveBeenCalledWith('https://api.github.com/repos/o/r/commits?per_page=10', expect.any(Object));
+    });
+
+    it('listCommitDates mapea las fechas de autor de los commits (#44)', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce({
+        ok: true,
+        json: async () => [
+          { commit: { author: { date: '2026-06-01T10:00:00Z' } } },
+          { commit: { committer: { date: '2026-06-02T10:00:00Z' } } }, // sin author → cae a committer
+          { commit: {} }, // sin fecha → se descarta
+        ],
+      } as any);
+
+      const out = await listCommitDates('tok', 'o', 'r');
+
+      expect(out).toEqual(['2026-06-01T10:00:00Z', '2026-06-02T10:00:00Z']);
+      expect(fetch).toHaveBeenCalledWith('https://api.github.com/repos/o/r/commits?per_page=100', expect.any(Object));
     });
   });
 

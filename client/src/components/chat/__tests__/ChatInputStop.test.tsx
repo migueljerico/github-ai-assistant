@@ -17,6 +17,7 @@ function setup(overrides: Partial<React.ComponentProps<typeof ChatInput>> = {}) 
     onDocumentRepo: vi.fn(),
     onSummarizeThread: vi.fn(),
     onGenerateChangelog: vi.fn(),
+    onCodeHealth: vi.fn(),
     repoContextName: null,
     onLoadRepoContext: vi.fn(),
     onClearRepoContext: vi.fn(),

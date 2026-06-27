@@ -5,6 +5,7 @@ import DocumentRepoButton from './DocumentRepoButton';
 import RepoContextButton from './RepoContextButton';
 import ThreadSummaryButton from './ThreadSummaryButton';
 import ChangelogButton from './ChangelogButton';
+import CodeHealthButton from './CodeHealthButton';
 import FileAttachButton from './FileAttachButton';
 
 interface ChatInputProps {
@@ -24,6 +25,8 @@ interface ChatInputProps {
   onSummarizeThread: (input: string) => void;
   // #34 - Generar changelog del repo
   onGenerateChangelog: (input: string) => void;
+  // #44 - Dashboard "Salud del código"
+  onCodeHealth: (input: string) => void;
   // #41 - Contexto de repo para opiniones fundamentadas
   repoContextName: string | null;
   onLoadRepoContext: (repoName: string) => void;
@@ -53,6 +56,7 @@ export default function ChatInput({
   onDocumentRepo,
   onSummarizeThread,
   onGenerateChangelog,
+  onCodeHealth,
   repoContextName,
   onLoadRepoContext,
   onClearRepoContext,
@@ -182,6 +186,11 @@ export default function ChatInput({
         <ChangelogButton
           disabled={disabled}
           onGenerateChangelog={onGenerateChangelog}
+        />
+
+        <CodeHealthButton
+          disabled={disabled}
+          onCodeHealth={onCodeHealth}
         />
 
         <RepoContextButton

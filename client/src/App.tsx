@@ -4,11 +4,11 @@ import { useHistory } from './context/HistoryContext';
 import { useAIProvider } from './context/AIProviderContext';
 import { getProvider } from './services/providers';
 import {
-  runDocumentRepo, runLoadRepoContext, runSummarizeThread, runGenerateChangelog, runCommitDocs, runCreateDraftPr, runCreateRepoRelease,
+  runDocumentRepo, runLoadRepoContext, runSummarizeThread, runGenerateChangelog, runCodeHealth, runCommitDocs, runCreateDraftPr, runCreateRepoRelease,
   runSend, runConfirmAction, runCancelAction, runAttachFile,
   runGenerateFileDoc, runCreateRepo, runStartPublish, runPublishFileDocByKind, formatConversation,
 } from './services/assistantActions';
-import type { RepoContext, FileContext, PublishKind } from './services/assistantActions';
+import type { RepoContext, FileContext, PublishKind, CodeHealth } from './services/assistantActions';
 import { resolveRepoRef } from './utils/repoRef';
 import Header from './components/layout/Header';
 import HistoryPanel from './components/layout/HistoryPanel';
@@ -18,6 +18,7 @@ import ChatInput from './components/chat/ChatInput';
 import ConfirmModal from './components/confirm/ConfirmModal';
 import DocModal from './components/confirm/DocModal';
 import FilePublishModal from './components/confirm/FilePublishModal';
+import CodeHealthModal from './components/dashboard/CodeHealthModal';
 import type { ChatMessage, GitHubRepo, PendingAction, RepoAnalysis } from './types';
 
 // Generate a simple unique ID
@@ -54,6 +55,7 @@ export default function App() {
 
   // Doc repo state
   const [docAnalysis, setDocAnalysis] = useState<RepoAnalysis | null>(null);
+  const [codeHealth, setCodeHealth] = useState<CodeHealth | null>(null);
   const [isCommittingDocs, setIsCommittingDocs] = useState(false);
   const [isCreatingDraftPr, setIsCreatingDraftPr] = useState(false);
   const [isCreatingRepoRelease, setIsCreatingRepoRelease] = useState(false);
@@ -283,6 +285,16 @@ export default function App() {
     );
   }, [token, user, provider, apiKey, model, providerName, addMessage, updateMessage, addEntry, updateEntry]);
 
+  // ── Salud del código — dashboard (#44) ───────────────────────────────────────
+  const handleCodeHealth = useCallback(async (input: string) => {
+    if (!token || !user) return;
+    const result = await runCodeHealth(
+      { token, user, providerName, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+      input,
+    );
+    if (result) setCodeHealth(result);
+  }, [token, user, providerName, addMessage, updateMessage, addEntry, updateEntry]);
+
   // ── Commit docs (commit directo a la rama por defecto) ───────────────────────
   const handleCommitDocs = useCallback(async () => {
     if (!docAnalysis || !token || !user) return;
@@ -377,6 +389,7 @@ export default function App() {
             onDocumentRepo={handleDocumentRepo}
             onSummarizeThread={handleSummarizeThread}
             onGenerateChangelog={handleGenerateChangelog}
+            onCodeHealth={handleCodeHealth}
             repoContextName={repoContext?.repoName ?? null}
             onLoadRepoContext={handleLoadRepoContext}
             onClearRepoContext={handleClearRepoContext}
@@ -412,6 +425,11 @@ export default function App() {
           isCreatingDraftPr={isCreatingDraftPr}
           isCreatingRelease={isCreatingRepoRelease}
         />
+      )}
+
+      {/* #44 - Dashboard "Salud del Código" */}
+      {codeHealth && (
+        <CodeHealthModal data={codeHealth} onClose={() => setCodeHealth(null)} />
       )}
 
       {/* #28 Fase 2 - Modal de publicación de la doc generada del archivo */}
