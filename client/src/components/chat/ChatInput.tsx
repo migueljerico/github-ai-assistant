@@ -4,6 +4,7 @@ import MultiRepoSelector from '../multi-repo/RepoSelector';
 import DocumentRepoButton from './DocumentRepoButton';
 import RepoContextButton from './RepoContextButton';
 import ThreadSummaryButton from './ThreadSummaryButton';
+import ChangelogButton from './ChangelogButton';
 import FileAttachButton from './FileAttachButton';
 
 interface ChatInputProps {
@@ -21,6 +22,8 @@ interface ChatInputProps {
   onDocumentRepo: (repoName: string) => void;
   // #32 - Resumir hilo de comentarios de un issue/PR
   onSummarizeThread: (input: string) => void;
+  // #34 - Generar changelog del repo
+  onGenerateChangelog: (input: string) => void;
   // #41 - Contexto de repo para opiniones fundamentadas
   repoContextName: string | null;
   onLoadRepoContext: (repoName: string) => void;
@@ -49,6 +52,7 @@ export default function ChatInput({
   onSelectedReposChange,
   onDocumentRepo,
   onSummarizeThread,
+  onGenerateChangelog,
   repoContextName,
   onLoadRepoContext,
   onClearRepoContext,
@@ -173,6 +177,11 @@ export default function ChatInput({
         <ThreadSummaryButton
           disabled={disabled}
           onSummarizeThread={onSummarizeThread}
+        />
+
+        <ChangelogButton
+          disabled={disabled}
+          onGenerateChangelog={onGenerateChangelog}
         />
 
         <RepoContextButton

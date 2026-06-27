@@ -62,6 +62,7 @@ vi.mock('../../utils/spreadsheetReader', () => ({
 }));
 vi.mock('../../utils/powerbiReader', () => ({ readPowerBI: vi.fn() }));
 vi.mock('../../utils/docxReader', () => ({ readDocx: vi.fn() }));
+vi.mock('../changelogGenerator', () => ({ generateChangelog: vi.fn() }));
 
 import { generateRepoDocs, generateFileDoc, buildRepoContextSummary, callAI, parseGeminiAction, chatPromptWithContext } from '../gemini';
 import { assertSupportedFile, readFileContent } from '../../utils/pdfReader';
@@ -71,6 +72,7 @@ import { readDocx } from '../../utils/docxReader';
 import { fetchRepoTreeRecursive, getFileContents, createRepo, repoExists } from '../github';
 import { writeDocFiles, createDocsDraftPr, publishFileDoc } from '../docPublisher';
 import { summarizeThread, parseThreadInput, listOpenThreads, formatThreadList } from '../threadSummary';
+import { generateChangelog } from '../changelogGenerator';
 import { executeAction, executeActionMultiRepo } from '../actionExecutor';
 import { createGitHubRelease, suggestNextVersion } from '../../utils/releaseGenerator';
 import { uploadReleaseAsset } from '../../utils/releaseAssets';
@@ -79,6 +81,7 @@ import {
   runDocumentRepo,
   runLoadRepoContext,
   runSummarizeThread,
+  runGenerateChangelog,
   runCommitDocs,
   runCreateDraftPr,
   runSend,
@@ -240,6 +243,29 @@ describe('runSummarizeThread', () => {
 
     await runSummarizeThread(deps, CONFIG, 'o/r#5', null);
 
+    expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'error' }));
+  });
+});
+
+describe('runGenerateChangelog (#34)', () => {
+  it('genera el changelog y lo muestra como burbuja', async () => {
+    vi.mocked(generateChangelog).mockResolvedValue('## Novedades\n- algo');
+    const deps = makeDeps();
+
+    await runGenerateChangelog(deps, CONFIG, 'owner/repo');
+
+    expect(generateChangelog).toHaveBeenCalledWith('tok', 'owner', 'repo', CONFIG);
+    expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', expect.objectContaining({ content: expect.stringContaining('Changelog de owner/repo'), isLoading: false }));
+    expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'completed' }));
+  });
+
+  it('muestra ❌ con el error si falla', async () => {
+    vi.mocked(generateChangelog).mockRejectedValue(new Error('No hay commits nuevos desde el último release (v1.0.0).'));
+    const deps = makeDeps();
+
+    await runGenerateChangelog(deps, CONFIG, 'owner/repo');
+
+    expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', expect.objectContaining({ content: expect.stringContaining('No hay commits nuevos'), isLoading: false }));
     expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'error' }));
   });
 });

@@ -10,7 +10,7 @@
 ![OpenRouter](https://img.shields.io/badge/OpenRouter-6566F1?style=for-the-badge&logo=openai&logoColor=white)
 ![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
 ![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
-![Versión](https://img.shields.io/badge/Versión-v3.13.0-blue?style=for-the-badge)
+![Versión](https://img.shields.io/badge/Versión-v3.14.0-blue?style=for-the-badge)
 ![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)
 [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
 
@@ -89,6 +89,8 @@ El proyecto evolucionó de un prototipo en **Google AI Studio** a una aplicació
 | 💬 **Conversa y luego publica (flujo claro)** | Adjunta un archivo y **charla/analízalo** con el asistente (en lenguaje claro, no como un consultor técnico); cuando quieras, pulsa **📤 Documentar y publicar** para generar la doc —que **recoge lo conversado**— y subirla (commit, Draft PR o Release, e incluso el propio archivo). El **documento** sí sale en registro profesional |
 | 📦 **Publica también el archivo fuente y extras** | Al publicar la documentación de un archivo, puedes subir además el **archivo original** (`.pbit`/`.pbix`/`.xlsx`…) y **archivos extra** (capturas/imágenes → `screenshots/`, datasets → `data/`) al repo: como ficheros en commit/Draft PR o como **assets** del Release. La documentación generada usa tu usuario y el año reales (sin inventar) |
 | 📝 **Resume hilos de issues/PRs** | Introduce `owner/repo#42` y la IA resume la discusión (TL;DR · puntos clave · decisiones/pendientes · tono); en PRs incluye los comentarios de revisión |
+| 📋 **Genera el changelog de un repo** | Indica `owner/repo` y reúne los commits **desde el último release** (o los recientes), los agrupa por tipo (Novedades, Correcciones…) y la IA los redacta en **lenguaje de usuario** — listo para tus notas de publicación |
+| ⏹️ **Detener la generación** | Cancela una respuesta en curso al instante; se conserva lo ya escrito |
 | 🔑 **Multi-proveedor de IA** | **Groq Cloud**, **Google Gemini** y **OpenRouter** (pasarela a OpenAI, Claude, Llama… con modelos 🆓 gratuitos y de pago) — usas tu propia clave |
 | 🔒 **Autenticación OAuth** | Flujo GitHub OAuth completo con fallback a PAT manual |
 | 🛡️ **Rate limiting** | Protección contra abuso en el proxy de Gemini (40 req/min por IP) |
@@ -302,7 +304,7 @@ npm run test:coverage # Tests con reporte de cobertura
 
 ### Cobertura actual
 
-- **Cobertura total:** ~60% (401 tests en el cliente; ver Codecov para el valor exacto)
+- **Cobertura total:** ~60% (419 tests en el cliente; ver Codecov para el valor exacto)
 - **Módulos testeados:** AuthContext, AIProviderContext, providers, actionExecutor, github, gemini, assistantActions, docPublisher, threadSummary, modeDetection, formatResult, repoRef, releaseGenerator, releaseAssets, pdfReader, pdfAdvanced, spreadsheetReader, powerbiReader, docxReader, useChat, useActions, ChatArea, ChatInput, ChatMessage, ConfirmModal, DocModal, FilePublishModal, PublishActions, FileAttachButton, Header, TemplatePanel, AIProviderPanel, AIProviderBadge, RepoContextButton, ThreadSummaryButton — más los tests del servidor (rate limiter)
 - **Badge con cobertura actual:** [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
 
