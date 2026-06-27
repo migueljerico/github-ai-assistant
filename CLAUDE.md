@@ -15,7 +15,7 @@ probar, y las convenciones que es fácil romper sin querer.
 
 ## 1. Visión general
 
-**GitHub AI Assistant** (v3.16.0) es una app web que permite operar la **GitHub
+**GitHub AI Assistant** (v3.17.0) es una app web que permite operar la **GitHub
 REST API en lenguaje natural** a través de un proveedor de IA (Google Gemini o
 Groq Cloud). El usuario escribe una instrucción, la IA propone una acción, y
 **cada operación de escritura se confirma manualmente** antes de ejecutarse.
@@ -150,7 +150,8 @@ se guarda ni se loguea en el servidor.
 │   │   │   ├── AuthContext.tsx        # Token de GitHub (sessionStorage)
 │   │   │   ├── AIProviderContext.tsx  # Proveedor/apiKey/model — Zero-Storage (solo memoria)
 │   │   │   └── HistoryContext.tsx     # Log de acciones de la sesión
-│   │   ├── hooks/            # useChat, useActions
+│   │   ├── hooks/            # useChat, useActions,
+│   │   │                     #   useModalDialog (#39: a11y de modales — Esc, focus-trap, foco restaurado)
 │   │   ├── utils/            # formatResult, repoRef (resolveRepoRef), pdfReader/pdfAdvanced,
 │   │   │                     #   spreadsheetReader (Excel/CSV vía SheetJS #28 Fase 3a),
 │   │   │                     #   powerbiReader (.pbix/.pbit vía fflate: informe + modelo/DAX + Power Query/M del DataMashup #28 Fase 3b/3b-bis),
@@ -161,6 +162,7 @@ se guarda ni se loguea en el servidor.
 │   │   │                     #   retry (#40: withTransientRetry/isTransientError/isAbortError, compartido IA+GitHub),
 │   │   │                     #   rateLimitHandler, modeDetection (chat vs action), modelLabels
 │   │   ├── components/       # Agrupados por feature:
+│   │   │                     #   ErrorBoundary (#39: red de seguridad de UI ante errores de render)
 │   │   │                     #   auth/ ai-provider/ chat/ confirm/ layout/
 │   │   │                     #   multi-repo/ templates/
 │   │   │                     #   confirm/: ConfirmModal, DocModal (repo), FilePublishModal

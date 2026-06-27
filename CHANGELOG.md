@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.17.0] — 2026-06-27
+
+### Added
+- **Pantalla de error amable + diálogos más accesibles (#39, Sprint 3)** — (1) **Red de seguridad de UI:** si un componente falla durante el render, en vez de quedarse la pantalla en blanco la app muestra una pantalla de error clara ("Algo ha fallado") con un botón **🔄 Recargar**; tus datos no se envían a ningún sitio. Nuevo `components/ErrorBoundary.tsx` envolviendo toda la app. (2) **Accesibilidad de los modales** (confirmar acción, Documentar repo, Documentar y publicar): se cierran con **`Esc`**, **atrapan el foco** con `Tab`/`Shift+Tab` (no se escapa del diálogo), gestionan el **foco inicial** y lo **restauran** al cerrarse, y exponen `aria-labelledby` para lectores de pantalla. Nuevo hook compartido `hooks/useModalDialog.ts`.
+
+### Testing
+- `ErrorBoundary` (fallback ante hijo que lanza; render normal), `useModalDialog` (foco inicial, cierre con Esc, focus-trap con Tab/Shift+Tab). Cliente: **442 tests**.
+
 ## [3.16.0] — 2026-06-27
 
 ### Changed

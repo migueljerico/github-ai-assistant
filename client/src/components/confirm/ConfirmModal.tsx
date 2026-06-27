@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { PendingAction } from '../../types';
 import DiffViewer from './DiffViewer';
+import { useModalDialog } from '../../hooks/useModalDialog';
 
 interface ConfirmModalProps {
   pendingAction: PendingAction;
@@ -18,6 +19,7 @@ export default function ConfirmModal({
   const { action, targetRepos } = pendingAction;
   const [activeRepoIndex, setActiveRepoIndex] = useState(0);
   const isMulti = targetRepos.length > 1;
+  const modalRef = useModalDialog<HTMLDivElement>(onCancel);
 
   const hasDiff = !!action.contenidoActual && !!action.contenidoPropuesto;
   const isNewFile = !action.contenidoActual && !!action.contenidoPropuesto;
@@ -28,7 +30,7 @@ export default function ConfirmModal({
 
   return (
     <div className="overlay" role="dialog" aria-modal="true" aria-label="Confirmar acción">
-      <div className="modal">
+      <div className="modal" ref={modalRef}>
         {/* Header */}
         <div className="modal-header">
           <span className="modal-icon">{typeEmojis[action.tipo] ?? '🤖'}</span>

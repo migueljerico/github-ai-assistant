@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import PublishActions from './PublishActions';
+import { useModalDialog } from '../../hooks/useModalDialog';
 
 // ── Props ──────────────────────────────────────────────────────────────────────
 interface FilePublishModalProps {
@@ -49,6 +50,7 @@ export default function FilePublishModal({
   // (el padre solo expone un `busy` único).
   const [pending, setPending] = useState<'commit' | 'draftpr' | 'release' | null>(null);
   const repoOk = repo.trim().length > 0;
+  const modalRef = useModalDialog<HTMLDivElement>(onCancel);
 
   const doCommit = () => { setPending('commit'); onCommit(repo.trim(), uploadSource, extras); };
   const doDraftPr = () => { setPending('draftpr'); onDraftPr(repo.trim(), uploadSource, extras); };
@@ -67,12 +69,12 @@ export default function FilePublishModal({
   };
 
   return (
-    <div className="overlay" role="dialog" aria-modal="true">
-      <div className="modal doc-repo-modal">
+    <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="filepub-modal-title">
+      <div className="modal doc-repo-modal" ref={modalRef}>
         <div className="modal-header">
           <span className="modal-icon">📤</span>
           <div>
-            <div className="modal-title">Documentar y publicar — {fileName}</div>
+            <div className="modal-title" id="filepub-modal-title">Documentar y publicar — {fileName}</div>
             <div className="modal-subtitle">
               Revisa la documentación generada, indica el repositorio destino y elige cómo publicarla.
               <br />

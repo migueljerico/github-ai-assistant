@@ -8,6 +8,7 @@ import { AIProviderContextProvider, useAIProvider } from './context/AIProviderCo
 import LoginButton from './components/auth/LoginButton.tsx';
 import PatInput from './components/auth/PatInput.tsx';
 import AIProviderPanel from './components/ai-provider/AIProviderPanel.tsx';
+import ErrorBoundary from './components/ErrorBoundary.tsx';
 
 // ── Step 1: GitHub Auth Gate ──────────────────────────────────────────────────
 function AuthGate() {
@@ -88,6 +89,8 @@ function Root() {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <Root />
+    <ErrorBoundary>
+      <Root />
+    </ErrorBoundary>
   </StrictMode>,
 );
