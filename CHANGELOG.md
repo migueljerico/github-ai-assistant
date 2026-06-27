@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.11.1] — 2026-06-27
+
+### Changed
+- **Documentación de repos más coherente (#20)** — Al generar la documentación de un repositorio, el contenido de cada archivo se recorta ahora por **líneas completas** (las primeras ~80, preservando imports y firmas de funciones) en vez de cortar a 2000 **caracteres**, que partía funciones a la mitad y dejaba código sin sentido para el modelo. Nuevo helper puro `truncateByLines` reutilizado también por el contexto de chat (`buildRepoContextSummary`).
+
+### Testing
+- `truncateByLines` (intacto si cabe; trunca por líneas + nota de omitidas) y `generateRepoDocs` (trunca por líneas, no por caracteres). Cliente: **383 tests**.
+
 ## [3.11.0] — 2026-06-27
 
 ### Added
