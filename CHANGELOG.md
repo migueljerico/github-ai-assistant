@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.19.0] — 2026-06-27
+
+### Added
+- **Exportar/importar la conversación (#46, Sprint 4)** — Nuevos botones **💾 Exportar** y **📂 Importar**: descarga la conversación actual como un **JSON** y recupérala en otra sesión (p. ej. tras recargar con F5). Útil para no perder el contexto de lo que estabas haciendo con un repo. **Respeta Zero-Storage**: nada se auto-persiste en el navegador (ni `localStorage` ni IndexedDB) — el fichero lo controlas tú. Si la conversación tenía un repo de contexto activo, al importar se **recarga** su contexto. Nuevos `utils/conversationIO.ts` (`serializeConversation`/`parseConversation`/`conversationFilename`, puros) y `components/chat/ConversationIOButton.tsx`.
+
+### Testing
+- `conversationIO` (round-trip, revive `timestamp`, descarta `isLoading`, errores claros ante JSON inválido, nombre de fichero) y `ConversationIOButton`. Cliente: **476 tests**.
+
 ## [3.18.0] — 2026-06-27
 
 ### Added

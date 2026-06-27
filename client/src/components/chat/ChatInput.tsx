@@ -6,6 +6,7 @@ import RepoContextButton from './RepoContextButton';
 import ThreadSummaryButton from './ThreadSummaryButton';
 import ChangelogButton from './ChangelogButton';
 import CodeHealthButton from './CodeHealthButton';
+import ConversationIOButton from './ConversationIOButton';
 import FileAttachButton from './FileAttachButton';
 
 interface ChatInputProps {
@@ -27,6 +28,10 @@ interface ChatInputProps {
   onGenerateChangelog: (input: string) => void;
   // #44 - Dashboard "Salud del código"
   onCodeHealth: (input: string) => void;
+  // #46 - Exportar/importar la conversación (Zero-Storage)
+  onExportConversation: () => void;
+  onImportConversation: (file: File) => void;
+  hasMessages: boolean;
   // #41 - Contexto de repo para opiniones fundamentadas
   repoContextName: string | null;
   onLoadRepoContext: (repoName: string) => void;
@@ -57,6 +62,9 @@ export default function ChatInput({
   onSummarizeThread,
   onGenerateChangelog,
   onCodeHealth,
+  onExportConversation,
+  onImportConversation,
+  hasMessages,
   repoContextName,
   onLoadRepoContext,
   onClearRepoContext,
@@ -191,6 +199,13 @@ export default function ChatInput({
         <CodeHealthButton
           disabled={disabled}
           onCodeHealth={onCodeHealth}
+        />
+
+        <ConversationIOButton
+          disabled={disabled}
+          hasMessages={hasMessages}
+          onExport={onExportConversation}
+          onImport={onImportConversation}
         />
 
         <RepoContextButton
