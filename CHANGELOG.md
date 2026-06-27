@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.11.0] — 2026-06-27
+
+### Added
+- **Adjuntar documentos Word (`.docx`)** — Ahora puedes subir un documento de Word y trabajar con él en lenguaje natural (preguntar, opinar, resumir, documentar), igual que con PDF/Excel/Power BI. Un `.docx` es un ZIP OOXML: se extrae el **texto** de `word/document.xml` (párrafos, listas y el contenido de las tablas) **solo en tu navegador** (Zero-Storage), reutilizando `fflate` (sin nuevas dependencias). Documentos muy largos se analizan por una **parte acotada** con aviso. El `.doc` binario antiguo no está soportado (exporta a `.docx`). Nuevo `utils/docxReader.ts` (`readDocx` + helper puro `docxXmlToText`); `runAttachFile` enruta `.docx`.
+
+### Testing
+- `docxReader` (extracción de párrafos/tablas, entidades XML, truncado, errores) + `runAttachFile` con `.docx` + `assertSupportedFile` acepta `.docx`. Cliente: **380 tests**.
+
 ## [3.10.0] — 2026-06-26
 
 ### Changed

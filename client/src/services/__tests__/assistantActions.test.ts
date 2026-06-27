@@ -60,11 +60,13 @@ vi.mock('../../utils/spreadsheetReader', () => ({
   SPREADSHEET_SAMPLE_ROWS: 100,
 }));
 vi.mock('../../utils/powerbiReader', () => ({ readPowerBI: vi.fn() }));
+vi.mock('../../utils/docxReader', () => ({ readDocx: vi.fn() }));
 
 import { generateRepoDocs, generateFileDoc, buildRepoContextSummary, callAI, parseGeminiAction, chatPromptWithContext } from '../gemini';
 import { assertSupportedFile, readFileContent } from '../../utils/pdfReader';
 import { readSpreadsheet } from '../../utils/spreadsheetReader';
 import { readPowerBI } from '../../utils/powerbiReader';
+import { readDocx } from '../../utils/docxReader';
 import { fetchRepoTreeRecursive, getFileContents, createRepo, repoExists } from '../github';
 import { writeDocFiles, createDocsDraftPr, publishFileDoc } from '../docPublisher';
 import { summarizeThread, parseThreadInput, listOpenThreads, formatThreadList } from '../threadSummary';
@@ -597,6 +599,42 @@ describe('runAttachFile (#28)', () => {
 
     expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', expect.objectContaining({
       content: expect.stringContaining('muestra acotada'),
+    }));
+  });
+
+  it('Word .docx: usa readDocx y devuelve el contexto (#28)', async () => {
+    vi.mocked(assertSupportedFile).mockReturnValue(undefined);
+    vi.mocked(readDocx).mockResolvedValue({
+      text: 'Texto de la memoria del proyecto...',
+      summary: 'Documento Word: ~520 palabras',
+      truncated: false,
+    });
+    const deps = makeDeps();
+
+    const ctx = await runAttachFile(deps, new File(['x'], 'memoria.docx'));
+
+    expect(readDocx).toHaveBeenCalled();
+    expect(readFileContent).not.toHaveBeenCalled();
+    expect(ctx).toEqual({ name: 'memoria.docx', contextText: expect.stringContaining('documento Word') });
+    expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', expect.objectContaining({
+      content: expect.stringContaining('Documento Word: ~520 palabras'),
+      isLoading: false,
+    }));
+  });
+
+  it('Word .docx largo: avisa de parte acotada cuando truncado', async () => {
+    vi.mocked(assertSupportedFile).mockReturnValue(undefined);
+    vi.mocked(readDocx).mockResolvedValue({
+      text: 'Texto largo...',
+      summary: 'Documento Word: ~9000 palabras',
+      truncated: true,
+    });
+    const deps = makeDeps();
+
+    await runAttachFile(deps, new File(['x'], 'tesis.docx'));
+
+    expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', expect.objectContaining({
+      content: expect.stringContaining('parte acotada'),
     }));
   });
 });
