@@ -5,9 +5,14 @@
 # — ver convención en CLAUDE.md §5). Por diseño están a ~0% de cobertura, lo que
 # tumbaba el `patch` en PRs de solo-cableado. Se excluyen para que el patch mida la
 # lógica real y no el glue.
+#
+# `CodeHealthCharts.tsx` (#44) es JSX puro de Recharts (presentación): no se testea
+# en jsdom (ResponsiveContainer mide el DOM y no renderiza) y se mockea en los tests
+# del modal. La lógica de las métricas vive en `utils/codeHealth.ts`, ya testeada.
 ignore:
   - "client/src/App.tsx"
   - "client/src/main.tsx"
+  - "client/src/components/dashboard/CodeHealthCharts.tsx"
 
 coverage:
   status:
