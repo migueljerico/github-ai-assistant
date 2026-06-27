@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.11.2] — 2026-06-27
+
+### Changed
+- **System prompts en archivos externos (#23)** — Los prompts del modo acción y del modo chat se
+  movieron de literales dentro de `services/gemini.ts` a archivos `client/src/prompts/*.md`,
+  cargados como texto crudo (`import … from '…?raw'` de Vite). Adelgaza el módulo más grande, hace
+  los prompts mucho más fáciles de leer/editar y **sienta la base para i18n** (#24). Sin cambio de
+  comportamiento (contenido idéntico). Los prompts con interpolación dentro de funciones
+  (`generateRepoDocs`/`generateFileDoc`) quedan inline por ahora (posible continuación).
+
 ## [3.11.1] — 2026-06-27
 
 ### Changed

@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v3.11.1 · Junio 2026
+**Actualizado a:** v3.11.2 · Junio 2026
 
 ---
 
@@ -126,7 +126,7 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 #### #26 — Mantener y expandir cobertura de tests con Codecov
 **Esfuerzo:** Continuo (2-4h por sprint)
 
-**Estado actual (v3.11.1):** ✅ Infraestructura completa implementada
+**Estado actual (v3.11.2):** ✅ Infraestructura completa implementada
 
 **Progreso realizado:**
 - ✅ Configuración de Vitest + Codecov
