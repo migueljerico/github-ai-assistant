@@ -14,6 +14,7 @@ import type { AIProviderConfig } from './gemini';
 import { fetchRepoTreeRecursive, getFileContents, decodeBase64, createRepo, repoExists, GitHubAPIError } from './github';
 import { writeDocFiles, createDocsDraftPr, publishFileDoc } from './docPublisher';
 import { summarizeThread, parseThreadInput, listOpenThreads, formatThreadList } from './threadSummary';
+import { generateChangelog } from './changelogGenerator';
 import { executeAction, executeActionMultiRepo } from './actionExecutor';
 import { createGitHubRelease, suggestNextVersion } from '../utils/releaseGenerator';
 import { uploadReleaseAsset, getMimeType } from '../utils/releaseAssets';
@@ -229,6 +230,35 @@ export async function runSummarizeThread(
   } catch (err) {
     updateMessage(loadingId, { content: `❌ Error al resumir el hilo ${ref}: ${(err as Error).message}`, isLoading: false });
     updateEntry(histId, { status: 'error', description: `Error al resumir ${ref}` });
+  } finally {
+    setIsChatLoading(false);
+  }
+}
+
+/**
+ * Genera las notas de release de un repo (#34) y las muestra como burbuja de chat.
+ * Enfoque híbrido (agrupar por prefijo + pulir con IA) en `generateChangelog`.
+ */
+export async function runGenerateChangelog(deps: ChatDeps, config: AIProviderConfig, input: string): Promise<void> {
+  const { token, user, providerName, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading } = deps;
+  const { owner, repo } = resolveRepoRef(input, user.login);
+  if (!repo) {
+    addMessage({ role: 'assistant', content: '❌ Indícame el repositorio, p. ej. `owner/repo` o solo el nombre del repo.' });
+    return;
+  }
+
+  setIsChatLoading(true);
+  const ref = `${owner}/${repo}`;
+  const loadingId = addMessage({ role: 'assistant', content: `🔎 Generando el changelog de **${ref}** con ${providerName}...`, isLoading: true });
+  const histId = addEntry({ status: 'pending', description: `Generando changelog de ${ref}`, repo: ref });
+
+  try {
+    const md = await generateChangelog(token, owner, repo, config);
+    updateMessage(loadingId, { content: `📋 **Changelog de ${ref}**\n\n${md}`, isLoading: false });
+    updateEntry(histId, { status: 'completed', description: `Changelog generado para ${ref}` });
+  } catch (err) {
+    updateMessage(loadingId, { content: `❌ ${(err as Error).message}`, isLoading: false });
+    updateEntry(histId, { status: 'error', description: `Error al generar changelog de ${ref}` });
   } finally {
     setIsChatLoading(false);
   }

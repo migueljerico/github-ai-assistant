@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v3.13.0 · Junio 2026
+**Actualizado a:** v3.14.0 · Junio 2026
 
 ---
 
@@ -37,6 +37,7 @@ Estado del código, mejoras pendientes y roadmap del proyecto.
 | 28 | Archivos locales — **documentos Word (.docx)**: ZIP OOXML; se extrae el texto de `word/document.xml` (párrafos, listas y tablas) vía fflate, con muestra acotada | utils/docxReader.ts (readDocx, docxXmlToText), utils/pdfReader.ts, services/assistantActions.ts (runAttachFile) | v3.11.0 |
 | 20 | Documentación de repos truncada por líneas (no por caracteres) | services/gemini.ts (truncateByLines) | v3.11.1 |
 | 23 | System prompts en archivos `.md` externos (?raw) | services/gemini.ts, prompts/*.md | v3.11.2 |
+| 34 | Changelog automático de un repo (agrupar por prefijo + pulir con IA; burbuja de chat) | services/changelogGenerator.ts, github.ts (compareCommits/getLatestReleaseTag), ChangelogButton.tsx | v3.14.0 |
 | — | #40 (parcial): recordar proveedor/modelo (sin la key) + botón Detener (cancelar generación) | AIProviderContext.tsx, utils/providerPrefs.ts, gemini.ts, App.tsx, ChatInput.tsx | v3.12.0 / v3.13.0 |
 | — | Crear Release desde "Documentar repo" (además de commit/Draft PR) | assistantActions.ts (runCreateRepoRelease), DocModal.tsx | v3.8.0 |
 | — | Unificar los controles de los dos flujos de documentación (barra compartida commit/Draft PR/Release) | components/confirm/PublishActions.tsx, DocModal.tsx, FilePublishModal.tsx | v3.10.0 |
@@ -49,10 +50,10 @@ Estado del código, mejoras pendientes y roadmap del proyecto.
 Secuencia acordada con el autor para abordar lo pendiente. Es **independiente de la sesión o
 herramienta**: si el trabajo continúa en otro entorno, este es el orden de referencia.
 
-- **🥇 Sprint 1 — Robustez y pulido del núcleo (quick wins):** **#20** (documentación sin cortar
-  funciones, truncado por líneas) · **#23** (prompts a archivos `.md` → adelgaza `gemini.ts`,
-  desbloquea i18n) · **#40 parcial** (botón **Detener** + recordar proveedor/modelo al recargar) ·
-  **#34** (changelog automático de releases).
+- **🥇 Sprint 1 — Robustez y pulido del núcleo (quick wins) — ✅ COMPLETADO (v3.11.1–v3.14.0):**
+  **#20** (documentación sin cortar funciones, truncado por líneas) ✅ · **#23** (prompts a archivos
+  `.md`) ✅ · **#40 parcial** (botón **Detener** + recordar proveedor/modelo) ✅ · **#34** (changelog
+  automático de releases) ✅.
 - **🥈 Sprint 2 — Calidad de IA / contexto:** **#49** (seleccionar archivos relevantes del repo
   antes de llamar al LLM: mejores respuestas, menos tokens) · resto de **#40** (validación `zod` +
   reintentos en `ghFetch`).
@@ -119,14 +120,14 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 #### #26 — Mantener y expandir cobertura de tests con Codecov
 **Esfuerzo:** Continuo (2-4h por sprint)
 
-**Estado actual (v3.13.0):** ✅ Infraestructura completa implementada
+**Estado actual (v3.14.0):** ✅ Infraestructura completa implementada
 
 **Progreso realizado:**
 - ✅ Configuración de Vitest + Codecov
 - ✅ CI con GitHub Actions ejecutando tests (cliente + servidor) automáticamente
 - ✅ Badge de Codecov en README
 - ✅ Cobertura actual: **~60%** (ver Codecov para el valor exacto)
-- ✅ 401 tests en el cliente. Implementados para:
+- ✅ 419 tests en el cliente. Implementados para:
   - `AuthContext.tsx` (login, logout, OAuth flow, Zero-Storage)
   - `AIProviderContext.tsx` (conexión/desconexión de proveedores)
   - `providers.ts` (registro de proveedores, detección de modelos 🆓, caché, `pickDefaultModel`)
@@ -251,20 +252,6 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 ---
 
-#### #34 — Generar changelogs de lanzamientos
-**Esfuerzo:** 2h
-
-**Problema actual:** Los changelogs se hacen manualmente y suelen estar desactualizados.
-
-**Solución propuesta:**
-- Analizar commits entre dos tags/releases
-- Clasificar commits (feat, fix, docs, refactor)
-- Generar CHANGELOG.md con formato Keep a Changelog
-
-**Beneficio:** Documentación automática de releases; comunicación clara a usuarios.
-
----
-
 #### #35 — Automatizar gestión de labels/proyectos
 **Esfuerzo:** 3h
 
@@ -351,8 +338,8 @@ malformadas de la IA.
 |---|---|---|---|
 | 🔴 Alta | 8 | 8 (#1, #2, #13, #14, #27, #45, #15, #28) | 0 |
 | 🟡 Media | 15 | 11 (#12, #17, #18, #19, #21, #37, #41, #32, #42, #38, #20) | 4 (#26, #39, #44, #49) |
-| 🟢 Baja | 11 | 1 (#23) | 10 (#22, #24, #25, #33, #34, #35, #36, #40, #46, #48) |
-| **TOTAL** | **34** | **20** | **14** |
+| 🟢 Baja | 11 | 2 (#23, #34) | 9 (#22, #24, #25, #33, #35, #36, #40, #46, #48) |
+| **TOTAL** | **34** | **21** | **13** |
 
 > **#28** cubierto en su **norte** por las Fases 1 (v3.0.0, adjuntar como contexto) y
 > 2 (v3.1.0, documentar→publicar). **Más formatos:** Fase 3a (v3.2.0, Excel/CSV) y

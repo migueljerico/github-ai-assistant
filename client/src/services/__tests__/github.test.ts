@@ -17,6 +17,9 @@ import {
   getIssueOrPr,
   getIssueComments,
   getPullReviewComments,
+  getLatestReleaseTag,
+  compareCommits,
+  listRecentCommits,
 } from '../github';
 
 // Mock de fetch global
@@ -292,6 +295,50 @@ describe('github.ts', () => {
         'https://api.github.com/repos/testuser/myrepo',
         expect.any(Object)
       );
+    });
+  });
+
+  describe('getLatestReleaseTag (#34)', () => {
+    it('devuelve el tag del último release', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ tag_name: 'v1.2.3' }) } as any);
+      await expect(getLatestReleaseTag('tok', 'o', 'r')).resolves.toBe('v1.2.3');
+      expect(fetch).toHaveBeenCalledWith('https://api.github.com/repos/o/r/releases/latest', expect.any(Object));
+    });
+
+    it('devuelve null si el repo no tiene releases (404)', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce({ ok: false, status: 404, json: async () => ({ message: 'Not Found' }) } as any);
+      await expect(getLatestReleaseTag('tok', 'o', 'r')).resolves.toBeNull();
+    });
+
+    it('propaga otros errores (500)', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({ message: 'boom' }) } as any);
+      await expect(getLatestReleaseTag('tok', 'o', 'r')).rejects.toThrow();
+    });
+  });
+
+  describe('compareCommits / listRecentCommits (#34)', () => {
+    it('compareCommits mapea los commits entre base y head', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ commits: [{ sha: 'a', commit: { message: 'feat: x' } }, { sha: 'b', commit: { message: 'fix: y' } }] }),
+      } as any);
+
+      const out = await compareCommits('tok', 'o', 'r', 'v1.0.0', 'main');
+
+      expect(out).toEqual([{ sha: 'a', message: 'feat: x' }, { sha: 'b', message: 'fix: y' }]);
+      expect(fetch).toHaveBeenCalledWith('https://api.github.com/repos/o/r/compare/v1.0.0...main', expect.any(Object));
+    });
+
+    it('listRecentCommits mapea la lista de commits', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce({
+        ok: true,
+        json: async () => [{ sha: 'c', commit: { message: 'docs: z' } }],
+      } as any);
+
+      const out = await listRecentCommits('tok', 'o', 'r', 10);
+
+      expect(out).toEqual([{ sha: 'c', message: 'docs: z' }]);
+      expect(fetch).toHaveBeenCalledWith('https://api.github.com/repos/o/r/commits?per_page=10', expect.any(Object));
     });
   });
 

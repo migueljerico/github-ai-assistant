@@ -93,6 +93,41 @@ export async function getRepo(
   return ghFetch<GitHubRepo>(token, `/repos/${owner}/${repo}`);
 }
 
+// ── Commits & releases (para #34 — changelog automático) ─────────────────────
+
+/** Resumen mínimo de un commit (lo único que necesita el changelog). */
+export interface CommitSummary {
+  sha: string;
+  message: string;
+}
+
+/** Tag del último release publicado, o `null` si el repo aún no tiene releases. */
+export async function getLatestReleaseTag(token: string, owner: string, repo: string): Promise<string | null> {
+  try {
+    const rel = await ghFetch<{ tag_name?: string }>(token, `/repos/${owner}/${repo}/releases/latest`);
+    return rel.tag_name ?? null;
+  } catch (err) {
+    if (err instanceof GitHubAPIError && err.status === 404) return null; // sin releases aún
+    throw err;
+  }
+}
+
+/** Commits entre `base` y `head` (los que están en head y no en base), vía la Compare API. */
+export async function compareCommits(token: string, owner: string, repo: string, base: string, head: string): Promise<CommitSummary[]> {
+  const data = await ghFetch<{ commits?: Array<{ sha: string; commit: { message: string } }> }>(
+    token, `/repos/${owner}/${repo}/compare/${encodeURIComponent(base)}...${encodeURIComponent(head)}`,
+  );
+  return (data.commits ?? []).map(c => ({ sha: c.sha, message: c.commit.message }));
+}
+
+/** Commits recientes de la rama por defecto (fallback cuando el repo no tiene releases). */
+export async function listRecentCommits(token: string, owner: string, repo: string, perPage = 50): Promise<CommitSummary[]> {
+  const data = await ghFetch<Array<{ sha: string; commit: { message: string } }>>(
+    token, `/repos/${owner}/${repo}/commits?per_page=${perPage}`,
+  );
+  return data.map(c => ({ sha: c.sha, message: c.commit.message }));
+}
+
 /**
  * Create a new repository for the authenticated user.
  * @param token - GitHub OAuth token or PAT (requires `repo` scope)

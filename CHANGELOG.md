@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.14.0] — 2026-06-27
+
+### Added
+- **Changelog automático de un repositorio (#34)** — Nuevo botón **📋 Generar changelog**: indicas un repo (`owner/repo` o solo el nombre) y la app reúne los commits **desde el último release** (o los recientes si no hay ninguno), los **agrupa por tipo** (Novedades, Correcciones, Documentación, Mantenimiento…) de forma determinista por el prefijo del commit, y la **IA los redacta en lenguaje de usuario**. El resultado aparece como una burbuja de chat lista para copiar — ideal para preparar las notas de tu próxima publicación. Nuevos wrappers `getLatestReleaseTag`/`compareCommits`/`listRecentCommits` (github.ts), `changelogGenerator.ts` (`classifyCommits` + `generateChangelog`), `runGenerateChangelog` y `ChangelogButton`.
+
+### Testing
+- `classifyCommits` (agrupación por prefijo), `generateChangelog` (con/sin release, filtra merges, limpia fences), wrappers de commits/releases, `runGenerateChangelog` y `ChangelogButton`. Cliente: **419 tests**.
+
 ## [3.13.0] — 2026-06-27
 
 ### Added

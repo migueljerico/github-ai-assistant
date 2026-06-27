@@ -4,7 +4,7 @@ import { useHistory } from './context/HistoryContext';
 import { useAIProvider } from './context/AIProviderContext';
 import { getProvider } from './services/providers';
 import {
-  runDocumentRepo, runLoadRepoContext, runSummarizeThread, runCommitDocs, runCreateDraftPr, runCreateRepoRelease,
+  runDocumentRepo, runLoadRepoContext, runSummarizeThread, runGenerateChangelog, runCommitDocs, runCreateDraftPr, runCreateRepoRelease,
   runSend, runConfirmAction, runCancelAction, runAttachFile,
   runGenerateFileDoc, runCreateRepo, runStartPublish, runPublishFileDocByKind, formatConversation,
 } from './services/assistantActions';
@@ -273,6 +273,16 @@ export default function App() {
     );
   }, [token, user, provider, apiKey, model, providerName, repoContext, addMessage, updateMessage, addEntry, updateEntry]);
 
+  // ── Generar changelog del repo (#34) ─────────────────────────────────────────
+  const handleGenerateChangelog = useCallback(async (input: string) => {
+    if (!token || !user || !provider || !apiKey || !model) return;
+    await runGenerateChangelog(
+      { token, user, providerName, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+      { provider, apiKey, model },
+      input,
+    );
+  }, [token, user, provider, apiKey, model, providerName, addMessage, updateMessage, addEntry, updateEntry]);
+
   // ── Commit docs (commit directo a la rama por defecto) ───────────────────────
   const handleCommitDocs = useCallback(async () => {
     if (!docAnalysis || !token || !user) return;
@@ -366,6 +376,7 @@ export default function App() {
             onSelectedReposChange={setSelectedRepos}
             onDocumentRepo={handleDocumentRepo}
             onSummarizeThread={handleSummarizeThread}
+            onGenerateChangelog={handleGenerateChangelog}
             repoContextName={repoContext?.repoName ?? null}
             onLoadRepoContext={handleLoadRepoContext}
             onClearRepoContext={handleClearRepoContext}
