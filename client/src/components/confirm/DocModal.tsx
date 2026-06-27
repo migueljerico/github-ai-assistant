@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { RepoAnalysis } from '../../types';
 import PublishActions from './PublishActions';
+import { useModalDialog } from '../../hooks/useModalDialog';
 
 // ── Props ──────────────────────────────────────────────────────────────────────
 interface DocModalProps {
@@ -32,14 +33,15 @@ export default function DocModal({
   const [activeTab, setActiveTab] = useState<'readme' | 'manual'>('readme');
   const [version, setVersion] = useState('');
   const busy = isCommitting || isCreatingDraftPr || isCreatingRelease;
+  const modalRef = useModalDialog<HTMLDivElement>(onCancel);
 
   return (
-    <div className="overlay" role="dialog" aria-modal="true">
-      <div className="modal doc-repo-modal">
+    <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="doc-modal-title">
+      <div className="modal doc-repo-modal" ref={modalRef}>
         <div className="modal-header">
           <span className="modal-icon">📄</span>
           <div>
-            <div className="modal-title">Documentación generada para {analysis.repoName}</div>
+            <div className="modal-title" id="doc-modal-title">Documentación generada para {analysis.repoName}</div>
             <div className="modal-subtitle">
               Analicé {analysis.filesAnalyzed} archivo{analysis.filesAnalyzed !== 1 ? 's' : ''}.
               Revisa el contenido antes de publicarlo.

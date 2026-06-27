@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v3.16.0 · Junio 2026
+**Actualizado a:** v3.17.0 · Junio 2026
 
 ---
 
@@ -40,6 +40,7 @@ Estado del código, mejoras pendientes y roadmap del proyecto.
 | 34 | Changelog automático de un repo (agrupar por prefijo + pulir con IA; burbuja de chat) | services/changelogGenerator.ts, github.ts (compareCommits/getLatestReleaseTag), ChangelogButton.tsx | v3.14.0 |
 | 49 | Selección de archivos relevantes a la pregunta (ranking léxico BM25 + árbol completo; deja de "no ver" archivos) | utils/contextRanker.ts, github.ts (allPaths), gemini.ts (buildRepoContextSummary), assistantActions.ts (runSend) | v3.15.0 |
 | 40 | Robustez de red e IA/UX: reintentos transitorios (IA + GitHub), botón Detener, recordar proveedor/modelo, validación estricta del JSON de acción | utils/retry.ts, gemini.ts, github.ts (ghFetch), AIProviderContext.tsx, providerPrefs.ts, App.tsx, ChatInput.tsx | v2.7.3–v3.16.0 |
+| 39 | ErrorBoundary (red de seguridad de UI ante errores de render) + accesibilidad de los modales (Esc, focus-trap, foco restaurado, aria-labelledby) | components/ErrorBoundary.tsx, hooks/useModalDialog.ts, main.tsx, components/confirm/{ConfirmModal,DocModal,FilePublishModal}.tsx | v3.17.0 |
 | — | Crear Release desde "Documentar repo" (además de commit/Draft PR) | assistantActions.ts (runCreateRepoRelease), DocModal.tsx | v3.8.0 |
 | — | Unificar los controles de los dos flujos de documentación (barra compartida commit/Draft PR/Release) | components/confirm/PublishActions.tsx, DocModal.tsx, FilePublishModal.tsx | v3.10.0 |
 | — | Seguridad: `state` de OAuth con CSPRNG (crypto.randomUUID) | server/index.js | v3.7.1 |
@@ -58,8 +59,9 @@ herramienta**: si el trabajo continúa en otro entorno, este es el orden de refe
 - **🥈 Sprint 2 — Calidad de IA / contexto — ✅ COMPLETADO (v3.15.0–v3.16.0):** **#49** (seleccionar
   archivos relevantes del repo antes de llamar al LLM) ✅ **(v3.15.0)** · resto de **#40** (reintentos
   en `ghFetch` + validación estricta de la acción — sin `zod`) ✅ **(v3.16.0)**.
-- **🥉 Sprint 3 — UI robusta + escaparate de datos:** **#39** (ErrorBoundary + a11y) · **#44**
-  (dashboard "Salud del Código" con Recharts — pieza de escaparate Análisis de Datos).
+- **🥉 Sprint 3 — UI robusta + escaparate de datos:** **#39** (ErrorBoundary + a11y) ✅ **(v3.17.0)** ·
+  queda **#44** (dashboard "Salud del Código" con Recharts — pieza de escaparate Análisis de Datos),
+  **aplazado** por decisión del autor ("lo veremos cuando acabemos").
 - **🏅 Sprint 4 — Alcance e i18n:** **#23→#24** (inglés) · **#46** (export/import de conversación).
 - **📋 Backlog:** #25 (logs/health), #22 (aviso de sesión), #48 (sync repo), **#36** (GitHub App —
   hito grande aparte). #26 (cobertura) es transversal: sube con cada sprint.
@@ -164,19 +166,6 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 **Beneficio:** Mayor confianza en cambios futuros; detección temprana de regresiones; documentación viva del comportamiento esperado.
 
 **Nota:** Esta mejora es transversal — cada vez que se resuelva otra mejora (#20, #28, #42, etc.), se deben añadir tests correspondientes.
-
----
-
-#### #39 — ErrorBoundary + accesibilidad (a11y)
-**Esfuerzo:** 4h
-
-**Problema actual:** Un fallo de render en cualquier componente tumba toda la SPA (no hay red de seguridad de UI). Además, los modales (`ConfirmModal`, `DocModal`) carecen de focus-trap, roles ARIA y navegación por teclado completa.
-
-**Solución propuesta:**
-- `ErrorBoundary` de React en `main.tsx` envolviendo `Root`, con pantalla de error amable y opción de recargar.
-- Focus-trap y `role="dialog"` / `aria-modal` en los modales; cierre con `Esc`; foco inicial gestionado.
-
-**Beneficio:** Robustez de UI ante errores inesperados; accesibilidad para usuarios de teclado y lectores de pantalla.
 
 ---
 
@@ -364,9 +353,9 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 | Prioridad | Total | ✅ Resueltos | ⏳ Pendientes |
 |---|---|---|---|
 | 🔴 Alta | 8 | 8 (#1, #2, #13, #14, #27, #45, #15, #28) | 0 |
-| 🟡 Media | 17 | 12 (#12, #17, #18, #19, #21, #37, #41, #32, #42, #38, #20, #49) | 5 (#26, #39, #44, #50, #51) |
+| 🟡 Media | 17 | 13 (#12, #17, #18, #19, #21, #37, #41, #32, #42, #38, #20, #49, #39) | 4 (#26, #44, #50, #51) |
 | 🟢 Baja | 13 | 3 (#23, #34, #40) | 10 (#22, #24, #25, #33, #35, #36, #46, #48, #52, #53) |
-| **TOTAL** | **38** | **23** | **15** |
+| **TOTAL** | **38** | **24** | **14** |
 
 > **#28** cubierto en su **norte** por las Fases 1 (v3.0.0, adjuntar como contexto) y
 > 2 (v3.1.0, documentar→publicar). **Más formatos:** Fase 3a (v3.2.0, Excel/CSV) y
