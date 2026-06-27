@@ -411,11 +411,14 @@ Este proyecto se ha construido con ayuda de varias IAs, pero bajo un principio: 
 | **Qwen** | Generación de componentes de código |
 | **Manus** | Ideas y propuestas; algunas implementaciones introdujeron regresiones que hubo que corregir |
 | **DeepSeek** · **GLM 5.2** | Propuestas para el roadmap, filtradas y curadas antes de incorporarse |
-| **Gemma 4 31B** (Google, vía OpenRouter) | Revisión de arquitectura del repo; su propuesta de gestión de contexto/RAG se incorporó al roadmap (#49), reformulada a un índice en memoria por el modelo "sin BD" |
+| **Gemma 4 31B** (Google, vía OpenRouter) | Revisión de arquitectura del repo; su propuesta de gestión de contexto/RAG se incorporó al roadmap (#49), reformulada a un índice en memoria por el modelo "sin BD". En una segunda ronda (dogfooding) aportó varias ideas de roadmap (#51 transparencia del ranker, #52 auditoría de seguridad, #53 commits semánticos) |
+| **Gemini 2.5 Flash** (Google) | Revisión del roadmap (dogfooding): métricas para el dashboard #44, inglés como 1er idioma de i18n, criterios de priorización |
 
 **Validación en acción:** por ejemplo, una propuesta de "memoria persistente con IndexedDB" se **rechazó** por contradecir la arquitectura Zero-Storage (y porque no funcionaba entre sesiones), reformulándose a export/import de fichero. Otras propuestas se ajustaron o descartaron tras revisarlas contra el código real.
 
 > 🔁 **Dogfooding:** la mejora de roadmap **#49** (gestión de la ventana de contexto) se obtuvo **usando la propia app** — cargando este repositorio como contexto y pidiendo una opinión de arquitectura a **Gemma 4 31B** a través del proveedor OpenRouter. Es decir, la herramienta se usó para mejorarse a sí misma, y la propuesta resultante se revisó y reformuló antes de incorporarla.
+>
+> 🔁 **Dogfooding (2ª ronda):** ya **con #49 en producción**, se volvió a cargar el repo como contexto (la app reconoció los 127 archivos, incluido el propio `MEJORAS_FUTURAS.md` — algo que antes negaba) y se pidió opinión del roadmap a **tres** modelos: **Gemini 2.5 Flash**, **Llama (Groq)** y **Gemma 4 31B (OpenRouter)**. De ahí salieron nuevos ítems de roadmap (#50–#53). Curiosamente, **Groq (tier gratuito) no pudo responder** por su límite de tokens/minuto al recibir todo el contexto del repo — un hallazgo real que motivó el ítem **#50** (ajustar el presupuesto de contexto para modelos pequeños). Validación cruzada: se incorporó lo accionable, se reformuló lo dudoso (#53) y se descartaron los elogios.
 
 > El valor no está en aceptar lo que dice una IA, sino en **saber preguntar a varias, contrastar y decidir con criterio**.
 
@@ -428,5 +431,5 @@ Este proyecto forma parte del programa de formación en Análisis de Datos e Int
 ---
 
 <p align="center">
-Desarrollado por <a href="https://github.com/migueljerico">@migueljerico</a> con la asistencia de <strong>Claude / Claude Code</strong> (Anthropic), <strong>Antigravity 2.0</strong> (Google), <strong>Qwen</strong>, <strong>Manus</strong>, <strong>DeepSeek</strong>, <strong>GLM 5.2</strong> y <strong>Gemma 4 31B</strong> — con validación cruzada y revisión crítica · 2026
+Desarrollado por <a href="https://github.com/migueljerico">@migueljerico</a> con la asistencia de <strong>Claude / Claude Code</strong> (Anthropic), <strong>Antigravity 2.0</strong> (Google), <strong>Qwen</strong>, <strong>Manus</strong>, <strong>DeepSeek</strong>, <strong>GLM 5.2</strong>, <strong>Gemma 4 31B</strong> y <strong>Gemini 2.5 Flash</strong> — con validación cruzada y revisión crítica · 2026
 </p>
