@@ -7,6 +7,7 @@ vi.mock('../gemini', () => ({
   buildRepoContextSummary: vi.fn(),
   callAI: vi.fn(),
   parseGeminiAction: vi.fn(),
+  isAbortError: (err: unknown) => (err as { name?: string })?.name === 'AbortError',
   chatPromptWithContext: vi.fn(() => 'CTX_PROMPT'),
   CHAT_PROMPT: 'CHAT_PROMPT',
   ACTION_PROMPT: 'ACTION_PROMPT',
@@ -414,6 +415,31 @@ describe('runSend', () => {
     await runSend(deps, CONFIG, SEND_PARAMS);
 
     expect(deps.updateMessage).toHaveBeenCalledWith('msg-2', expect.objectContaining({ content: expect.stringContaining('503 down'), isLoading: false }));
+  });
+
+  it('si el usuario cancela (AbortError) muestra "detenido", no una burbuja de error (#40)', async () => {
+    vi.mocked(resolveMode).mockReturnValue('action');
+    vi.mocked(callAI).mockRejectedValue(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+    const deps = makeDeps();
+
+    await runSend(deps, CONFIG, SEND_PARAMS);
+
+    expect(deps.updateMessage).toHaveBeenCalledWith('msg-2', { content: '⏹️ Generación detenida.', isLoading: false });
+    expect(deps.setPendingAction).not.toHaveBeenCalled();
+  });
+
+  it('al cancelar en streaming conserva el texto parcial con la nota (detenido) (#40)', async () => {
+    vi.mocked(resolveMode).mockReturnValue('chat');
+    vi.mocked(callAI).mockImplementation((async (...args: any[]) => {
+      const onToken = args[6] as ((t: string) => void) | undefined;
+      onToken?.('texto parcial');
+      throw Object.assign(new Error('aborted'), { name: 'AbortError' });
+    }) as any);
+    const deps = makeDeps();
+
+    await runSend(deps, CONFIG, SEND_PARAMS);
+
+    expect(deps.updateMessage).toHaveBeenLastCalledWith('msg-2', { content: 'texto parcial\n\n⏹️ _(detenido)_', isLoading: false });
   });
 });
 

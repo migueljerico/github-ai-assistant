@@ -10,6 +10,8 @@ interface ChatInputProps {
   value: string;
   onChange: (v: string) => void;
   onSend: () => void;
+  // #40 - Cancelar la generación en curso (el botón de enviar pasa a "Detener").
+  onStop: () => void;
   isLoading: boolean;
   disabled: boolean;
   multiRepoEnabled: boolean;
@@ -38,6 +40,7 @@ export default function ChatInput({
   value,
   onChange,
   onSend,
+  onStop,
   isLoading,
   disabled,
   multiRepoEnabled,
@@ -141,11 +144,12 @@ export default function ChatInput({
         <button
           id="send-btn"
           className="send-btn"
-          onClick={onSend}
-          disabled={disabled || isLoading || !value.trim()}
-          aria-label="Enviar instrucción"
+          onClick={isLoading ? onStop : onSend}
+          disabled={disabled || (!isLoading && !value.trim())}
+          aria-label={isLoading ? 'Detener generación' : 'Enviar instrucción'}
+          title={isLoading ? 'Detener' : 'Enviar'}
         >
-          {isLoading ? <span className="spinner spinner-sm" style={{ borderColor: 'rgba(255,255,255,0.3)', borderTopColor: 'white' }} /> : '➤'}
+          {isLoading ? '⏹️' : '➤'}
         </button>
       </div>
 
