@@ -359,6 +359,16 @@ describe('Contexto de repo para chat (#41)', () => {
       expect(out).toContain('# Mi proyecto');
       expect(out).not.toContain('export const a = 1;');
     });
+
+    it('con allPaths muestra el árbol COMPLETO aunque el contenido sea un subconjunto (#49)', () => {
+      // Solo se pasa el contenido de README, pero allPaths lista archivos que NO están en files.
+      const out = buildRepoContextSummary('owner/repo', [{ path: 'README.md', content: '# R' }], {
+        allPaths: ['README.md', 'MEJORAS_FUTURAS.md', 'src/deep/thing.ts'],
+      });
+      expect(out).toContain('MEJORAS_FUTURAS.md'); // en la ESTRUCTURA aunque no haya contenido
+      expect(out).toContain('src/deep/thing.ts');
+      expect(out).toContain('# R'); // contenido solo de README
+    });
   });
 
   describe('chatPromptWithContext', () => {
@@ -367,6 +377,12 @@ describe('Contexto de repo para chat (#41)', () => {
       expect(prompt).toContain(CHAT_PROMPT);
       expect(prompt).toContain('CONTEXTO_DE_PRUEBA');
       expect(prompt).toContain('BASA tu opinión');
+    });
+
+    it('incluye la regla de NO negar archivos que están en la ESTRUCTURA (#49)', () => {
+      const prompt = chatPromptWithContext('CTX');
+      expect(prompt).toMatch(/NO niegues que\s+exista/i);
+      expect(prompt).toMatch(/ESTRUCTURA lista TODOS/i);
     });
   });
 

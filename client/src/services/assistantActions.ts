@@ -11,7 +11,8 @@
 
 import { generateRepoDocs, generateFileDoc, buildRepoContextSummary, callAI, parseGeminiAction, isAbortError, CHAT_PROMPT, ACTION_PROMPT, chatPromptWithContext } from './gemini';
 import type { AIProviderConfig } from './gemini';
-import { fetchRepoTreeRecursive, getFileContents, decodeBase64, createRepo, repoExists, GitHubAPIError } from './github';
+import { fetchRepoTreeRecursive, getFileContents, decodeBase64, createRepo, repoExists, GitHubAPIError, type RepoTreeFile } from './github';
+import { rankFilesByQuery } from '../utils/contextRanker';
 import { writeDocFiles, createDocsDraftPr, publishFileDoc } from './docPublisher';
 import { summarizeThread, parseThreadInput, listOpenThreads, formatThreadList } from './threadSummary';
 import { generateChangelog } from './changelogGenerator';
@@ -34,6 +35,11 @@ export interface RepoContext {
   filesAnalyzed: number;
   totalFiles: number;
   truncated: boolean;
+  /** #49: archivos con contenido en memoria, para re-seleccionar por relevancia a cada
+   *  pregunta (Zero-Storage: viven solo en estado React). */
+  files: RepoTreeFile[];
+  /** #49: rutas de TODOS los archivos del repo (árbol completo, sin contenido). */
+  allPaths: string[];
 }
 
 /** Dependencias inyectadas (estado de chat e historial) que usan las acciones. */
@@ -148,17 +154,20 @@ export async function runLoadRepoContext(deps: ChatDeps, repoInput: string): Pro
   });
 
   try {
-    const { files, totalScanned, truncated } = await fetchRepoTreeRecursive(token, owner, repoName);
-    const contextText = buildRepoContextSummary(`${owner}/${repoName}`, files);
+    const { files, totalScanned, truncated, allPaths } = await fetchRepoTreeRecursive(token, owner, repoName);
+    const safeAllPaths = allPaths ?? files.map(f => f.path);
+    // Contexto inicial (sin pregunta aún): árbol completo + primeros archivos por prioridad.
+    // En cada turno, runSend lo reconstruye seleccionando los relevantes a la pregunta (#49).
+    const contextText = buildRepoContextSummary(`${owner}/${repoName}`, files, { allPaths: safeAllPaths });
     updateMessage(loadingId, {
       content:
         `✅ Contexto cargado de **${owner}/${repoName}** ` +
-        `(${files.length} archivos${truncated ? ` de ${totalScanned}` : ''}). ` +
+        `(${safeAllPaths.length} archivos${truncated ? ` — analizo el contenido de ${files.length}` : ''}). ` +
         `A partir de ahora mis opiniones en el chat se basarán en tu código real — ` +
         `pregúntame lo que quieras sobre el repositorio.`,
       isLoading: false,
     });
-    return { repoName: `${owner}/${repoName}`, contextText, filesAnalyzed: files.length, totalFiles: totalScanned, truncated };
+    return { repoName: `${owner}/${repoName}`, contextText, filesAnalyzed: files.length, totalFiles: totalScanned, truncated, files, allPaths: safeAllPaths };
   } catch (err) {
     updateMessage(loadingId, { content: `❌ No pude cargar el contexto de **${owner}/${repoName}**: ${(err as Error).message}`, isLoading: false });
     return null;
@@ -352,7 +361,19 @@ export async function runSend(deps: SendDeps, config: AIProviderConfig, params: 
   // #41/#28: si hay repo y/o archivo como contexto, resolveMode sesga a chat (salvo
   // acción explícita) y se combinan ambos contextos en el prompt.
   const hasContext = repoContext !== null || fileContext !== null;
-  const combinedContext = [repoContext?.contextText, fileContext?.contextText]
+  // #49: el contexto del repo se RE-SELECCIONA por pregunta — se eligen los archivos
+  // más relevantes a `userText` (ranking léxico) y se muestra el árbol completo. Si no
+  // hay `files` cargados (compat), se usa el contextText fijo.
+  const repoContextText = repoContext
+    ? (repoContext.files && repoContext.files.length
+        ? buildRepoContextSummary(
+            repoContext.repoName,
+            rankFilesByQuery(userText, repoContext.files, 12),
+            { allPaths: repoContext.allPaths },
+          )
+        : repoContext.contextText)
+    : undefined;
+  const combinedContext = [repoContextText, fileContext?.contextText]
     .filter(Boolean)
     .join('\n\n');
   // Con archivo adjunto, resolveMode fuerza chat (ninguna acción de GitHub lee un

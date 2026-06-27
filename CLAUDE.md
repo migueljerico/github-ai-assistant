@@ -7,12 +7,15 @@ probar, y las convenciones que es fácil romper sin querer.
 > **Idioma:** la UI, los comentarios del código y los mensajes de usuario están
 > en **español**; los identificadores (variables, funciones, tipos) están en
 > **inglés**. Mantén ese estilo bilingüe al editar.
+>
+> **Al dirigirte al usuario en el chat de la sesión, hazlo SIEMPRE en castellano**
+> (el autor lo pidió expresamente; evita mezclar inglés en tus respuestas).
 
 ---
 
 ## 1. Visión general
 
-**GitHub AI Assistant** (v3.14.0) es una app web que permite operar la **GitHub
+**GitHub AI Assistant** (v3.15.0) es una app web que permite operar la **GitHub
 REST API en lenguaje natural** a través de un proveedor de IA (Google Gemini o
 Groq Cloud). El usuario escribe una instrucción, la IA propone una acción, y
 **cada operación de escritura se confirma manualmente** antes de ejecutarse.
@@ -153,6 +156,8 @@ se guarda ni se loguea en el servidor.
 │   │   │                     #   powerbiReader (.pbix/.pbit vía fflate: informe + modelo/DAX + Power Query/M del DataMashup #28 Fase 3b/3b-bis),
 │   │   │                     #   docxReader (Word .docx vía fflate: texto de word/document.xml #28),
 │   │   │                     #   releaseGenerator/releaseAssets, instructionSuggestions,
+│   │   │                     #   contextRanker (#49: elige los archivos relevantes a la pregunta, BM25),
+│   │   │                     #   providerPrefs (#40: recuerda proveedor/modelo, no la key),
 │   │   │                     #   rateLimitHandler, modeDetection (chat vs action), modelLabels
 │   │   ├── components/       # Agrupados por feature:
 │   │   │                     #   auth/ ai-provider/ chat/ confirm/ layout/

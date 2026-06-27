@@ -180,7 +180,11 @@ describe('runLoadRepoContext', () => {
 
     const ctx = await runLoadRepoContext(deps, 'mi-repo');
 
-    expect(ctx).toEqual({ repoName: 'me/mi-repo', contextText: 'CTX', filesAnalyzed: 1, totalFiles: 1, truncated: false });
+    // #49: ahora el contexto incluye también los archivos en memoria y el árbol completo.
+    expect(ctx).toEqual({
+      repoName: 'me/mi-repo', contextText: 'CTX', filesAnalyzed: 1, totalFiles: 1, truncated: false,
+      files: [{ path: 'a' }], allPaths: ['a'],
+    });
   });
 
   it('devuelve null si falla', async () => {
@@ -452,6 +456,40 @@ describe('runSend', () => {
 
     expect(deps.updateMessage).toHaveBeenCalledWith('msg-2', { content: '⏹️ Generación detenida.', isLoading: false });
     expect(deps.setPendingAction).not.toHaveBeenCalled();
+  });
+
+  it('con repoContext re-selecciona los archivos relevantes a la pregunta (#49)', async () => {
+    vi.mocked(resolveMode).mockReturnValue('chat');
+    vi.mocked(callAI).mockResolvedValue('opinión');
+    vi.mocked(parseGeminiAction).mockReturnValue(null);
+    const deps = makeDeps();
+
+    const repoContext = {
+      repoName: 'owner/repo',
+      contextText: 'VIEJO',
+      filesAnalyzed: 2,
+      totalFiles: 3,
+      truncated: false,
+      files: [
+        { path: 'a.ts', content: 'codigo cualquiera', size: 0 },
+        { path: 'MEJORAS_FUTURAS.md', content: 'roadmap del proyecto', size: 0 },
+      ],
+      allPaths: ['a.ts', 'MEJORAS_FUTURAS.md', 'extra.ts'],
+    };
+
+    await runSend(deps, CONFIG, {
+      ...SEND_PARAMS,
+      userText: '¿qué te parece MEJORAS_FUTURAS.md?',
+      repoContext: repoContext as any,
+    });
+
+    // buildRepoContextSummary se llama con los archivos RANKEADOS por la pregunta
+    // (MEJORAS_FUTURAS.md primero por la mención) y el árbol completo (allPaths).
+    const calls = vi.mocked(buildRepoContextSummary).mock.calls;
+    const call = calls[calls.length - 1];
+    expect(call[0]).toBe('owner/repo');
+    expect((call[1] as any[])[0].path).toBe('MEJORAS_FUTURAS.md');
+    expect(call[2]).toEqual({ allPaths: ['a.ts', 'MEJORAS_FUTURAS.md', 'extra.ts'] });
   });
 
   it('al cancelar en streaming conserva el texto parcial con la nota (detenido) (#40)', async () => {

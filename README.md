@@ -10,7 +10,7 @@
 ![OpenRouter](https://img.shields.io/badge/OpenRouter-6566F1?style=for-the-badge&logo=openai&logoColor=white)
 ![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
 ![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
-![Versión](https://img.shields.io/badge/Versión-v3.14.0-blue?style=for-the-badge)
+![Versión](https://img.shields.io/badge/Versión-v3.15.0-blue?style=for-the-badge)
 ![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)
 [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
 
@@ -82,7 +82,7 @@ El proyecto evolucionó de un prototipo en **Google AI Studio** a una aplicació
 | 📋 **Historial de sesión** | Log exportable de todas las acciones con estado (✅ ❌ ⏸️ ⏳) |
 | 📄 **Plantillas predefinidas** | README, `.gitignore` y licencias por tipo de proyecto, pre-formuladas para el chat |
 | 🗂️ **Operaciones multi-repo** | Aplica la misma acción a varios repositorios seleccionados simultáneamente |
-| 🤖 **Documenta tu repositorio entero** | El agente lee hasta 80 archivos y genera README + MANUAL_TECNICO de forma automática, y los publicas como **commit directo**, **Draft PR** revisable o **GitHub Release** (con versión sugerida) |
+| 🤖 **Documenta tu repositorio entero** | El agente lee hasta 120 archivos y genera README + MANUAL_TECNICO de forma automática, y los publicas como **commit directo**, **Draft PR** revisable o **GitHub Release** (con versión sugerida) |
 | 📎 **Adjunta archivos locales** | Sube un PDF, documento **Word (.docx)**, **Excel/CSV**, **Power BI (.pbix/.pbit)** o archivo de texto/código y trabaja con él en lenguaje natural (resumir, documentar…). Se lee **solo en tu navegador** — no se sube a ningún servidor. En hojas grandes analiza una **muestra de las primeras 100 filas** y te avisa |
 | 📊 **Lee informes de Power BI** | Adjunta un `.pbix`/`.pbit` y pregunta qué hace el informe **sin abrir Power BI Desktop**: páginas y visuales del informe, las **consultas de Power Query (M)** (de dónde salen los datos y cómo se transforman) y, en `.pbit`, el modelo de datos con tablas, columnas y **medidas DAX**. Solo se lee la estructura, en tu navegador |
 | 📤 **Documenta y publica un archivo** | A partir del archivo adjunto, la IA genera documentación y la publicas donde elijas: **commit** del fichero, **Draft PR** revisable o **GitHub Release** (con versión sugerida) — cada paso con confirmación |
@@ -304,7 +304,7 @@ npm run test:coverage # Tests con reporte de cobertura
 
 ### Cobertura actual
 
-- **Cobertura total:** ~60% (419 tests en el cliente; ver Codecov para el valor exacto)
+- **Cobertura total:** ~60% (429 tests en el cliente; ver Codecov para el valor exacto)
 - **Módulos testeados:** AuthContext, AIProviderContext, providers, actionExecutor, github, gemini, assistantActions, docPublisher, threadSummary, modeDetection, formatResult, repoRef, releaseGenerator, releaseAssets, pdfReader, pdfAdvanced, spreadsheetReader, powerbiReader, docxReader, useChat, useActions, ChatArea, ChatInput, ChatMessage, ConfirmModal, DocModal, FilePublishModal, PublishActions, FileAttachButton, Header, TemplatePanel, AIProviderPanel, AIProviderBadge, RepoContextButton, ThreadSummaryButton — más los tests del servidor (rate limiter)
 - **Badge con cobertura actual:** [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
 

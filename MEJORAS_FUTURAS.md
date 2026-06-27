@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v3.14.0 · Junio 2026
+**Actualizado a:** v3.15.0 · Junio 2026
 
 ---
 
@@ -38,6 +38,7 @@ Estado del código, mejoras pendientes y roadmap del proyecto.
 | 20 | Documentación de repos truncada por líneas (no por caracteres) | services/gemini.ts (truncateByLines) | v3.11.1 |
 | 23 | System prompts en archivos `.md` externos (?raw) | services/gemini.ts, prompts/*.md | v3.11.2 |
 | 34 | Changelog automático de un repo (agrupar por prefijo + pulir con IA; burbuja de chat) | services/changelogGenerator.ts, github.ts (compareCommits/getLatestReleaseTag), ChangelogButton.tsx | v3.14.0 |
+| 49 | Selección de archivos relevantes a la pregunta (ranking léxico BM25 + árbol completo; deja de "no ver" archivos) | utils/contextRanker.ts, github.ts (allPaths), gemini.ts (buildRepoContextSummary), assistantActions.ts (runSend) | v3.15.0 |
 | — | #40 (parcial): recordar proveedor/modelo (sin la key) + botón Detener (cancelar generación) | AIProviderContext.tsx, utils/providerPrefs.ts, gemini.ts, App.tsx, ChatInput.tsx | v3.12.0 / v3.13.0 |
 | — | Crear Release desde "Documentar repo" (además de commit/Draft PR) | assistantActions.ts (runCreateRepoRelease), DocModal.tsx | v3.8.0 |
 | — | Unificar los controles de los dos flujos de documentación (barra compartida commit/Draft PR/Release) | components/confirm/PublishActions.tsx, DocModal.tsx, FilePublishModal.tsx | v3.10.0 |
@@ -55,8 +56,8 @@ herramienta**: si el trabajo continúa en otro entorno, este es el orden de refe
   `.md`) ✅ · **#40 parcial** (botón **Detener** + recordar proveedor/modelo) ✅ · **#34** (changelog
   automático de releases) ✅.
 - **🥈 Sprint 2 — Calidad de IA / contexto:** **#49** (seleccionar archivos relevantes del repo
-  antes de llamar al LLM: mejores respuestas, menos tokens) · resto de **#40** (validación `zod` +
-  reintentos en `ghFetch`).
+  antes de llamar al LLM) ✅ **(v3.15.0)** · resto de **#40** (validación `zod` + reintentos en
+  `ghFetch`) — pendiente.
 - **🥉 Sprint 3 — UI robusta + escaparate de datos:** **#39** (ErrorBoundary + a11y) · **#44**
   (dashboard "Salud del Código" con Recharts — pieza de escaparate Análisis de Datos).
 - **🏅 Sprint 4 — Alcance e i18n:** **#23→#24** (inglés) · **#46** (export/import de conversación).
@@ -120,14 +121,14 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 #### #26 — Mantener y expandir cobertura de tests con Codecov
 **Esfuerzo:** Continuo (2-4h por sprint)
 
-**Estado actual (v3.14.0):** ✅ Infraestructura completa implementada
+**Estado actual (v3.15.0):** ✅ Infraestructura completa implementada
 
 **Progreso realizado:**
 - ✅ Configuración de Vitest + Codecov
 - ✅ CI con GitHub Actions ejecutando tests (cliente + servidor) automáticamente
 - ✅ Badge de Codecov en README
 - ✅ Cobertura actual: **~60%** (ver Codecov para el valor exacto)
-- ✅ 419 tests en el cliente. Implementados para:
+- ✅ 429 tests en el cliente. Implementados para:
   - `AuthContext.tsx` (login, logout, OAuth flow, Zero-Storage)
   - `AIProviderContext.tsx` (conexión/desconexión de proveedores)
   - `providers.ts` (registro de proveedores, detección de modelos 🆓, caché, `pickDefaultModel`)
@@ -186,22 +187,6 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 **Beneficio:** Demostrar skills de Análisis de Datos aplicados a DevOps; aprovechar la experiencia previa con Power BI para diseñar dashboards en web.
 
 **Nota:** ítem de **escaparate** (Análisis de Datos), no núcleo de gestión de GitHub. Es el primer candidato a soltar si se quiere enfocar más el roadmap.
-
----
-
-#### #49 — Gestión de la ventana de contexto (selección de archivos relevantes / RAG ligero)
-**Esfuerzo:** 6–10h
-**Origen:** sugerencia de **Gemma 4 31B** (Google, vía OpenRouter) en una revisión de arquitectura, **obtenida usando la propia app** (dogfooding: se cargó este repo como contexto y se pidió su opinión), contrastada con el modelo "sin base de datos" del proyecto.
-
-**Problema actual:** `buildRepoContextSummary` (#41) envía el árbol completo + los primeros N archivos truncados. En repos grandes esto (1) gasta tokens, (2) puede degradar la calidad o agotar el contexto del modelo, y (3) puede dejar fuera los archivos realmente relevantes para la pregunta concreta.
-
-**Solución propuesta (compatible con Zero-Storage / sin BD):**
-- En lugar de una BD vectorial externa (Pinecone/ChromaDB — rompería el principio "sin base de datos"), un enfoque ligero **en cliente**: calcular embeddings de los fragmentos en memoria (volátil) y seleccionar por similitud (cosine) solo los más relevantes a la consulta antes de enviarlos al LLM.
-- Alternativa aún más simple sin embeddings: ranking léxico (BM25 / TF-IDF) de los archivos frente a la consulta, reutilizando el árbol que ya descarga `fetchRepoTreeRecursive`.
-
-**Beneficio:** opiniones y documentación más precisas y más baratas en tokens; mejor escalado a repos grandes; ataca el que Gemma identificó como "el mayor reto de un asistente de GitHub: el contexto".
-
-**Nota:** Gemma proponía una BD vectorial (Pinecone/Chroma); se **reformula** a un índice en memoria para no contradecir el modelo Zero-Storage / sin BD del proyecto (mismo criterio que se aplicó a la propuesta de IndexedDB en #46). Ejemplo de la validación cruzada del README: se toma la idea útil y se adapta a la arquitectura.
 
 ---
 
@@ -337,9 +322,9 @@ malformadas de la IA.
 | Prioridad | Total | ✅ Resueltos | ⏳ Pendientes |
 |---|---|---|---|
 | 🔴 Alta | 8 | 8 (#1, #2, #13, #14, #27, #45, #15, #28) | 0 |
-| 🟡 Media | 15 | 11 (#12, #17, #18, #19, #21, #37, #41, #32, #42, #38, #20) | 4 (#26, #39, #44, #49) |
+| 🟡 Media | 15 | 12 (#12, #17, #18, #19, #21, #37, #41, #32, #42, #38, #20, #49) | 3 (#26, #39, #44) |
 | 🟢 Baja | 11 | 2 (#23, #34) | 9 (#22, #24, #25, #33, #35, #36, #40, #46, #48) |
-| **TOTAL** | **34** | **21** | **13** |
+| **TOTAL** | **34** | **22** | **12** |
 
 > **#28** cubierto en su **norte** por las Fases 1 (v3.0.0, adjuntar como contexto) y
 > 2 (v3.1.0, documentar→publicar). **Más formatos:** Fase 3a (v3.2.0, Excel/CSV) y
