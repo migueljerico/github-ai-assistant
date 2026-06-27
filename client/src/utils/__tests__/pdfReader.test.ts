@@ -97,6 +97,10 @@ describe('assertSupportedFile (#28)', () => {
     expect(() => assertSupportedFile(fileFrom('x', 'plantilla.pbit'))).not.toThrow();
   });
 
+  it('acepta documentos Word .docx (#28)', () => {
+    expect(() => assertSupportedFile(fileFrom('x', 'memoria.docx'))).not.toThrow();
+  });
+
   it('rechaza extensiones no soportadas con mensaje claro', () => {
     expect(() => assertSupportedFile(fileFrom('x', 'app.exe'))).toThrow(/\.exe/);
     expect(() => assertSupportedFile(fileFrom('x', 'foto.png'))).toThrow(/no puedo leer/i);

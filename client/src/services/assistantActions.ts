@@ -22,6 +22,7 @@ import { resolveRepoRef } from '../utils/repoRef';
 import { readFileContent, formatFileContentForAI, assertSupportedFile } from '../utils/pdfReader';
 import { readSpreadsheet, SPREADSHEET_SAMPLE_ROWS } from '../utils/spreadsheetReader';
 import { readPowerBI } from '../utils/powerbiReader';
+import { readDocx } from '../utils/docxReader';
 import { formatResultData } from '../utils/formatResult';
 import type { ChatMessage, HistoryEntry, RepoAnalysis, GitHubRepo, PendingAction } from '../types';
 
@@ -489,6 +490,19 @@ export async function runAttachFile(deps: ChatDeps, file: File): Promise<FileCon
         content: truncated
           ? `📎 Cargado **${file.name}** — ${summary}. Es grande, así que incluyo una **muestra acotada** de su estructura. Pregúntame por el informe, el modelo o las consultas (Power Query). ${docHint}`
           : `📎 Adjuntado **${file.name}** — ${summary}. Pregúntame lo que quieras sobre el informe, el modelo o los orígenes/consultas (Power Query), o pídeme tu opinión/análisis. ${docHint}`,
+        isLoading: false,
+      });
+      return { name: file.name, contextText };
+    }
+
+    // #28 — documentos Word (.docx): ZIP OOXML, se extrae el texto de word/document.xml.
+    if (ext === 'docx') {
+      const { text, summary, truncated } = await readDocx(file);
+      const contextText = `\n\n--- Contenido del documento Word: ${file.name} ---\n${text}\n--- Fin del archivo ---\n`;
+      updateMessage(loadingId, {
+        content: truncated
+          ? `📎 Cargado **${file.name}** — ${summary}. Es largo, así que analizaré una **parte acotada** del texto. Pregúntame lo que quieras o pídeme tu opinión/análisis. ${docHint}`
+          : `📎 Adjuntado **${file.name}** — ${summary}. Pregúntame lo que quieras sobre él o pídeme tu opinión/análisis. ${docHint}`,
         isLoading: false,
       });
       return { name: file.name, contextText };

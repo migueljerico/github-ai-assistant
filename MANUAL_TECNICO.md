@@ -1,6 +1,6 @@
 # 📖 Manual Técnico — GitHub AI Assistant
 
-**Versión:** v3.10.0 · Junio 2026
+**Versión:** v3.11.0 · Junio 2026
 
 ---
 
@@ -84,6 +84,7 @@ github-ai-assistant/
 │       │   ├── pdfAdvanced.ts      # Extracción de PDF con pdfjs-dist (fallback básico) (#28)
 │       │   ├── spreadsheetReader.ts # Excel/CSV con SheetJS: muestra de filas + aviso de tokens (#28 Fase 3a)
 │       │   ├── powerbiReader.ts    # Power BI .pbix/.pbit (ZIP vía fflate): informe + modelo/DAX + Power Query/M del DataMashup (#28 Fase 3b/3b-bis)
+│       │   ├── docxReader.ts       # Word .docx (ZIP OOXML vía fflate): texto de word/document.xml (#28)
 │       │   ├── releaseGenerator.ts # createGitHubRelease + suggestNextVersion + notas
 │       │   ├── releaseAssets.ts    # Subida de assets a uploads.github.com (validación + MIME)
 │       │   └── modeDetection.ts    # Detección de modo chat vs action
@@ -463,7 +464,7 @@ gcloud run deploy github-ai-assistant \
 - **CI:** GitHub Actions (`.github/workflows/ci.yml`) ejecuta en cada push/PR a `main`
   el lint, los tests del cliente con cobertura y los tests del servidor
   (job `server-test`). Ver "Pipeline CI/CD" en la sección de despliegue.
-- **Cobertura actual:** ~60% (ver Codecov para el valor exacto) · 369 tests en el cliente
+- **Cobertura actual:** ~60% (ver Codecov para el valor exacto) · 380 tests en el cliente
 
 ### Módulos testeados
 
@@ -485,6 +486,7 @@ gcloud run deploy github-ai-assistant \
 | `releaseGenerator.ts` / `releaseAssets.ts` | createGitHubRelease, notas, suggestNextVersion; subida/validación de assets | ✅ |
 | `pdfReader.ts` / `pdfAdvanced.ts` | Extracción/limpieza de texto, fallback, `assertSupportedFile` | ✅ |
 | `spreadsheetReader.ts` / `powerbiReader.ts` | Excel/CSV (muestra de filas); Power BI informe + DAX + Power Query/M | ✅ |
+| `docxReader.ts` | Word `.docx`: extracción de párrafos/tablas, entidades XML, truncado, errores | ✅ |
 | Hooks | `useChat`, `useActions` | ✅ |
 | Componentes React | ChatArea, ChatInput, ChatMessage, ConfirmModal, Header, TemplatePanel, AIProviderPanel, AIProviderBadge, RepoContextButton, FileAttachButton, ThreadSummaryButton | ✅ |
 | Servidor | `rateLimit.test.js` (rate limiter del proxy) | ✅ |
