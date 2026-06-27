@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v3.9.0 · Junio 2026
+**Actualizado a:** v3.11.0 · Junio 2026
 
 ---
 
@@ -34,7 +34,9 @@ Estado del código, mejoras pendientes y roadmap del proyecto.
 | 28 | Archivos locales — **Fase 3b-bis**: Power Query (M) del `DataMashup` (nombres de consulta + código M; orígenes/transformaciones, rescata el .pbix) | utils/powerbiReader.ts (extractMashup, fflate) | v3.4.0 |
 | 28 | Archivos locales — **Fase 4a**: subir el archivo fuente al publicar (binario en commit/Draft PR o asset de Release) + doc sin inventar autor/año | services/github.ts (createOrUpdateBinaryFile), docPublisher.ts, releaseAssets.ts, gemini.ts | v3.6.0 |
 | 28 | Archivos locales — **Fase 4b**: subir archivos extra al publicar (imágenes→screenshots/, datos→data/, resto→raíz; commit/Draft PR o assets de Release) | docPublisher.ts (uploadPathFor), assistantActions.ts, FilePublishModal.tsx | v3.9.0 |
+| 28 | Archivos locales — **documentos Word (.docx)**: ZIP OOXML; se extrae el texto de `word/document.xml` (párrafos, listas y tablas) vía fflate, con muestra acotada | utils/docxReader.ts (readDocx, docxXmlToText), utils/pdfReader.ts, services/assistantActions.ts (runAttachFile) | v3.11.0 |
 | — | Crear Release desde "Documentar repo" (además de commit/Draft PR) | assistantActions.ts (runCreateRepoRelease), DocModal.tsx | v3.8.0 |
+| — | Unificar los controles de los dos flujos de documentación (barra compartida commit/Draft PR/Release) | components/confirm/PublishActions.tsx, DocModal.tsx, FilePublishModal.tsx | v3.10.0 |
 | — | Seguridad: `state` de OAuth con CSPRNG (crypto.randomUUID) | server/index.js | v3.7.1 |
 
 ---
@@ -73,6 +75,9 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 > al publicar se pueden añadir **archivos extra** (imágenes → `screenshots/`, datos → `data/`,
 > resto → raíz; commit/Draft PR o assets de Release) → publicar el **proyecto completo**.
 > Las imágenes no se analizan (no hay visión): son solo-subir.
+> **Word `.docx` (v3.11.0):** un `.docx` es un ZIP OOXML; se extrae el **texto** de
+> `word/document.xml` (párrafos, listas y el contenido de las tablas) vía `fflate`, con muestra
+> acotada y aviso. El `.doc` binario antiguo no está soportado (exporta a `.docx`).
 
 ---
 
@@ -91,14 +96,14 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 #### #26 — Mantener y expandir cobertura de tests con Codecov
 **Esfuerzo:** Continuo (2-4h por sprint)
 
-**Estado actual (v3.3.0):** ✅ Infraestructura completa implementada
+**Estado actual (v3.11.0):** ✅ Infraestructura completa implementada
 
 **Progreso realizado:**
 - ✅ Configuración de Vitest + Codecov
 - ✅ CI con GitHub Actions ejecutando tests (cliente + servidor) automáticamente
 - ✅ Badge de Codecov en README
-- ✅ Cobertura actual: **≈64%** (ver Codecov para el valor exacto)
-- ✅ 338 tests en el cliente. Implementados para:
+- ✅ Cobertura actual: **~60%** (ver Codecov para el valor exacto)
+- ✅ 380 tests en el cliente. Implementados para:
   - `AuthContext.tsx` (login, logout, OAuth flow, Zero-Storage)
   - `AIProviderContext.tsx` (conexión/desconexión de proveedores)
   - `providers.ts` (registro de proveedores, detección de modelos 🆓, caché, `pickDefaultModel`)
@@ -108,11 +113,11 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
   - `docPublisher.ts` (commit directo / Draft PR — #45; `publishFileDoc` de fichero suelto — #28 Fase 2)
   - `gemini.ts` `generateFileDoc` + `assistantActions.ts` `runGenerateFileDoc`/`runPublishFileDoc`/`runCreateFileRelease` + `FilePublishModal.tsx` (documentar y publicar archivos — #28 Fase 2)
   - `threadSummary.ts` (resumen de hilos #32: `parseThreadInput`, issue vs PR, hilo vacío) + wrappers de comentarios en `github.ts` (paginación)
-  - `assistantActions.ts` (#42: orquestación del chat — `runSend`, `runConfirmAction`, `runCancelAction` y los flujos de botón; ~98%) + `repoRef.ts` (`resolveRepoRef`) + `DocModal.tsx`
-  - `modeDetection.ts` (chat vs action; sesgo a chat con contexto de repo)
-  - `formatResult.ts`, `releaseGenerator.ts`, `pdfReader.ts`, `pdfAdvanced.ts`, `spreadsheetReader.ts` (#28 Fase 3a), `powerbiReader.ts` (#28 Fase 3b/3b-bis)
+  - `assistantActions.ts` (#42: orquestación del chat — `runSend`, `runConfirmAction`, `runCancelAction` y los flujos de botón, incl. `runAttachFile` por formato; ~98%) + `repoRef.ts` (`resolveRepoRef`)
+  - `modeDetection.ts` (chat vs action; sesgo a chat con contexto de repo/archivo)
+  - `formatResult.ts`, `releaseGenerator.ts`, `releaseAssets.ts`, `pdfReader.ts`, `pdfAdvanced.ts`, `spreadsheetReader.ts` (#28 Fase 3a), `powerbiReader.ts` (#28 Fase 3b/3b-bis), `docxReader.ts` (#28 Word .docx)
   - Hooks: `useChat`, `useActions`
-  - Componentes React: `ChatArea`, `ChatInput`, `ConfirmModal`, `Header`, `TemplatePanel`, `AIProviderPanel`, `AIProviderBadge`, `RepoContextButton`
+  - Componentes React: `ChatArea`, `ChatInput`, `ChatMessage`, `ConfirmModal`, `DocModal`, `FilePublishModal`, `PublishActions` (barra de publicación compartida, v3.10.0), `FileAttachButton`, `Header`, `TemplatePanel`, `AIProviderPanel`, `AIProviderBadge`, `RepoContextButton`, `ThreadSummaryButton`
   - Servidor: `rateLimit.test.js`
 
 **Pendiente:**
@@ -341,7 +346,7 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 > Fase 3b MVP (v3.3.0, Power BI .pbix/.pbit) y **Fase 3b-bis** (v3.4.0 + robustez v3.4.2:
 > Power Query M del `DataMashup` binario/XML **y** de las particiones del `DataModelSchema`
 > de `.pbit`). Única limitación restante: en un `.pbix` moderno el M va en el modelo binario
-> (no legible) → exporta `.pbit`.
+> (no legible) → exporta `.pbit`. **Word `.docx`** (v3.11.0): texto de `word/document.xml`.
 > Imágenes/visión: descartada.
 
 > **Nota de numeración:** los huecos en #16, #29, #30, #31, #43 y #47 son intencionados — esos ítems se fusionaron o descartaron en revisiones del roadmap y sus números no se reutilizan (convención del documento). #16 se fusionó en #42; #29 en #40.
