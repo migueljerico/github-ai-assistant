@@ -41,6 +41,36 @@ Estado del código, mejoras pendientes y roadmap del proyecto.
 
 ---
 
+## 🗺️ Hoja de ruta por sprints (acuerdo vigente · post-v3.11.0)
+
+Secuencia acordada con el autor para abordar lo pendiente. Es **independiente de la sesión o
+herramienta**: si el trabajo continúa en otro entorno, este es el orden de referencia.
+
+- **🥇 Sprint 1 — Robustez y pulido del núcleo (quick wins):** **#20** (documentación sin cortar
+  funciones, truncado por líneas) · **#23** (prompts a archivos `.md` → adelgaza `gemini.ts`,
+  desbloquea i18n) · **#40 parcial** (botón **Detener** + recordar proveedor/modelo al recargar) ·
+  **#34** (changelog automático de releases).
+- **🥈 Sprint 2 — Calidad de IA / contexto:** **#49** (seleccionar archivos relevantes del repo
+  antes de llamar al LLM: mejores respuestas, menos tokens) · resto de **#40** (validación `zod` +
+  reintentos en `ghFetch`).
+- **🥉 Sprint 3 — UI robusta + escaparate de datos:** **#39** (ErrorBoundary + a11y) · **#44**
+  (dashboard "Salud del Código" con Recharts — pieza de escaparate Análisis de Datos).
+- **🏅 Sprint 4 — Alcance e i18n:** **#23→#24** (inglés) · **#46** (export/import de conversación).
+- **📋 Backlog:** #25 (logs/health), #22 (aviso de sesión), #48 (sync repo), **#36** (GitHub App —
+  hito grande aparte). #26 (cobertura) es transversal: sube con cada sprint.
+- **🗑️ Candidatos a poda:** **#33** (sugerir revisores) y **#35** (auto-labels) — nicho/fuera del núcleo.
+
+> **⚠️ Nota durable sobre revisiones externas (no es un sprint).** El backend de **un solo
+> `server/index.js`** (thin: OAuth + proxy Gemini + estático, ~244 líneas) y los módulos de cliente
+> cohesivos de ~700 líneas (`gemini.ts`, `assistantActions.ts`, `github.ts`) son **decisiones de
+> arquitectura intencionadas, NO deuda técnica**. Las revisiones de IA externas (DeepSeek y
+> similares) **sobreponderan** este punto y **reinciden** en proponer partir el `index.js` / cambiar
+> la infraestructura, sin entender el objetivo del proyecto. **No se actúa sobre ello sin aprobación
+> explícita del autor.** Lo único a modularizar, si acaso, es sacar los prompts de `gemini.ts` a
+> archivos (#23). Ver la convención rectora en `CLAUDE.md §5`.
+
+---
+
 ## ⏳ Pendientes
 
 Los issues están numerados y ordenados por prioridad descendente dentro de cada bloque. Al resolver un punto, moverlo a la tabla ✅ con versión y SHA de commit.

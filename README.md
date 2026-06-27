@@ -152,7 +152,7 @@ La construcción del código se realizó con **Antigravity 2.0** (plataforma de 
 ```
 github-ai-assistant/
 ├── client/     # React 18 + TypeScript + Vite (36 archivos)
-├── server/     # Express.js OAuth (1 archivo, ~120 líneas)
+├── server/     # Express.js OAuth + proxy Gemini (1 archivo, ~244 líneas)
 └── Dockerfile  # Multi-stage build para Cloud Run
 ```
 
