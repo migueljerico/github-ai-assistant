@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { saveProviderPref, loadProviderPref, clearProviderPref } from '../providerPrefs';
 
 describe('providerPrefs (#40)', () => {
@@ -36,5 +36,19 @@ describe('providerPrefs (#40)', () => {
     expect(raw).toContain('deepseek/deepseek-r1:free');
     // El objeto guardado solo tiene esas dos claves
     expect(Object.keys(JSON.parse(raw)).sort()).toEqual(['model', 'provider']);
+  });
+
+  it('degrada en silencio si sessionStorage no está disponible (modo privado, etc.)', () => {
+    const boom = () => { throw new Error('storage no disponible'); };
+    const spies = [
+      vi.spyOn(Storage.prototype, 'setItem').mockImplementation(boom),
+      vi.spyOn(Storage.prototype, 'getItem').mockImplementation(boom),
+      vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(boom),
+    ];
+    // Ninguna de las tres operaciones debe lanzar; load devuelve null.
+    expect(() => saveProviderPref('groq', 'llama-3.3-70b')).not.toThrow();
+    expect(loadProviderPref()).toBeNull();
+    expect(() => clearProviderPref()).not.toThrow();
+    spies.forEach(s => s.mockRestore());
   });
 });
