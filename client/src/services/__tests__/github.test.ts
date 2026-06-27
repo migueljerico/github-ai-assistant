@@ -149,6 +149,23 @@ describe('github.ts', () => {
         expect((err as GitHubAPIError).status).toBe(429);
       }
     });
+
+    it('reintenta ante un 503 transitorio y acaba devolviendo OK (#40)', async () => {
+      vi.mocked(fetch)
+        .mockResolvedValueOnce({ ok: false, status: 503, json: async () => ({ message: 'unavailable' }) } as any)
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: 1 }) } as any);
+
+      const result = await ghFetch('tok', '/user');
+
+      expect(result).toEqual({ ok: 1 });
+      expect(fetch).toHaveBeenCalledTimes(2); // 1 fallo transitorio + 1 reintento OK
+    });
+
+    it('NO reintenta un 404 (una sola llamada) (#40)', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce({ ok: false, status: 404, json: async () => ({ message: 'Not Found' }) } as any);
+      await expect(ghFetch('tok', '/x')).rejects.toThrow(GitHubAPIError);
+      expect(fetch).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('getUser', () => {
@@ -310,8 +327,8 @@ describe('github.ts', () => {
       await expect(getLatestReleaseTag('tok', 'o', 'r')).resolves.toBeNull();
     });
 
-    it('propaga otros errores (500)', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({ message: 'boom' }) } as any);
+    it('propaga otros errores no recuperables (422)', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce({ ok: false, status: 422, json: async () => ({ message: 'boom' }) } as any);
       await expect(getLatestReleaseTag('tok', 'o', 'r')).rejects.toThrow();
     });
   });
@@ -385,8 +402,8 @@ describe('github.ts', () => {
       await expect(repoExists('tok', 'me', 'r')).resolves.toBe(false);
     });
 
-    it('propaga otros errores (p. ej. 500)', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({ message: 'boom' }) } as any);
+    it('propaga otros errores no recuperables (422)', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce({ ok: false, status: 422, json: async () => ({ message: 'boom' }) } as any);
       await expect(repoExists('tok', 'me', 'r')).rejects.toThrow();
     });
   });

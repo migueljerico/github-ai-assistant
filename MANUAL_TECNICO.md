@@ -1,6 +1,6 @@
 # 📖 Manual Técnico — GitHub AI Assistant
 
-**Versión:** v3.15.0 · Junio 2026
+**Versión:** v3.16.0 · Junio 2026
 
 ---
 
@@ -87,6 +87,8 @@ github-ai-assistant/
 │       │   ├── docxReader.ts       # Word .docx (ZIP OOXML vía fflate): texto de word/document.xml (#28)
 │       │   ├── releaseGenerator.ts # createGitHubRelease + suggestNextVersion + notas
 │       │   ├── releaseAssets.ts    # Subida de assets a uploads.github.com (validación + MIME)
+│       │   ├── contextRanker.ts    # #49: rankFilesByQuery (BM25) — elige los archivos relevantes a la pregunta
+│       │   ├── retry.ts            # #40: withTransientRetry/isTransientError/isAbortError (IA + GitHub)
 │       │   └── modeDetection.ts    # Detección de modo chat vs action
 │       └── types/index.ts          # Tipos compartidos TypeScript
 ├── server/
@@ -464,7 +466,7 @@ gcloud run deploy github-ai-assistant \
 - **CI:** GitHub Actions (`.github/workflows/ci.yml`) ejecuta en cada push/PR a `main`
   el lint, los tests del cliente con cobertura y los tests del servidor
   (job `server-test`). Ver "Pipeline CI/CD" en la sección de despliegue.
-- **Cobertura actual:** ~60% (ver Codecov para el valor exacto) · 429 tests en el cliente
+- **Cobertura actual:** ~60% (ver Codecov para el valor exacto) · 436 tests en el cliente
 
 ### Módulos testeados
 
