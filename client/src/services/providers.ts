@@ -175,3 +175,55 @@ function isFreeOpenRouterModel(m: OpenRouterModel): boolean {
 }
 
 const MODELS_CACHE_TTL = 3_600_000; // 1 hora
+
+/**
+ * Carga el catálogo de modelos de un proveedor OpenAI-compatible.
+ * Cachea la LISTA (no la key) en sessionStorage durante 1h.
+ * Devuelve `null` si el proveedor no tiene catálogo dinámico o si falla.
+ */
+export async function fetchModels(
+  def: ProviderDef,
+  apiKey?: string,
+): Promise<ModelOption[] | null> {
+  if (!def.modelsEndpoint) return null;
+  if (def.modelsNeedKey && !apiKey) return null;
+
+  const cacheKey = `${def.id}_models_cache`;
+  const cached = sessionStorage.getItem(cacheKey);
+  if (cached) {
+    try {
+      const { models, ts } = JSON.parse(cached) as { models: ModelOption[]; ts: number };
+      if (Date.now() - ts < MODELS_CACHE_TTL) return models;
+    } catch { /* cache corrupta — ignorar */ }
+  }
+
+  const headers: Record<string, string> = {};
+  if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
+
+  const res = await fetch(def.modelsEndpoint, { headers });
+  if (!res.ok) throw new Error(`models endpoint error ${res.status}`);
+  const data = await res.json() as { data: Array<{ id: string; name?: string; pricing?: { prompt?: string; completion?: string } }> };
+
+  let models: ModelOption[];
+  if (def.id === 'openrouter') {
+    models = data.data
+      .map(m => ({
+        value: m.id,
+        label: m.name || m.id,
+        free: isFreeOpenRouterModel(m),
+      }))
+      // gratis primero, luego alfabético por etiqueta
+      .sort((a, b) => (Number(b.free) - Number(a.free)) || a.label.localeCompare(b.label));
+  } else {
+    // Groq (y cualquier OpenAI-compatible genérico): filtra no-chat
+    models = data.data
+      .filter(m => !GROQ_EXCLUDED.some(p => m.id.startsWith(p)))
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .map(m => ({ value: m.id, label: m.id }));
+  }
+
+  if (models.length === 0) throw new Error('empty catalog');
+
+  sessionStorage.setItem(cacheKey, JSON.stringify({ models, ts: Date.now() }));
+  return models;
+}
