@@ -1,6 +1,16 @@
 export const en = {
   'header.login': 'Sign in with GitHub',
   'header.logout': 'Sign out',
+  'header.title': 'AI Assistant for Publishing Repositories',
+  'header.subtitle': 'Multi-provider AI (Gemini · Groq · OpenRouter) + GitHub API',
+  'header.connected': 'Connected',
+  'header.disconnected': 'Disconnected',
+  'header.templates': 'Templates',
+  'header.hideTemplates': 'Hide templates',
+  'header.showTemplates': 'Show templates',
+  'header.history': 'History',
+  'header.hideHistory': 'Hide history',
+  'header.showHistory': 'Show history',
   'chat.placeholder': 'Type your message...',
-  // Add more as we migrate the UI
+  'chat.send': 'Send',
 };
