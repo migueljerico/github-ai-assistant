@@ -9,6 +9,7 @@ import { LanguageProvider, useLanguage } from './context/LanguageContext.tsx';
 import LoginButton from './components/auth/LoginButton.tsx';
 import PatInput from './components/auth/PatInput.tsx';
 import AIProviderPanel from './components/ai-provider/AIProviderPanel.tsx';
+import LanguageSelector from './components/layout/LanguageSelector.tsx';
 import ErrorBoundary from './components/ErrorBoundary.tsx';
 
 // ── Step 1: GitHub Auth Gate ──────────────────────────────────────────────────
@@ -46,6 +47,9 @@ function AuthGate() {
   if (!isAuthenticated) {
     return (
       <div className="auth-screen">
+        <div style={{ position: 'absolute', top: '20px', right: '20px' }}>
+          <LanguageSelector />
+        </div>
         <div className="auth-card">
           <div className="auth-icon">🤖</div>
           <h1 className="auth-title gradient-text">{t('auth.title')}</h1>
