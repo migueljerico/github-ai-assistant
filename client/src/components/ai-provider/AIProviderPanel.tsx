@@ -4,6 +4,7 @@ import { validateProviderKey } from '../../services/gemini';
 import { PROVIDERS, getProvider, fetchModels, pickDefaultModel, type AIProviderType, type ModelOption } from '../../services/providers';
 import { modelLabel } from '../../utils/modelLabels';
 import { loadProviderPref } from '../../utils/providerPrefs';
+import { useLanguage } from '../../context/LanguageContext';
 
 const PROVIDER_LIST = Object.values(PROVIDERS);
 
@@ -27,6 +28,7 @@ function optionLabel(m: ModelOption): string {
 
 export default function AIProviderPanel() {
   const { connect } = useAIProvider();
+  const { t } = useLanguage();
   // #40: arranca en el proveedor recordado (si lo hay) en vez de Gemini por defecto.
   const [selected, setSelected] = useState<AIProviderType>(() => loadProviderPref()?.provider ?? 'gemini');
   const [keys, setKeys] = useState<Record<AIProviderType, string>>(initKeys);
@@ -104,11 +106,11 @@ export default function AIProviderPanel() {
         {/* Header */}
         <div className="ai-provider-header">
           <div className="ai-provider-icon">⚡</div>
-          <h2 className="ai-provider-title gradient-text">Conecta tu asistente de IA</h2>
+          <h2 className="ai-provider-title gradient-text">{t('aipanel.title')}</h2>
           <p className="ai-provider-subtitle">
-            Tu clave se usa solo en tu navegador y no se envía a nuestros servidores
+            {t('aipanel.subtitle')}
           </p>
-          <div className="ai-provider-privacy-badge">🔒 100% privado · Solo en tu dispositivo</div>
+          <div className="ai-provider-privacy-badge">{t('aipanel.privacyBadge')}</div>
         </div>
 
         {/* Provider cards (generadas desde el registro) */}
@@ -149,7 +151,7 @@ export default function AIProviderPanel() {
                         htmlFor={`${p.id}-model-select`}
                         style={{ display: 'block', fontSize: '0.72rem', color: 'var(--color-text-muted)', margin: '0 0 4px' }}
                       >
-                        Modelo{!loadingModels && ` · ${activeCatalog.length} disponibles${freeCount ? ` · ${freeCount} 🆓` : ''}`}
+                        {t('aipanel.model')} {!loadingModels && ` · ${activeCatalog.length} ${t('aipanel.available')}${freeCount ? ` · ${freeCount} 🆓` : ''}`}
                       </label>
                     )}
 
@@ -162,7 +164,7 @@ export default function AIProviderPanel() {
                       disabled={loadingModels}
                     >
                       {loadingModels
-                        ? <option value="">Cargando modelos...</option>
+                        ? <option value="">{t('aipanel.loadingModels')}</option>
                         : activeCatalog.map(m => (
                             <option key={m.value} value={m.value}>{optionLabel(m)}</option>
                           ))
@@ -184,12 +186,12 @@ export default function AIProviderPanel() {
                     {/* Estado de carga del catálogo dinámico */}
                     {p.modelsEndpoint && loadingModels && (
                       <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', margin: '3px 0 6px' }}>
-                        ⏳ Cargando catálogo actualizado...
+                        {t('aipanel.loadingCatalog')}
                       </p>
                     )}
                     {p.modelsEndpoint && !loadingModels && modelsLoaded[p.id] && (
                       <p style={{ fontSize: '0.72rem', color: 'var(--color-success, #22c55e)', margin: '3px 0 6px' }}>
-                        ✅ Catálogo cargado en tiempo real
+                        {t('aipanel.catalogLoaded')}
                       </p>
                     )}
 
@@ -215,7 +217,7 @@ export default function AIProviderPanel() {
                       />
                       <button type="button" className="key-toggle-btn"
                         onClick={() => setShowKey(v => !v)}
-                        aria-label="Mostrar/ocultar clave">
+                        aria-label={t('aipanel.toggleKeyVisibility')}>
                         {showKey ? '🙈' : '👁️'}
                       </button>
                     </div>
@@ -244,14 +246,14 @@ export default function AIProviderPanel() {
           disabled={!activeKey.trim() || status === 'validating' || status === 'success'}
           style={{ width: '100%', justifyContent: 'center', marginTop: '4px' }}
         >
-          {status === 'validating' && <><span className="spinner spinner-sm" /> Verificando clave...</>}
-          {status === 'success'    && <>✅ ¡Conectado! Entrando a la app...</>}
-          {status === 'idle'       && `Conectar con ${def.name}`}
-          {status === 'error'      && `Reintentar con ${def.name}`}
+          {status === 'validating' && <><span className="spinner spinner-sm" /> {t('aipanel.verifyingKey')}</>}
+          {status === 'success'    && <>✅ {t('aipanel.connected')}</>}
+          {status === 'idle'       && t('aipanel.connectWith', { provider: def.name })}
+          {status === 'error'      && t('aipanel.retryWith', { provider: def.name })}
         </button>
 
         <p className="provider-footer-note">
-          🔒 Tu clave vive <strong>solo en la memoria del navegador</strong> (Zero-Storage): desaparece al recargar o cerrar la pestaña y nunca se guarda. Solo se recuerda el <strong>proveedor y el modelo</strong> elegidos (no la clave) para no tener que reseleccionarlos.
+          🔒 {t('aipanel.footer1')} <strong>{t('aipanel.footer2')}</strong> {t('aipanel.footer3')} <strong>{t('aipanel.footer4')}</strong> {t('aipanel.footer5')}
         </p>
       </div>
     </div>
