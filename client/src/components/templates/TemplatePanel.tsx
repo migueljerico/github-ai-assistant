@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { TEMPLATE_CATEGORIES } from '../templates/templateData';
+import { TEMPLATE_CATEGORIES } from './templateData'; // ← Ruta corregida
 import type { Template } from '../../types';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface TemplatePanelProps {
   isOpen: boolean;
@@ -8,6 +9,7 @@ interface TemplatePanelProps {
 }
 
 export default function TemplatePanel({ isOpen, onSelectTemplate }: TemplatePanelProps) {
+  const { t } = useLanguage();
   const [openCategories, setOpenCategories] = useState<Set<string>>(new Set(['readme']));
 
   const toggleCategory = (id: string) => {
@@ -24,9 +26,9 @@ export default function TemplatePanel({ isOpen, onSelectTemplate }: TemplatePane
   };
 
   return (
-    <aside className={`sidebar ${isOpen ? '' : 'collapsed'}`} aria-label="Biblioteca de plantillas">
+    <aside className={`sidebar ${isOpen ? '' : 'collapsed'}`} aria-label={t('templates.ariaLabel')}>
       <div className="sidebar-header">
-        <span className="sidebar-title">📋 Plantillas</span>
+        <span className="sidebar-title">📋 {t('templates.title')}</span>
       </div>
       <div className="sidebar-content">
         {TEMPLATE_CATEGORIES.map(category => {
