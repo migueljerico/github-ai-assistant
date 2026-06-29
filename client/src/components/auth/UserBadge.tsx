@@ -1,8 +1,10 @@
 import { useRef, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 export default function UserBadge() {
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -57,7 +59,7 @@ export default function UserBadge() {
               style={{ width: '100%', textDecoration: 'none' }}
               onClick={() => setMenuOpen(false)}
             >
-              🐙 Ver perfil en GitHub
+              🐙 {t('user.viewProfile')}
             </a>
             <button
               id="logout-btn"
@@ -65,7 +67,7 @@ export default function UserBadge() {
               style={{ width: '100%', color: 'var(--error)' }}
               onClick={() => { logout(); setMenuOpen(false); }}
             >
-              🚪 Cerrar sesión
+              🚪 {t('user.logout')}
             </button>
           </div>
         </>
