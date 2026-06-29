@@ -1,7 +1,16 @@
 export const es = {
   'header.login': 'Iniciar sesión con GitHub',
   'header.logout': 'Cerrar sesión',
+  'header.title': 'Asistente de IA para Publicar Repositorios',
+  'header.subtitle': 'Multi-proveedor de IA (Gemini · Groq · OpenRouter) + GitHub API',
+  'header.connected': 'Conectado',
+  'header.disconnected': 'Sin conectar',
+  'header.templates': 'Plantillas',
+  'header.hideTemplates': 'Ocultar plantillas',
+  'header.showTemplates': 'Mostrar plantillas',
+  'header.history': 'Historial',
+  'header.hideHistory': 'Ocultar historial',
+  'header.showHistory': 'Mostrar historial',
   'chat.placeholder': 'Escribe tu mensaje...',
   'chat.send': 'Enviar',
-  // Añadiremos más según vayamos migrando la UI
 };
