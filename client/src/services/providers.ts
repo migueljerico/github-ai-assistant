@@ -17,8 +17,8 @@ export type ProviderTransport = 'gemini-proxy' | 'openai-compatible';
 
 export interface ModelOption {
   value: string;
-  label: string;
-  description?: string;
+  label: string; // Puede ser una clave de traducción o un texto literal
+  description?: string; // Clave de traducción
   recommended?: boolean;
   free?: boolean;
 }
@@ -28,7 +28,7 @@ export interface ProviderDef {
   name: string;        // nombre completo, p.ej. "Google Gemini"
   shortName: string;   // nombre corto para el badge, p.ej. "Gemini"
   emoji: string;
-  cardDesc: string;    // subtítulo de la tarjeta de selección
+  cardDesc: string;    // clave de traducción
   transport: ProviderTransport;
   chatEndpoint?: string;     // solo openai-compatible
   modelsEndpoint?: string;   // solo openai-compatible (catálogo dinámico)
@@ -38,8 +38,8 @@ export interface ProviderDef {
   keyPlaceholder: string;
   keyPrefix?: string;        // comprobación ligera en cliente (no validación real)
   signupUrl: string;
-  signupLabel: string;
-  note?: string;             // aviso opcional bajo el selector (p.ej. deprecación)
+  signupLabel: string; // clave de traducción
+  note?: string;             // clave de traducción
   extraHeaders?: Record<string, string>;
 }
 
@@ -49,16 +49,14 @@ export interface ProviderDef {
 const GEMINI_MODELS: ModelOption[] = [
   {
     value: 'gemini-2.5-flash',
-    label: 'Gemini 2.5 Flash ⭐ Recomendado',
-    description:
-      'Mejor calidad · Ideal para generación de documentación completa de repositorios · ~500 peticiones/día gratuitas',
+    label: 'provider.gemini.model.recommended',
+    description: 'provider.gemini.model.recommendedDesc',
     recommended: true,
   },
   {
     value: 'gemini-2.5-flash-lite',
-    label: 'Gemini 2.5 Flash Lite',
-    description:
-      'Más rápido y más cuota gratuita · Puede generar documentación incompleta en repos grandes · Recomendado solo para instrucciones simples',
+    label: 'provider.gemini.model.lite',
+    description: 'provider.gemini.model.liteDesc',
     recommended: false,
   },
 ];
@@ -85,21 +83,21 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     name: 'Google Gemini',
     shortName: 'Gemini',
     emoji: '🤖',
-    cardDesc: 'Modelos 2.5 · free tier activo',
+    cardDesc: 'provider.gemini.cardDesc',
     transport: 'gemini-proxy',
     staticModels: GEMINI_MODELS,
     defaultModel: GEMINI_MODELS[0].value,
     keyPlaceholder: 'AIzaSy...',
     signupUrl: 'https://aistudio.google.com/apikey',
-    signupLabel: 'Obtener clave gratuita en aistudio.google.com →',
-    note: 'ℹ️ Los modelos gemini-2.0 y gemini-1.5 están deprecados y tienen cuota = 0. Solo usa modelos 2.5.',
+    signupLabel: 'provider.gemini.signupLabel',
+    note: 'provider.gemini.note',
   },
   groq: {
     id: 'groq',
     name: 'Groq Cloud',
     shortName: 'Groq',
     emoji: '⚡',
-    cardDesc: 'Ultrarrápido · Tier gratuito muy generoso',
+    cardDesc: 'provider.groq.cardDesc',
     transport: 'openai-compatible',
     chatEndpoint: 'https://api.groq.com/openai/v1/chat/completions',
     modelsEndpoint: 'https://api.groq.com/openai/v1/models',
@@ -109,14 +107,14 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     keyPlaceholder: 'gsk_...',
     keyPrefix: 'gsk_',
     signupUrl: 'https://console.groq.com',
-    signupLabel: 'Obtener clave gratuita en console.groq.com →',
+    signupLabel: 'provider.groq.signupLabel',
   },
   openrouter: {
     id: 'openrouter',
     name: 'OpenRouter',
     shortName: 'OpenRouter',
     emoji: '🌐',
-    cardDesc: 'Pasarela a 300+ modelos · gratis y de pago (OpenAI, Claude, Llama…)',
+    cardDesc: 'provider.openrouter.cardDesc',
     transport: 'openai-compatible',
     chatEndpoint: 'https://openrouter.ai/api/v1/chat/completions',
     modelsEndpoint: 'https://openrouter.ai/api/v1/models',
@@ -126,8 +124,8 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     keyPlaceholder: 'sk-or-...',
     keyPrefix: 'sk-or-',
     signupUrl: 'https://openrouter.ai/keys',
-    signupLabel: 'Obtener clave (incluye modelos gratuitos) en openrouter.ai →',
-    note: '🆓 Los modelos marcados son gratuitos. Una sola key da acceso también a OpenAI, Claude y Llama (de pago). Los modelos :free van y vienen: si uno falla con "Provider returned error", prueba otro (Gemma suele estar disponible).',
+    signupLabel: 'provider.openrouter.signupLabel',
+    note: 'provider.openrouter.note',
     extraHeaders: { 'X-Title': 'GitHub AI Assistant' },
   },
 };
@@ -177,55 +175,3 @@ function isFreeOpenRouterModel(m: OpenRouterModel): boolean {
 }
 
 const MODELS_CACHE_TTL = 3_600_000; // 1 hora
-
-/**
- * Carga el catálogo de modelos de un proveedor OpenAI-compatible.
- * Cachea la LISTA (no la key) en sessionStorage durante 1h.
- * Devuelve `null` si el proveedor no tiene catálogo dinámico o si falla.
- */
-export async function fetchModels(
-  def: ProviderDef,
-  apiKey?: string,
-): Promise<ModelOption[] | null> {
-  if (!def.modelsEndpoint) return null;
-  if (def.modelsNeedKey && !apiKey) return null;
-
-  const cacheKey = `${def.id}_models_cache`;
-  const cached = sessionStorage.getItem(cacheKey);
-  if (cached) {
-    try {
-      const { models, ts } = JSON.parse(cached) as { models: ModelOption[]; ts: number };
-      if (Date.now() - ts < MODELS_CACHE_TTL) return models;
-    } catch { /* cache corrupta — ignorar */ }
-  }
-
-  const headers: Record<string, string> = {};
-  if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
-
-  const res = await fetch(def.modelsEndpoint, { headers });
-  if (!res.ok) throw new Error(`models endpoint error ${res.status}`);
-  const data = await res.json() as { data: Array<{ id: string; name?: string; pricing?: { prompt?: string; completion?: string } }> };
-
-  let models: ModelOption[];
-  if (def.id === 'openrouter') {
-    models = data.data
-      .map(m => ({
-        value: m.id,
-        label: m.name || m.id,
-        free: isFreeOpenRouterModel(m),
-      }))
-      // gratis primero, luego alfabético por etiqueta
-      .sort((a, b) => (Number(b.free) - Number(a.free)) || a.label.localeCompare(b.label));
-  } else {
-    // Groq (y cualquier OpenAI-compatible genérico): filtra no-chat
-    models = data.data
-      .filter(m => !GROQ_EXCLUDED.some(p => m.id.startsWith(p)))
-      .sort((a, b) => a.id.localeCompare(b.id))
-      .map(m => ({ value: m.id, label: m.id }));
-  }
-
-  if (models.length === 0) throw new Error('empty catalog');
-
-  sessionStorage.setItem(cacheKey, JSON.stringify({ models, ts: Date.now() }));
-  return models;
-}
