@@ -20,12 +20,6 @@ const initModels = () => {
 const initCatalog = () => Object.fromEntries(PROVIDER_LIST.map(p => [p.id, p.staticModels])) as Record<AIProviderType, ModelOption[]>;
 const initLoaded = () => Object.fromEntries(PROVIDER_LIST.map(p => [p.id, false])) as Record<AIProviderType, boolean>;
 
-/** Texto de la opción: usa la etiqueta descriptiva si la hay; si no, prettifica el id. */
-function optionLabel(m: ModelOption): string {
-  const base = m.label !== m.value ? m.label : modelLabel(m.value);
-  return m.free ? `🆓 ${base}` : base;
-}
-
 export default function AIProviderPanel() {
   const { connect } = useAIProvider();
   const { t } = useLanguage();
@@ -99,6 +93,15 @@ export default function AIProviderPanel() {
     }
   };
 
+  /** Texto de la opción: traduce si es clave, formatea si es literal. */
+  const optionLabel = (m: ModelOption): string => {
+    // Si la etiqueta es una clave de traducción (ej. 'provider.gemini...'), la traduce.
+    // Si es un literal dinámico (ej. 'llama-3.3-70b'), usa modelLabel.
+    const translated = t(m.label);
+    const base = translated !== m.label ? translated : modelLabel(m.value);
+    return m.free ? `🆓 ${base}` : base;
+  };
+
   return (
     <div className="auth-screen">
       <div className="auth-card ai-provider-card">
@@ -138,7 +141,7 @@ export default function AIProviderPanel() {
                   <div className={`provider-logo provider-logo-${p.id}`}>{p.emoji}</div>
                   <div>
                     <div className="provider-card-name">{p.name}</div>
-                    <div className="provider-card-desc">{p.cardDesc}</div>
+                    <div className="provider-card-desc">{t(p.cardDesc)}</div>
                   </div>
                 </div>
 
@@ -179,7 +182,7 @@ export default function AIProviderPanel() {
                         margin: '4px 0 8px',
                         lineHeight: 1.45,
                       }}>
-                        {selectedModelInfo.recommended ? '✅' : '⚠️'} {selectedModelInfo.description}
+                        {selectedModelInfo.recommended ? '✅' : '⚠️'} {t(selectedModelInfo.description)}
                       </p>
                     )}
 
@@ -198,7 +201,7 @@ export default function AIProviderPanel() {
                     {/* Nota del proveedor (deprecación Gemini, gratis OpenRouter…) */}
                     {p.note && (
                       <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginBottom: '8px', lineHeight: 1.45 }}>
-                        {p.note}
+                        {t(p.note)}
                       </p>
                     )}
 
@@ -224,7 +227,7 @@ export default function AIProviderPanel() {
 
                     <a href={p.signupUrl} target="_blank"
                       rel="noopener noreferrer" className="provider-link">
-                      {p.signupLabel}
+                      {t(p.signupLabel)}
                     </a>
                   </div>
                 )}
