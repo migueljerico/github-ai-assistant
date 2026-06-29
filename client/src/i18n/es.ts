@@ -17,4 +17,9 @@ export const es = {
   'auth.title': 'Asistente de IA para Publicar Repositorios',
   'auth.subtitle': 'Gestiona tus repositorios de GitHub con lenguaje natural,\nimpulsado por Gemini, Groq u OpenRouter (con modelos gratuitos).',
   'auth.patDivider': 'o usa un token personal',
+  'auth.connectGithub': 'Conectar con GitHub',
+  'pat.hideToken': 'Ocultar token',
+  'pat.showToken': 'Mostrar token',
+  'pat.verifying': 'Verificando...',
+  'pat.useManual': 'Usar token manual',
 };
