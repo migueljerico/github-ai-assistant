@@ -1,6 +1,8 @@
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 import UserBadge from '../auth/UserBadge';
 import AIProviderBadge from './AIProviderBadge';
+import LanguageSelector from './LanguageSelector';
 
 export default function Header({
   onToggleTemplates,
@@ -14,14 +16,15 @@ export default function Header({
   historyOpen: boolean;
 }) {
   const { isAuthenticated } = useAuth();
+  const { t } = useLanguage();
 
   return (
     <header className="header">
       <div className="header-logo">
         <div className="header-logo-icon">🤖</div>
         <div className="header-title">
-          Asistente de IA para Publicar Repositorios
-          <span>Multi-proveedor de IA (Gemini · Groq · OpenRouter) + GitHub API</span>
+          {t('header.title')}
+          <span>{t('header.subtitle')}</span>
         </div>
       </div>
 
@@ -32,7 +35,7 @@ export default function Header({
         {/* GitHub connection status badge */}
         <div className={`badge ${isAuthenticated ? 'badge-connected' : 'badge-disconnected'}`}>
           <span className="badge-dot" />
-          <span className="btn-label">{isAuthenticated ? 'Conectado' : 'Sin conectar'}</span>
+          <span className="btn-label">{isAuthenticated ? t('header.connected') : t('header.disconnected')}</span>
         </div>
 
         {/* Sidebar toggles (el texto se oculta en móvil, queda el emoji) */}
@@ -40,20 +43,23 @@ export default function Header({
           id="toggle-templates-btn"
           className="btn btn-ghost btn-sm"
           onClick={onToggleTemplates}
-          title={templatesOpen ? 'Ocultar plantillas' : 'Mostrar plantillas'}
+          title={templatesOpen ? t('header.hideTemplates') : t('header.showTemplates')}
           aria-pressed={templatesOpen}
         >
-          📋 <span className="btn-label">Plantillas</span>
+          📋 <span className="btn-label">{t('header.templates')}</span>
         </button>
         <button
           id="toggle-history-btn"
           className="btn btn-ghost btn-sm"
           onClick={onToggleHistory}
-          title={historyOpen ? 'Ocultar historial' : 'Mostrar historial'}
+          title={historyOpen ? t('header.hideHistory') : t('header.showHistory')}
           aria-pressed={historyOpen}
         >
-          📜 <span className="btn-label">Historial</span>
+          📜 <span className="btn-label">{t('header.history')}</span>
         </button>
+
+        {/* Selector de idioma */}
+        <LanguageSelector />
 
         {/* User badge */}
         {isAuthenticated && <UserBadge />}
