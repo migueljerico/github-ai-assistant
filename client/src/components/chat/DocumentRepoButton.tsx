@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface DocumentRepoButtonProps {
   disabled: boolean;
@@ -6,6 +7,7 @@ interface DocumentRepoButtonProps {
 }
 
 export default function DocumentRepoButton({ disabled, onDocumentRepo }: DocumentRepoButtonProps) {
+  const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [repoName, setRepoName] = useState('');
 
@@ -27,7 +29,7 @@ export default function DocumentRepoButton({ disabled, onDocumentRepo }: Documen
         disabled={disabled}
         type="button"
       >
-        📄 Documentar repo
+        📄 {t('chat.documentRepo')}
       </button>
     );
   }
@@ -39,7 +41,7 @@ export default function DocumentRepoButton({ disabled, onDocumentRepo }: Documen
         autoFocus
         type="text"
         className="input"
-        placeholder="nombre-del-repo o owner/repo"
+        placeholder={t('chat.repoInputPlaceholder')}
         value={repoName}
         onChange={e => setRepoName(e.target.value)}
         style={{ fontSize: '0.8rem', padding: '6px 10px', minWidth: '200px' }}
