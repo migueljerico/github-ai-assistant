@@ -13,4 +13,8 @@ export const en = {
   'header.showHistory': 'Show history',
   'chat.placeholder': 'Type your message...',
   'chat.send': 'Send',
+  'auth.verifying': 'Verifying authentication...',
+  'auth.title': 'AI Assistant for Publishing Repositories',
+  'auth.subtitle': 'Manage your GitHub repositories with natural language,\npowered by Gemini, Groq or OpenRouter (with free models).',
+  'auth.patDivider': 'or use a personal token',
 };
