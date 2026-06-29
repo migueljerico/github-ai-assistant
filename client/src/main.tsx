@@ -5,6 +5,7 @@ import App from './App.tsx';
 import { AuthProvider, useAuth } from './context/AuthContext.tsx';
 import { HistoryProvider } from './context/HistoryContext.tsx';
 import { AIProviderContextProvider, useAIProvider } from './context/AIProviderContext.tsx';
+import { LanguageProvider } from './context/LanguageContext.tsx'; // 👈 Añadido
 import LoginButton from './components/auth/LoginButton.tsx';
 import PatInput from './components/auth/PatInput.tsx';
 import AIProviderPanel from './components/ai-provider/AIProviderPanel.tsx';
@@ -77,13 +78,15 @@ function AIProviderGate() {
 // ── Root ──────────────────────────────────────────────────────────────────────
 function Root() {
   return (
-    <AuthProvider>
-      <AIProviderContextProvider>
-        <HistoryProvider>
-          <AuthGate />
-        </HistoryProvider>
-      </AIProviderContextProvider>
-    </AuthProvider>
+    <LanguageProvider> {/* 👈 Envuelve todo para que el idioma esté disponible desde el login */}
+      <AuthProvider>
+        <AIProviderContextProvider>
+          <HistoryProvider>
+            <AuthGate />
+          </HistoryProvider>
+        </AIProviderContextProvider>
+      </AuthProvider>
+    </LanguageProvider>
   );
 }
 
