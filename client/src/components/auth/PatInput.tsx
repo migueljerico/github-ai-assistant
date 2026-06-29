@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 export default function PatInput() {
   const { loginWithPat, isLoading, error } = useAuth();
+  const { t } = useLanguage();
   const [pat, setPat] = useState('');
   const [showPat, setShowPat] = useState(false);
 
@@ -42,7 +44,7 @@ export default function PatInput() {
             fontSize: '1rem',
             padding: '2px',
           }}
-          aria-label={showPat ? 'Ocultar token' : 'Mostrar token'}
+          aria-label={showPat ? t('pat.hideToken') : t('pat.showToken')}
         >
           {showPat ? '🙈' : '👁️'}
         </button>
@@ -59,7 +61,7 @@ export default function PatInput() {
         disabled={!pat.trim() || isLoading}
         style={{ justifyContent: 'center' }}
       >
-        {isLoading ? <><span className="spinner spinner-sm" /> Verificando...</> : 'Usar token manual'}
+        {isLoading ? <><span className="spinner spinner-sm" /> {t('pat.verifying')}</> : t('pat.useManual')}
       </button>
     </form>
   );
