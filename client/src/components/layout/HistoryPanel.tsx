@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useHistory } from '../../context/HistoryContext';
 import type { HistoryStatus } from '../../types';
+import { useLanguage } from '../../context/LanguageContext';
 
 const STATUS_EMOJI: Record<HistoryStatus, string> = {
   completed: '✅',
@@ -10,6 +11,7 @@ const STATUS_EMOJI: Record<HistoryStatus, string> = {
 };
 
 export default function HistoryPanel({ isOpen }: { isOpen: boolean }) {
+  const { t } = useLanguage();
   const { entries, clearHistory, exportLog } = useHistory();
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -19,15 +21,15 @@ export default function HistoryPanel({ isOpen }: { isOpen: boolean }) {
   }, [entries]);
 
   return (
-    <aside className={`history-panel ${isOpen ? '' : 'collapsed'}`} aria-label="Historial de sesión">
+    <aside className={`history-panel ${isOpen ? '' : 'collapsed'}`} aria-label={t('history.ariaLabel')}>
       <div className="sidebar-header">
-        <span className="sidebar-title">📜 Historial de sesión</span>
+        <span className="sidebar-title">📜 {t('history.title')}</span>
         {entries.length > 0 && (
           <button
             id="clear-history-btn"
             className="btn btn-ghost btn-sm"
             onClick={clearHistory}
-            title="Limpiar historial"
+            title={t('history.clearTitle')}
           >
             🗑️
           </button>
@@ -38,7 +40,7 @@ export default function HistoryPanel({ isOpen }: { isOpen: boolean }) {
         {entries.length === 0 ? (
           <div className="history-empty">
             <span className="history-empty-icon">📋</span>
-            <span>Las acciones de esta sesión aparecerán aquí</span>
+            <span>{t('history.empty')}</span>
           </div>
         ) : (
           entries.map(entry => {
@@ -68,7 +70,7 @@ export default function HistoryPanel({ isOpen }: { isOpen: boolean }) {
           disabled={entries.length === 0}
           style={{ width: '100%', justifyContent: 'center' }}
         >
-          ⬇️ Exportar log
+          ⬇️ {t('history.exportLog')}
         </button>
       </div>
     </aside>
