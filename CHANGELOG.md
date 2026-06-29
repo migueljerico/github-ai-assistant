@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.20.0] — 2026-06-28
+
+### Added
+Internacionalización (i18n) ligero — Fase 1 (#24) — Infraestructura propia (sin dependencias externas) para soportar Español e Inglés en la interfaz estática.
+LanguageContext + función t() con interpolación de variables (ej. {provider}).
+Selector de idioma 🌐 en la cabecera y en la pantalla de login.
+Idioma recordado en sessionStorage (no es secreto, cumple con Zero-Storage).
+UI traducida: Pantalla de Login (AuthGate), Cabecera (Header), Panel de configuración de IA (AIProviderPanel), Barra de chat (ChatInput) y sus 7 botones de acciones rápidas (Documentar, Resumir, Changelog, Salud, Exportar, Opinar, Adjuntar).
+Prompts y configuración de proveedores (providers.ts) adaptados para soportar claves de traducción.
+
+### Notes
+Fase 2 (pendiente): Traducción de los paneles laterales (templateData.ts, HistoryPanel), modales (ConfirmModal, DocModal, etc.) y mensajes transitorios dinámicos de assistantActions.ts.
+
 ## [3.19.0] — 2026-06-27
 
 ### Added
