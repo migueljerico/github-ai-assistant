@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface CodeHealthButtonProps {
   disabled: boolean;
@@ -7,6 +8,7 @@ interface CodeHealthButtonProps {
 
 // #44 — Botón "Salud del código": pide un repo y abre el dashboard visual.
 export default function CodeHealthButton({ disabled, onCodeHealth }: CodeHealthButtonProps) {
+  const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [repoName, setRepoName] = useState('');
 
@@ -28,7 +30,7 @@ export default function CodeHealthButton({ disabled, onCodeHealth }: CodeHealthB
         disabled={disabled}
         type="button"
       >
-        📊 Salud del código
+        📊 {t('chat.codeHealth')}
       </button>
     );
   }
@@ -40,7 +42,7 @@ export default function CodeHealthButton({ disabled, onCodeHealth }: CodeHealthB
         autoFocus
         type="text"
         className="input"
-        placeholder="nombre-del-repo o owner/repo"
+        placeholder={t('chat.repoInputPlaceholder')}
         value={repoName}
         onChange={e => setRepoName(e.target.value)}
         style={{ fontSize: '0.8rem', padding: '6px 10px', minWidth: '200px' }}
