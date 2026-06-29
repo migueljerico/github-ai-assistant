@@ -13,4 +13,8 @@ export const es = {
   'header.showHistory': 'Mostrar historial',
   'chat.placeholder': 'Escribe tu mensaje...',
   'chat.send': 'Enviar',
+  'auth.verifying': 'Verificando autenticación...',
+  'auth.title': 'Asistente de IA para Publicar Repositorios',
+  'auth.subtitle': 'Gestiona tus repositorios de GitHub con lenguaje natural,\nimpulsado por Gemini, Groq u OpenRouter (con modelos gratuitos).',
+  'auth.patDivider': 'o usa un token personal',
 };
