@@ -16,5 +16,5 @@ vi.mock('../context/LanguageContext', () => ({
     lang: 'es',
     setLang: vi.fn(),
   }),
-  LanguageProvider: ({ children }: { children: React.ReactNode }) => children,
+  LanguageProvider: ({ children }: any) => children,
 }));
