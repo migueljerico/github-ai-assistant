@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface RepoContextButtonProps {
   disabled: boolean;
@@ -19,6 +20,7 @@ export default function RepoContextButton({
   onLoadContext,
   onClearContext,
 }: RepoContextButtonProps) {
+  const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [repoName, setRepoName] = useState('');
 
@@ -35,13 +37,13 @@ export default function RepoContextButton({
   if (activeContext) {
     return (
       <span className="repo-context-chip" id="repo-context-chip">
-        💬 Contexto: <strong>{activeContext}</strong>
+        💬 {t('chat.contextPrefix')}: <strong>{activeContext}</strong>
         <button
           type="button"
           className="repo-context-clear"
           onClick={onClearContext}
-          aria-label="Descartar contexto del repositorio"
-          title="Descartar contexto"
+          aria-label={t('chat.contextClearAria')}
+          title={t('chat.contextClearTitle')}
         >
           ✕
         </button>
@@ -58,7 +60,7 @@ export default function RepoContextButton({
         disabled={disabled}
         type="button"
       >
-        💬 Opinar sobre repo
+        💬 {t('chat.opinionRepo')}
       </button>
     );
   }
@@ -70,7 +72,7 @@ export default function RepoContextButton({
         autoFocus
         type="text"
         className="input"
-        placeholder="nombre-del-repo o owner/repo"
+        placeholder={t('chat.repoInputPlaceholder')}
         value={repoName}
         onChange={e => setRepoName(e.target.value)}
         style={{ fontSize: '0.8rem', padding: '6px 10px', minWidth: '200px' }}
