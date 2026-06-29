@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface ThreadSummaryButtonProps {
   disabled: boolean;
@@ -11,6 +12,7 @@ interface ThreadSummaryButtonProps {
  * repo de contexto activo) y se dispara el resumen del hilo de ese issue/PR.
  */
 export default function ThreadSummaryButton({ disabled, onSummarizeThread }: ThreadSummaryButtonProps) {
+  const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [value, setValue] = useState('');
 
@@ -32,7 +34,7 @@ export default function ThreadSummaryButton({ disabled, onSummarizeThread }: Thr
         disabled={disabled}
         type="button"
       >
-        📝 Resumir hilo
+        📝 {t('chat.threadSummary')}
       </button>
     );
   }
@@ -44,7 +46,7 @@ export default function ThreadSummaryButton({ disabled, onSummarizeThread }: Thr
         autoFocus
         type="text"
         className="input"
-        placeholder="owner/repo#42 · URL · o repo"
+        placeholder={t('chat.threadSummaryPlaceholder')}
         value={value}
         onChange={e => setValue(e.target.value)}
         style={{ fontSize: '0.8rem', padding: '6px 10px', minWidth: '200px' }}
