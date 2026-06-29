@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface ConversationIOButtonProps {
   disabled: boolean;
@@ -11,6 +12,7 @@ interface ConversationIOButtonProps {
 // #46 — Exportar/importar la conversación (Zero-Storage: el usuario controla el
 // fichero, nada se auto-persiste). Patrón del input oculto de FileAttachButton.
 export default function ConversationIOButton({ disabled, hasMessages, onExport, onImport }: ConversationIOButtonProps) {
+  const { t } = useLanguage();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -27,9 +29,9 @@ export default function ConversationIOButton({ disabled, hasMessages, onExport, 
         onClick={onExport}
         disabled={disabled || !hasMessages}
         type="button"
-        title="Descargar la conversación como JSON"
+        title={t('chat.exportTitle')}
       >
-        💾 Exportar
+        💾 {t('chat.export')}
       </button>
       <button
         id="import-conversation-btn"
@@ -37,9 +39,9 @@ export default function ConversationIOButton({ disabled, hasMessages, onExport, 
         onClick={() => inputRef.current?.click()}
         disabled={disabled}
         type="button"
-        title="Restaurar una conversación desde un JSON"
+        title={t('chat.importTitle')}
       >
-        📂 Importar
+        📂 {t('chat.import')}
       </button>
       <input
         ref={inputRef}
