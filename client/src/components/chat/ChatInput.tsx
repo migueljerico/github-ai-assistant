@@ -1,5 +1,6 @@
 import { useRef, useEffect } from 'react';
 import type { GitHubRepo } from '../../types';
+import { useLanguage } from '../../context/LanguageContext';
 import MultiRepoSelector from '../multi-repo/RepoSelector';
 import DocumentRepoButton from './DocumentRepoButton';
 import RepoContextButton from './RepoContextButton';
@@ -75,6 +76,7 @@ export default function ChatInput({
   modeOverride = 'auto',
   onModeOverrideChange,
 }: ChatInputProps) {
+  const { t } = useLanguage();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-resize textarea
@@ -99,10 +101,10 @@ export default function ChatInput({
   };
 
   const getPlaceholder = () => {
-    if (disabled) return 'Conecta con GitHub para empezar…';
-    if (modeOverride === 'chat') return 'Pide una opinión, consejo o análisis...';
-    if (modeOverride === 'action') return 'Escribe una acción (ej: crea un archivo, lista mis repos)...';
-    return 'Escribe una instrucción… (Enter para enviar, Shift+Enter para nueva línea)';
+    if (disabled) return t('chat.placeholder.disabled');
+    if (modeOverride === 'chat') return t('chat.placeholder.chat');
+    if (modeOverride === 'action') return t('chat.placeholder.action');
+    return t('chat.placeholder.auto');
   };
 
   return (
@@ -136,7 +138,7 @@ export default function ChatInput({
                 transition: 'all 0.2s ease',
               }}
             >
-              {mode === 'auto' ? '🤖 Auto' : mode === 'chat' ? '💬 Opinión' : '️ Acción'}
+              {mode === 'auto' ? `🤖 ${t('chat.mode.auto')}` : mode === 'chat' ? `💬 ${t('chat.mode.chat')}` : `️ ${t('chat.mode.action')}`}
             </button>
           ))}
         </div>
@@ -154,7 +156,7 @@ export default function ChatInput({
             onKeyDown={handleKeyDown}
             disabled={disabled}
             rows={2}
-            aria-label="Instrucción para el asistente"
+            aria-label={t('chat.ariaLabel')}
           />
         </div>
         <button
@@ -162,8 +164,8 @@ export default function ChatInput({
           className="send-btn"
           onClick={isLoading ? onStop : onSend}
           disabled={disabled || (!isLoading && !value.trim())}
-          aria-label={isLoading ? 'Detener generación' : 'Enviar instrucción'}
-          title={isLoading ? 'Detener' : 'Enviar'}
+          aria-label={isLoading ? t('chat.ariaStop') : t('chat.ariaSend')}
+          title={isLoading ? t('chat.titleStop') : t('chat.titleSend')}
         >
           {isLoading ? '⏹️' : '➤'}
         </button>
@@ -178,7 +180,7 @@ export default function ChatInput({
             onChange={e => onMultiRepoChange(e.target.checked)}
             disabled={disabled}
           />
-          Aplicar a múltiples repositorios
+          {t('chat.multiRepo')}
         </label>
 
         <DocumentRepoButton
@@ -230,7 +232,7 @@ export default function ChatInput({
             disabled={disabled}
             onClick={onPublishFile}
           >
-            📤 Documentar y publicar
+            📤 {t('chat.publishFile')}
           </button>
         )}
       </div>
