@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import { useLanguage } from '../../context/LanguageContext';
 import { SUPPORTED_FILE_EXTENSIONS } from '../../utils/pdfReader';
 
 interface FileAttachButtonProps {
@@ -18,6 +19,7 @@ interface FileAttachButtonProps {
 const ACCEPT = SUPPORTED_FILE_EXTENSIONS.map(e => `.${e}`).join(',');
 
 export default function FileAttachButton({ disabled, fileName, onAttach, onClear }: FileAttachButtonProps) {
+  const { t } = useLanguage();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -35,8 +37,8 @@ export default function FileAttachButton({ disabled, fileName, onAttach, onClear
           type="button"
           className="repo-context-clear"
           onClick={onClear}
-          aria-label="Quitar archivo adjunto"
-          title="Quitar archivo"
+          aria-label={t('chat.attachFileClearAria')}
+          title={t('chat.attachFileClearTitle')}
         >
           ✕
         </button>
@@ -53,7 +55,7 @@ export default function FileAttachButton({ disabled, fileName, onAttach, onClear
         disabled={disabled}
         type="button"
       >
-        📎 Adjuntar archivo
+        📎 {t('chat.attachFile')}
       </button>
       <input
         ref={inputRef}
