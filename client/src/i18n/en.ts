@@ -22,4 +22,6 @@ export const en = {
   'pat.showToken': 'Show token',
   'pat.verifying': 'Verifying...',
   'pat.useManual': 'Use manual token',
+  'user.viewProfile': 'View GitHub profile',
+  'user.logout': 'Sign out',
 };
