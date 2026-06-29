@@ -5,7 +5,7 @@ import App from './App.tsx';
 import { AuthProvider, useAuth } from './context/AuthContext.tsx';
 import { HistoryProvider } from './context/HistoryContext.tsx';
 import { AIProviderContextProvider, useAIProvider } from './context/AIProviderContext.tsx';
-import { LanguageProvider } from './context/LanguageContext.tsx'; // 👈 Añadido
+import { LanguageProvider, useLanguage } from './context/LanguageContext.tsx';
 import LoginButton from './components/auth/LoginButton.tsx';
 import PatInput from './components/auth/PatInput.tsx';
 import AIProviderPanel from './components/ai-provider/AIProviderPanel.tsx';
@@ -14,6 +14,7 @@ import ErrorBoundary from './components/ErrorBoundary.tsx';
 // ── Step 1: GitHub Auth Gate ──────────────────────────────────────────────────
 function AuthGate() {
   const { isAuthenticated, isLoading, setTokenFromOAuth } = useAuth();
+  const { t } = useLanguage();
 
   // Extract token from URL hash after OAuth redirect
   useEffect(() => {
@@ -37,7 +38,7 @@ function AuthGate() {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', flexDirection: 'column', gap: '16px' }}>
         <span className="spinner spinner-lg" />
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Verificando autenticación...</p>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{t('auth.verifying')}</p>
       </div>
     );
   }
@@ -47,13 +48,12 @@ function AuthGate() {
       <div className="auth-screen">
         <div className="auth-card">
           <div className="auth-icon">🤖</div>
-          <h1 className="auth-title gradient-text">Asistente de IA para Publicar Repositorios</h1>
+          <h1 className="auth-title gradient-text">{t('auth.title')}</h1>
           <p className="auth-subtitle">
-            Gestiona tus repositorios de GitHub con lenguaje natural,<br />
-            impulsado por Gemini, Groq u OpenRouter (con modelos gratuitos).
+            {t('auth.subtitle')}
           </p>
           <LoginButton />
-          <div className="auth-divider">o usa un token personal</div>
+          <div className="auth-divider">{t('auth.patDivider')}</div>
           <PatInput />
         </div>
       </div>
@@ -78,7 +78,7 @@ function AIProviderGate() {
 // ── Root ──────────────────────────────────────────────────────────────────────
 function Root() {
   return (
-    <LanguageProvider> {/* 👈 Envuelve todo para que el idioma esté disponible desde el login */}
+    <LanguageProvider>
       <AuthProvider>
         <AIProviderContextProvider>
           <HistoryProvider>
