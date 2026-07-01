@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Internacionalización (i18n) ligera — Fase 1 (#24, Sprint 4)** — Infraestructura propia **sin dependencias externas** para soportar Español e Inglés en la interfaz estática: nuevo `LanguageContext` + función `t()` con interpolación de variables (ej. `{provider}`). Selector de idioma 🌐 en la cabecera y en la pantalla de login; idioma recordado en `sessionStorage` (no es secreto, cumple con Zero-Storage). **UI traducida:** pantalla de login (`AuthGate`), cabecera (`Header`), panel de configuración de IA (`AIProviderPanel`), barra de chat (`ChatInput`) y sus 7 botones de acciones rápidas (Documentar, Resumir, Changelog, Salud, Exportar, Opinar, Adjuntar). `providers.ts` adaptado para soportar claves de traducción.
+- _Cierre de versión y documentación asistidos por **ZCode** (GLM-5.2)._
 
 ### Notes
 - **Fase 2 (pendiente):** traducción de los paneles laterales (`templateData.ts`, `HistoryPanel`), modales (`ConfirmModal`, `DocModal`, etc.) y mensajes transitorios dinámicos de `assistantActions.ts`.

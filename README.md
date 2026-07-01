@@ -68,7 +68,7 @@ A diferencia de un chatbot convencional, este asistente:
 
 **GitHub AI Assistant** es una aplicación web conversacional de código abierto que actúa como capa de abstracción inteligente sobre la GitHub REST API v3. El usuario escribe sus intenciones en lenguaje natural — sin necesidad de conocer endpoints, payloads ni codificación Base64 — y el agente de IA las interpreta, propone la acción y espera confirmación antes de ejecutar.
 
-El proyecto evolucionó de un prototipo en **Google AI Studio** a una aplicación full-stack completa, diseñada y construida íntegramente con asistencia de agentes de IA: **Claude** (Anthropic) como arquitecto y revisor, y **Antigravity 2.0** (Google) como entorno de desarrollo agéntico.
+El proyecto evolucionó de un prototipo en **Google AI Studio** a una aplicación full-stack completa, diseñada y construida íntegramente con asistencia de agentes de IA: **Claude** (Anthropic) como arquitecto y revisor, **Antigravity 2.0** (Google) como entorno de desarrollo agéntico y, desde la v3.20.0, **ZCode** (GLM-5.2) tomando el control del roadmap, el cierre de versiones y la documentación.
 
 ---
 
