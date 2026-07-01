@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v3.19.0 · Junio 2026
+**Actualizado a:** v3.20.0 · Julio 2026
 
 ---
 
@@ -65,7 +65,9 @@ herramienta**: si el trabajo continúa en otro entorno, este es el orden de refe
   (ErrorBoundary + a11y) ✅ **(v3.17.0)** · **#44** (dashboard "Salud del Código" con Recharts — pieza de
   escaparate Análisis de Datos) ✅ **(v3.18.0)**.
 - **🏅 Sprint 4 — Alcance e i18n (en curso):** **#46** (export/import de conversación) ✅ **(v3.19.0)** ·
-  queda **#23→#24** (inglés) — ronda dedicada (decisión de dependencia: `i18next` vs ligero).
+  **#24 Fase 1** (i18n ligera sin dependencias: `LanguageContext` + `t()` + ES/EN; selector 🌐; login,
+  cabecera, `AIProviderPanel`, `ChatInput` y sus 7 botones traducidos) ✅ **(v3.20.0)** · queda
+  **#24 Fase 2** (modales y mensajes transitorios — rama en revisión).
 - **📋 Backlog:** #25 (logs/health), #22 (aviso de sesión), #48 (sync repo), **#36** (GitHub App —
   hito grande aparte). #26 (cobertura) es transversal: sube con cada sprint.
 - **🗑️ Candidatos a poda:** **#33** (sugerir revisores) y **#35** (auto-labels) — nicho/fuera del núcleo.
@@ -254,14 +256,22 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 ---
 
-#### #24 — Internacionalización (i18n) con i18next
-**Esfuerzo:** 3–4h
+#### #24 — Internacionalización (i18n) — Fase 1 entregada / Fase 2 en curso
+**Esfuerzo:** Fase 1 entregada (v3.20.0); Fase 2 ~2–3h restantes
 
-**Problema actual:** La app es 100% en español.
+**Estado (v3.20.0):** ✅ **Fase 1** — Infraestructura **ligera sin dependencias externas** (se descartó
+`i18next`): `LanguageContext` + función `t()` con interpolación, selector 🌐 e idioma recordado en
+`sessionStorage` (no secreto → Zero-Storage). Traducidos: login (`AuthGate`), cabecera (`Header`),
+`AIProviderPanel`, `ChatInput` y sus botones de acciones rápidas, y los paneles laterales
+(`HistoryPanel`, `TemplatePanel`).
 
-**Solución propuesta:** Añadir soporte **inglés** (primer idioma objetivo, por ser el dominante en el ecosistema GitHub — *sugerencia de Gemini 2.5 Flash*) con `i18next` + `react-i18next`. Strings de UI, system prompts adaptados al idioma, selector en header.
+**⏳ Fase 2 (en revisión — rama `feature/i18n-phase2-complete`):** modales (`ConfirmModal`, `DocModal`,
+`FilePublishModal`, `PublishActions`) y los mensajes transitorios dinámicos de `assistantActions.ts`.
+La rama actual tiene bugs (clave de diccionario inexistente, 3 tests rotos, huecos sin traducir) y se
+corregirá antes de mergear.
 
-**Dependencia:** Recomendable completar #23 antes — facilita la i18n de prompts (los prompts ya viven en `prompts/*.md` desde v3.11.2 → bastaría con `chat.en.md`, etc.).
+**Dependencia resuelta:** #23 (prompts en archivos `prompts/*.md`) facilita una futura i18n de prompts
+(`chat.en.md`, etc.).
 
 ---
 
@@ -322,8 +332,8 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 |---|---|---|---|
 | 🔴 Alta | 8 | 8 (#1, #2, #13, #14, #27, #45, #15, #28) | 0 |
 | 🟡 Media | 17 | 14 (#12, #17, #18, #19, #21, #37, #41, #32, #42, #38, #20, #49, #39, #44) | 3 (#26, #50, #51) |
-| 🟢 Baja | 13 | 4 (#23, #34, #40, #46) | 9 (#22, #24, #25, #33, #35, #36, #48, #52, #53) |
-| **TOTAL** | **38** | **26** | **12** |
+| 🟢 Baja | 13 | 5 (#23, #24, #34, #40, #46) | 8 (#22, #25, #33, #35, #36, #48, #52, #53) |
+| **TOTAL** | **38** | **27** | **11** |
 
 > **#28** cubierto en su **norte** por las Fases 1 (v3.0.0, adjuntar como contexto) y
 > 2 (v3.1.0, documentar→publicar). **Más formatos:** Fase 3a (v3.2.0, Excel/CSV) y
