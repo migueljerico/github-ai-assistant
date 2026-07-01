@@ -1,17 +1,17 @@
-﻿### CHANGELOG
+### CHANGELOG
 
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.20.0] u{2014} 2026-06-28
+## [3.20.0] — 2026-06-28
 
 ### Added
-- **Internacionalizaciu{00F3}n (i18n) ligera u{2014} Fase 1 (#24, Sprint 4)** u{2014} Infraestructura propia **sin dependencias externas** para soportar Espau{00F1}ol e Inglu{00E9}s en la interfaz estu{00E1}tica: nuevo `LanguageContext` + funciu{00F3}n `t()` con interpolaciu{00F3}n de variables (ej. `{provider}`). Selector de idioma u{1F310} en la cabecera y en la pantalla de login; idioma recordado en `sessionStorage` (no es secreto, cumple con Zero-Storage). **UI traducida:** pantalla de login (`AuthGate`), cabecera (`Header`), panel de configuraciu{00F3}n de IA (`AIProviderPanel`), barra de chat (`ChatInput`) y sus 7 botones de acciones ru{00E1}pidas (Documentar, Resumir, Changelog, Salud, Exportar, Opinar, Adjuntar). `providers.ts` adaptado para soportar claves de traducciu{00F3}n.
+- **Internacionalización (i18n) ligera — Fase 1 (#24, Sprint 4)** — Infraestructura propia **sin dependencias externas** para soportar Español e Inglés en la interfaz estática: nuevo `LanguageContext` + función `t()` con interpolación de variables (ej. `{provider}`). Selector de idioma 🌐 en la cabecera y en la pantalla de login; idioma recordado en `sessionStorage` (no es secreto, cumple con Zero-Storage). **UI traducida:** pantalla de login (`AuthGate`), cabecera (`Header`), panel de configuración de IA (`AIProviderPanel`), barra de chat (`ChatInput`) y sus 7 botones de acciones rápidas (Documentar, Resumir, Changelog, Salud, Exportar, Opinar, Adjuntar). `providers.ts` adaptado para soportar claves de traducción.
 
 ### Notes
-- **Fase 2 (pendiente):** traducciu{00F3}n de los paneles laterales (`templateData.ts`, `HistoryPanel`), modales (`ConfirmModal`, `DocModal`, etc.) y mensajes transitorios dinu{00E1}micos de `assistantActions.ts`.
+- **Fase 2 (pendiente):** traducción de los paneles laterales (`templateData.ts`, `HistoryPanel`), modales (`ConfirmModal`, `DocModal`, etc.) y mensajes transitorios dinámicos de `assistantActions.ts`.
 
 ## [3.19.0] — 2026-06-27
 
