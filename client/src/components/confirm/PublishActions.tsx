@@ -1,4 +1,6 @@
-// ── PublishActions ───────────────────────────────────────────────────────────
+import { useLanguage } from '../../context/LanguageContext';
+
+// ── PublishActions ──────────────────────────────────────────────────────────────
 // Barra de acciones de publicación COMPARTIDA por los dos flujos de documentación
 // (v3.10.0): "Documentar repo" (DocModal) y "📤 Documentar y publicar archivo"
 // (FilePublishModal). Antes cada modal duplicaba estos botones y fueron divergiendo
@@ -52,15 +54,17 @@ export default function PublishActions({
   onCreateRepoAndPublish,
   onCancelCreate,
 }: PublishActionsProps) {
+  const { t } = useLanguage();
+
   // Oferta de crear un repo inexistente (solo el flujo de archivo la usa).
   if (repoMissing) {
     return (
       <div className="modal-footer">
         <button id="publish-create-cancel-btn" className="btn btn-secondary" onClick={onCancelCreate} disabled={busy}>
-          ← Cambiar destino
+          {t('modal.publish.changeTarget')}
         </button>
         <button id="publish-create-repo-btn" className="btn btn-success" onClick={onCreateRepoAndPublish} disabled={busy}>
-          {busy ? <><span className="spinner spinner-sm" /> Creando...</> : '➕ Crear repo y publicar'}
+          {busy ? <><span className="spinner spinner-sm" /> {t('modal.publish.creating')}...</> : t('modal.publish.createAndPublish')}
         </button>
       </div>
     );
@@ -74,21 +78,23 @@ export default function PublishActions({
         id="publish-version-input"
         className="input"
         type="text"
-        placeholder="versión release (vacío = sugerida)"
+        placeholder={t('modal.publish.versionPlaceholder')}
         value={version}
         onChange={e => onVersionChange(e.target.value)}
         disabled={busy}
         style={{ flex: '1 1 160px', fontSize: '0.85rem', padding: '8px 10px' }}
       />
-      <button id="publish-cancel-btn" className="btn btn-danger" onClick={onCancel} disabled={busy}>❌ Cancelar</button>
+      <button id="publish-cancel-btn" className="btn btn-danger" onClick={onCancel} disabled={busy}>
+        {t('modal.publish.cancel')}
+      </button>
       <button id="publish-draftpr-btn" className="btn btn-secondary" onClick={onDraftPr} disabled={pubDisabled}>
-        {isCreatingDraftPr ? <><span className="spinner spinner-sm" /> Creando Draft PR...</> : '🔀 Crear Draft PR'}
+        {isCreatingDraftPr ? <><span className="spinner spinner-sm" /> {t('modal.publish.draftPrCreating')}...</> : t('modal.publish.draftPr')}
       </button>
       <button id="publish-release-btn" className="btn btn-secondary" onClick={onRelease} disabled={pubDisabled}>
-        {isCreatingRelease ? <><span className="spinner spinner-sm" /> Creando Release...</> : '🏷️ Crear Release'}
+        {isCreatingRelease ? <><span className="spinner spinner-sm" /> {t('modal.publish.releaseCreating')}...</> : t('modal.publish.release')}
       </button>
       <button id="publish-commit-btn" className="btn btn-success" onClick={onCommit} disabled={pubDisabled}>
-        {isCommitting ? <><span className="spinner spinner-sm" /> Haciendo commit...</> : '📥 Commit directo'}
+        {isCommitting ? <><span className="spinner spinner-sm" /> {t('modal.publish.commitCreating')}...</> : t('modal.publish.commit')}
       </button>
     </div>
   );

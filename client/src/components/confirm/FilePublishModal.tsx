@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import PublishActions from './PublishActions';
 import { useModalDialog } from '../../hooks/useModalDialog';
+import { useLanguage } from '../../context/LanguageContext';
 
-// ── Props ──────────────────────────────────────────────────────────────────────
+// ── Props ────────────────────────────────────────────────────────────────────────
 interface FilePublishModalProps {
   fileName: string;
   /** Documentación (Markdown) generada a partir del archivo adjunto. */
@@ -42,6 +43,7 @@ export default function FilePublishModal({
   onCancelCreate,
   onCancel,
 }: FilePublishModalProps) {
+  const { t } = useLanguage();
   const [repo, setRepo] = useState(initialRepo ?? '');
   const [version, setVersion] = useState('');
   const [uploadSource, setUploadSource] = useState(true);
@@ -61,7 +63,7 @@ export default function FilePublishModal({
     const ext = name.split('.').pop()?.toLowerCase() || '';
     if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'].includes(ext)) return 'screenshots/';
     if (['xlsx', 'xls', 'csv', 'json', 'parquet'].includes(ext)) return 'data/';
-    return 'raíz';
+    return t('modal.filepub.rootDest');
   };
 
   const addExtras = (files: FileList | null) => {
@@ -74,12 +76,14 @@ export default function FilePublishModal({
         <div className="modal-header">
           <span className="modal-icon">📤</span>
           <div>
-            <div className="modal-title" id="filepub-modal-title">Documentar y publicar — {fileName}</div>
+            <div className="modal-title" id="filepub-modal-title">
+              {t('modal.filepub.title', { fileName })}
+            </div>
             <div className="modal-subtitle">
-              Revisa la documentación generada, indica el repositorio destino y elige cómo publicarla.
+              {t('modal.filepub.subtitle')}
               <br />
               <small style={{ opacity: 0.7 }}>
-                ¿Querías documentar un repositorio entero (README + MANUAL)? Usa 🤖 Documentar repo.
+                {t('modal.filepub.repoFlowHint')}
               </small>
             </div>
           </div>
@@ -94,7 +98,7 @@ export default function FilePublishModal({
               id="filepub-repo-input"
               className="input"
               type="text"
-              placeholder="repo destino: owner/repo o repo"
+              placeholder={t('modal.filepub.repoPlaceholder')}
               value={repo}
               onChange={e => setRepo(e.target.value)}
               style={{ flex: '1 1 220px', fontSize: '0.85rem', padding: '8px 10px' }}
@@ -109,14 +113,14 @@ export default function FilePublishModal({
                 onChange={e => setUploadSource(e.target.checked)}
                 disabled={busy}
               />
-              📎 Subir también el archivo original (<strong>{sourceFileName}</strong>) al repositorio
+              {t('modal.filepub.uploadSource', { fileName: sourceFileName })}
             </label>
           )}
 
           {/* #28 Fase 4b — extras para subir (imágenes→screenshots/, datos→data/, resto→raíz) */}
           <div style={{ marginTop: '10px', fontSize: '0.85rem' }}>
             <label id="filepub-add-extras" className="btn btn-secondary" style={{ cursor: 'pointer', display: 'inline-block', padding: '6px 10px' }}>
-              ➕ Añadir archivos para subir (imágenes, datos…)
+              {t('modal.filepub.addExtras')}
               <input type="file" multiple style={{ display: 'none' }} disabled={busy} onChange={e => { addExtras(e.target.files); e.target.value = ''; }} />
             </label>
             {extras.length > 0 && (
@@ -124,7 +128,7 @@ export default function FilePublishModal({
                 {extras.map((f, i) => (
                   <li key={`${f.name}-${i}`}>
                     <strong>{f.name}</strong> → <code>{destFor(f.name)}</code>
-                    <button type="button" className="repo-context-clear" disabled={busy} onClick={() => setExtras(prev => prev.filter((_, j) => j !== i))} aria-label={`Quitar ${f.name}`} style={{ marginLeft: '6px' }}>✕</button>
+                    <button type="button" className="repo-context-clear" disabled={busy} onClick={() => setExtras(prev => prev.filter((_, j) => j !== i))} aria-label={t('modal.filepub.removeExtra', { fileName: f.name })} style={{ marginLeft: '8px' }}>✕</button>
                   </li>
                 ))}
               </ul>
@@ -139,8 +143,7 @@ export default function FilePublishModal({
                 background: 'rgba(234, 179, 8, 0.12)', border: '1px solid rgba(234, 179, 8, 0.4)',
               }}
             >
-              ⚠️ El repositorio <strong>{repoMissing.owner}/{repoMissing.repo}</strong> no existe en tu
-              cuenta. ¿Quieres que lo cree y publique ahí?
+              {t('modal.filepub.repoMissing', { owner: repoMissing.owner, repo: repoMissing.repo })}
             </div>
           )}
         </div>

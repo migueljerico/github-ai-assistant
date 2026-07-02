@@ -2,8 +2,9 @@ import { useState } from 'react';
 import type { RepoAnalysis } from '../../types';
 import PublishActions from './PublishActions';
 import { useModalDialog } from '../../hooks/useModalDialog';
+import { useLanguage } from '../../context/LanguageContext';
 
-// ── Props ──────────────────────────────────────────────────────────────────────
+// ── Props ────────────────────────────────────────────────────────────────────────
 interface DocModalProps {
   analysis: RepoAnalysis;
   onConfirm: () => void;
@@ -30,6 +31,7 @@ export default function DocModal({
   isCreatingDraftPr,
   isCreatingRelease,
 }: DocModalProps) {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'readme' | 'manual'>('readme');
   const [version, setVersion] = useState('');
   const busy = isCommitting || isCreatingDraftPr || isCreatingRelease;
@@ -41,13 +43,19 @@ export default function DocModal({
         <div className="modal-header">
           <span className="modal-icon">📄</span>
           <div>
-            <div className="modal-title" id="doc-modal-title">Documentación generada para {analysis.repoName}</div>
+            <div className="modal-title" id="doc-modal-title">
+              {t('modal.doc.title', { repoName: analysis.repoName })}
+            </div>
             <div className="modal-subtitle">
-              Analicé {analysis.filesAnalyzed} archivo{analysis.filesAnalyzed !== 1 ? 's' : ''}.
-              Revisa el contenido antes de publicarlo.
+              {t(
+                analysis.filesAnalyzed !== 1 ? 'modal.doc.subtitlePlural' : 'modal.doc.subtitle',
+                { filesAnalyzed: analysis.filesAnalyzed }
+              )}
+              <br />
+              {t('modal.doc.reviewHint')}
               <br />
               <small style={{ opacity: 0.7 }}>
-                ¿Querías documentar un archivo suelto (con su fuente y extras)? Adjúntalo y usa 📤 Documentar y publicar.
+                {t('modal.doc.fileFlowHint')}
               </small>
             </div>
           </div>
@@ -56,15 +64,15 @@ export default function DocModal({
         <div className="modal-body">
           {analysis.truncated && (
             <div className="warning-banner">
-              ⚠️ Repo muy grande — analizando los primeros {analysis.filesAnalyzed} archivos
+              {t('modal.doc.truncatedWarning', { filesAnalyzed: analysis.filesAnalyzed })}
             </div>
           )}
           <div className="doc-preview-tabs">
             <button id="doc-tab-readme" className={`doc-preview-tab ${activeTab === 'readme' ? 'active' : ''}`} onClick={() => setActiveTab('readme')}>
-              📖 README.md
+              {t('modal.doc.readme')}
             </button>
             <button id="doc-tab-manual" className={`doc-preview-tab ${activeTab === 'manual' ? 'active' : ''}`} onClick={() => setActiveTab('manual')}>
-              🔧 MANUAL_TECNICO.md
+              {t('modal.doc.manual')}
             </button>
           </div>
           <div className="doc-preview-content">

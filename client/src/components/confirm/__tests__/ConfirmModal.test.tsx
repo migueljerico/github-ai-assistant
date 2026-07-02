@@ -80,13 +80,13 @@ describe('ConfirmModal', () => {
     render(<ConfirmModal {...defaultProps} isExecuting={true} />);
     
     expect(screen.getByText(/❌ Cancelar/i)).toBeDisabled();
-    expect(screen.getByText(/ejecutando/i)).toBeDisabled();
+    expect(screen.getByText(/Confirmar y ejecutar/i)).toBeDisabled();
   });
 
   it('debería mostrar spinner cuando isExecuting es true', () => {
     render(<ConfirmModal {...defaultProps} isExecuting={true} />);
     
-    expect(screen.getByText(/ejecutando/i)).toBeInTheDocument();
+    expect(screen.getByText(/Confirmar y ejecutar/i)).toBeInTheDocument();
   });
 
   it('debería mostrar DiffViewer cuando hay contenido actual y propuesto', () => {
@@ -143,7 +143,7 @@ describe('ConfirmModal', () => {
       />
     );
     
-    expect(screen.getByText(/esta acción se aplicará a 2 repositorios:/i)).toBeInTheDocument();
+    expect(screen.getByText(/esta acción se aplicará a 2 repositorios/i)).toBeInTheDocument();
     expect(screen.getByText('repo1')).toBeInTheDocument();
     expect(screen.getByText('repo2')).toBeInTheDocument();
   });

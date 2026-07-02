@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { PendingAction } from '../../types';
 import DiffViewer from './DiffViewer';
 import { useModalDialog } from '../../hooks/useModalDialog';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface ConfirmModalProps {
   pendingAction: PendingAction;
@@ -16,6 +17,7 @@ export default function ConfirmModal({
   onCancel,
   isExecuting,
 }: ConfirmModalProps) {
+  const { t } = useLanguage();
   const { action, targetRepos } = pendingAction;
   const [activeRepoIndex, setActiveRepoIndex] = useState(0);
   const isMulti = targetRepos.length > 1;
@@ -28,14 +30,24 @@ export default function ConfirmModal({
     lectura: '📖', escritura: '✏️', creacion: '✨', listado: '📋',
   };
 
+  // Etiquetas del resumen de la acción: cada item lleva su clave de traducción
+  // directamente (labelKey), en vez de mapear un literal español → t(key).
+  const summaryRows = [
+    { labelKey: 'modal.confirm.labelType', value: action.tipo, mono: false },
+    { labelKey: 'modal.confirm.labelMethod', value: action.metodo, mono: false },
+    { labelKey: 'modal.confirm.labelEndpoint', value: action.endpoint, mono: true },
+    action.repo ? { labelKey: 'modal.confirm.labelRepo', value: action.repo, mono: false } : null,
+    action.archivo ? { labelKey: 'modal.confirm.labelFile', value: action.archivo, mono: false } : null,
+  ].filter((r): r is { labelKey: string; value: string; mono: boolean } => r !== null);
+
   return (
-    <div className="overlay" role="dialog" aria-modal="true" aria-label="Confirmar acción">
+    <div className="overlay" role="dialog" aria-modal="true" aria-label={t('modal.confirm.ariaLabel')}>
       <div className="modal" ref={modalRef}>
         {/* Header */}
         <div className="modal-header">
           <span className="modal-icon">{typeEmojis[action.tipo] ?? '🤖'}</span>
           <div>
-            <div className="modal-title">Esto es lo que voy a hacer</div>
+            <div className="modal-title">{t('modal.confirm.title')}</div>
             <div className="modal-subtitle">{action.accion}</div>
           </div>
           <button
@@ -43,7 +55,7 @@ export default function ConfirmModal({
             className="btn btn-ghost btn-icon"
             onClick={onCancel}
             style={{ marginLeft: 'auto', flexShrink: 0 }}
-            aria-label="Cerrar modal"
+            aria-label={t('modal.confirm.ariaClose')}
           >
             ✕
           </button>
@@ -62,19 +74,13 @@ export default function ConfirmModal({
             gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
             gap: '10px',
           }}>
-            {[
-              { label: 'Tipo', value: action.tipo },
-              { label: 'Método', value: action.metodo },
-              { label: 'Endpoint', value: action.endpoint },
-              action.repo ? { label: 'Repositorio', value: action.repo } : null,
-              action.archivo ? { label: 'Archivo', value: action.archivo } : null,
-            ].filter(Boolean).map(item => (
-              <div key={item!.label}>
+            {summaryRows.map(row => (
+              <div key={row.labelKey}>
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '2px' }}>
-                  {item!.label}
+                  {t(row.labelKey)}
                 </div>
-                <div style={{ fontSize: '0.85rem', fontFamily: item!.label === 'Endpoint' ? 'var(--font-mono)' : 'inherit', wordBreak: 'break-all' }}>
-                  {item!.value}
+                <div style={{ fontSize: '0.85rem', fontFamily: row.mono ? 'var(--font-mono)' : 'inherit', wordBreak: 'break-all' }}>
+                  {row.value}
                 </div>
               </div>
             ))}
@@ -84,7 +90,7 @@ export default function ConfirmModal({
           {isMulti && (
             <div style={{ marginBottom: '16px' }}>
               <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-                Esta acción se aplicará a {targetRepos.length} repositorios:
+                {t(targetRepos.length !== 1 ? 'modal.confirm.multiRepoTextPlural' : 'modal.confirm.multiRepoText', { count: targetRepos.length })}
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                 {targetRepos.map((repo, i) => (
@@ -105,7 +111,7 @@ export default function ConfirmModal({
           {/* Diff or preview */}
           {hasDiff && (
             <DiffViewer
-              filename={action.archivo ?? 'archivo'}
+              filename={action.archivo ?? t('modal.confirm.defaultFile')}
               oldContent={action.contenidoActual ?? ''}
               newContent={action.contenidoPropuesto ?? ''}
             />
@@ -114,7 +120,7 @@ export default function ConfirmModal({
           {isNewFile && (
             <div>
               <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '8px' }}>
-                📄 Contenido del nuevo archivo:
+                {t('modal.confirm.newFileContent')}
               </div>
               <pre style={{
                 background: 'var(--bg-elevated)',
@@ -144,7 +150,7 @@ export default function ConfirmModal({
             onClick={onCancel}
             disabled={isExecuting}
           >
-            ❌ Cancelar
+            {t('modal.confirm.cancel')}
           </button>
           <button
             id="confirm-action-btn"
@@ -153,9 +159,9 @@ export default function ConfirmModal({
             disabled={isExecuting}
           >
             {isExecuting ? (
-              <><span className="spinner spinner-sm" /> Ejecutando...</>
+              <><span className="spinner spinner-sm" /> {t('modal.confirm.confirmExecute')}...</>
             ) : (
-              `✅ Confirmar y ejecutar${isMulti ? ` (${targetRepos.length} repos)` : ''}`
+              t(isMulti ? 'modal.confirm.confirmExecuteMulti' : 'modal.confirm.confirmExecute', { count: targetRepos.length })
             )}
           </button>
         </div>

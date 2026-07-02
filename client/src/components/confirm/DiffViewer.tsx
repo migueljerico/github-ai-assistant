@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import * as Diff from 'diff';
 import { html as diff2html } from 'diff2html';
 import 'diff2html/bundles/css/diff2html.min.css';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface DiffViewerProps {
   filename: string;
@@ -10,12 +11,16 @@ interface DiffViewerProps {
 }
 
 export default function DiffViewer({ filename, oldContent, newContent }: DiffViewerProps) {
+  const { t } = useLanguage();
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const currentVersion = t('diff.currentVersion');
+  const proposedVersion = t('diff.proposedVersion');
 
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const patch = Diff.createPatch(filename, oldContent, newContent, 'Versión actual', 'Versión propuesta');
+    const patch = Diff.createPatch(filename, oldContent, newContent, currentVersion, proposedVersion);
 
     const diffHtml = diff2html(patch, {
       drawFileList: false,
@@ -25,7 +30,7 @@ export default function DiffViewer({ filename, oldContent, newContent }: DiffVie
     });
 
     containerRef.current.innerHTML = diffHtml;
-  }, [filename, oldContent, newContent]);
+  }, [filename, oldContent, newContent, currentVersion, proposedVersion]);
 
   return (
     <div>
@@ -38,8 +43,8 @@ export default function DiffViewer({ filename, oldContent, newContent }: DiffVie
       }}>
         <span>📄 {filename}</span>
         <div style={{ display: 'flex', gap: '16px' }}>
-          <span style={{ color: 'var(--error)' }}>● Eliminado</span>
-          <span style={{ color: 'var(--success)' }}>● Añadido</span>
+          <span style={{ color: 'var(--error)' }}>{t('diff.removed')}</span>
+          <span style={{ color: 'var(--success)' }}>{t('diff.added')}</span>
         </div>
       </div>
       <div className="diff-wrapper" ref={containerRef} />
