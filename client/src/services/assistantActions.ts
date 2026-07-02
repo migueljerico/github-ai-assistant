@@ -63,6 +63,8 @@ export interface ChatDeps {
   addEntry: (entry: Omit<HistoryEntry, 'id' | 'timestamp'>) => string;
   updateEntry: (id: string, update: Partial<HistoryEntry>) => void;
   setIsChatLoading: (loading: boolean) => void;
+  /** Función de traducción (i18n) inyectada desde el componente vía useLanguage(). */
+  t: (key: string, params?: Record<string, string | number>) => string;
 }
 
 /** Deps adicionales que necesita `runSend` (núcleo del chat). */
@@ -203,7 +205,7 @@ export async function runSummarizeThread(
   if (!parsed) {
     addMessage({
       role: 'assistant',
-      content: '❌ No entendí la referencia del hilo. Indica un issue/PR como `owner/repo#42`, pega su URL de GitHub, o escribe solo el repo para elegir de una lista.',
+      content: deps.t('chat.threadRefNotFound'),
     });
     return;
   }
@@ -218,7 +220,7 @@ export async function runSummarizeThread(
   if (!owner || !repo) {
     addMessage({
       role: 'assistant',
-      content: '❌ No pude determinar el repositorio. Indícalo como `owner/repo#42` o carga un repo de contexto primero.',
+      content: deps.t('chat.repoNotFound'),
     });
     return;
   }
@@ -263,7 +265,7 @@ export async function runGenerateChangelog(deps: ChatDeps, config: AIProviderCon
   const { token, user, providerName, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading } = deps;
   const { owner, repo } = resolveRepoRef(input, user.login);
   if (!repo) {
-    addMessage({ role: 'assistant', content: '❌ Indícame el repositorio, p. ej. `owner/repo` o solo el nombre del repo.' });
+    addMessage({ role: 'assistant', content: deps.t('chat.repoNeeded') });
     return;
   }
 
@@ -293,7 +295,7 @@ export async function runCodeHealth(deps: ChatDeps, repoInput: string): Promise<
   const { token, user, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading } = deps;
   const { owner, repo } = resolveRepoRef(repoInput, user.login);
   if (!repo) {
-    addMessage({ role: 'assistant', content: '❌ Indícame el repositorio, p. ej. `owner/repo` o solo el nombre del repo.' });
+    addMessage({ role: 'assistant', content: deps.t('chat.repoNeeded') });
     return null;
   }
 
@@ -391,7 +393,7 @@ export async function runCreateRepoRelease(
     addMessage({ role: 'assistant', content: `✅ Release [${tag}](${url}) creado en **${analysis.repoName}** con la documentación generada.` });
     updateEntry(histId, { status: 'completed', description: `Release ${tag} creado en ${analysis.repoName}` });
   } catch (err) {
-    addMessage({ role: 'assistant', content: `❌ Error al crear el release: ${describePublishError(err, owner, repo)}` });
+    addMessage({ role: 'assistant', content: `❌ Error al crear el release: ${describePublishError(err, owner, repo, deps.t)}` });
     updateEntry(histId, { status: 'error', description: `Error al crear release en ${analysis.repoName}` });
   }
 }
@@ -516,7 +518,7 @@ export async function runSend(deps: SendDeps, config: AIProviderConfig, params: 
     // (si lo hay) y márcalo como detenido, sin burbuja de error roja.
     if (isAbortError(err)) {
       updateMessage(loadingId, {
-        content: lastText ? `${lastText}\n\n⏹️ _(detenido)_` : '⏹️ Generación detenida.',
+        content: lastText ? `${lastText}\n\n⏹️ _(detenido)_` : deps.t('chat.generationStopped'),
         isLoading: false,
       });
     } else {
@@ -563,7 +565,7 @@ export async function runConfirmAction(deps: ChatDeps, pendingAction: PendingAct
 export function runCancelAction(deps: ChatDeps, pendingAction: PendingAction): void {
   const { addMessage, addEntry } = deps;
   addEntry({ status: 'cancelled', description: `Cancelado: ${pendingAction.action.accion}`, repo: pendingAction.action.repo });
-  addMessage({ role: 'assistant', content: '⏸️ Acción cancelada.' });
+  addMessage({ role: 'assistant', content: deps.t('chat.actionCancelled') });
 }
 
 // ── Adjuntar archivo local (#28, Fase 1) ──────────────────────────────────────
@@ -583,7 +585,7 @@ export async function runAttachFile(deps: ChatDeps, file: File): Promise<FileCon
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
     // Guía explícita del flujo (#28 v3.7.0): conversar primero, y documentar/publicar
     // con el botón — ya no se adivina por palabras clave.
-    const docHint = 'Cuando quieras **documentarlo y publicarlo**, pulsa **📤 Documentar y publicar** (abajo): ahí eliges commit, Draft PR o Release, e incluso subir el propio archivo al repo.';
+    const docHint = deps.t('chat.attachDocHint');
 
     // #28 Fase 3a — hojas de cálculo: muestra de filas + aviso de tokens (evita 400).
     if (ext === 'xlsx' || ext === 'xls' || ext === 'csv') {
@@ -631,7 +633,7 @@ export async function runAttachFile(deps: ChatDeps, file: File): Promise<FileCon
 
     const content = await readFileContent(file);
     if (!content.trim()) {
-      throw new Error('No pude extraer texto del archivo (¿es un PDF escaneado o una imagen?). Prueba con un PDF de texto o un archivo de texto/código.');
+      throw new Error(deps.t('chat.fileTextExtractFailed'));
     }
     const contextText = formatFileContentForAI(file.name, content);
     const kb = Math.max(1, Math.round(file.size / 1024));
@@ -676,8 +678,8 @@ export async function runGenerateFileDoc(
  * Traduce un error de publicación a lenguaje claro (principio rector). Un 404 de
  * GitHub suele significar "el repo no existe o no tengo acceso", no un fallo técnico.
  */
-function describePublishError(err: unknown, owner: string, repo: string): string {
-  const message = (err as Error).message || 'Error desconocido';
+function describePublishError(err: unknown, owner: string, repo: string, t: ChatDeps['t']): string {
+  const message = (err as Error).message || t('chat.unknownError');
   const status = err instanceof GitHubAPIError ? err.status : undefined;
   if (status === 404 || /not found/i.test(message)) {
     return `No encontré el repositorio **${owner}/${repo}** (¿existe y tienes acceso?).`;
@@ -739,7 +741,7 @@ export async function runPublishFileDoc(
     });
     updateEntry(histId, { status: 'completed', description: `Documentación publicada en ${owner}/${repo}` });
   } catch (err) {
-    addMessage({ role: 'assistant', content: `❌ Error al publicar la documentación: ${describePublishError(err, owner, repo)}` });
+    addMessage({ role: 'assistant', content: `❌ Error al publicar la documentación: ${describePublishError(err, owner, repo, deps.t)}` });
     updateEntry(histId, { status: 'error', description: `Error al publicar en ${owner}/${repo}` });
   }
 }
@@ -779,7 +781,7 @@ export async function runCreateFileRelease(
     }
     updateEntry(histId, { status: 'completed', description: `Release ${tag} creado en ${owner}/${repo}` });
   } catch (err) {
-    addMessage({ role: 'assistant', content: `❌ Error al crear el release: ${describePublishError(err, owner, repo)}` });
+    addMessage({ role: 'assistant', content: `❌ Error al crear el release: ${describePublishError(err, owner, repo, deps.t)}` });
     updateEntry(histId, { status: 'error', description: `Error al crear release en ${owner}/${repo}` });
   }
 }

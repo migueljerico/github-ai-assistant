@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { es } from '../../i18n/es';
 
 // Mock de los servicios de los que dependen las acciones
 vi.mock('../gemini', () => ({
@@ -123,6 +124,13 @@ function makeDeps() {
     token: 'tok',
     user: { login: 'me' },
     providerName: 'Groq',
+    // Mock de t() que usa el diccionario ES real + interpolación de {params},
+    // para que los tests que asertan contenido de mensajes sigan pasando.
+    t: vi.fn((key: string, params?: Record<string, string | number>) => {
+      let out = (es as Record<string, string>)[key] ?? key;
+      if (params) for (const [k, v] of Object.entries(params)) out = out.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v));
+      return out;
+    }),
     addMessage: vi.fn(() => `msg-${++n}`),
     updateMessage: vi.fn(),
     addEntry: vi.fn(() => 'hist-1'),
