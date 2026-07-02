@@ -1,0 +1,158 @@
+# 🤝 Metodología de trabajo con Asistentes de IA
+
+Cómo se **colabora** en este proyecto humano↔IA: el flujo, las convenciones de
+colaboración y la trazabilidad de qué hace cada asistente. Es la **memoria
+operativa** que permite que el trabajo continúe coherentemente entre sesiones,
+herramientas y modelos distintos.
+
+> **Idioma:** este documento va en **español** (como el resto de la prosa del
+> proyecto; ver `CLAUDE.md §5`). Las instrucciones a un asistente en el chat de la
+> sesión también van en castellano.
+
+> **Relación con otros documentos:**
+> - [`CLAUDE.md`](./CLAUDE.md) → **cómo está hecho** el código (guía técnica para
+>   cualquier asistente de IA: arquitectura, comandos, convenciones, trampas).
+> - [`MEJORAS_FUTURAS.md`](./MEJORAS_FUTURAS.md) → **qué queda por hacer**
+>   (roadmap, estado de issues por versión).
+> - [`CONTRIBUTING.md`](./CONTRIBUTING.md) → **cómo contribuir** (reglas de PR,
+>   Zero-Storage, estilo).
+> - **Este documento** → **cómo trabajamos juntos** (el proceso de colaboración).
+
+---
+
+## 1. Filosofía de la colaboración
+
+El proyecto se construye íntegramente **con** asistencia de IA, pero bajo
+**supervisión humana constante**. No es "la IA hace y se acepta": es un diálogo.
+
+- **El autor decide, la IA propone y ejecuta.** Toda decisión de producto,
+  arquitectura o alcance la toma el autor. La IA investiga, planifica y propone;
+  el autor aprueba antes de cualquier cambio.
+- **Propón → apruebo → ejecutas.** Extiende al chat la misma garantía que la app
+  aplica a la GitHub API (*propón→confirmar→ejecutar*). Las acciones irreversibles
+  o hacia el exterior (push, release, borrado de ramas) **siempre** esperan
+  confirmación explícita.
+- **Honestidad por encima de elogios.** Si algo falla, se dice con la salida real
+  del comando. Si un paso se saltó, se declara. No se infla lo conseguido. Las
+  revisiones externas (otras IAs) se filtran: se incorpora lo accionable, se
+  reformula lo dudoso y **se descartan los elogios** (ver § dogfooding del README).
+
+---
+
+## 2. Flujo de trabajo por iteración
+
+Cada incremento de valor sigue este ciclo, independientemente del asistente o la
+sesión:
+
+1. **Entender el contexto.** Cargar `CLAUDE.md` (guía técnica) y el estado actual
+   del repo (rama `main`, versión, `MEJORAS_FUTURAS.md`). **No dar nada por hecho**:
+   verificar versión, ramas existentes y divergencias antes de asumir nada.
+2. **Investigar antes de proponer.** Explorar el código real (no inventar firmas,
+   archivos ni patrones). Si un cambio toca la capa de orquestación
+   (`assistantActions.ts`) o el backend (`server/index.js`), tratar con cuidado
+   extra — son cohesivos y deliberados, no deuda técnica.
+3. **Planificar y aprobar.** Presentar un plan concreto (archivos, enfoque,
+   verificación) y esperar aprobación. Usar `EnterPlanMode` para tareas no
+   triviales; `AskUserQuestion` solo para decisiones reales del usuario, no para
+   validar lo obvio.
+4. **Ejecutar en una rama** nacida de `main` actualizado (trunk-based). Commits
+   atómicos con Conventional Commits.
+5. **Verificar** antes de pushear: `npm run build` (tsc estricto), `npm run lint`
+   (0 errores), `npm run test:run` (suite completa verde). Reportar los números
+   reales.
+6. **Cerrar la versión**: bump + `CHANGELOG.md` + `MEJORAS_FUTURAS.md` + tag +
+   release. El deploy a Cloud Run es automático vía Cloud Build.
+
+### Puntos de parada (siempre confirmar antes de)
+
+- **Push a `main`** y creación de **tag**.
+- **GitHub release** (es pública y dispara deploy).
+- **Merge de ramas** que tocan la capa de orquestación.
+- **Borrado de ramas o archivos** del repo.
+- **Enviar contenido a servicios externos** (se publica, puede indexarse).
+
+---
+
+## 3. Convenciones de los asistentes
+
+Estas reglas aplican a **cualquier** asistente de IA que trabaje en el repo, para
+que el resultado sea consistente entre modelos:
+
+- **Hablar al usuario en castellano** en el chat (lo pidió el autor expresamente).
+  Identificadores y código en inglés.
+- **No reintroducir heurísticas frágiles** eliminadas (p. ej. `intentDetection.ts`
+  se borró en v3.7.0 por causar bugs recurrentes — no la resucites).
+- **No "simplificar" la arquitectura** por recomendación externa. El backend de un
+  solo `server/index.js` y los módulos cohesivos de ~700 líneas son **deliberados**.
+  Las IAs externas (DeepSeek y similares) sobreponderan esto y reinciden ronda tras
+  ronda; **no actúes sobre ello sin aprobación explícita** (ver `CLAUDE.md §5`).
+- **Respetar Zero-Storage**: ninguna credencial en `localStorage`/`sessionStorage`
+  (solo el idioma y `provider/model`, que no son secretos).
+- **Cada cambio incluye sus tests** (#26 es transversal). Si tocas código, tocas o
+  añades tests y los dejas en verde.
+- **Lockfiles siempre regenerados** con `npm install`, nunca editados a mano; el
+  `Dockerfile` usa `npm ci` y aborta si no cuadran.
+
+---
+
+## 4. Lecciones aprendidas (memoria de errores pasados)
+
+Registro de errores con causa raíz, para no repetirlos. Se actualiza al detectar
+patrones nuevos.
+
+| Cuándo | Qué pasó | Causa | Prevención |
+|---|---|---|---|
+| v3.0.0–v3.1.1 | No desplegaba en Cloud Run | `pdfjs-dist@6` pide Node ≥22.13; con `node:20` del Dockerfile, `npm ci` la omitía **en silencio** (es `optionalDependency`) y luego `tsc` fallaba. No se veía en local/CI (Node ≥22) | Al añadir una dep con `engines` altos, verificar que el `FROM node:` del Dockerfile la cumpla. Alarma: `npm ci` instala **un paquete menos** que en local. Ver `CLAUDE.md §5`. |
+| v3.7.0 | Bugs recurrentes por detección de intención | `intentDetection.ts` adivinaba la intención por palabras clave; era frágil y reintroducía el mismo bug cada ronda | **UI explícita > heurística por keywords.** Un botón/modal claro es más robusto. No reintroducir la heurística. |
+| v3.21.0 (rama descartada) | 14 claves de diccionario i18n "muertas" | Se añadieron claves `docs.*` al diccionario destinadas a servicios (`docPublisher.ts`, `github.ts`), pero `useLanguage()` es un hook de React y **no puede usarse en módulos puros** → claves sin consumidor | Antes de añadir claves `t()`, verificar que el consumidor pueda importar `t()`. Para servicios, **inyectar** `t()` desde el componente llamador (patrón `ChatDeps.t`). Ver `CLAUDE.md §5` (i18n). |
+| v3.21.0 (rama descartada) | Cambio espurio en `provider.openrouter.note` | Un asistente modificó una traducción ya existente (quitó "(Gemma suele estar disponible)") sin relación con la tarea, sin justificación ni entrada en changelog | Al reaprovechar trabajo de una rama, **revisar cada diff** y descartar los cambios fuera de alcance. No modificar strings existentes "de paso". |
+
+---
+
+## 5. Trazabilidad de asistentes
+
+Quién ha hecho qué, para reconocimiento y contexto. El autor figura como
+**responsable último** de todo; los asistentes como herramienta de ejecución.
+
+| Asistente | Modelo | Rol en el proyecto | Período |
+|---|---|---|---|
+| **Claude** | Sonnet (Anthropic) | Arquitecto y revisor; gran parte del desarrollo inicial | 2025–2026 |
+| **Antigravity 2.0** | (Google) | Entorno de desarrollo agéntico | 2025–2026 |
+| **Gemini 2.5 Flash** | (Google) | Dogfooding: revisión del roadmap (métricas dashboard #44, inglés como 1er idioma de i18n #24, criterios de priorización) | 2026 |
+| **Gemma 4 31B** | (OpenRouter) | Dogfooding: sugerencias de #51 (transparencia contextRanker), #52 (auditoría de seguridad), #53 (commit semántico) | 2026 |
+| **GLM-5.2 (web)** | Zhipu | La **v3.20.0** (i18n Fase 1) se hizo con GLM-5.2 en su versión web | Junio 2026 |
+| **ZCode** | GLM-5.2 (ZCode) | **Desde v3.20.0:** cierre de la v3.20.0 (bump+tag+release+docs), **v3.21.0** (i18n Fase 2: modales, DiffViewer, mensajes de chat vía `ChatDeps.t`; refactor del `labelMap`; corrección de bugs). Toma el control del roadmap y la documentación. | Julio 2026 – actualidad |
+
+> **Dogfooding:** el proyecto se prueba a sí mismo. Varias mejoras del roadmap
+> surgieron de pedir opinión a distintos modelos con el repo cargado como contexto.
+> Esas sugerencias se filtran con **validación cruzada**: se incorpora lo
+> accionable, se reformula lo dudoso y se descartan los elogios (más detalles en el
+> README y en `MEJORAS_FUTURAS.md`).
+
+---
+
+## 6. Cómo retomar el trabajo (checklist para una nueva sesión)
+
+Si retomas el proyecto en otra sesión/herramienta, este es el punto de partida:
+
+1. **Cargar contexto:** leer `CLAUDE.md` (guía técnica) y este documento
+   (metodología). El asistente debe asimilarlos **antes** de proponer nada.
+2. **Verificar estado real del repo** (no asumir): versión en `package.json`,
+   rama activa, últimos commits, `git tag`, ramas sin mergear, divergencias. Una
+   discrepancia entre lo que dice la doc y el código real es señal de que algo
+   quedó a medias — investigar antes de avanzar.
+3. **Revisar `MEJORAS_FUTURAS.md`** para el siguiente ítem del roadmap.
+4. **Acordar el alcance** de la iteración con el autor antes de escribir código.
+5. **Seguir el flujo de §2** y registrar el resultado al cerrar la versión.
+
+---
+
+## 7. Convenciones de edición de este documento
+
+- **Actualizar al cerrar cada versión**: la fecha de "Actualizado a" no existe aquí
+  (es un documento vivo), pero la §5 (trazabilidad) y la §4 (lecciones) sí crecen
+  con cada iteración significativa.
+- **Honestidad:** registrar también los errores y las ramas descartadas — son tan
+  instructivos como los aciertos.
+- **Sin elogios:** este documento describe hechos, no valora. La calidad se mide en
+  tests verdes y código que cumple la filosofía, no en adjetivos.
