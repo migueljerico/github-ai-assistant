@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.21.0] — 2026-07-02
+
+### Added
+- **Internacionalización (i18n) — Fase 2 (#24, Sprint 4)** — Completa la traducción ES/EN de la capa de interacción que faltaba desde la Fase 1 (v3.20.0):
+  - **Modales de confirmación y documentación** (`ConfirmModal`, `DocModal`, `FilePublishModal`, `PublishActions`) y el **visor de diferencias** (`DiffViewer`): ahora todas sus etiquetas, aria-labels, leyendas (`Eliminado`/`Añadido`) y cabeceras del patch se traducen según el idioma activo.
+  - **Mensajes visibles del chat** en `assistantActions.ts`: los errores de hilo/repo, los avisos "⏹️ Generación detenida" / "⏸️ Acción cancelada", el hint de adjuntar archivo y el error de extracción de texto. La función `t()` se **inyecta** en la capa de orquestación a través de `ChatDeps` (siguiendo el patrón de inyección de dependencias existente), sin tocar la arquitectura.
+  - **Refactor del `labelMap`** de `ConfirmModal`: el doble mapeo *literal español → `t(key)`* se sustituye por un patrón `labelKey` directo con type guard, eliminando un fallback frágil.
+  - **Descartado** el trabajo previo de la rama `feature/i18n-phase2-complete` (divergida y con bugs) en favor de una rama limpia `feature/i18n-fase2` nacida de `main`.
+
+### Fixed
+- **`modal.filepub.rootDest`** — la clave de diccionario no existía y la UI mostraba el literal `modal.filepub.rootDest` como destino de carpeta para archivos extra; ahora existe (`raíz` / `root`) y el `?? 'root'` muerto se eliminó.
+- **3 tests de `ConfirmModal`** que fallaban tras la migración a `t()` (buscaban `/ejecutando/` y dos puntos finales que ya no existen).
+
+### Notes
+- **No traducidos (deliberado, fuera de alcance):** los mensajes de commit / cuerpos de Draft PR de `docPublisher.ts` y `github.ts` (van a GitHub como texto técnico, no a la UI), las descripciones del historial de sesión (log interno) y las etiquetas `Usuario`/`Asistente` del historial formateado (van al LLM como contexto, no al chat). Para traducir los servicios haría falta refactorizar el i18n a una función `t(lang, key)` pura (no hook) — se deja para una futura profundización si surge demanda.
+- _Cierre de versión y documentación asistidos por **ZCode** (GLM-5.2)._
+
 ## [3.20.0] — 2026-06-28
 
 ### Added
@@ -12,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - _Cierre de versión y documentación asistidos por **ZCode** (GLM-5.2)._
 
 ### Notes
-- **Fase 2 (pendiente):** traducción de los paneles laterales (`templateData.ts`, `HistoryPanel`), modales (`ConfirmModal`, `DocModal`, etc.) y mensajes transitorios dinámicos de `assistantActions.ts`.
+- **Fase 2 (entregada en v3.21.0):** traducción de los modales, el visor de diferencias y los mensajes visibles del chat.
 
 ## [3.19.0] — 2026-06-27
 

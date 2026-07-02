@@ -67,7 +67,11 @@ github-ai-assistant/
 │       ├── context/
 │       │   ├── AuthContext.tsx      # Token GitHub, usuario, OAuth/PAT (Zero-Storage)
 │       │   ├── AIProviderContext.tsx # Proveedor IA activo (Zero-Storage)
+│       │   ├── LanguageContext.tsx  # i18n ligero (#24): idioma + t() con interpolación; recordado en sessionStorage
 │       │   └── HistoryContext.tsx   # Log de sesión + exportación
+│       ├── i18n/                    # Diccionarios ES/EN (#24); t() con fallback ES→key
+│       │   ├── es.ts
+│       │   └── en.ts
 │       ├── services/
 │       │   ├── github.ts           # Wrapper GitHub REST API v3
 │       │   ├── providers.ts        # Registro de proveedores (Gemini/Groq/OpenRouter)
@@ -482,7 +486,7 @@ gcloud run deploy github-ai-assistant \
 | `gemini.ts` | parseGeminiAction, detectPrimaryLanguage, temperatura por modo, contexto de repo (#41), `generateFileDoc` (incorpora conversación), enrutado OpenRouter, reintento transitorio (`withTransientRetry`) | ✅ |
 | `docPublisher.ts` | Commit directo / Draft PR (#45); `publishFileDoc` + binarios/extras (`uploadPathFor`) (#28) | ✅ |
 | `threadSummary.ts` | Resumen de hilos issue/PR (#32): parseo, issue vs PR, hilo vacío | ✅ |
-| `assistantActions.ts` | Orquestación del chat (#42): `runSend`, `runConfirmAction`, `runCancelAction`; documentar/publicar archivo (`runPublishFileDoc`/`runCreateFileRelease`/`runCreateRepoRelease`) y `runAttachFile` (~98%) | ✅ |
+| `assistantActions.ts` | Orquestación del chat (#42): `runSend`, `runConfirmAction`, `runCancelAction`; documentar/publicar archivo (`runPublishFileDoc`/`runCreateFileRelease`/`runCreateRepoRelease`) y `runAttachFile` (~98%). Recibe `t()` inyectada vía `ChatDeps` para traducir los mensajes visibles del chat (#24 Fase 2, v3.21.0) | ✅ |
 | `repoRef.ts` | `resolveRepoRef` (owner/repo vs repo) | ✅ |
 | `DocModal.tsx` / `FilePublishModal.tsx` / `PublishActions.tsx` | Pestañas/preview, callbacks, versión, extras, oferta de crear repo, estado busy; barra de acciones compartida (v3.10.0) | ✅ |
 | `modeDetection.ts` | Chat vs action; sesgo a chat con contexto de repo/archivo | ✅ |
@@ -510,10 +514,10 @@ Ver [MEJORAS_FUTURAS.md](./MEJORAS_FUTURAS.md) para el detalle completo.
 
 | Limitación | Impacto | Solución planificada |
 |---|---|---|
-| Truncamiento por caracteres (2000) | Corta código a mitad | Truncamiento por líneas (#20) |
+| ~~Truncamiento por caracteres (2000)~~ | ~~Corta código a mitad~~ | ✅ Truncamiento por líneas (#20, v3.11.1) |
 | SessionWarningBanner no implementado | Sin aviso de caducidad | Banner de advertencia (#22) |
-| Prompts incrustados en código | Dificulta edición/i18n | Migrar a archivos .md (#23) |
-| App solo en español | Limita audiencia | i18n con i18next (#24) |
+| ~~Prompts incrustados en código~~ | ~~Dificulta edición/i18n~~ | ✅ Migrados a archivos `prompts/*.md` (#23, v3.11.2) |
+| ~~App solo en español~~ | ~~Limita audiencia~~ | ✅ i18n ligero ES/EN sin dependencias (#24, Fases 1–2: v3.20.0–v3.21.0) |
 | Sin healthcheck extendido | Menos visibilidad | Logs + health mejorado (#25) |
 
 ### Limitaciones resueltas en v2.3.0

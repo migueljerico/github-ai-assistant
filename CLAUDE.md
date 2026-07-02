@@ -15,7 +15,7 @@ probar, y las convenciones que es fácil romper sin querer.
 
 ## 1. Visión general
 
-**GitHub AI Assistant** (v3.19.0) es una app web que permite operar la **GitHub
+**GitHub AI Assistant** (v3.21.0) es una app web que permite operar la **GitHub
 REST API en lenguaje natural** a través de un proveedor de IA (Google Gemini o
 Groq Cloud). El usuario escribe una instrucción, la IA propone una acción, y
 **cada operación de escritura se confirma manualmente** antes de ejecutarse.
@@ -149,7 +149,10 @@ se guarda ni se loguea en el servidor.
 │   │   ├── context/
 │   │   │   ├── AuthContext.tsx        # Token de GitHub (sessionStorage)
 │   │   │   ├── AIProviderContext.tsx  # Proveedor/apiKey/model — Zero-Storage (solo memoria)
+│   │   │   ├── LanguageContext.tsx    # i18n ligero (#24): idioma + t() con interpolación; sessionStorage (no secreto)
 │   │   │   └── HistoryContext.tsx     # Log de acciones de la sesión
+│   │   ├── i18n/              # Diccionarios ES/EN (#24); t() con fallback ES→EN→key
+│   │   │                     #   useLanguage() es un HOOK: solo usable en componentes React (ver §5)
 │   │   ├── hooks/            # useChat, useActions,
 │   │   │                     #   useModalDialog (#39: a11y de modales — Esc, focus-trap, foco restaurado)
 │   │   ├── utils/            # formatResult, repoRef (resolveRepoRef), pdfReader/pdfAdvanced,
@@ -183,7 +186,8 @@ se guarda ni se loguea en el servidor.
 ```
 
 Documentos de referencia (en español): `README.md`, `MANUAL_TECNICO.md`,
-`CONTRIBUTING.md`, `CHANGELOG.md`, `MEJORAS_FUTURAS.md` (roadmap).
+`CONTRIBUTING.md`, `CHANGELOG.md`, `MEJORAS_FUTURAS.md` (roadmap) y
+`METODOLOGIA_IA.md` (cómo se colabora humano↔IA; flujo, lecciones y trazabilidad).
 
 ---
 
@@ -255,6 +259,16 @@ Ejecutar **un solo test**: `cd client && npm run test:run -- src/services/github
 - **ESM en todo el proyecto** (`"type": "module"`), Node ≥20.
 - **Conventional Commits:** `feat:`, `fix:`, `docs:`, `test:`, `refactor:`.
 - **Estilo bilingüe:** prosa/UI en español, identificadores en inglés.
+- **i18n en componentes vs. servicios (#24, v3.20.0–v3.21.0):** la app es bilingüe ES/EN con
+  infraestructura **ligera sin dependencias** (`LanguageContext` + `t()` + diccionarios `i18n/{es,en}.ts`).
+  **`useLanguage()` es un hook de React: SOLO puede usarse dentro de componentes/árboles bajo
+  `<LanguageProvider>`.** Los **módulos de servicio puros** (`docPublisher.ts`, `github.ts`,
+  `actionExecutor.ts`) **NO** pueden importarlo — si necesitan traducir un texto visible, la función
+  `t()` se **inyecta** desde el componente llamador (patrón existente: `ChatDeps.t` en
+  `assistantActions.ts`, v3.21.0). **Lección (rama descartada):** añadir claves `t()` al diccionario
+  sin cablearlas a un consumidor real = código muerto; antes de añadir claves, verifica que el
+  consumidor pueda importar `t()`. Los mensajes que **no** son UI (commit messages/PR bodies hacia
+  GitHub, log interno del historial, contexto que va al LLM) se dejan en español a propósito.
 - **Versión de Node del Dockerfile = la de CI/local (o rompe el deploy):** el build
   de Cloud Run corre dentro del `Dockerfile` con `node:22-alpine`. Debe **satisfacer
   el `engines` de todas las dependencias**. Caso real (v3.0.0–v3.1.1 no desplegaban):

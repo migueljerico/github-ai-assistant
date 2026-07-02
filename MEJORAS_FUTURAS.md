@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v3.20.0 · Julio 2026
+**Actualizado a:** v3.21.0 · Julio 2026
 
 ---
 
@@ -46,6 +46,8 @@ Estado del código, mejoras pendientes y roadmap del proyecto.
 | — | Crear Release desde "Documentar repo" (además de commit/Draft PR) | assistantActions.ts (runCreateRepoRelease), DocModal.tsx | v3.8.0 |
 | — | Unificar los controles de los dos flujos de documentación (barra compartida commit/Draft PR/Release) | components/confirm/PublishActions.tsx, DocModal.tsx, FilePublishModal.tsx | v3.10.0 |
 | — | Seguridad: `state` de OAuth con CSPRNG (crypto.randomUUID) | server/index.js | v3.7.1 |
+| 24 | Internacionalización (i18n) ligera sin dependencias — Fase 1: `LanguageContext` + `t()` + ES/EN; selector 🌐; login, cabecera, `AIProviderPanel`, `ChatInput`, botones y paneles laterales | context/LanguageContext.tsx, i18n/{es,en}.ts, components/layout/LanguageSelector.tsx, Header.tsx, AIProviderPanel.tsx, ChatInput.tsx | v3.20.0 |
+| 24 | Internacionalización — Fase 2: modales + `DiffViewer` + mensajes visibles del chat (`t()` inyectada en `ChatDeps`); refactor del `labelMap` por `labelKey`; fix de clave inexistente y 3 tests rotos | components/confirm/{ConfirmModal,DocModal,FilePublishModal,PublishActions,DiffViewer}.tsx, services/assistantActions.ts (ChatDeps.t), App.tsx, i18n/{es,en}.ts | v3.21.0 |
 
 ---
 
@@ -64,10 +66,10 @@ herramienta**: si el trabajo continúa en otro entorno, este es el orden de refe
 - **🥉 Sprint 3 — UI robusta + escaparate de datos — ✅ COMPLETADO (v3.17.0–v3.18.0):** **#39**
   (ErrorBoundary + a11y) ✅ **(v3.17.0)** · **#44** (dashboard "Salud del Código" con Recharts — pieza de
   escaparate Análisis de Datos) ✅ **(v3.18.0)**.
-- **🏅 Sprint 4 — Alcance e i18n (en curso):** **#46** (export/import de conversación) ✅ **(v3.19.0)** ·
+- **🏅 Sprint 4 — Alcance e i18n — ✅ COMPLETADO (v3.19.0–v3.21.0):** **#46** (export/import de conversación) ✅ **(v3.19.0)** ·
   **#24 Fase 1** (i18n ligera sin dependencias: `LanguageContext` + `t()` + ES/EN; selector 🌐; login,
-  cabecera, `AIProviderPanel`, `ChatInput` y sus 7 botones traducidos) ✅ **(v3.20.0)** · queda
-  **#24 Fase 2** (modales y mensajes transitorios — rama en revisión).
+  cabecera, `AIProviderPanel`, `ChatInput` y sus 7 botones traducidos) ✅ **(v3.20.0)** ·
+  **#24 Fase 2** (modales + DiffViewer + mensajes visibles del chat vía `t()` inyectada en `ChatDeps`) ✅ **(v3.21.0)**.
 - **📋 Backlog:** #25 (logs/health), #22 (aviso de sesión), #48 (sync repo), **#36** (GitHub App —
   hito grande aparte). #26 (cobertura) es transversal: sube con cada sprint.
 - **🗑️ Candidatos a poda:** **#33** (sugerir revisores) y **#35** (auto-labels) — nicho/fuera del núcleo.
@@ -256,19 +258,26 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 ---
 
-#### #24 — Internacionalización (i18n) — Fase 1 entregada / Fase 2 en curso
-**Esfuerzo:** Fase 1 entregada (v3.20.0); Fase 2 ~2–3h restantes
+#### #24 — Internacionalización (i18n) — ✅ Entregada (Fases 1 y 2)
+**Esfuerzo:** Fase 1 (v3.20.0) + Fase 2 (v3.21.0)
 
-**Estado (v3.20.0):** ✅ **Fase 1** — Infraestructura **ligera sin dependencias externas** (se descartó
+**Estado (v3.21.0):** ✅ **Fase 1** — Infraestructura **ligera sin dependencias externas** (se descartó
 `i18next`): `LanguageContext` + función `t()` con interpolación, selector 🌐 e idioma recordado en
 `sessionStorage` (no secreto → Zero-Storage). Traducidos: login (`AuthGate`), cabecera (`Header`),
 `AIProviderPanel`, `ChatInput` y sus botones de acciones rápidas, y los paneles laterales
 (`HistoryPanel`, `TemplatePanel`).
 
-**⏳ Fase 2 (en revisión — rama `feature/i18n-phase2-complete`):** modales (`ConfirmModal`, `DocModal`,
-`FilePublishModal`, `PublishActions`) y los mensajes transitorios dinámicos de `assistantActions.ts`.
-La rama actual tiene bugs (clave de diccionario inexistente, 3 tests rotos, huecos sin traducir) y se
-corregirá antes de mergear.
+✅ **Fase 2 (v3.21.0):** modales (`ConfirmModal`, `DocModal`, `FilePublishModal`, `PublishActions`),
+el visor de diferencias (`DiffViewer`) y los **mensajes visibles del chat** en `assistantActions.ts`.
+La función `t()` se **inyecta** en la capa de orquestación vía `ChatDeps` (patrón de inyección de
+dependencias existente), sin tocar la arquitectura. La rama previa `feature/i18n-phase2-complete`
+(divergida y con bugs) se descartó en favor de una rama limpia.
+
+**Fuera de alcance (deliberado):** los mensajes de commit / cuerpos de Draft PR de `docPublisher.ts`
+y `github.ts` (van a GitHub como texto técnico), las descripciones del historial de sesión (log interno)
+y las etiquetas `Usuario`/`Asistente` (van al LLM como contexto). Para traducir los servicios haría
+falta refactorizar el i18n a una función `t(lang, key)` pura (no hook); se deja para el futuro si hay
+demanda real.
 
 **Dependencia resuelta:** #23 (prompts en archivos `prompts/*.md`) facilita una futura i18n de prompts
 (`chat.en.md`, etc.).

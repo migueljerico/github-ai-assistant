@@ -10,7 +10,7 @@
 ![OpenRouter](https://img.shields.io/badge/OpenRouter-6566F1?style=for-the-badge&logo=openai&logoColor=white)
 ![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
 ![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
-![Versión](https://img.shields.io/badge/Versión-v3.20.0-blue?style=for-the-badge)
+![Versión](https://img.shields.io/badge/Versión-v3.21.0-blue?style=for-the-badge)
 ![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)
 [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
 
@@ -92,6 +92,7 @@ El proyecto evolucionó de un prototipo en **Google AI Studio** a una aplicació
 | 📋 **Genera el changelog de un repo** | Indica `owner/repo` y reúne los commits **desde el último release** (o los recientes), los agrupa por tipo (Novedades, Correcciones…) y la IA los redacta en **lenguaje de usuario** — listo para tus notas de publicación |
 | 📊 **Salud del código (dashboard visual)** | Indica `owner/repo` y abre un panel con gráficas: **distribución de lenguajes**, **commits por semana** y **deuda técnica** (TODO/FIXME/HACK/XXX) — todo en cliente, sin enviar tu código a ningún servidor |
 | 💾 **Exporta e importa la conversación** | Descarga la conversación como JSON y recupérala en otra sesión (p. ej. tras recargar) — sin romper Zero-Storage: nada se auto-persiste, el fichero lo controlas tú |
+| 🌐 **Bilingüe (ES/EN)** | Selector de idioma en la cabecera y en el login; la interfaz (login, cabecera, paneles, chat, modales y diálogos) se adapta al español o al inglés. Infraestructura propia, **sin librerías de i18n** |
 | ⏹️ **Detener la generación** | Cancela una respuesta en curso al instante; se conserva lo ya escrito |
 | 🔑 **Multi-proveedor de IA** | **Groq Cloud**, **Google Gemini** y **OpenRouter** (pasarela a OpenAI, Claude, Llama… con modelos 🆓 gratuitos y de pago) — usas tu propia clave |
 | 🔒 **Autenticación OAuth** | Flujo GitHub OAuth completo con fallback a PAT manual |
@@ -416,8 +417,11 @@ Este proyecto se ha construido con ayuda de varias IAs, pero bajo un principio: 
 | **DeepSeek** · **GLM 5.2** | Propuestas para el roadmap, filtradas y curadas antes de incorporarse |
 | **Gemma 4 31B** (Google, vía OpenRouter) | Revisión de arquitectura del repo; su propuesta de gestión de contexto/RAG se incorporó al roadmap (#49), reformulada a un índice en memoria por el modelo "sin BD". En una segunda ronda (dogfooding) aportó varias ideas de roadmap (#51 transparencia del ranker, #52 auditoría de seguridad, #53 commits semánticos) |
 | **Gemini 2.5 Flash** (Google) | Revisión del roadmap (dogfooding): métricas para el dashboard #44, inglés como 1er idioma de i18n, criterios de priorización |
+| **ZCode** (GLM-5.2) | **Desde la v3.20.0:** toma el control del roadmap, el cierre de versiones (bump + tag + release) y la documentación. Implementó la i18n Fase 2 (v3.21.0): modales, visor de diferencias y mensajes de chat vía `t()` inyectada en `ChatDeps`, más corrección de bugs y un refactor de mantenibilidad |
 
 **Validación en acción:** por ejemplo, una propuesta de "memoria persistente con IndexedDB" se **rechazó** por contradecir la arquitectura Zero-Storage (y porque no funcionaba entre sesiones), reformulándose a export/import de fichero. Otras propuestas se ajustaron o descartaron tras revisarlas contra el código real.
+
+> 📄 La **metodología de colaboración humano↔IA** (flujo de trabajo, lecciones aprendidas y trazabilidad de cada asistente) está documentada en [`METODOLOGIA_IA.md`](./METODOLOGIA_IA.md). Es la memoria operativa que permite continuar el proyecto coherentemente entre sesiones y herramientas.
 
 > 🔁 **Dogfooding:** la mejora de roadmap **#49** (gestión de la ventana de contexto) se obtuvo **usando la propia app** — cargando este repositorio como contexto y pidiendo una opinión de arquitectura a **Gemma 4 31B** a través del proveedor OpenRouter. Es decir, la herramienta se usó para mejorarse a sí misma, y la propuesta resultante se revisó y reformuló antes de incorporarla.
 >
