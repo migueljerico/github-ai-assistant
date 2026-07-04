@@ -399,37 +399,225 @@ Así se conservó la utilidad sin romper el modelo de seguridad.
 
 ---
 
-## 🔁 Dogfooding
+## 🔁 Dogfooding: usar la app para mejorar la propia app
 
-El proyecto se usó para analizarse a sí mismo.
+Una parte importante del desarrollo de **GitHub AI Assistant** fue el uso de la propia aplicación para analizar, revisar y mejorar el repositorio `github-ai-assistant`.
 
-Ejemplo de flujo:
-
-1. Cargar `github-ai-assistant` como contexto.
-2. Pedir una revisión de arquitectura.
-3. Comparar respuestas de varios modelos.
-4. Detectar ideas útiles.
-5. Reformularlas según los principios del proyecto.
-6. Añadirlas al roadmap.
-7. Implementarlas en versiones posteriores.
-
-Esto permitió que la propia herramienta ayudara a mejorar su diseño.
+Este proceso de dogfooding consistió en utilizar la herramienta como si fuera un usuario real, pero aplicada sobre su propio código fuente, documentación y roadmap.
 
 ---
 
-## 🧠 Dogfooding y ventana de contexto
+## 🎯 Objetivo del dogfooding
 
-Durante el uso real se detectó un problema:
+El objetivo no era pedir elogios al modelo, sino comprobar si la app podía aportar valor real sobre un repositorio complejo.
 
-Algunos modelos no podían procesar todo el contexto del repositorio por límites de tokens o cuota.
+En concreto, se buscaba validar si la aplicación podía:
 
-Esto llevó a mejorar:
+- cargar el repositorio como contexto,
+- entender su estructura,
+- responder preguntas sobre arquitectura,
+- revisar documentación existente,
+- detectar carencias,
+- proponer mejoras razonables,
+- identificar límites técnicos,
+- y ayudar a priorizar el roadmap.
 
-- selección de archivos relevantes,
-- ranking de contexto,
-- priorización de documentación raíz,
-- uso de árbol completo,
-- y reglas para no negar archivos existentes cuando no se había cargado su contenido.
+---
+
+## 🧪 Flujo aplicado
+
+El flujo seguido fue:
+
+```text
+1. Cargar el repositorio github-ai-assistant como contexto.
+2. Pedir una revisión crítica de arquitectura, seguridad, UX o roadmap.
+3. Ejecutar la misma consulta con distintos modelos/proveedores.
+4. Comparar respuestas.
+5. Separar ideas útiles de elogios genéricos o propuestas incompatibles.
+6. Reformular las propuestas válidas según los principios del proyecto.
+7. Añadirlas al roadmap o implementarlas en versiones posteriores.
+```
+
+---
+
+## 🤖 Modelos utilizados en el dogfooding
+
+Durante el proceso se usaron distintos modelos y proveedores para contrastar resultados:
+
+| Modelo / proveedor | Uso en dogfooding |
+|---|---|
+| **Gemma 4 31B vía OpenRouter** | Revisión de arquitectura y propuestas de mejora sobre gestión de contexto |
+| **Gemini 2.5 Flash** | Revisión de roadmap, priorización y propuestas de mejora funcional |
+| **Groq / Llama** | Pruebas de velocidad y validación de límites de contexto en modelos rápidos |
+| **Microsoft 365 Copilot — GPT 5.5 Razonamiento** | Revisión editorial del README, propuesta de modularización documental y separación del contenido en archivos específicos dentro de `docs/` |
+
+---
+
+## 📌 Hallazgo 1: el contexto inicial era insuficiente
+
+Durante las primeras pruebas, la app podía analizar parte del repositorio, pero no siempre cargaba o priorizaba correctamente documentos importantes como:
+
+- `README.md`,
+- `CHANGELOG.md`,
+- `MANUAL_TECNICO.md`,
+- `MEJORAS_FUTURAS.md`,
+- archivos raíz de documentación.
+
+Esto provocaba que el asistente pudiera responder de forma incompleta o incluso negar la existencia de archivos que sí estaban en el repositorio.
+
+---
+
+## 🛠️ Mejora derivada: ranking de contexto
+
+A partir de ese problema, se reforzó la gestión del contexto del repositorio.
+
+La mejora consistió en:
+
+- exponer el árbol completo de archivos,
+- priorizar documentación raíz,
+- seleccionar archivos relevantes según la pregunta,
+- usar ranking léxico en memoria,
+- ampliar el límite de archivos analizados,
+- y evitar que el modelo negara archivos que estaban en la estructura pero no se habían cargado completos.
+
+Esta mejora convirtió el análisis del repositorio en un flujo más fiable.
+
+---
+
+## 📌 Hallazgo 2: no todos los modelos soportan el mismo contexto
+
+Al probar la app con diferentes modelos, se observó que algunos proveedores o modelos gratuitos no podían manejar la misma cantidad de contexto.
+
+Esto permitió detectar una necesidad real:
+
+> El presupuesto de contexto debe adaptarse al proveedor y al modelo activo.
+
+Este hallazgo reforzó la idea de que la app no debía asumir que todos los modelos tienen la misma capacidad, velocidad o tolerancia a prompts largos.
+
+---
+
+## 📌 Hallazgo 3: algunas propuestas de IA eran útiles, pero no directamente aplicables
+
+Durante las revisiones, varios modelos propusieron mejoras interesantes, pero algunas chocaban con los principios del proyecto.
+
+Ejemplo:
+
+```text
+Propuesta: persistir memoria en IndexedDB.
+Problema: contradice Zero-Storage.
+Resultado: se descarta la persistencia automática y se reformula como export/import manual de conversación.
+```
+
+Esto confirmó una regla importante:
+
+> Una propuesta de IA puede ser buena en abstracto, pero incorrecta para una arquitectura concreta.
+
+---
+
+## 📌 Hallazgo 4: el README era demasiado denso
+
+Al revisar la documentación principal, se detectó que el `README.md` contenía demasiadas funciones a la vez:
+
+- presentación del producto,
+- instalación,
+- arquitectura,
+- seguridad,
+- testing,
+- proceso de desarrollo,
+- metodología IA,
+- comparación con Copilot,
+- roadmap,
+- narrativa personal.
+
+El contenido era valioso, pero la primera lectura resultaba demasiado pesada.
+
+---
+
+## 🛠️ Mejora derivada: documentación modular
+
+A partir de esa revisión, se propuso separar la documentación en dos niveles:
+
+1. Un `README.md` más corto, visual y orientado a impacto.
+2. Una carpeta `docs/` con documentación extendida.
+
+Estructura resultante:
+
+```text
+docs/
+├── FUNCIONALIDADES.md
+├── COMPARATIVA_COPILOT.md
+├── INSTALACION.md
+├── ARQUITECTURA.md
+├── SEGURIDAD.md
+├── TESTING_CALIDAD.md
+└── DESARROLLO_IA.md
+```
+
+La idea fue:
+
+> El README como escaparate.  
+> La carpeta `docs/` como documentación técnica y metodológica extendida.
+
+---
+
+## ✅ Criterios para aceptar una propuesta surgida del dogfooding
+
+No todas las propuestas generadas por IA se incorporaron.
+
+Cada idea se revisó según estos criterios:
+
+| Criterio | Pregunta |
+|---|---|
+| Seguridad | ¿Respeta Zero-Storage? |
+| Control humano | ¿Mantiene confirmación previa? |
+| Mantenibilidad | ¿Reduce o aumenta complejidad? |
+| Testabilidad | ¿Puede probarse de forma fiable? |
+| Coherencia | ¿Encaja con la arquitectura existente? |
+| Valor de usuario | ¿Resuelve un problema real? |
+| Simplicidad | ¿Evita añadir funcionalidad innecesaria? |
+| Roadmap | ¿Tiene sentido ahora o debe aplazarse? |
+
+---
+
+## 🧠 Valor del dogfooding
+
+El dogfooding aportó valor en varios niveles:
+
+- validó que la app podía analizar repos reales,
+- reveló límites de contexto,
+- ayudó a mejorar el ranking de archivos,
+- generó ideas de roadmap,
+- mejoró la documentación,
+- permitió comparar proveedores,
+- detectó problemas de UX,
+- y reforzó la narrativa del proyecto como herramienta práctica.
+
+---
+
+## 🚫 Qué se descartó
+
+También se descartaron ideas que no encajaban.
+
+Ejemplos de propuestas descartadas o reformuladas:
+
+- Persistencia automática con IndexedDB.
+- Memoria de usuario incompatible con Zero-Storage.
+- Funciones que requerían backend con base de datos.
+- Cambios que complicaban demasiado el flujo principal.
+- Propuestas demasiado genéricas sin valor inmediato.
+- Elogios del modelo sin acciones concretas.
+
+---
+
+## 📚 Resultado
+
+El dogfooding permitió que GitHub AI Assistant evolucionara usando su propio caso de uso como prueba real.
+
+El proyecto no solo fue construido con IA, sino que fue revisado, documentado y mejorado mediante la propia herramienta.
+
+En resumen:
+
+> **La app se usó para entenderse, criticarse y mejorarse a sí misma.**
 
 ---
 
