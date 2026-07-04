@@ -33,9 +33,13 @@ El objetivo no es solo comprobar que la aplicación funciona, sino reducir regre
 
 ## 🏷️ Badge de cobertura
 
-https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg](https://codecov.io/gh/migueljerico/github-ai-assistant)
+[![codecov][codecov-badge]][codecov-link]
 
 > El porcentaje exacto de cobertura puede variar según la rama y los módulos añadidos. El badge de Codecov muestra el estado actualizado.
+
+[codecov-badge]: https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg
+[codecov-link]: https://codecov.io/gh/migueljerico/github-ai-assistant
+
 
 ---
 
