@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.22.0] — 2026-07-03
+
+### Added
+- **Internacionalización (i18n) — Fase 3 (#24, Sprint 4)** — Completa la traducción ES/EN de las partes que faltaban desde la Fase 2 (v3.21.0):
+  - **Chat central:** `ChatArea` (bienvenida, ejemplos), `ChatMessage` ("Pensando...", tarjetas de acción) y el locale del timestamp (`es-ES`/`en-US`) sigue al idioma activo.
+  - **Historial de sesión:** las ~32 descripciones que genera la orquestación (`runDocumentRepo`, `runSummarizeThread`, `runCommitDocs`, etc.) y el log exportado (cabecera y nombre de fichero) ahora se traducen.
+  - **Plantillas de autocompletado:** `instructionSuggestions` se reestructuró como factoría `buildTemplates(t)`; los 17 títulos, descripciones y plantillas se traducen (al pulsar una en EN, el texto insertado va en EN).
+  - **Respuestas de la IA en el idioma activo:** el idioma (`lang`) se cablea por `ChatDeps` hasta los system prompts; una directiva dinámica (`withLangDirective`) fuerza que el modelo responda en español o inglés. Aplica al chat, a las acciones y a la generación de documentación (la directiva "EN ESPAÑOL" de `generateFileDoc` ahora es condicional).
+- **Bilingüe real de extremo a extremo:** la interfaz, las descripciones del historial y las respuestas del modelo respetan el idioma seleccionado.
+
+### Fixed
+- **Fallback de Groq tras la deprecación de Llama 3.3 70B Versatile** (agosto): el `defaultModel`/fallback ahora apunta a `llama-3.1-8b-instant` (vigente) en vez del modelo retirado; `RELIABLE_MODEL_PREFS` pasa de `'llama-3.3-70b'` a `'llama'` (genérico) para ser robusto a futuras deprecaciones. El catálogo del selector es dinámico, así que el modelo retirado desaparece solo en agosto.
+- **Fechas documentales:** se eliminan las referencias inexactas a "2025"/"2025–2026" en README y `METODOLOGIA_IA.md` (el curso y la app empezaron en 2026; Antigravity 2.0 se publicó el 18 may 2026 y no pudo usarse antes).
+
+### Notes
+- _Implementación, corrección documental y cierre de versión asistidos por **ZCode** (GLM-5.2)._
+
 ## [3.21.0] — 2026-07-02
 
 ### Added

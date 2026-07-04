@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v3.21.0 · Julio 2026
+**Actualizado a:** v3.22.0 · Julio 2026
 
 ---
 
@@ -66,10 +66,11 @@ herramienta**: si el trabajo continúa en otro entorno, este es el orden de refe
 - **🥉 Sprint 3 — UI robusta + escaparate de datos — ✅ COMPLETADO (v3.17.0–v3.18.0):** **#39**
   (ErrorBoundary + a11y) ✅ **(v3.17.0)** · **#44** (dashboard "Salud del Código" con Recharts — pieza de
   escaparate Análisis de Datos) ✅ **(v3.18.0)**.
-- **🏅 Sprint 4 — Alcance e i18n — ✅ COMPLETADO (v3.19.0–v3.21.0):** **#46** (export/import de conversación) ✅ **(v3.19.0)** ·
+- **🏅 Sprint 4 — Alcance e i18n — ✅ COMPLETADO (v3.19.0–v3.22.0):** **#46** (export/import de conversación) ✅ **(v3.19.0)** ·
   **#24 Fase 1** (i18n ligera sin dependencias: `LanguageContext` + `t()` + ES/EN; selector 🌐; login,
   cabecera, `AIProviderPanel`, `ChatInput` y sus 7 botones traducidos) ✅ **(v3.20.0)** ·
-  **#24 Fase 2** (modales + DiffViewer + mensajes visibles del chat vía `t()` inyectada en `ChatDeps`) ✅ **(v3.21.0)**.
+  **#24 Fase 2** (modales + DiffViewer + mensajes visibles del chat vía `t()` inyectada en `ChatDeps`) ✅ **(v3.21.0)** ·
+  **#24 Fase 3** (chat central + historial + plantillas de autocompletado + **respuestas de la IA en el idioma activo** vía `lang` cableado a los system prompts) ✅ **(v3.22.0)**.
 - **📋 Backlog:** #25 (logs/health), #22 (aviso de sesión), #48 (sync repo), **#36** (GitHub App —
   hito grande aparte). #26 (cobertura) es transversal: sube con cada sprint.
 - **🗑️ Candidatos a poda:** **#33** (sugerir revisores) y **#35** (auto-labels) — nicho/fuera del núcleo.
@@ -258,10 +259,10 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 ---
 
-#### #24 — Internacionalización (i18n) — ✅ Entregada (Fases 1 y 2)
-**Esfuerzo:** Fase 1 (v3.20.0) + Fase 2 (v3.21.0)
+#### #24 — Internacionalización (i18n) — ✅ Entregada (Fases 1, 2 y 3)
+**Esfuerzo:** Fase 1 (v3.20.0) + Fase 2 (v3.21.0) + Fase 3 (v3.22.0)
 
-**Estado (v3.21.0):** ✅ **Fase 1** — Infraestructura **ligera sin dependencias externas** (se descartó
+**Estado (v3.22.0):** ✅ **Fase 1** — Infraestructura **ligera sin dependencias externas** (se descartó
 `i18next`): `LanguageContext` + función `t()` con interpolación, selector 🌐 e idioma recordado en
 `sessionStorage` (no secreto → Zero-Storage). Traducidos: login (`AuthGate`), cabecera (`Header`),
 `AIProviderPanel`, `ChatInput` y sus botones de acciones rápidas, y los paneles laterales
@@ -270,17 +271,21 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 ✅ **Fase 2 (v3.21.0):** modales (`ConfirmModal`, `DocModal`, `FilePublishModal`, `PublishActions`),
 el visor de diferencias (`DiffViewer`) y los **mensajes visibles del chat** en `assistantActions.ts`.
 La función `t()` se **inyecta** en la capa de orquestación vía `ChatDeps` (patrón de inyección de
-dependencias existente), sin tocar la arquitectura. La rama previa `feature/i18n-phase2-complete`
-(divergida y con bugs) se descartó en favor de una rama limpia.
+dependencias existente), sin tocar la arquitectura.
+
+✅ **Fase 3 (v3.22.0):** chat central (`ChatArea`, `ChatMessage` + locale del timestamp), las ~32
+descripciones del historial (oración + log exportado) y las 17 plantillas de autocompletado
+(reestructuradas como factoría `buildTemplates(t)`). Además, las **respuestas de la IA** respetan el
+idioma activo: `lang` se cablea por `ChatDeps` hasta los system prompts y una directiva dinámica
+(`withLangDirective`) fuerza la respuesta en ES/EN. La app queda **bilingüe de extremo a extremo**.
 
 **Fuera de alcance (deliberado):** los mensajes de commit / cuerpos de Draft PR de `docPublisher.ts`
-y `github.ts` (van a GitHub como texto técnico), las descripciones del historial de sesión (log interno)
-y las etiquetas `Usuario`/`Asistente` (van al LLM como contexto). Para traducir los servicios haría
-falta refactorizar el i18n a una función `t(lang, key)` pura (no hook); se deja para el futuro si hay
-demanda real.
+y `github.ts` (van a GitHub como texto técnico) y las etiquetas `Usuario`/`Asistente` del contexto
+que va al LLM (no son UI visible). Para traducir los servicios haría falta refactorizar el i18n a una
+función `t(lang, key)` pura (no hook); se deja para el futuro si hay demanda real.
 
 **Dependencia resuelta:** #23 (prompts en archivos `prompts/*.md`) facilita una futura i18n de prompts
-(`chat.en.md`, etc.).
+(`chat.en.md`, etc.) si se quieren versiones completas en cada idioma.
 
 ---
 
