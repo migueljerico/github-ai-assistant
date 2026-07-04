@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v3.22.0 · Julio 2026
+**Actualizado a:** v3.22.1 · Julio 2026
 
 ---
 
@@ -143,8 +143,8 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 - ✅ Configuración de Vitest + Codecov
 - ✅ CI con GitHub Actions ejecutando tests (cliente + servidor) automáticamente
 - ✅ Badge de Codecov en README
-- ✅ Cobertura actual: **~60%** (ver Codecov para el valor exacto)
-- ✅ 436 tests en el cliente. Implementados para:
+- ✅ Cobertura actual: ver Codecov (oscila según versión; histórico ~60–64%)
+- ✅ 476 tests en el cliente (v3.19.0+; 48 archivos `.test.ts(x)` co-locados). Implementados para:
   - `AuthContext.tsx` (login, logout, OAuth flow, Zero-Storage)
   - `AIProviderContext.tsx` (conexión/desconexión de proveedores)
   - `providers.ts` (registro de proveedores, detección de modelos 🆓, caché, `pickDefaultModel`)
@@ -340,14 +340,34 @@ función `t(lang, key)` pura (no hook); se deja para el futuro si hay demanda re
 
 ---
 
+#### #54 — Añadir NVIDIA Build (NIM) como proveedor de IA
+**Esfuerzo:** 3–4h
+**Origen:** análisis de la propuesta de Claude Sonnet 5.0 (NVIDIA Build da acceso a GLM-5.2 y otros modelos vía API OpenAI-compatible).
+
+**Problema actual:** la app soporta Gemini, Groq y OpenRouter. NVIDIA Build (NIM) expone `integrate.api.nvidia.com/v1` con catálogo dinámico y modelos interesantes (incluido GLM-5.2, con el que se ha trabajado este roadmap).
+
+**Enfoque correcto (cliente, NO backend):** NIM es OpenAI-compatible, así que encaja en el patrón existente añadiendo una entrada a `PROVIDERS` con `transport: 'openai-compatible'`, `chatEndpoint` y `modelsEndpoint` apuntando a NVIDIA, y `keyPrefix: 'nvapi-'`. La petición sale **directa del navegador** (como Groq/OpenRouter), con la key del usuario en memoria React (Zero-Storage). **No requiere tocar `server/index.js` ni añadir el SDK de OpenAI.**
+
+> **⚠️ Trampa a evitar:** una propuesta externa (Claude Sonnet 5.0) sugirió un proxy en el backend Express con `process.env.NVIDIA_API_KEY` + SDK de `openai`. Esto **contradice la arquitectura Zero-Storage** (el proxy de Gemini existe solo por el bloqueo UE/EEA, no por seguridad; no hay ninguna `*API_KEY` de IA en el servidor). No reintroducir este enfoque sin aprobación explícita del autor. (Ver convención rectora en `CLAUDE.md §5` y lección en `METODOLOGIA_IA.md §4`.)
+
+**Particularidades de NIM a implementar (en el cliente, dentro de `fetchModels`):**
+- El endpoint `/v1/models` es **ruidoso** (mezcla chat/embeddings/reranking/visión): hay que filtrar los no-chat por nombre/tag (extender el patrón de `GROQ_EXCLUDED`).
+- **Enriquecer** con el feed público `https://assets.ngc.nvidia.com/products/api-catalog/featured-models.json` para **priorizar** modelos destacados/activos (NIM tiene modelos inactivos que fallan).
+- NIM **no distingue gratis de pago** en `/v1/models` → el flag `free` 🆓 no aplica (como con Groq).
+- Cacheo en `sessionStorage` (mismo patrón de 1h).
+
+**Beneficio:** un proveedor más (con GLM-5.2 y otros modelos de primera línea), reutilizando toda la infraestructura existente, sin deuda técnica.
+
+---
+
 ## 📊 Resumen
 
 | Prioridad | Total | ✅ Resueltos | ⏳ Pendientes |
 |---|---|---|---|
 | 🔴 Alta | 8 | 8 (#1, #2, #13, #14, #27, #45, #15, #28) | 0 |
 | 🟡 Media | 17 | 14 (#12, #17, #18, #19, #21, #37, #41, #32, #42, #38, #20, #49, #39, #44) | 3 (#26, #50, #51) |
-| 🟢 Baja | 13 | 5 (#23, #24, #34, #40, #46) | 8 (#22, #25, #33, #35, #36, #48, #52, #53) |
-| **TOTAL** | **38** | **27** | **11** |
+| 🟢 Baja | 14 | 5 (#23, #24, #34, #40, #46) | 9 (#22, #25, #33, #35, #36, #48, #52, #53, #54) |
+| **TOTAL** | **39** | **27** | **12** |
 
 > **#28** cubierto en su **norte** por las Fases 1 (v3.0.0, adjuntar como contexto) y
 > 2 (v3.1.0, documentar→publicar). **Más formatos:** Fase 3a (v3.2.0, Excel/CSV) y

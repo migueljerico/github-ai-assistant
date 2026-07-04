@@ -15,7 +15,7 @@ probar, y las convenciones que es fácil romper sin querer.
 
 ## 1. Visión general
 
-**GitHub AI Assistant** (v3.21.0) es una app web que permite operar la **GitHub
+**GitHub AI Assistant** (v3.22.1) es una app web que permite operar la **GitHub
 REST API en lenguaje natural** a través de un proveedor de IA (Google Gemini o
 Groq Cloud). El usuario escribe una instrucción, la IA propone una acción, y
 **cada operación de escritura se confirma manualmente** antes de ejecutarse.
@@ -226,7 +226,17 @@ Ejecutar **un solo test**: `cd client && npm run test:run -- src/services/github
   `sessionStorage`. Recargar la página obliga a re-introducir la key — es
   intencionado (mitiga XSS). El token de GitHub sí va en `sessionStorage` (llega
   por el hash de la URL tras el OAuth). **No introduzcas credenciales en
-  almacenamiento del navegador** — CONTRIBUTING rechaza PRs que lo hagan.
+  almacenamiento del navegador** — CONTRIBUTING rechaza PRs que lo hacen.
+- **Proxies de proveedores de IA — patrón cliente, NO backend (rector):** los
+  proveedores OpenAI-compatible (Groq, OpenRouter y cualquier NIM/futuro como
+  NVIDIA Build) se llaman **directo desde el navegador** con la key del usuario en
+  memoria (Zero-Storage), vía `callOpenAICompatible`. El **único** proxy que existe
+  (`POST /api/gemini` en `server/index.js`) se debe **únicamente al bloqueo UE/EEA**
+  de la API de Gemini, **NO a seguridad** — la key viaja en el body y nunca se
+  persistite. **No añadas proxies backend ni `process.env.*API_KEY` para nuevos
+  proveedores OpenAI-compatible sin aprobación explícita del autor.** Para añadir
+  un proveedor, basta una entrada en el registro `PROVIDERS` (`providers.ts`) — el
+  resto (UI, `callAI`, streaming, validación) funciona sin tocar más ficheros.
 - **UX para no técnicos (rector):** ver §1 — toda función debe entender lenguaje
   natural y guiar al usuario sin exigir conocimientos de GitHub (números de issue,
   URLs, etc.); nunca dejes un error de formato como callejón sin salida.
