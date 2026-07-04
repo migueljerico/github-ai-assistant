@@ -248,6 +248,10 @@ Este proyecto fue construido con un flujo humano ↔ IA basado en validación cr
 - **Gemini, Gemma, DeepSeek, Qwen y otros modelos:** revisión de arquitectura, propuestas de mejora y contraste técnico.
 - **Microsoft 365 Copilot — GPT 5.5 Razonamiento:** revisión editorial del README, propuesta de modularización documental y reestructuración de la documentación en archivos separados dentro de `docs/`.
 
+Además, el proyecto se desarrolló aplicando **dogfooding**: la propia app se usó para cargar y analizar el repositorio `github-ai-assistant`, revisar su arquitectura, detectar límites reales de contexto, contrastar propuestas entre modelos y generar nuevas mejoras del roadmap.
+
+Ver detalle en ./docs/DESARROLLO_IA.md.
+
 Ninguna salida de IA se tomó como verdad absoluta. Cada propuesta se revisó contra los principios del proyecto:
 
 - Zero-Storage.
