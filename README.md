@@ -10,11 +10,11 @@
 ![OpenRouter](https://img.shields.io/badge/OpenRouter-6566F1?style=for-the-badge&logo=openai&logoColor=white)
 ![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
 ![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
-![Versión](https://img.shields.io/badge/Versión-v3.21.0-blue?style=for-the-badge)
+![Versión](https://img.shields.io/badge/Versión-v3.22.0-blue?style=for-the-badge)
 ![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)
 [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
 
-> **Proyecto de portfolio — Curso Análisis de Datos e IA (2025–2026)**
+> **Proyecto de portfolio — Curso Análisis de Datos e IA (2026)**
 >
 > Gestiona tus repositorios de GitHub escribiendo en lenguaje natural — con confirmación previa, historial de sesión y documentación automática, impulsado por **Groq Cloud**, **Google Gemini** u **OpenRouter** (con modelos gratuitos y de pago).
 
@@ -284,7 +284,7 @@ Usuario (lenguaje natural)
 | Recharts | Gráficas del dashboard "Salud del código" (carga diferida en su propio chunk) | Gratuito |
 | Express.js | Backend thin — OAuth + proxy Gemini | Gratuito |
 | GitHub REST API v3 | Todas las operaciones sobre repositorios | Gratuito |
-| Groq Cloud | Inferencia de IA ultrarrápida (Llama 3.3) | Tier gratuito |
+| Groq Cloud | Inferencia de IA ultrarrápida (modelos Llama) | Tier gratuito |
 | Google Gemini | Modelo de IA (gemini-2.5-flash, vía proxy) | Tier gratuito |
 | OpenRouter | Pasarela OpenAI-compatible a 300+ modelos (OpenAI, Claude, Llama…) | Modelos gratis y de pago |
 | Google Cloud Run | Despliegue serverless (us-central1) | Pay-per-use |
@@ -433,7 +433,7 @@ Este proyecto se ha construido con ayuda de varias IAs, pero bajo un principio: 
 
 ## 📚 Contexto formativo
 
-Este proyecto forma parte del programa de formación en Análisis de Datos e Inteligencia Artificial (INAEM, 2025–2026). El objetivo fue explorar el desarrollo de aplicaciones full-stack asistido por agentes de IA, desde la arquitectura hasta el despliegue en producción, integrando múltiples servicios de IA y APIs REST en un flujo de trabajo completamente agéntico.
+Este proyecto forma parte del programa de formación en Análisis de Datos e Inteligencia Artificial (INAEM, 2026). El objetivo fue explorar el desarrollo de aplicaciones full-stack asistido por agentes de IA, desde la arquitectura hasta el despliegue en producción, integrando múltiples servicios de IA y APIs REST en un flujo de trabajo completamente agéntico.
 
 ---
 

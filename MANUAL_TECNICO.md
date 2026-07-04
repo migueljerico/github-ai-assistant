@@ -189,7 +189,7 @@ se leen del `AIProviderContext` (memoria React) en cada llamada y nunca pasan po
 servidor (excepto la de Gemini, que viaja en el body HTTPS hacia el proxy).
 
 Al cargar el catálogo dinámico, `pickDefaultModel` (en `providers.ts`) elige como
-modelo por defecto uno gratuito **fiable** (preferencia: Gemma → Llama 3.3 70B →
+modelo por defecto uno gratuito **fiable** (preferencia: Gemma → modelos Llama vigentes →
 DeepSeek) en vez de un `:free` arbitrario, ya que muchos endpoints gratuitos de
 OpenRouter están a menudo saturados. Si el usuario ya cambió el selector, se respeta
 su elección.

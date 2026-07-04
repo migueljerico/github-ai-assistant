@@ -116,8 +116,8 @@ Quién ha hecho qué, para reconocimiento y contexto. El autor figura como
 
 | Asistente | Modelo | Rol en el proyecto | Período |
 |---|---|---|---|
-| **Claude** | Sonnet (Anthropic) | Arquitecto y revisor; gran parte del desarrollo inicial | 2025–2026 |
-| **Antigravity 2.0** | (Google) | Entorno de desarrollo agéntico | 2025–2026 |
+| **Claude** | Sonnet (Anthropic) | Arquitecto y revisor; gran parte del desarrollo inicial | Junio 2026 |
+| **Antigravity 2.0** | (Google) | Entorno de desarrollo agéntico (publicada el 18 may 2026) | Junio 2026 |
 | **Gemini 2.5 Flash** | (Google) | Dogfooding: revisión del roadmap (métricas dashboard #44, inglés como 1er idioma de i18n #24, criterios de priorización) | 2026 |
 | **Gemma 4 31B** | (OpenRouter) | Dogfooding: sugerencias de #51 (transparencia contextRanker), #52 (auditoría de seguridad), #53 (commit semántico) | 2026 |
 | **GLM-5.2 (web)** | Zhipu | La **v3.20.0** (i18n Fase 1) se hizo con GLM-5.2 en su versión web | Junio 2026 |
