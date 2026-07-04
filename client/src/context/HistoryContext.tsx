@@ -22,6 +22,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { useLanguage } from './LanguageContext';
 import type { HistoryEntry, HistoryStatus } from '../types';
 
 /** HistoryContext value — all history operations */
@@ -76,6 +77,7 @@ const HistoryContext = createContext<HistoryContextValue | null>(null);
  */
 export function HistoryProvider({ children }: { children: ReactNode }) {
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
+  const { t } = useLanguage();
 
   const addEntry = useCallback((entry: Omit<HistoryEntry, 'id' | 'timestamp'>): string => {
     const id = `entry-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -92,7 +94,7 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
 
   const exportLog = useCallback(() => {
     const now = new Date();
-    const header = `=== Asistente de IA para Publicar Repositorios — Sesión ${now.toISOString()} ===`;
+    const header = t('history.logHeader', { date: now.toISOString() });
 
     // Map each entry to a formatted log line: [HH:MM] emoji description · repo
     const lines = entries.map(entry => {
@@ -116,12 +118,12 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
     const link = document.createElement('a');
     const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
     link.href = url;
-    link.download = `sesion-log-${dateStr}.txt`;
+    link.download = t('history.logFilename', { date: dateStr });
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url); // free memory immediately after download is triggered
-  }, [entries]);
+  }, [entries, t]);
 
   return (
     <HistoryContext.Provider value={{ entries, addEntry, updateEntry, clearHistory, exportLog }}>

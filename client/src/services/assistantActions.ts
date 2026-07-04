@@ -9,7 +9,8 @@
  * núcleo del chat `runSend`/`runConfirmAction`/`runCancelAction` (Fase 3).
  */
 
-import { generateRepoDocs, generateFileDoc, buildRepoContextSummary, callAI, parseGeminiAction, isAbortError, CHAT_PROMPT, ACTION_PROMPT, chatPromptWithContext } from './gemini';
+import { generateRepoDocs, generateFileDoc, buildRepoContextSummary, callAI, parseGeminiAction, isAbortError, CHAT_PROMPT, ACTION_PROMPT, chatPromptWithContext, withLangDirective } from './gemini';
+import type { Language } from '../context/LanguageContext';
 import type { AIProviderConfig } from './gemini';
 import { fetchRepoTreeRecursive, getFileContents, decodeBase64, createRepo, repoExists, getRepo, listCommitDates, GitHubAPIError, type RepoTreeFile } from './github';
 import { rankFilesByQuery } from '../utils/contextRanker';
@@ -65,6 +66,8 @@ export interface ChatDeps {
   setIsChatLoading: (loading: boolean) => void;
   /** Función de traducción (i18n) inyectada desde el componente vía useLanguage(). */
   t: (key: string, params?: Record<string, string | number>) => string;
+  /** Idioma activo (i18n) — inyectado para adaptar los system prompts del modelo. */
+  lang: Language;
 }
 
 /** Deps adicionales que necesita `runSend` (núcleo del chat). */
@@ -124,7 +127,7 @@ export async function runDocumentRepo(
     content: ` Analizando repositorio **${owner}/${repoName}**...`,
     isLoading: true,
   });
-  const histId = addEntry({ status: 'pending', description: `Documentando ${owner}/${repoName}`, repo: `${owner}/${repoName}` });
+  const histId = addEntry({ status: 'pending', description: deps.t('history.documenting', { repo: `${owner}/${repoName}` }), repo: `${owner}/${repoName}` });
 
   try {
     const { files, totalScanned, truncated } = await fetchRepoTreeRecursive(token, owner, repoName);
@@ -133,18 +136,18 @@ export async function runDocumentRepo(
       isLoading: true,
     });
 
-    const { readme, manualTecnico } = await generateRepoDocs(`${owner}/${repoName}`, files, config);
+    const { readme, manualTecnico } = await generateRepoDocs(`${owner}/${repoName}`, files, config, deps.lang);
 
     updateMessage(loadingId, {
       content: `✅ Documentación generada para **${owner}/${repoName}**. Revisa el contenido antes de hacer commit.`,
       isLoading: false,
     });
-    updateEntry(histId, { status: 'pending', description: `Documentación lista — esperando confirmación` });
+    updateEntry(histId, { status: 'pending', description: deps.t('history.docReady') });
 
     return { readme, manualTecnico, filesAnalyzed: files.length, totalFiles: totalScanned, truncated, repoName: `${owner}/${repoName}` };
   } catch (err) {
     updateMessage(loadingId, { content: `❌ Error al documentar: ${(err as Error).message}`, isLoading: false });
-    updateEntry(histId, { status: 'error', description: `Error al documentar ${owner}/${repoName}` });
+    updateEntry(histId, { status: 'error', description: deps.t('history.errorDocumenting', { repo: `${owner}/${repoName}` }) });
     return null;
   } finally {
     setIsChatLoading(false);
@@ -243,15 +246,15 @@ export async function runSummarizeThread(
 
   const ref = `${owner}/${repo}#${parsed.number}`;
   const loadingId = addMessage({ role: 'assistant', content: `🔎 Resumiendo el hilo **${ref}** con ${providerName}...`, isLoading: true });
-  const histId = addEntry({ status: 'pending', description: `Resumiendo hilo ${ref}`, repo: `${owner}/${repo}` });
+  const histId = addEntry({ status: 'pending', description: deps.t('history.summarizingThread', { ref }), repo: `${owner}/${repo}` });
 
   try {
     const summary = await summarizeThread(token, owner, repo, parsed.number, config);
     updateMessage(loadingId, { content: `📌 **Resumen del hilo ${ref}**\n\n${summary}`, isLoading: false });
-    updateEntry(histId, { status: 'completed', description: `Hilo ${ref} resumido` });
+    updateEntry(histId, { status: 'completed', description: deps.t('history.threadSummarized', { ref }) });
   } catch (err) {
     updateMessage(loadingId, { content: `❌ Error al resumir el hilo ${ref}: ${(err as Error).message}`, isLoading: false });
-    updateEntry(histId, { status: 'error', description: `Error al resumir ${ref}` });
+    updateEntry(histId, { status: 'error', description: deps.t('history.errorSummarizing', { ref }) });
   } finally {
     setIsChatLoading(false);
   }
@@ -272,15 +275,15 @@ export async function runGenerateChangelog(deps: ChatDeps, config: AIProviderCon
   setIsChatLoading(true);
   const ref = `${owner}/${repo}`;
   const loadingId = addMessage({ role: 'assistant', content: `🔎 Generando el changelog de **${ref}** con ${providerName}...`, isLoading: true });
-  const histId = addEntry({ status: 'pending', description: `Generando changelog de ${ref}`, repo: ref });
+  const histId = addEntry({ status: 'pending', description: deps.t('history.generatingChangelog', { ref }), repo: ref });
 
   try {
     const md = await generateChangelog(token, owner, repo, config);
     updateMessage(loadingId, { content: `📋 **Changelog de ${ref}**\n\n${md}`, isLoading: false });
-    updateEntry(histId, { status: 'completed', description: `Changelog generado para ${ref}` });
+    updateEntry(histId, { status: 'completed', description: deps.t('history.changelogGenerated', { ref }) });
   } catch (err) {
     updateMessage(loadingId, { content: `❌ ${(err as Error).message}`, isLoading: false });
-    updateEntry(histId, { status: 'error', description: `Error al generar changelog de ${ref}` });
+    updateEntry(histId, { status: 'error', description: deps.t('history.errorChangelog', { ref }) });
   } finally {
     setIsChatLoading(false);
   }
@@ -302,7 +305,7 @@ export async function runCodeHealth(deps: ChatDeps, repoInput: string): Promise<
   setIsChatLoading(true);
   const ref = `${owner}/${repo}`;
   const loadingId = addMessage({ role: 'assistant', content: `📊 Analizando la salud de **${ref}**...`, isLoading: true });
-  const histId = addEntry({ status: 'pending', description: `Salud del código de ${ref}`, repo: ref });
+  const histId = addEntry({ status: 'pending', description: deps.t('history.codeHealthOf', { ref }), repo: ref });
 
   try {
     const meta = await getRepo(token, owner, repo);
@@ -321,11 +324,11 @@ export async function runCodeHealth(deps: ChatDeps, repoInput: string): Promise<
     };
 
     updateMessage(loadingId, { content: `📊 Salud del código de **${ref}** lista — revisa el panel.`, isLoading: false });
-    updateEntry(histId, { status: 'completed', description: `Salud del código de ${ref}` });
+    updateEntry(histId, { status: 'completed', description: deps.t('history.codeHealthOf', { ref }) });
     return health;
   } catch (err) {
     updateMessage(loadingId, { content: `❌ ${(err as Error).message}`, isLoading: false });
-    updateEntry(histId, { status: 'error', description: `Error al analizar la salud de ${ref}` });
+    updateEntry(histId, { status: 'error', description: deps.t('history.errorCodeHealth', { ref }) });
     return null;
   } finally {
     setIsChatLoading(false);
@@ -336,15 +339,15 @@ export async function runCodeHealth(deps: ChatDeps, repoInput: string): Promise<
 export async function runCommitDocs(deps: ChatDeps, analysis: RepoAnalysis): Promise<void> {
   const { token, user, addMessage, addEntry, updateEntry } = deps;
   const { owner, repo } = resolveRepoRef(analysis.repoName, user.login);
-  const histId = addEntry({ status: 'pending', description: `Commiteando documentación en ${analysis.repoName}`, repo: analysis.repoName });
+  const histId = addEntry({ status: 'pending', description: deps.t('history.committingDocs', { repo: analysis.repoName }), repo: analysis.repoName });
 
   try {
     await writeDocFiles(token, owner, repo, analysis.readme, analysis.manualTecnico);
     addMessage({ role: 'assistant', content: `✅ README.md y MANUAL_TECNICO.md commiteados en **${analysis.repoName}**` });
-    updateEntry(histId, { status: 'completed', description: `Documentación commiteada en ${analysis.repoName}` });
+    updateEntry(histId, { status: 'completed', description: deps.t('history.docsCommitted', { repo: analysis.repoName }) });
   } catch (err) {
     addMessage({ role: 'assistant', content: `❌ Error al hacer commit: ${(err as Error).message}` });
-    updateEntry(histId, { status: 'error', description: `Error al commitear documentación` });
+    updateEntry(histId, { status: 'error', description: deps.t('history.errorCommittingDocs') });
   }
 }
 
@@ -352,7 +355,7 @@ export async function runCommitDocs(deps: ChatDeps, analysis: RepoAnalysis): Pro
 export async function runCreateDraftPr(deps: ChatDeps, analysis: RepoAnalysis): Promise<void> {
   const { token, user, addMessage, addEntry, updateEntry } = deps;
   const { owner, repo } = resolveRepoRef(analysis.repoName, user.login);
-  const histId = addEntry({ status: 'pending', description: `Creando Draft PR de documentación en ${analysis.repoName}`, repo: analysis.repoName });
+  const histId = addEntry({ status: 'pending', description: deps.t('history.creatingDraftPr', { repo: analysis.repoName }), repo: analysis.repoName });
 
   try {
     const { pr, branchName } = await createDocsDraftPr(token, owner, repo, {
@@ -362,10 +365,10 @@ export async function runCreateDraftPr(deps: ChatDeps, analysis: RepoAnalysis): 
       repoName: analysis.repoName,
     });
     addMessage({ role: 'assistant', content: `✅ Draft PR [#${pr.number}](${pr.html_url}) creado en **${analysis.repoName}** (rama \`${branchName}\`). Revísalo antes de mergear.` });
-    updateEntry(histId, { status: 'completed', description: `Draft PR #${pr.number} creado en ${analysis.repoName}` });
+    updateEntry(histId, { status: 'completed', description: deps.t('history.draftPrCreated', { number: pr.number, repo: analysis.repoName }) });
   } catch (err) {
     addMessage({ role: 'assistant', content: `❌ Error al crear Draft PR: ${(err as Error).message}` });
-    updateEntry(histId, { status: 'error', description: `Error al crear Draft PR en ${analysis.repoName}` });
+    updateEntry(histId, { status: 'error', description: deps.t('history.errorDraftPr', { repo: analysis.repoName }) });
   }
 }
 
@@ -381,7 +384,7 @@ export async function runCreateRepoRelease(
 ): Promise<void> {
   const { token, user, addMessage, addEntry, updateEntry } = deps;
   const { owner, repo } = resolveRepoRef(analysis.repoName, user.login);
-  const histId = addEntry({ status: 'pending', description: `Creando release en ${analysis.repoName}`, repo: analysis.repoName });
+  const histId = addEntry({ status: 'pending', description: deps.t('history.creatingRelease', { repo: analysis.repoName }), repo: analysis.repoName });
 
   try {
     const tag = version?.trim() || await suggestNextVersion(token, owner, repo);
@@ -391,10 +394,10 @@ export async function runCreateRepoRelease(
       body: analysis.readme,
     });
     addMessage({ role: 'assistant', content: `✅ Release [${tag}](${url}) creado en **${analysis.repoName}** con la documentación generada.` });
-    updateEntry(histId, { status: 'completed', description: `Release ${tag} creado en ${analysis.repoName}` });
+    updateEntry(histId, { status: 'completed', description: deps.t('history.releaseCreated', { tag, repo: analysis.repoName }) });
   } catch (err) {
     addMessage({ role: 'assistant', content: `❌ Error al crear el release: ${describePublishError(err, owner, repo, deps.t)}` });
-    updateEntry(histId, { status: 'error', description: `Error al crear release en ${analysis.repoName}` });
+    updateEntry(histId, { status: 'error', description: deps.t('history.errorRelease', { repo: analysis.repoName }) });
   }
 }
 
@@ -438,9 +441,11 @@ export async function runSend(deps: SendDeps, config: AIProviderConfig, params: 
   // Con archivo adjunto, resolveMode fuerza chat (ninguna acción de GitHub lee un
   // archivo local); el repo y el archivo se pasan por separado.
   const finalMode = resolveMode(userText, modeOverride, repoContext !== null, fileContext !== null);
-  const systemPrompt = finalMode === 'chat'
+  const basePrompt = finalMode === 'chat'
     ? (combinedContext ? chatPromptWithContext(combinedContext) : CHAT_PROMPT)
     : ACTION_PROMPT;
+  // #24 Fase 3: fuerza que la respuesta del modelo respete el idioma activo de la interfaz.
+  const systemPrompt = withLangDirective(basePrompt, deps.lang);
 
   console.log(`[Opción D] Modo: ${finalMode} | Override: ${modeOverride} | Contexto: ${hasContext}`);
 
@@ -564,7 +569,7 @@ export async function runConfirmAction(deps: ChatDeps, pendingAction: PendingAct
  */
 export function runCancelAction(deps: ChatDeps, pendingAction: PendingAction): void {
   const { addMessage, addEntry } = deps;
-  addEntry({ status: 'cancelled', description: `Cancelado: ${pendingAction.action.accion}`, repo: pendingAction.action.repo });
+  addEntry({ status: 'cancelled', description: deps.t('history.cancelledAction', { action: pendingAction.action.accion }), repo: pendingAction.action.repo });
   addMessage({ role: 'assistant', content: deps.t('chat.actionCancelled') });
 }
 
@@ -663,7 +668,7 @@ export async function runGenerateFileDoc(
   setIsChatLoading(true);
   const loadingId = addMessage({ role: 'assistant', content: `📝 Generando documentación de **${fileContext.name}** con ${providerName}...`, isLoading: true });
   try {
-    const doc = await generateFileDoc(fileContext.name, fileContext.contextText, config, conversation);
+    const doc = await generateFileDoc(fileContext.name, fileContext.contextText, config, conversation, deps.lang);
     updateMessage(loadingId, { content: `✅ Documentación de **${fileContext.name}** lista. Elige cómo publicarla.`, isLoading: false });
     return doc;
   } catch (err) {
@@ -698,15 +703,15 @@ export async function runCreateRepo(
   opts: { description?: string } = {},
 ): Promise<boolean> {
   const { token, addMessage, addEntry, updateEntry } = deps;
-  const histId = addEntry({ status: 'pending', description: `Creando repositorio ${name}`, repo: name });
+  const histId = addEntry({ status: 'pending', description: deps.t('history.creatingRepo', { name }), repo: name });
   try {
     await createRepo(token, name, opts.description ?? 'Creado desde el Asistente de IA');
     addMessage({ role: 'assistant', content: `✅ Repositorio **${name}** creado en tu cuenta.` });
-    updateEntry(histId, { status: 'completed', description: `Repositorio ${name} creado` });
+    updateEntry(histId, { status: 'completed', description: deps.t('history.repoCreated', { name }) });
     return true;
   } catch (err) {
     addMessage({ role: 'assistant', content: `❌ No pude crear el repositorio **${name}**: ${(err as Error).message}` });
-    updateEntry(histId, { status: 'error', description: `Error al crear repositorio ${name}` });
+    updateEntry(histId, { status: 'error', description: deps.t('history.errorRepo', { name }) });
     return false;
   }
 }
@@ -728,7 +733,7 @@ export async function runPublishFileDoc(
 ): Promise<void> {
   const { token, addMessage, addEntry, updateEntry } = deps;
   const path = docPathFor(fileName);
-  const histId = addEntry({ status: 'pending', description: `Publicando ${path} en ${owner}/${repo}`, repo: `${owner}/${repo}` });
+  const histId = addEntry({ status: 'pending', description: deps.t('history.publishing', { path, repo: `${owner}/${repo}` }), repo: `${owner}/${repo}` });
   try {
     const { pr } = await publishFileDoc(token, owner, repo, path, doc, { draft: opts.draft, sourceFile: opts.sourceFile, extraFiles: opts.extraFiles });
     const nExtra = (opts.sourceFile ? 1 : 0) + (opts.extraFiles?.length ?? 0);
@@ -739,10 +744,10 @@ export async function runPublishFileDoc(
         ? `✅ Draft PR [#${pr.number}](${pr.html_url}) con \`${path}\`${extra} en **${owner}/${repo}**. Revísalo antes de mergear.`
         : `✅ \`${path}\`${extra} commiteado en **${owner}/${repo}**.`,
     });
-    updateEntry(histId, { status: 'completed', description: `Documentación publicada en ${owner}/${repo}` });
+    updateEntry(histId, { status: 'completed', description: deps.t('history.published', { repo: `${owner}/${repo}` }) });
   } catch (err) {
     addMessage({ role: 'assistant', content: `❌ Error al publicar la documentación: ${describePublishError(err, owner, repo, deps.t)}` });
-    updateEntry(histId, { status: 'error', description: `Error al publicar en ${owner}/${repo}` });
+    updateEntry(histId, { status: 'error', description: deps.t('history.errorPublishing', { repo: `${owner}/${repo}` }) });
   }
 }
 
@@ -758,7 +763,7 @@ export async function runCreateFileRelease(
   extraFiles?: File[],
 ): Promise<void> {
   const { token, addMessage, addEntry, updateEntry } = deps;
-  const histId = addEntry({ status: 'pending', description: `Creando release en ${owner}/${repo}`, repo: `${owner}/${repo}` });
+  const histId = addEntry({ status: 'pending', description: deps.t('history.creatingRelease', { repo: `${owner}/${repo}` }), repo: `${owner}/${repo}` });
   try {
     const tag = version?.trim() || await suggestNextVersion(token, owner, repo);
     const { url, id } = await createGitHubRelease(token, owner, repo, {
@@ -779,10 +784,10 @@ export async function runCreateFileRelease(
         addMessage({ role: 'assistant', content: `⚠️ El release se creó, pero no pude adjuntar **${file.name}**: ${(assetErr as Error).message}` });
       }
     }
-    updateEntry(histId, { status: 'completed', description: `Release ${tag} creado en ${owner}/${repo}` });
+    updateEntry(histId, { status: 'completed', description: deps.t('history.releaseCreated', { tag, repo: `${owner}/${repo}` }) });
   } catch (err) {
     addMessage({ role: 'assistant', content: `❌ Error al crear el release: ${describePublishError(err, owner, repo, deps.t)}` });
-    updateEntry(histId, { status: 'error', description: `Error al crear release en ${owner}/${repo}` });
+    updateEntry(histId, { status: 'error', description: deps.t('history.errorRelease', { repo: `${owner}/${repo}` }) });
   }
 }
 
