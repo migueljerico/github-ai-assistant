@@ -363,16 +363,20 @@ Cada propuesta se revisa según criterios como:
 
 | IA / herramienta | Rol principal |
 |---|---|
-| Claude / Claude Code | Arquitectura, revisión crítica, documentación e implementación asistida |
-| Antigravity 2.0 | Construcción inicial agéntica de la versión full-stack |
-| ZCode / GLM-5.2 | Roadmap, cierre de versiones, documentación e i18n |
-| Gemini 2.5 Flash | Revisión de roadmap y validación de ideas |
-| Gemma 4 31B | Revisión de arquitectura y propuestas de mejora |
-| Groq / Llama | Pruebas de velocidad y respuestas rápidas |
-| OpenRouter | Acceso a múltiples modelos y validación cruzada |
-| DeepSeek | Ideas y contraste técnico |
-| Qwen | Generación puntual de componentes |
-| Manus | Propuestas e ideas, algunas descartadas por regresiones |
+| **Claude / Claude Code** | Arquitectura, revisión crítica, documentación e implementación asistida |
+| **Antigravity 2.0** | Construcción inicial agéntica de la versión full-stack |
+| **ZCode / GLM-5.2** | Roadmap, cierre de versiones, documentación, releases e i18n |
+| **Gemini 2.5 Flash** | Revisión de roadmap, validación de ideas y contraste técnico |
+| **Gemma 4 31B** | Revisión de arquitectura y propuestas de mejora sobre gestión de contexto |
+| **Groq / Llama** | Pruebas de velocidad, respuestas rápidas y validación de límites de contexto |
+| **OpenRouter** | Acceso a múltiples modelos y validación cruzada |
+| **DeepSeek** | Ideas, contraste técnico y propuestas de mejora |
+| **Qwen** | Generación puntual de componentes y apoyo en implementación |
+| **Manus** | Propuestas e ideas, algunas descartadas por introducir regresiones |
+| **Microsoft 365 Copilot — GPT 5.5 Razonamiento** | Revisión editorial del README, propuesta de dividir la documentación en archivos específicos dentro de `docs/`, mejora de la narrativa de portfolio y reorganización de contenidos para hacer el proyecto más legible y presentable |
+
+La aportación de cada IA se trató como una propuesta, no como una decisión automática. Las ideas se aceptaron, modificaron o descartaron según su coherencia con los principios del proyecto.
+
 
 ---
 
