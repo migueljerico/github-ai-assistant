@@ -33,7 +33,7 @@ export default function App() {
   // 🔥 ZERO-STORAGE: Extraemos provider, apiKey Y model del contexto (no de sessionStorage)
   const { provider, apiKey, model } = useAIProvider();
   const providerName = provider ? getProvider(provider).name : 'IA';
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
 
   // Chat state
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -101,34 +101,34 @@ export default function App() {
     setIsExecuting(true);
     try {
       await runConfirmAction(
-        { token, user, providerName, t, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+        { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
         pa,
       );
     } finally {
       setIsExecuting(false);
     }
-  }, [pendingAction, token, user, providerName, t, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [pendingAction, token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
 
   // ── Cancel action ──────────────────────────────────────────────────────────
   const handleCancel = useCallback(() => {
     if (pendingAction) {
       runCancelAction(
-        { token: token ?? '', user: user ?? { login: '' }, providerName, t, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+        { token: token ?? '', user: user ?? { login: '' }, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
         pendingAction,
       );
     }
     setPendingAction(null);
-  }, [pendingAction, token, user, providerName, t, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [pendingAction, token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
 
   // ── #41: Cargar repo como contexto activo del chat ─────────────────────────
   const handleLoadRepoContext = useCallback(async (repoInput: string) => {
     if (!token || !user) return;
     const ctx = await runLoadRepoContext(
-      { token, user, providerName, t, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+      { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
       repoInput,
     );
     if (ctx) setRepoContext(ctx);
-  }, [token, user, providerName, t, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
 
   const handleClearRepoContext = useCallback(() => {
     setRepoContext(null);
@@ -142,12 +142,12 @@ export default function App() {
   const handleAttachFile = useCallback(async (file: File) => {
     if (!token || !user) return;
     const ctx = await runAttachFile(
-      { token, user, providerName, t, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+      { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
       file,
     );
     // Conserva el File original para poder subirlo al repo al publicar (#28 4a).
     if (ctx) setFileContext({ ...ctx, file });
-  }, [token, user, providerName, t, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
 
   const handleClearFile = useCallback(() => {
     setFileContext(null);
@@ -161,7 +161,7 @@ export default function App() {
     // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto
     if (!fileContext || !token || !user || !provider || !apiKey || !model) return;
     const doc = await runGenerateFileDoc(
-      { token, user, providerName, t, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+      { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
       { provider, apiKey, model },
       fileContext,
       conversation,
@@ -170,7 +170,7 @@ export default function App() {
       setPublishInitialRepo(initialRepo);
       setFilePublish({ fileName: fileContext.name, doc });
     }
-  }, [fileContext, token, user, provider, apiKey, model, providerName, t, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [fileContext, token, user, provider, apiKey, model, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
 
   // ── #28 Fase 2: publicar la doc generada (commit / Draft PR / Release) ────────
   // La lógica (pre-chequeo de existencia + flujo de repo inexistente) vive en
@@ -182,7 +182,7 @@ export default function App() {
     const ref = resolveRepoRef(repoInput, user.login);
     const sourceFile = uploadSource ? fileContext?.file : undefined;
     const target = { owner: ref.owner, repo: ref.repo, fileName: filePublish.fileName, doc: filePublish.doc, kind, version, sourceFile, extraFiles: extras };
-    const deps = { token, user, providerName, t, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading };
+    const deps = { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading };
     setIsPublishingFile(true);
     try {
       const result = await runStartPublish(deps, target, ref.owner === user.login);
@@ -191,7 +191,7 @@ export default function App() {
     } finally {
       setIsPublishingFile(false);
     }
-  }, [filePublish, fileContext, token, user, providerName, t, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [filePublish, fileContext, token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
 
   const handlePublishFileDoc = useCallback((repoInput: string, draft: boolean, uploadSource: boolean, extras: File[]) => {
     void startPublish(repoInput, draft ? 'draftpr' : 'commit', undefined, uploadSource, extras);
@@ -205,7 +205,7 @@ export default function App() {
   const handleConfirmCreateRepo = useCallback(async () => {
     if (!repoMissing || !filePublish || !token || !user) return;
     const { owner, repo, kind, version, uploadSource, extras } = repoMissing;
-    const deps = { token, user, providerName, t, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading };
+    const deps = { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading };
     setIsPublishingFile(true);
     try {
       const ok = await runCreateRepo(deps, repo);
@@ -217,7 +217,7 @@ export default function App() {
     } finally {
       setIsPublishingFile(false);
     }
-  }, [repoMissing, filePublish, fileContext, token, user, providerName, t, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [repoMissing, filePublish, fileContext, token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
 
   const handleCancelCreateRepo = useCallback(() => setRepoMissing(null), []);
 
@@ -226,12 +226,12 @@ export default function App() {
     // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto
     if (!token || !user || !provider || !apiKey || !model) return;
     const analysis = await runDocumentRepo(
-      { token, user, providerName, t, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+      { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
       { provider, apiKey, model },
       repoInput,
     );
     if (analysis) setDocAnalysis(analysis);
-  }, [token, user, provider, apiKey, model, providerName, t, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [token, user, provider, apiKey, model, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
 
   // ── Send message to AI (Opción D - con detección de modo) ──────────────────
   // Con un archivo adjunto, resolveMode (en runSend) fuerza SIEMPRE chat: el archivo
@@ -250,11 +250,11 @@ export default function App() {
     abortRef.current = controller;
 
     await runSend(
-      { token, user, providerName, t, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading, setConversationHistory, setPendingAction },
+      { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading, setConversationHistory, setPendingAction },
       { provider, apiKey, model },
       { userText, conversationHistory, modeOverride, repoContext, fileContext, multiRepoEnabled, selectedRepos, signal: controller.signal },
     );
-  }, [inputValue, token, user, provider, apiKey, model, providerName, t, conversationHistory, multiRepoEnabled, selectedRepos, modeOverride, repoContext, fileContext, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [inputValue, token, user, provider, apiKey, model, providerName, t, lang, conversationHistory, multiRepoEnabled, selectedRepos, modeOverride, repoContext, fileContext, addMessage, updateMessage, addEntry, updateEntry]);
 
   // #40: cancela la petición en vuelo; runSend mostrará "⏹️ detenido".
   const handleStop = useCallback(() => abortRef.current?.abort(), []);
@@ -271,32 +271,32 @@ export default function App() {
     // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto
     if (!token || !user || !provider || !apiKey || !model) return;
     await runSummarizeThread(
-      { token, user, providerName, t, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+      { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
       { provider, apiKey, model },
       input,
       repoContext?.repoName ?? null,
     );
-  }, [token, user, provider, apiKey, model, providerName, t, repoContext, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [token, user, provider, apiKey, model, providerName, t, lang, repoContext, addMessage, updateMessage, addEntry, updateEntry]);
 
   // ── Generar changelog del repo (#34) ─────────────────────────────────────────
   const handleGenerateChangelog = useCallback(async (input: string) => {
     if (!token || !user || !provider || !apiKey || !model) return;
     await runGenerateChangelog(
-      { token, user, providerName, t, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+      { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
       { provider, apiKey, model },
       input,
     );
-  }, [token, user, provider, apiKey, model, providerName, t, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [token, user, provider, apiKey, model, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
 
   // ── Salud del código — dashboard (#44) ───────────────────────────────────────
   const handleCodeHealth = useCallback(async (input: string) => {
     if (!token || !user) return;
     const result = await runCodeHealth(
-      { token, user, providerName, t, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+      { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
       input,
     );
     if (result) setCodeHealth(result);
-  }, [token, user, providerName, t, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
 
   // ── Exportar / importar conversación (#46, Zero-Storage) ─────────────────────
   const handleExportConversation = useCallback(() => {
@@ -329,14 +329,14 @@ export default function App() {
     setIsCommittingDocs(true);
     try {
       await runCommitDocs(
-        { token, user, providerName, t, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+        { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
         docAnalysis,
       );
     } finally {
       setIsCommittingDocs(false);
       setDocAnalysis(null);
     }
-  }, [docAnalysis, token, user, providerName, t, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [docAnalysis, token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
 
   // ── Crear Draft PR con la documentación (#45) ────────────────────────────────
   const handleCreateDraftPr = useCallback(async () => {
@@ -344,14 +344,14 @@ export default function App() {
     setIsCreatingDraftPr(true);
     try {
       await runCreateDraftPr(
-        { token, user, providerName, t, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+        { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
         docAnalysis,
       );
     } finally {
       setIsCreatingDraftPr(false);
       setDocAnalysis(null);
     }
-  }, [docAnalysis, token, user, providerName, t, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [docAnalysis, token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
 
   // ── Crear Release con la documentación del repo (#28 Parte A v3.8.0) ─────────
   const handleCreateRepoRelease = useCallback(async (version: string) => {
@@ -359,7 +359,7 @@ export default function App() {
     setIsCreatingRepoRelease(true);
     try {
       await runCreateRepoRelease(
-        { token, user, providerName, t, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+        { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
         docAnalysis,
         version || undefined,
       );
@@ -367,7 +367,7 @@ export default function App() {
       setIsCreatingRepoRelease(false);
       setDocAnalysis(null);
     }
-  }, [docAnalysis, token, user, providerName, t, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [docAnalysis, token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
 
   return (
     <>

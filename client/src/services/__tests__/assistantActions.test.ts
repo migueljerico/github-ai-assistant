@@ -10,6 +10,9 @@ vi.mock('../gemini', () => ({
   parseGeminiAction: vi.fn(),
   isAbortError: (err: unknown) => (err as { name?: string })?.name === 'AbortError',
   chatPromptWithContext: vi.fn(() => 'CTX_PROMPT'),
+  // #24 Fase 3: helper real (devuelve el prompt con la directiva de idioma).
+  withLangDirective: (prompt: string, lang: string) =>
+    prompt + (lang === 'en' ? '\n\nIMPORTANT: Respond to the user in English.' : '\n\nIMPORTANTE: Responde al usuario en español.'),
   CHAT_PROMPT: 'CHAT_PROMPT',
   ACTION_PROMPT: 'ACTION_PROMPT',
 }));
@@ -124,6 +127,7 @@ function makeDeps() {
     token: 'tok',
     user: { login: 'me' },
     providerName: 'Groq',
+    lang: 'es' as const,
     // Mock de t() que usa el diccionario ES real + interpolación de {params},
     // para que los tests que asertan contenido de mensajes sigan pasando.
     t: vi.fn((key: string, params?: Record<string, string | number>) => {
@@ -166,7 +170,7 @@ describe('runDocumentRepo', () => {
     const result = await runDocumentRepo(deps, CONFIG, 'owner/repo');
 
     expect(result).toEqual({ readme: 'R', manualTecnico: 'M', filesAnalyzed: 2, totalFiles: 2, truncated: false, repoName: 'owner/repo' });
-    expect(generateRepoDocs).toHaveBeenCalledWith('owner/repo', expect.any(Array), CONFIG);
+    expect(generateRepoDocs).toHaveBeenCalledWith('owner/repo', expect.any(Array), CONFIG, 'es');
     expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'pending' }));
     expect(deps.setIsChatLoading).toHaveBeenLastCalledWith(false);
   });
@@ -799,7 +803,7 @@ describe('runGenerateFileDoc (#28 Fase 2)', () => {
 
     const doc = await runGenerateFileDoc(deps, CONFIG, FILE_CTX);
 
-    expect(generateFileDoc).toHaveBeenCalledWith('notas.txt', 'contenido', CONFIG, undefined);
+    expect(generateFileDoc).toHaveBeenCalledWith('notas.txt', 'contenido', CONFIG, undefined, 'es');
     expect(doc).toBe('# Doc generada');
     expect(deps.addMessage).toHaveBeenCalled();
     expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', expect.objectContaining({ isLoading: false }));
@@ -812,7 +816,7 @@ describe('runGenerateFileDoc (#28 Fase 2)', () => {
 
     await runGenerateFileDoc(deps, CONFIG, FILE_CTX, 'Usuario: hola');
 
-    expect(generateFileDoc).toHaveBeenCalledWith('notas.txt', 'contenido', CONFIG, 'Usuario: hola');
+    expect(generateFileDoc).toHaveBeenCalledWith('notas.txt', 'contenido', CONFIG, 'Usuario: hola', 'es');
   });
 
   it('ante un error muestra el mensaje y devuelve null', async () => {

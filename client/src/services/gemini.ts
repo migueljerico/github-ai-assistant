@@ -26,6 +26,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { GeminiAction } from '../types';
+import type { Language } from '../context/LanguageContext';
 import { getProvider, type AIProviderType } from './providers';
 import { withTransientRetry, isAbortError, isTransientError } from '../utils/retry';
 // #23: los system prompts viven en archivos `.md` (mantenibilidad + base para i18n).
@@ -43,7 +44,20 @@ export const SYSTEM_PROMPT = actionSystemPrompt.trimEnd();
 export const CHAT_PROMPT = chatPromptText.trimEnd();
 
 // ── ACTION PROMPT (Opción D - Modo acción explícito) ──────────────────────────
-export const ACTION_PROMPT = SYSTEM_PROMPT; // Alias para claridad
+export const ACTION_PROMPT = SYSTEM_PROMPT;
+
+/**
+ * Añade al system prompt una directiva explícita de idioma (#24 Fase 3, v3.22.0),
+ * para que las respuestas del modelo respeten el idioma activo de la interfaz.
+ * El prompt base (chat/action) se mantiene en español; la directiva fuerza la
+ * respuesta en el idioma elegido.
+ */
+export function withLangDirective(prompt: string, lang: Language): string {
+  const directive = lang === 'en'
+    ? '\n\nIMPORTANT: Respond to the user in English.'
+    : '\n\nIMPORTANTE: Responde al usuario en español.';
+  return prompt + directive;
+} // Alias para claridad
 
 // ── #20: Truncado por LÍNEAS (no por caracteres) ──────────────────────────────
 /**
@@ -449,6 +463,7 @@ export async function generateRepoDocs(
   fileTreeOrRepoName: Array<{ path: string; content?: string }> | string,
   fileTreeOrConfig?: Array<{ path: string; content?: string }> | AIProviderConfig,
   maybeConfig?: AIProviderConfig,
+  lang: Language = 'es',
 ): Promise<GeneratedDocs> {
   
   let repoName: string;
@@ -559,11 +574,13 @@ No incluyas ningún texto fuera del JSON. No uses bloques de código externos.`;
     `CONTENIDO DE ARCHIVOS CLAVE:\n\n${fileContents}`;
 
   // 🔥 ZERO-STORAGE: Si tenemos config, lo pasamos a callAI. Si no, usamos defaults (para tests).
+  // #24 Fase 3: la documentación respeta el idioma activo de la interfaz.
+  const prompt = withLangDirective(docSystemPrompt, lang);
   let rawText: string;
   if (config) {
     rawText = await callAI(
       [{ role: 'user', content: userMessage }],
-      docSystemPrompt,
+      prompt,
       config.provider,
       config.apiKey,
       config.model,
@@ -572,7 +589,7 @@ No incluyas ningún texto fuera del JSON. No uses bloques de código externos.`;
     // Fallback para tests: usa valores por defecto
     rawText = await callAI(
       [{ role: 'user', content: userMessage }],
-      docSystemPrompt,
+      prompt,
       'groq',
       'test-key',
       'test-model',
@@ -628,8 +645,11 @@ export async function generateFileDoc(
   content: string,
   config: AIProviderConfig,
   conversation?: string,
+  lang: Language = 'es',
 ): Promise<string> {
-  const docSystemPrompt = `Eres un experto en documentación técnica con registro PROFESIONAL. A partir del contenido de un archivo, redacta documentación clara y útil EN ESPAÑOL, en **Markdown**, con estas secciones:
+  // #24 Fase 3: el idioma de la documentación sigue al idioma activo de la interfaz.
+  const langInstruction = lang === 'en' ? 'IN ENGLISH' : 'EN ESPAÑOL';
+  const docSystemPrompt = `Eres un experto en documentación técnica con registro PROFESIONAL. A partir del contenido de un archivo, redacta documentación clara y útil ${langInstruction}, en **Markdown**, con estas secciones:
 
 # {Título descriptivo del documento}
 ## 📋 Resumen
@@ -649,7 +669,7 @@ Reglas: básate ÚNICAMENTE en el contenido aportado (y, si se incluye, en la co
 
   const raw = await callAI(
     [{ role: 'user', content: userMessage }],
-    docSystemPrompt,
+    withLangDirective(docSystemPrompt, lang),
     config.provider,
     config.apiKey,
     config.model,
