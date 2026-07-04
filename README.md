@@ -1,18 +1,19 @@
 # 🤖 GitHub AI Assistant
 
-https://img.shields.io/badge/React_18-61DAFB?style=for-the-badge&logo=react&logoColor=black
-https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white
-https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white
-https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white
-https://img.shields.io/badge/GitHub_OAuth-181717?style=for-the-badge&logo=github&logoColor=white
-https://img.shields.io/badge/Groq_Cloud-F55036?style=for-the-badge&logo=groq&logoColor=white
-https://img.shields.io/badge/Google_Gemini-4285F4?style=for-the-badge&logo=google&logoColor=white
-https://img.shields.io/badge/OpenRouter-6566F1?style=for-the-badge&logo=openai&logoColor=white
-https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white
-https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge
-https://img.shields.io/badge/Versión-v3.22.1-blue?style=for-the-badge
-https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge
-https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg](https://codecov.io/gh/migueljerico/github-ai-assistant)
+![React](https://img.shields.io/badge/React_18-61DAFB?style=for-the-badge&logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)
+![Express](https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white)
+![GitHub OAuth](https://img.shields.io/badge/GitHub_OAuth-181717?style=for-the-badge&logo=github&logoColor=white)
+![Groq](https://img.shields.io/badge/Groq_Cloud-F55036?style=for-the-badge&logo=groq&logoColor=white)
+![Gemini](https://img.shields.io/badge/Google_Gemini-4285F4?style=for-the-badge&logo=google&logoColor=white)
+![OpenRouter](https://img.shields.io/badge/OpenRouter-6566F1?style=for-the-badge&logo=openai&logoColor=white)
+![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
+![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
+![Versión](https://img.shields.io/badge/Versión-v3.22.1-blue?style=for-the-badge)
+![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)
+[![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
+
 
 > **Asistente Zero-Storage para analizar, documentar y gestionar repositorios de GitHub mediante lenguaje natural.**
 >
@@ -22,7 +23,7 @@ https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.s
 
 ## 🚀 App en producción
 
-https://img.shields.io/badge/Ver_App-Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white](https://github-ai-assistant-748914382449.us-central1.run.app/)
+[![Ver App en Producción](https://img.shields.io/badge/Ver_App-Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)](https://github-ai-assistant-748914382449.us-central1.run.app/)
 
 Conecta tu cuenta de GitHub mediante OAuth, elige tu proveedor de IA preferido y empieza a trabajar con tus repositorios en lenguaje natural.
 
