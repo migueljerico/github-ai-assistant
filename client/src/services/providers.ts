@@ -61,9 +61,13 @@ const GEMINI_MODELS: ModelOption[] = [
   },
 ];
 
+// Fallback de Groq mientras carga el catálogo o si la API falla.
+// Ordenado por defecto primero: `llama-3.1-8b-instant` (vigente). `llama-3.3-70b-versatile`
+// queda como segunda opción porque Groq lo depreca en agosto — al recargar el catálogo
+// dinámico desaparece solo del selector; aquí solo es red de seguridad si la API falla.
 const GROQ_FALLBACK: ModelOption[] = [
-  { value: 'llama-3.3-70b-versatile', label: 'llama-3.3-70b-versatile' },
   { value: 'llama-3.1-8b-instant', label: 'llama-3.1-8b-instant' },
+  { value: 'llama-3.3-70b-versatile', label: 'llama-3.3-70b-versatile' },
 ];
 
 // Prefijos de modelos Groq no-chat que se excluyen del selector.
@@ -140,7 +144,9 @@ export function getProvider(id: AIProviderType): ProviderDef {
 // se carga, preferimos uno de esos modelos fiables como default en vez de un :free
 // arbitrario (el primero alfabético), para que la primera petición tenga más
 // probabilidad de funcionar. Comparación por substring sobre el `value` del modelo.
-const RELIABLE_MODEL_PREFS = ['gemma', 'llama-3.3-70b', 'deepseek', 'qwen'];
+// Nota: `llama` (genérico) en vez de `llama-3.3-70b` para ser robusto a las
+// deprecaciones de Groq (Llama 3.3 70B se retira en agosto; el catálogo es dinámico).
+const RELIABLE_MODEL_PREFS = ['gemma', 'llama', 'deepseek', 'qwen'];
 
 /**
  * Escoge un modelo por defecto de un catálogo: prioriza modelos gratuitos fiables

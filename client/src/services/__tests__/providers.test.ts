@@ -41,9 +41,11 @@ describe('providers — pickDefaultModel', () => {
     expect(pickDefaultModel(list)).toBe('some/exotic-model:free');
   });
 
-  it('sin modelos free, aplica la preferencia sobre todos (Groq → llama-3.3-70b)', () => {
+  it('sin modelos free, aplica la preferencia sobre todos (Groq → un modelo Llama)', () => {
+    // El prefijo 'llama' (genérico, v3.22.0) matchea cualquier modelo Llama del catálogo;
+    // devuelve el primero que aparece.
     const list = [paid('llama-3.1-8b-instant'), paid('llama-3.3-70b-versatile')];
-    expect(pickDefaultModel(list)).toBe('llama-3.3-70b-versatile');
+    expect(pickDefaultModel(list)).toBe('llama-3.1-8b-instant');
   });
 
   it('lista vacía devuelve el fallback', () => {
