@@ -529,6 +529,58 @@ La documentación cumple varias funciones:
 
 ---
 
+## 🗂️ Reestructuración documental con Microsoft 365 Copilot
+
+En una fase posterior del proyecto, se revisó el README completo con **Microsoft 365 Copilot — GPT 5.5 Razonamiento** para mejorar su claridad como pieza de portfolio.
+
+El README original contenía mucha información valiosa, pero concentraba demasiados objetivos en un único archivo:
+
+- presentación del producto,
+- explicación técnica,
+- arquitectura,
+- seguridad,
+- testing,
+- metodología IA,
+- comparación con GitHub Copilot,
+- proceso formativo,
+- roadmap,
+- y narrativa personal.
+
+La recomendación fue separar el contenido en dos niveles:
+
+1. Un `README.md` más breve, visual y orientado a impacto.
+2. Documentación extendida en la carpeta `docs/`.
+
+La estructura propuesta fue:
+
+```text
+docs/
+├── FUNCIONALIDADES.md
+├── COMPARATIVA_COPILOT.md
+├── INSTALACION.md
+├── ARQUITECTURA.md
+├── SEGURIDAD.md
+├── TESTING_CALIDAD.md
+└── DESARROLLO_IA.md
+```
+
+Esta reorganización permitió:
+
+- reducir la carga cognitiva del README,
+- mantener los badges y el impacto visual inicial,
+- separar documentación técnica de narrativa de producto,
+- hacer más fácil la revisión por reclutadores o evaluadores,
+- mejorar la mantenibilidad documental,
+- y presentar el proyecto como una aplicación más madura y profesional.
+
+La idea no fue eliminar contenido, sino colocarlo en el lugar adecuado:
+
+> El README como escaparate.  
+> La carpeta `docs/` como documentación extendida.
+
+
+---
+
 ## 🧭 Rol humano en el proceso
 
 Aunque la IA generó y revisó gran parte del trabajo, el papel humano fue clave en:
