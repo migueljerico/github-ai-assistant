@@ -240,12 +240,13 @@ http://localhost:5173
 
 ## 🧠 Desarrollo asistido por IA
 
-Este proyecto fue construido con un flujo humano ↔ IA basado en validación cruzada:
+Este proyecto fue construido con un flujo humano ↔ IA basado en validación cruzada, revisión crítica y dogfooding.
 
-- **Claude / Claude Code:** arquitectura, revisión y documentación.
-- **Antigravity 2.0:** construcción inicial de la v2.
+- **Claude / Claude Code:** arquitectura, revisión crítica, implementación asistida y documentación.
+- **Antigravity 2.0:** construcción inicial agéntica de la versión full-stack.
 - **ZCode / GLM-5.2:** roadmap, cierre de versiones y documentación desde v3.20.0.
-- **Gemini, Gemma, DeepSeek, Qwen y otros modelos:** revisión, propuestas y contraste.
+- **Gemini, Gemma, DeepSeek, Qwen y otros modelos:** revisión de arquitectura, propuestas de mejora y contraste técnico.
+- **Microsoft 365 Copilot — GPT 5.5 Razonamiento:** revisión editorial del README, propuesta de modularización documental y reestructuración de la documentación en archivos separados dentro de `docs/`.
 
 Ninguna salida de IA se tomó como verdad absoluta. Cada propuesta se revisó contra los principios del proyecto:
 
@@ -254,8 +255,24 @@ Ninguna salida de IA se tomó como verdad absoluta. Cada propuesta se revisó co
 - Mantenibilidad.
 - Testing.
 - Coherencia arquitectónica.
+- Claridad para usuarios no técnicos.
+- Valor real como portfolio profesional.
+
+La reorganización documental del proyecto separa el README principal —más breve y orientado a impacto— de la documentación extendida:
+
+```text
+docs/
+├── FUNCIONALIDADES.md
+├── COMPARATIVA_COPILOT.md
+├── INSTALACION.md
+├── ARQUITECTURA.md
+├── SEGURIDAD.md
+├── TESTING_CALIDAD.md
+└── DESARROLLO_IA.md
+```
 
 Ver proceso completo en ./docs/DESARROLLO_IA.md y ./METODOLOGIA_IA.md.
+
 
 ---
 
