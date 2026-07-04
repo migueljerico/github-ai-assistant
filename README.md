@@ -1,26 +1,51 @@
 # 🤖 GitHub AI Assistant
 
-![React](https://img.shields.io/badge/React_18-61DAFB?style=for-the-badge&logo=react&logoColor=black)
-![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
-![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)
-![Express](https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white)
-![GitHub OAuth](https://img.shields.io/badge/GitHub_OAuth-181717?style=for-the-badge&logo=github&logoColor=white)
-![Groq](https://img.shields.io/badge/Groq_Cloud-F55036?style=for-the-badge&logo=groq&logoColor=white)
-![Gemini](https://img.shields.io/badge/Google_Gemini-4285F4?style=for-the-badge&logo=google&logoColor=white)
-![OpenRouter](https://img.shields.io/badge/OpenRouter-6566F1?style=for-the-badge&logo=openai&logoColor=white)
-![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
-![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
-![Versión](https://img.shields.io/badge/Versión-v3.22.1-blue?style=for-the-badge)
-![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)
-[![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
+https://img.shields.io/badge/React_18-61DAFB?style=for-the-badge&logo=react&logoColor=black
+https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white
+https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white
+https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white
+https://img.shields.io/badge/GitHub_OAuth-181717?style=for-the-badge&logo=github&logoColor=white
+https://img.shields.io/badge/Groq_Cloud-F55036?style=for-the-badge&logo=groq&logoColor=white
+https://img.shields.io/badge/Google_Gemini-4285F4?style=for-the-badge&logo=google&logoColor=white
+https://img.shields.io/badge/OpenRouter-6566F1?style=for-the-badge&logo=openai&logoColor=white
+https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white
+https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge
+https://img.shields.io/badge/Versión-v3.22.1-blue?style=for-the-badge
+https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge
+https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg](https://codecov.io/gh/migueljerico/github-ai-assistant)
 
-> **Proyecto de portfolio — Curso Análisis de Datos e IA (2026)**
+> **Asistente Zero-Storage para analizar, documentar y gestionar repositorios de GitHub mediante lenguaje natural.**
 >
-> Gestiona tus repositorios de GitHub escribiendo en lenguaje natural — con confirmación previa, historial de sesión y documentación automática, impulsado por **Groq Cloud**, **Google Gemini** u **OpenRouter** (con modelos gratuitos y de pago).
+> Proyecto de portfolio del curso de **Análisis de Datos e Inteligencia Artificial (2026)**, construido en 30 días por un profesional de negocio sin experiencia previa en programación.
 
-**Asistente de IA que entiende tu código.** Se conecta a tus repos de GitHub, lee tu codebase y responde preguntas sobre tu proyecto — con una arquitectura de seguridad que protege tus credenciales.
+---
 
-> Construido en 30 días por un profesional de negocio sin experiencia previa en programación.
+## 🚀 App en producción
+
+https://img.shields.io/badge/Ver_App-Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white](https://github-ai-assistant-748914382449.us-central1.run.app/)
+
+Conecta tu cuenta de GitHub mediante OAuth, elige tu proveedor de IA preferido y empieza a trabajar con tus repositorios en lenguaje natural.
+
+> Tu token de GitHub y tus claves de IA viven únicamente en memoria durante la sesión.  
+> No se almacenan en `localStorage`, `sessionStorage`, cookies, IndexedDB ni en ningún servidor.
+
+---
+
+## 🎯 Qué hace
+
+**GitHub AI Assistant** permite operar sobre GitHub como si estuvieras hablando con una persona.
+
+En lugar de conocer endpoints, payloads, comandos Git o detalles de la GitHub REST API, escribes lo que quieres hacer en lenguaje natural y la aplicación:
+
+1. Interpreta la intención mediante IA.
+2. Propone una acción.
+3. Muestra el plan al usuario.
+4. Espera confirmación explícita.
+5. Ejecuta la operación en GitHub.
+
+Todo bajo el principio:
+
+> **Propón → Confirma → Ejecuta**
 
 ---
 
@@ -28,416 +53,227 @@
 
 | Aspecto | Detalle |
 |---|---|
-| ⏱️ Tiempo de desarrollo | 30 días (desde cero) |
-| 🤖 Proveedores soportados | Groq · Google Gemini · OpenRouter (300+ modelos, gratis y de pago) |
-| ⚡ Latencia media | ~400ms (Groq) / ~1.2s (Gemini) |
-| 🛡️ Seguridad | Zero-Storage completo: token GitHub + claves IA en memoria React |
-| 🌍 Deploy | Google Cloud Run (HTTPS, auto-scaling) |
+| ⏱️ Tiempo de desarrollo | 30 días desde cero |
+| 🤖 Proveedores soportados | Groq · Google Gemini · OpenRouter |
+| 🧠 Modelos disponibles | Gemini, Llama, OpenAI, Claude y otros vía OpenRouter |
+| ⚡ Latencia observada | ~400ms Groq / ~1.2s Gemini, variable según modelo y contexto |
+| 🛡️ Seguridad | Zero-Storage: credenciales solo en memoria React |
+| 🧪 Tests | 476 tests automatizados |
+| 🌍 Deploy | Google Cloud Run |
 | 📦 Stack | React + TypeScript + Express + Vite |
 
 ---
 
-## 🎯 ¿Qué hace este asistente?
+## ✨ Funcionalidades principales
 
-A diferencia de un chatbot convencional, este asistente:
-
-- ✅ **Lee tu código real** de cualquier repo de GitHub (público o privado)
-- ✅ **Responde con contexto** de tu proyecto, no respuestas genéricas
-- ✅ **Protege tus credenciales** con arquitectura Zero-Storage (anti-XSS)
-- ✅ **Funciona con múltiples proveedores** (Groq para velocidad, Gemini para calidad, OpenRouter como pasarela a 300+ modelos gratis y de pago)
-- ✅ **Documenta repositorios completos** generando README + MANUAL_TECNICO automáticamente
-
-### Ejemplo de uso real
-
-> **Tú:** *"Lista mis repositorios privados"*
->
-> **Asistente:** *"Voy a consultar la API de GitHub... He encontrado 5 repositorios privados. ¿Quieres que te muestre los detalles de alguno en particular?"*
-
----
-
-## 🔗 Acceso a la Aplicación
-
-[![Ver App en Producción](https://img.shields.io/badge/Ver_App-Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)](https://github-ai-assistant-748914382449.us-central1.run.app/)
-
-> Conecta tu cuenta de GitHub (OAuth) y tu proveedor de IA preferido para empezar.
-> Tu token de GitHub y tus claves de IA **nunca salen de la memoria del navegador** — no se almacenan en ningún servidor ni en storage del navegador.
-
----
-
-## 📋 Descripción del Proyecto
-
-**GitHub AI Assistant** es una aplicación web conversacional de código abierto que actúa como capa de abstracción inteligente sobre la GitHub REST API v3. El usuario escribe sus intenciones en lenguaje natural — sin necesidad de conocer endpoints, payloads ni codificación Base64 — y el agente de IA las interpreta, propone la acción y espera confirmación antes de ejecutar.
-
-El proyecto evolucionó de un prototipo en **Google AI Studio** a una aplicación full-stack completa, diseñada y construida íntegramente con asistencia de agentes de IA: **Claude** (Anthropic) como arquitecto y revisor, **Antigravity 2.0** (Google) como entorno de desarrollo agéntico y, desde la v3.20.0, **ZCode** (GLM-5.2) tomando el control del roadmap, el cierre de versiones y la documentación.
-
----
-
-## ✨ Funcionalidades
-
-| Funcionalidad | Descripción |
+| Área | Qué permite hacer |
 |---|---|
-| 💬 **Chat en lenguaje natural** | Escribe instrucciones como "crea un repo público llamado mi-proyecto" y la IA las ejecuta |
-| ⚡ **Respuestas en streaming** | Las opiniones/consultas aparecen token a token (tipo ChatGPT), sin esperar a que termine toda la respuesta |
-| ✅ **Panel de confirmación** | Toda operación de escritura muestra lo que va a hacer y espera tu aprobación |
-| 📋 **Historial de sesión** | Log exportable de todas las acciones con estado (✅ ❌ ⏸️ ⏳) |
-| 📄 **Plantillas predefinidas** | README, `.gitignore` y licencias por tipo de proyecto, pre-formuladas para el chat |
-| 🗂️ **Operaciones multi-repo** | Aplica la misma acción a varios repositorios seleccionados simultáneamente |
-| 🤖 **Documenta tu repositorio entero** | El agente lee hasta 120 archivos y genera README + MANUAL_TECNICO de forma automática, y los publicas como **commit directo**, **Draft PR** revisable o **GitHub Release** (con versión sugerida) |
-| 📎 **Adjunta archivos locales** | Sube un PDF, documento **Word (.docx)**, **Excel/CSV**, **Power BI (.pbix/.pbit)** o archivo de texto/código y trabaja con él en lenguaje natural (resumir, documentar…). Se lee **solo en tu navegador** — no se sube a ningún servidor. En hojas grandes analiza una **muestra de las primeras 100 filas** y te avisa |
-| 📊 **Lee informes de Power BI** | Adjunta un `.pbix`/`.pbit` y pregunta qué hace el informe **sin abrir Power BI Desktop**: páginas y visuales del informe, las **consultas de Power Query (M)** (de dónde salen los datos y cómo se transforman) y, en `.pbit`, el modelo de datos con tablas, columnas y **medidas DAX**. Solo se lee la estructura, en tu navegador |
-| 📤 **Documenta y publica un archivo** | A partir del archivo adjunto, la IA genera documentación y la publicas donde elijas: **commit** del fichero, **Draft PR** revisable o **GitHub Release** (con versión sugerida) — cada paso con confirmación |
-| 💬 **Conversa y luego publica (flujo claro)** | Adjunta un archivo y **charla/analízalo** con el asistente (en lenguaje claro, no como un consultor técnico); cuando quieras, pulsa **📤 Documentar y publicar** para generar la doc —que **recoge lo conversado**— y subirla (commit, Draft PR o Release, e incluso el propio archivo). El **documento** sí sale en registro profesional |
-| 📦 **Publica también el archivo fuente y extras** | Al publicar la documentación de un archivo, puedes subir además el **archivo original** (`.pbit`/`.pbix`/`.xlsx`…) y **archivos extra** (capturas/imágenes → `screenshots/`, datasets → `data/`) al repo: como ficheros en commit/Draft PR o como **assets** del Release. La documentación generada usa tu usuario y el año reales (sin inventar) |
-| 📝 **Resume hilos de issues/PRs** | Introduce `owner/repo#42` y la IA resume la discusión (TL;DR · puntos clave · decisiones/pendientes · tono); en PRs incluye los comentarios de revisión |
-| 📋 **Genera el changelog de un repo** | Indica `owner/repo` y reúne los commits **desde el último release** (o los recientes), los agrupa por tipo (Novedades, Correcciones…) y la IA los redacta en **lenguaje de usuario** — listo para tus notas de publicación |
-| 📊 **Salud del código (dashboard visual)** | Indica `owner/repo` y abre un panel con gráficas: **distribución de lenguajes**, **commits por semana** y **deuda técnica** (TODO/FIXME/HACK/XXX) — todo en cliente, sin enviar tu código a ningún servidor |
-| 💾 **Exporta e importa la conversación** | Descarga la conversación como JSON y recupérala en otra sesión (p. ej. tras recargar) — sin romper Zero-Storage: nada se auto-persiste, el fichero lo controlas tú |
-| 🌐 **Bilingüe (ES/EN)** | Selector de idioma en la cabecera y en el login; la interfaz (login, cabecera, paneles, chat, modales y diálogos) se adapta al español o al inglés. Infraestructura propia, **sin librerías de i18n** |
-| ⏹️ **Detener la generación** | Cancela una respuesta en curso al instante; se conserva lo ya escrito |
-| 🔑 **Multi-proveedor de IA** | **Groq Cloud**, **Google Gemini** y **OpenRouter** (pasarela a OpenAI, Claude, Llama… con modelos 🆓 gratuitos y de pago) — usas tu propia clave |
-| 🔒 **Autenticación OAuth** | Flujo GitHub OAuth completo con fallback a PAT manual |
-| 🛡️ **Rate limiting** | Protección contra abuso en el proxy de Gemini (40 req/min por IP) |
+| 💬 Lenguaje natural | Pedir acciones sobre GitHub sin conocer la API |
+| ✅ Confirmación segura | Toda escritura requiere revisión y aprobación |
+| 🗂️ Multi-repo | Aplicar acciones a varios repositorios |
+| 🤖 Documentación automática | Generar README + MANUAL_TECNICO |
+| 📤 Publicación | Commit directo, Draft PR o GitHub Release |
+| 📎 Archivos locales | Analizar PDF, DOCX, Excel/CSV, Power BI y texto/código |
+| 📝 Issues/PRs | Resumir hilos con TL;DR, decisiones y pendientes |
+| 📋 Changelog | Generar changelog desde commits recientes o desde el último release |
+| 📊 Salud del código | Dashboard con lenguajes, commits y deuda técnica |
+| 🌐 i18n | Interfaz bilingüe ES/EN |
+| 🔑 Multi-proveedor IA | Groq, Gemini y OpenRouter con clave del usuario |
+
+Más detalle en ./docs/FUNCIONALIDADES.md.
 
 ---
 
-## 🆚 Qué aporta frente a GitHub Copilot
+## 🆚 Diferencia frente a GitHub Copilot
 
-GitHub Copilot es excelente como **copiloto de código** dentro del editor. Esta app
-cubre un terreno **complementario y distinto**: *operar tu cuenta de GitHub en lenguaje
-natural*, con un modelo de acceso abierto y sin suscripción por asiento. Necesidades de
-usuario que aquí quedan cubiertas:
+GitHub Copilot es excelente como copiloto de código dentro del editor.
 
-| Necesidad del usuario | GitHub AI Assistant | GitHub Copilot |
-|---|---|---|
-| **Coste de acceso** | Gratis con tus propias claves de los tiers gratuitos (Gemini / Groq / OpenRouter) | Suscripción de pago por asiento (existe un tier gratuito limitado) |
-| **Elección de proveedor/modelo** | Multi-proveedor: Gemini, Groq y OpenRouter (300+ modelos, muchos 🆓) — *tu propia clave* | Catálogo gestionado por la plataforma; no traes tu clave |
-| **Operar la GitHub REST API en lenguaje natural** | ✅ Crear repos, subir archivos, issues, PRs, ramas… con **panel de confirmación + diff** (*propón→confirma→ejecuta*) | Orientado a sugerencias de código; no es un orquestador de operaciones de la API con confirmación |
-| **Misma acción en varios repos a la vez** | ✅ Modo multi-repo | No es su foco |
-| **Resumen de hilos de issues/PRs bajo demanda** | ✅ Un clic: `owner/repo#42` → TL;DR · puntos clave · decisiones · tono | Parcial (resúmenes de PR), no como acción integrada del asistente |
-| **Documentación automática del repo** | ✅ Genera README + MANUAL_TECNICO (commit directo, Draft PR o Release) | No es su foco |
-| **Analizar archivos locales (PDF/Word/texto)** | ✅ Adjuntas el archivo (PDF, **.docx**, texto/código…) y trabajas con él en lenguaje natural; se lee **solo en el navegador** (Zero-Storage) | No es su foco |
-| **Analizar hojas de cálculo (Excel/CSV)** | ✅ Adjuntas el Excel/CSV y preguntas en lenguaje natural; muestra representativa de filas con aviso para datasets grandes | No es su foco |
-| **Leer informes Power BI (.pbix/.pbit)** | ✅ Adjuntas el archivo y preguntas qué hace el informe, sus **consultas de Power Query (M)** y su modelo (tablas, medidas DAX en `.pbit`) sin abrir Power BI Desktop | No es su foco |
-| **Documentar un archivo y publicarlo en GitHub** | ✅ Genera la doc del archivo adjunto y la publica como commit, Draft PR o Release | No es su foco |
-| **Privacidad de credenciales** | Zero-Storage: las claves de IA viven **solo en memoria** del navegador | Gestionado por la plataforma |
-| **Código abierto / autoalojable** | ✅ | No |
+GitHub AI Assistant cubre otro terreno:
 
-> **Nota honesta:** Copilot evoluciona rápido y ya ofrece resúmenes de PR y un tier
-> gratuito limitado. La ventaja diferencial de esta app no es "hacer lo mismo gratis",
-> sino ser un **asistente de operaciones de GitHub** abierto, multi-proveedor y con tu
-> propia clave, bajo la garantía de seguridad *propón→confirma→ejecuta*. Esta tabla se
-> irá ampliando a medida que se añadan funciones que cubran necesidades aún no resueltas.
+> **Operar, analizar, documentar y publicar proyectos de GitHub mediante lenguaje natural.**
+
+La ventaja diferencial no es “hacer lo mismo gratis”, sino ser un asistente abierto, autoalojable, multi-proveedor y orientado a operaciones de GitHub con confirmación previa.
+
+Ver comparativa completa en ./docs/COMPARATIVA_COPILOT.md.
 
 ---
 
-## 🛠️ Proceso de Desarrollo — Cómo se construyó esta app
+## 🏗️ Arquitectura resumida
 
-Este proyecto es el resultado de un proceso de desarrollo agéntico en múltiples fases, donde la IA no solo ejecutó código sino que tomó decisiones arquitectónicas.
+```text
+Usuario
+  ↓ lenguaje natural
 
-### Fase 1 — Prototipo en Google AI Studio
+Frontend React + TypeScript + Vite
+  ├── GitHub API directa
+  ├── Groq directo
+  ├── OpenRouter directo
+  └── Gemini vía proxy Express
 
-La primera versión de la app fue construida directamente en **Google AI Studio**, configurando un agente de Gemini mediante ingeniería de prompts. Operaba como una caja negra: el usuario escribía una instrucción, el agente la ejecutaba directamente sobre la GitHub API sin confirmación previa. Autenticación solo por PAT. El resultado fue desplegado en **Google Cloud Run**.
-
-### Fase 2 — Diseño arquitectónico con Claude (Anthropic)
-
-Se inició una consultoría técnica con **Claude Sonnet** (claude.ai) para auditar el concepto y diseñar la arquitectura de la v2. Claude identificó los problemas críticos del prototipo (ausencia de confirmación previa, key de IA expuesta en servidor, sin historial) y propuso una arquitectura full-stack con:
-
-- Backend Express **thin** (solo OAuth — la IA se llama desde el cliente)
-- Panel de confirmación para operaciones de escritura
-- Historial de sesión exportable
-- Soporte dual Groq/Gemini con clave del usuario
-- OAuth de GitHub
-
-Claude también revisó el plan de implementación generado por Antigravity y detectó 8 problemas antes de que se escribiera una sola línea de código (incluyendo la exposición de la Gemini API key al frontend).
-
-### Fase 3 — Construcción con Antigravity 2.0
-
-La construcción del código se realizó con **Antigravity 2.0** (plataforma de desarrollo agéntico de Google, presentada en I/O 2026), usando **Claude** como modelo subyacente del agente. A partir del prompt maestro diseñado en la Fase 2, Antigravity generó la estructura completa del proyecto:
-
+Backend Express thin
+  ├── OAuth GitHub
+  ├── Proxy Gemini
+  ├── Rate limiting
+  └── Health check
 ```
+
+El backend es intencionalmente mínimo: gestiona OAuth, sirve el frontend en producción y actúa como proxy para Gemini por las restricciones regionales de la API en navegadores de la UE/EEA.
+
+Ver arquitectura completa en ./docs/ARQUITECTURA.md.
+
+---
+
+## 🧱 Estructura del proyecto
+
+```text
 github-ai-assistant/
-├── client/     # React 18 + TypeScript + Vite (36 archivos)
-├── server/     # Express.js OAuth + proxy Gemini (1 archivo, ~244 líneas)
-└── Dockerfile  # Multi-stage build para Cloud Run
-```
-
-El agente de Antigravity generó los 15 componentes planificados incluyendo servicios, contextos y el sistema de tipos TypeScript completo.
-
-### Fase 4 — Corrección de errores y ajustes
-
-Durante las pruebas locales surgieron errores de compilación típicos de código generado por IA:
-
-- Caracteres Unicode (`→`, comillas invertidas) dentro de bloques JSDoc que el compilador esbuild interpretaba como código
-- La secuencia `*/` en comentarios con rutas de URL (`/users/*/repos`) que cerraba prematuramente los bloques de comentario
-
-Los errores fueron identificados y corregidos manualmente mediante análisis del stack trace.
-
-### Fase 5 — Despliegue local y push a GitHub
-
-```bash
-# Instalación de dependencias (Node.js 20+ y Git requeridos)
-npm install
-cd client && npm install && cd ..
-
-# Arranque en desarrollo
-npm run dev  # Express :3001 + Vite :5173 en paralelo
-
-# Push al repositorio
-git init
-git remote add origin https://github.com/migueljerico/github-ai-assistant.git
-git add .
-git commit -m "feat: v2 completa — OAuth, Groq/Gemini, historial, plantillas, multi-repo"
-git push -u origin main
-```
-
-### Fase 6 — Despliegue en Google Cloud Run
-
-```bash
-gcloud run deploy github-ai-assistant \
-  --source . \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --set-env-vars GITHUB_CLIENT_ID=...,GITHUB_CLIENT_SECRET=...,SESSION_SECRET=...
+├── client/
+│   ├── src/
+│   │   ├── components/        # Componentes React de UI
+│   │   ├── context/           # Contextos globales: auth, IA, historial, idioma
+│   │   ├── hooks/             # Hooks reutilizables
+│   │   ├── prompts/           # System prompts en Markdown
+│   │   ├── services/          # GitHub API, IA, acciones, publicación
+│   │   ├── types/             # Tipos TypeScript compartidos
+│   │   ├── utils/             # Utilidades puras y testeables
+│   │   ├── App.tsx            # Orquestación principal de la interfaz
+│   │   └── main.tsx           # Entrada del frontend
+│   ├── package.json
+│   └── vite.config.ts
+│
+├── server/
+│   └── index.js               # Backend Express: OAuth, proxy Gemini, health check
+│
+├── docs/
+│   ├── FUNCIONALIDADES.md
+│   ├── COMPARATIVA_COPILOT.md
+│   ├── INSTALACION.md
+│   ├── ARQUITECTURA.md
+│   ├── SEGURIDAD.md
+│   ├── TESTING_CALIDAD.md
+│   └── DESARROLLO_IA.md
+│
+├── CHANGELOG.md               # Historial versionado del proyecto
+├── MANUAL_TECNICO.md          # Documentación técnica extendida
+├── MEJORAS_FUTURAS.md         # Roadmap y sprints pendientes
+├── METODOLOGIA_IA.md          # Metodología humano ↔ IA
+├── CLAUDE.md                  # Memoria operativa para agentes IA
+├── Dockerfile                 # Build multi-stage para Cloud Run
+├── package.json               # Scripts raíz y servidor
+├── package-lock.json
+├── .env.example
+└── README.md
 ```
 
 ---
 
-## ⚙️ Configuración local
+## 🔒 Seguridad
 
-### Prerrequisitos
+El proyecto sigue una arquitectura **Zero-Storage**:
 
-- Node.js 20+
-- Git
-- Una GitHub OAuth App ([crear aquí](https://github.com/settings/developers)):
-  - Homepage URL: `http://localhost:5173`
-  - Callback URL: `http://localhost:3001/auth/callback`
-- Una API key de [Groq Cloud](https://console.groq.com), [Google Gemini](https://aistudio.google.com/apikey) u [OpenRouter](https://openrouter.ai/keys) (esta última con modelos gratuitos)
+- El token de GitHub vive solo en memoria React.
+- Las claves de IA viven solo en memoria React.
+- No hay persistencia automática de credenciales.
+- Las acciones de escritura se confirman antes de ejecutar.
+- OAuth usa `state` anti-CSRF generado con CSPRNG.
+- El proxy Gemini tiene rate limiting.
+- Los endpoints propuestos por IA se validan antes de ejecutar.
 
-### Variables de entorno
-
-```bash
-cp .env.example .env
-```
-
-Edita `.env` con tus valores:
-
-```env
-GITHUB_CLIENT_ID=       # Client ID de tu GitHub OAuth App
-GITHUB_CLIENT_SECRET=   # Client Secret de tu GitHub OAuth App
-SESSION_SECRET=         # Cadena aleatoria larga (ej: openssl rand -hex 32)
-PORT=3001
-```
-
-> La clave de IA no va en el `.env` — cada usuario la introduce directamente en la app.
-
-### Arrancar en desarrollo
-
-```bash
-npm install
-cd client && npm install && cd ..
-npm run dev
-```
-
-Abre [http://localhost:5173](http://localhost:5173)
+Ver detalle en ./docs/SEGURIDAD.md.
 
 ---
 
-## 🏗️ Arquitectura
+## 🧪 Testing y calidad
 
-```
-Usuario (lenguaje natural)
-        ↓
-┌─────────────────────────────────────────────────────┐
-│  Frontend React 18 + TypeScript + Vite              │
-│  ├── AIProviderPanel  (Groq / Gemini / OpenRouter)  │
-│  ├── LoginButton      (OAuth) / PatInput (PAT)      │
-│  ├── ChatArea + ChatInput                           │
-│  ├── ConfirmModal     (confirmación de acciones)    │
-│  ├── HistoryPanel     (log exportable)              │
-│  ├── TemplatePanel    (plantillas predefinidas)     │
-│  └── RepoSelector     (multi-repo)                  │
-└──────────┬──────────────────────────┬───────────────┘
-           │ /auth/github             │ Llamadas directas
-           │ /auth/callback           │ (GitHub + Groq + OpenRouter)
-           │ /api/gemini (proxy EU)   │
-           ▼                          ▼
-┌──────────────────────┐  ┌───────────────────────────────┐
-│  Express.js          │  │  APIs externas                │
-│  ├── OAuth           │  │  ├── GitHub REST API v3        │
-│  ├── /api/gemini     │  │  ├── Groq Cloud (directo)      │
-│  │   (rate limited)  │  │  ├── OpenRouter (directo)      │
-│  ├── /health         │  │  └── Google Gemini (via proxy) │
-│  └── static files    │  │                               │
-└──────────────────────┘  └───────────────────────────────┘
-```
+El proyecto usa **Vitest**, **React Testing Library**, **GitHub Actions** y **Codecov**.
 
-**Decisión arquitectónica clave:** el backend Express es intencionalmente mínimo. Gestiona el intercambio de secretos OAuth y actúa como proxy para la API de Gemini — necesario porque Google bloquea las llamadas directas desde navegadores en la UE/EEA. Las llamadas a GitHub, Groq y OpenRouter se realizan directamente desde el navegador del usuario, con su propio token y su propia clave de IA.
+- **476 tests automatizados**
+- Tests unitarios, integración y componentes
+- Tests del servidor
+- CI con lint + tests + cobertura
+- CD hacia Cloud Run
+
+Ver detalle en ./docs/TESTING_CALIDAD.md.
 
 ---
 
 ## 🛠️ Stack tecnológico
 
-| Herramienta | Uso | Coste |
-|---|---|---|
-| React 18 + TypeScript | Interfaz de usuario, estado, contextos | Gratuito |
-| Vite | Bundler y dev server del frontend | Gratuito |
-| Recharts | Gráficas del dashboard "Salud del código" (carga diferida en su propio chunk) | Gratuito |
-| Express.js | Backend thin — OAuth + proxy Gemini | Gratuito |
-| GitHub REST API v3 | Todas las operaciones sobre repositorios | Gratuito |
-| Groq Cloud | Inferencia de IA ultrarrápida (modelos Llama) | Tier gratuito |
-| Google Gemini | Modelo de IA (gemini-2.5-flash, vía proxy) | Tier gratuito |
-| OpenRouter | Pasarela OpenAI-compatible a 300+ modelos (OpenAI, Claude, Llama…) | Modelos gratis y de pago |
-| Google Cloud Run | Despliegue serverless (us-central1) | Pay-per-use |
-| Antigravity 2.0 | Entorno de desarrollo agéntico (construcción del código) | — |
-| Claude (Anthropic) | Arquitectura, revisión y documentación | — |
+| Tecnología | Uso |
+|---|---|
+| React 18 + TypeScript | Interfaz, estado y componentes |
+| Vite | Bundler y entorno de desarrollo |
+| Express.js | OAuth, proxy Gemini y servidor de producción |
+| GitHub REST API v3 | Operaciones sobre repositorios |
+| Groq Cloud | Inferencia rápida |
+| Google Gemini | Modelo de IA vía proxy |
+| OpenRouter | Pasarela a múltiples modelos |
+| Recharts | Dashboard de salud del código |
+| Vitest | Testing |
+| Codecov | Cobertura |
+| Docker | Build de producción |
+| Google Cloud Run | Despliegue serverless |
 
 ---
 
-## 🧪 Testing y Calidad
+## ⚙️ Instalación local
 
-El proyecto utiliza **Vitest** para testing unitario e integración, con **Codecov** para monitorización de cobertura.
+Ver guía completa en ./docs/INSTALACION.md.
 
-### Ejecutar tests
+Resumen rápido:
 
 ```bash
-cd client
-npm run test          # Tests en modo watch
-npm run test:run      # Tests una sola vez
-npm run test:coverage # Tests con reporte de cobertura
+npm install
+cd client && npm install && cd ..
+cp .env.example .env
+npm run dev
 ```
 
-### Cobertura actual
+Abre:
 
-- **Cobertura total:** ver el badge de Codecov para el valor exacto en cada rama (oscila según se añaden tests/módulos; histórico ~60–64%).
-- **Tests en el cliente:** **476** (48 archivos `.test.ts(x)` co-locados). El recuento detallado por versión está en `CHANGELOG.md`.
-- **Módulos testeados:** AuthContext, AIProviderContext, providers, actionExecutor, github, gemini, assistantActions, docPublisher, threadSummary, modeDetection, formatResult, repoRef, releaseGenerator, releaseAssets, pdfReader, pdfAdvanced, spreadsheetReader, powerbiReader, docxReader, useChat, useActions, ChatArea, ChatInput, ChatMessage, ConfirmModal, DocModal, FilePublishModal, PublishActions, FileAttachButton, Header, TemplatePanel, AIProviderPanel, AIProviderBadge, RepoContextButton, ThreadSummaryButton — más los tests del servidor (rate limiter)
-- **Badge con cobertura actual:** [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
-
-### Estrategia de testing
-
-- Tests unitarios para servicios y utilidades
-- Tests de integración para contextos de React
-- Tests de componentes con React Testing Library
-- Mock de APIs externas (GitHub API, proveedores IA)
-- **CI** (GitHub Actions): lint + tests del cliente con cobertura + tests del servidor, en cada push/PR a `main`
-- **CD** (Cloud Build): build del Dockerfile + despliegue automático a Cloud Run en cada push a `main`
+```text
+http://localhost:5173
+```
 
 ---
 
-## 🔒 Modelo de seguridad
+## 🧠 Desarrollo asistido por IA
 
-### 🛡️ Arquitectura Zero-Storage
+Este proyecto fue construido con un flujo humano ↔ IA basado en validación cruzada:
 
-Esta aplicación implementa una arquitectura **Zero-Storage** completa: ninguna credencial del usuario se almacena en el navegador (ni sessionStorage, ni localStorage, ni cookies, ni IndexedDB).
+- **Claude / Claude Code:** arquitectura, revisión y documentación.
+- **Antigravity 2.0:** construcción inicial de la v2.
+- **ZCode / GLM-5.2:** roadmap, cierre de versiones y documentación desde v3.20.0.
+- **Gemini, Gemma, DeepSeek, Qwen y otros modelos:** revisión, propuestas y contraste.
 
-**Token de GitHub — Memoria React:**
+Ninguna salida de IA se tomó como verdad absoluta. Cada propuesta se revisó contra los principios del proyecto:
 
-El token de acceso de GitHub (ya sea OAuth o PAT) vive exclusivamente en la memoria de React (estado global del contexto). Jamás se escribe en ninguna API de almacenamiento del navegador.
+- Zero-Storage.
+- Confirmación previa.
+- Mantenibilidad.
+- Testing.
+- Coherencia arquitectónica.
 
-**Claves de IA — Memoria React:**
-
-Las claves de API de IA (Groq/Gemini/OpenRouter) también viven exclusivamente en la memoria de React, dentro del `AIProviderContext`. No se almacenan en ningún sitio.
-
-**¿Por qué es esto importante?**
-
-La aplicación requiere el scope `repo` de GitHub, que otorga acceso de lectura y escritura a todos tus repositorios públicos y privados. Si un atacante lograra inyectar código JavaScript en la aplicación (ataque XSS), podría:
-
-- ❌ **Con almacenamiento en navegador:** Leer el token desde `sessionStorage`/`localStorage` y robar todas tus credenciales en segundos.
-- ✅ **Con memoria React:** El token solo existe en la memoria volátil de React. Un script malicioso no puede acceder a variables de estado de React directamente, haciendo el robo de credenciales extremadamente difícil.
-
-**¿Qué significa esto para ti como usuario?**
-
-- 🔄 Al recargar la página (F5), perderás tu sesión de GitHub y tus claves de IA. Tendrás que volver a conectarte.
-- 🛡️ Tanto tu token de GitHub como tus claves de IA están protegidos contra el vector de ataque más común en aplicaciones web (XSS + robo de tokens desde storage).
-- 🔐 El logout cierra tu sesión tanto en la app como en GitHub.com.
-
-> **Esto NO es un bug, es una característica de seguridad intencionada.**
->
-> Priorizamos la seguridad de tus credenciales (el activo más crítico) por encima de la comodidad de no tener que volver a iniciar sesión. Dado el nivel de acceso que requiere la aplicación (scope `repo`), consideramos que este trade-off es necesario y responsable.
-
-### Modelo de almacenamiento de credenciales
-
-| Elemento | Dónde vive | Cuándo desaparece |
-|---|---|---|
-| Token OAuth de GitHub | Solo en memoria de React (estado) | Al recargar la página o cerrar la pestaña |
-| Clave de IA (Groq/Gemini/OpenRouter) | Solo en memoria de React (estado) | Al recargar la página o cerrar la pestaña |
-| GITHUB_CLIENT_SECRET | Variables de entorno del servidor | Solo en memoria del proceso |
-| Datos del usuario | Ningún servidor externo | No se almacenan |
-| Clave Gemini en tránsito | Cuerpo HTTPS hacia /api/gemini | No se persiste en el servidor |
-
-### Protección contra abuso
-
-- **Rate limiting en proxy Gemini:** 40 peticiones por minuto por IP, usando `express-rate-limit`. Previene que un atacante agote la cuota de la API key.
-- **Verificación de estado OAuth:** Se genera un `state` aleatorio con **CSPRNG** (`crypto.randomUUID()`, no `Math.random()`) en cada flujo OAuth, validado un solo uso en el callback, para prevenir ataques CSRF.
-- **IDs únicos seguros:** Los mensajes del chat usan `crypto.randomUUID()` (CSPRNG) en lugar de `Math.random()`.
-
----
-
-## 🔮 Mejoras futuras
-
-Ver [MEJORAS_FUTURAS.md](./MEJORAS_FUTURAS.md) — Estado actual, sprints y roadmap completo.
-
----
-
-## 🔌 Proveedores de IA soportados y roadmap
-
-La app soporta actualmente **Groq Cloud**, **Google Gemini** y **OpenRouter** — esta última como pasarela OpenAI-compatible que, con una sola clave, da acceso a 300+ modelos gratuitos y de pago (OpenAI, Claude, Llama…). Para el análisis de otros proveedores evaluados (Together AI, Fireworks AI, Ollama local, DeepInfra), métricas de código y sprints pendientes, consulta [MEJORAS_FUTURAS.md](./MEJORAS_FUTURAS.md).
-
----
-
-## 🧠 El proceso: De los negocios a la Ingeniería de IA
-
-Este proyecto no es solo código; es el resultado de un profesional de Ciencias Empresariales adentrándose en el desarrollo de software y la Inteligencia Artificial desde cero en 30 días.
-
-### ¿Por qué este enfoque?
-
-Al no tener la "mochila" de la formación técnica tradicional, mi enfoque no fue solo "hacer que funcione", sino construir un producto robusto, seguro y mantenible aplicando las mejores prácticas de la industria desde el primer día:
-
-- 🛡️ **Seguridad por diseño:** Implementación de arquitectura Zero-Storage para proteger todas las credenciales del usuario, priorizando la seguridad sobre la comodidad.
-- 📚 **Documentación profesional:** Manuales técnicos y roadmap de mejoras siguiendo estándares de la industria.
-- 🧪 **Testing continuo:** Infraestructura de tests con Codecov y CI/CD automatizado.
-
-### La lección principal
-
-La Inteligencia Artificial y las herramientas modernas (como GitHub Copilot, LLMs y plataformas Cloud) han democratizado la ingeniería. Este proyecto demuestra que el criterio de negocio, la curiosidad y la obsesión por la calidad son tan importantes como saber escribir código.
-
-> *"No soy ingeniero de software. Soy un profesional de negocio que ha aprendido a construir productos de IA pensando como un ingeniero."*
-
----
-
-## 🤝 Asistencia de IA y validación cruzada
-
-Este proyecto se ha construido con ayuda de varias IAs, pero bajo un principio: **ninguna salida de una IA se toma como verdad absoluta**. Cada propuesta —de arquitectura, código o roadmap— se contrasta con otras fuentes y se revisa críticamente antes de aplicarse, descartando o reformulando lo que no encaja con la arquitectura o el modelo de seguridad del proyecto.
-
-| IA / Herramienta | Rol en el proyecto |
-|---|---|
-| **Claude** / **Claude Code** (Anthropic) | Arquitectura, revisión crítica, implementación agéntica y documentación |
-| **Antigravity 2.0** (Google) | Entorno de desarrollo agéntico — construcción inicial de la v2 |
-| **Qwen** | Generación de componentes de código |
-| **Manus** | Ideas y propuestas; algunas implementaciones introdujeron regresiones que hubo que corregir |
-| **DeepSeek** · **GLM 5.2** | Propuestas para el roadmap, filtradas y curadas antes de incorporarse |
-| **Gemma 4 31B** (Google, vía OpenRouter) | Revisión de arquitectura del repo; su propuesta de gestión de contexto/RAG se incorporó al roadmap (#49), reformulada a un índice en memoria por el modelo "sin BD". En una segunda ronda (dogfooding) aportó varias ideas de roadmap (#51 transparencia del ranker, #52 auditoría de seguridad, #53 commits semánticos) |
-| **Gemini 2.5 Flash** (Google) | Revisión del roadmap (dogfooding): métricas para el dashboard #44, inglés como 1er idioma de i18n, criterios de priorización |
-| **ZCode** (GLM-5.2) | **Desde la v3.20.0:** toma el control del roadmap, el cierre de versiones (bump + tag + release) y la documentación. Implementó la i18n Fase 2 (v3.21.0): modales, visor de diferencias y mensajes de chat vía `t()` inyectada en `ChatDeps`, más corrección de bugs y un refactor de mantenibilidad |
-
-**Validación en acción:** por ejemplo, una propuesta de "memoria persistente con IndexedDB" se **rechazó** por contradecir la arquitectura Zero-Storage (y porque no funcionaba entre sesiones), reformulándose a export/import de fichero. Otras propuestas se ajustaron o descartaron tras revisarlas contra el código real.
-
-> 📄 La **metodología de colaboración humano↔IA** (flujo de trabajo, lecciones aprendidas y trazabilidad de cada asistente) está documentada en [`METODOLOGIA_IA.md`](./METODOLOGIA_IA.md). Es la memoria operativa que permite continuar el proyecto coherentemente entre sesiones y herramientas.
-
-> 🔁 **Dogfooding:** la mejora de roadmap **#49** (gestión de la ventana de contexto) se obtuvo **usando la propia app** — cargando este repositorio como contexto y pidiendo una opinión de arquitectura a **Gemma 4 31B** a través del proveedor OpenRouter. Es decir, la herramienta se usó para mejorarse a sí misma, y la propuesta resultante se revisó y reformuló antes de incorporarla.
->
-> 🔁 **Dogfooding (2ª ronda):** ya **con #49 en producción**, se volvió a cargar el repo como contexto (la app reconoció los 127 archivos, incluido el propio `MEJORAS_FUTURAS.md` — algo que antes negaba) y se pidió opinión del roadmap a **tres** modelos: **Gemini 2.5 Flash**, **Llama (Groq)** y **Gemma 4 31B (OpenRouter)**. De ahí salieron nuevos ítems de roadmap (#50–#53). Curiosamente, **Groq (tier gratuito) no pudo responder** por su límite de tokens/minuto al recibir todo el contexto del repo — un hallazgo real que motivó el ítem **#50** (ajustar el presupuesto de contexto para modelos pequeños). Validación cruzada: se incorporó lo accionable, se reformuló lo dudoso (#53) y se descartaron los elogios.
-
-> El valor no está en aceptar lo que dice una IA, sino en **saber preguntar a varias, contrastar y decidir con criterio**.
+Ver proceso completo en ./docs/DESARROLLO_IA.md y ./METODOLOGIA_IA.md.
 
 ---
 
 ## 📚 Contexto formativo
 
-Este proyecto forma parte del programa de formación en Análisis de Datos e Inteligencia Artificial (INAEM, 2026). El objetivo fue explorar el desarrollo de aplicaciones full-stack asistido por agentes de IA, desde la arquitectura hasta el despliegue en producción, integrando múltiples servicios de IA y APIs REST en un flujo de trabajo completamente agéntico.
+Este proyecto forma parte del programa de formación en **Análisis de Datos e Inteligencia Artificial (INAEM, 2026)**.
+
+El objetivo fue explorar cómo una persona sin experiencia previa en programación puede construir una aplicación full-stack real utilizando IA como acelerador, manteniendo criterios de arquitectura, seguridad, testing, documentación y despliegue.
+
+> *“No soy ingeniero de software. Soy un profesional de negocio que ha aprendido a construir productos de IA pensando como un ingeniero.”*
+
+---
+
+## 🔮 Roadmap
+
+Ver ./MEJORAS_FUTURAS.md.
 
 ---
 
 <p align="center">
-Desarrollado por <a href="https://github.com/migueljerico">@migueljerico</a> con la asistencia de <strong>Claude / Claude Code</strong> (Anthropic), <strong>Antigravity 2.0</strong> (Google), <strong>Qwen</strong>, <strong>Manus</strong>, <strong>DeepSeek</strong>, <strong>GLM 5.2</strong>, <strong>Gemma 4 31B</strong> y <strong>Gemini 2.5 Flash</strong> — con validación cruzada y revisión crítica · 2026
+Desarrollado por <a href="https://github.com/migueljerico">@migueljerico</a> con asistencia de IA, validación cruzada y revisión crítica · 2026
 </p>
