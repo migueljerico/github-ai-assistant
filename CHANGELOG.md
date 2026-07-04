@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.22.1] — 2026-07-04
+
+### Changed
+- **Cobertura de tests (docs):** el README citaba "436 tests" (cifra de v3.16.0); actualizado a **476 tests** (v3.19.0+) y se remite a Codecov para el porcentaje exacto. Unificado el mismatch interno `~60%` vs `~64%` de MEJORAS_FUTURAS (#26).
+
+### Notes
+- **NVIDIA Build (NIM) documentado como #54** en el roadmap (baja prioridad): análisis del enfoque correcto — cliente OpenAI-compatible (entrada en el registro `PROVIDERS`, key `nvapi-` en memoria, Zero-Storage), **no** backend con `process.env` ni SDK oficial de OpenAI (contradice la arquitectura; el proxy de Gemini existe solo por el bloqueo UE). Añadida convención rectora en `CLAUDE.md §5` para blindar este patrón frente a propuestas externas.
+- _Corrección documental asistida por **ZCode** (GLM-5.2)._
+
 ## [3.22.0] — 2026-07-03
 
 ### Added
