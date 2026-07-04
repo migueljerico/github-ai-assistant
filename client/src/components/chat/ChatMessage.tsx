@@ -1,8 +1,10 @@
 import type { ChatMessage } from '../../types';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 export default function ChatMessageBubble({ message }: { message: ChatMessage }) {
   const { user } = useAuth();
+  const { t, lang } = useLanguage();
   const isUser = message.role === 'user';
 
   const avatarContent = isUser ? (
@@ -21,7 +23,7 @@ export default function ChatMessageBubble({ message }: { message: ChatMessage })
           // Estado inicial: aún no ha llegado el primer token (#38).
           <div className="message-loading">
             <span className="spinner spinner-sm" />
-            Pensando...
+            {t('chat.message.thinking')}
           </div>
         ) : (
           <div className="message-bubble">
@@ -35,7 +37,7 @@ export default function ChatMessageBubble({ message }: { message: ChatMessage })
             {!isUser && message.action && (
               <div className="message-action-card">
                 <div className="action-label">
-                  {message.action.requiereConfirmacion ? '⏸️ Acción pendiente de confirmación' : '✅ Acción de lectura'}
+                  {message.action.requiereConfirmacion ? t('chat.message.actionPending') : t('chat.message.readAction')}
                 </div>
                 <div className="action-desc">{message.action.accion}</div>
                 <div className="action-meta">
@@ -52,7 +54,7 @@ export default function ChatMessageBubble({ message }: { message: ChatMessage })
           </div>
         )}
         <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px', paddingLeft: '4px' }}>
-          {message.timestamp.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+          {message.timestamp.toLocaleTimeString(lang === 'en' ? 'en-US' : 'es-ES', { hour: '2-digit', minute: '2-digit' })}
         </div>
       </div>
     </div>

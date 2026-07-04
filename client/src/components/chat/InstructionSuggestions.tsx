@@ -4,8 +4,9 @@
  * Displays filtered instruction templates as user types
  */
 
-import { useState, useEffect, useRef } from 'react';
-import { filterInstructions, INSTRUCTION_TEMPLATES, type InstructionTemplate } from '../../utils/instructionSuggestions';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { filterInstructions, buildTemplates, type InstructionTemplate } from '../../utils/instructionSuggestions';
+import { useLanguage } from '../../context/LanguageContext';
 import './InstructionSuggestions.css';
 
 interface InstructionSuggestionsProps {
@@ -21,22 +22,26 @@ export default function InstructionSuggestions({
   isOpen,
   onOpenChange,
 }: InstructionSuggestionsProps) {
+  const { t } = useLanguage();
   const [suggestions, setSuggestions] = useState<InstructionTemplate[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Plantillas traducidas al idioma activo (se reconstruyen si cambia el idioma).
+  const templates = useMemo(() => buildTemplates(t), [t]);
+
   // Filter suggestions based on input
   useEffect(() => {
     if (inputValue.trim().length === 0) {
-      setSuggestions(INSTRUCTION_TEMPLATES.slice(0, 5)); // Show first 5 by default
+      setSuggestions(templates.slice(0, 5)); // Show first 5 by default
       onOpenChange(true);
     } else {
-      const filtered = filterInstructions(inputValue);
+      const filtered = filterInstructions(inputValue, templates);
       setSuggestions(filtered.slice(0, 8)); // Limit to 8 suggestions
       onOpenChange(filtered.length > 0);
     }
     setSelectedIndex(-1);
-  }, [inputValue, onOpenChange]);
+  }, [inputValue, onOpenChange, templates]);
 
   // Handle keyboard navigation
   useEffect(() => {
@@ -73,7 +78,7 @@ export default function InstructionSuggestions({
   return (
     <div ref={containerRef} className="instruction-suggestions">
       <div className="suggestions-header">
-        <span className="suggestions-title">💡 Sugerencias de instrucciones</span>
+        <span className="suggestions-title">{t('chat.suggestions.title')}</span>
         <span className="suggestions-count">{suggestions.length}</span>
       </div>
       <div className="suggestions-list">
@@ -95,7 +100,7 @@ export default function InstructionSuggestions({
         ))}
       </div>
       <div className="suggestions-footer">
-        <span className="suggestions-hint">↑↓ Navegar • Enter Seleccionar • Esc Cerrar</span>
+        <span className="suggestions-hint">{t('chat.suggestions.hint')}</span>
       </div>
     </div>
   );

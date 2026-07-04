@@ -1,12 +1,14 @@
 import { useEffect, useRef } from 'react';
 import type { ChatMessage } from '../../types';
 import ChatMessageBubble from './ChatMessage';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface ChatAreaProps {
   messages: ChatMessage[];
 }
 
 export default function ChatArea({ messages }: ChatAreaProps) {
+  const { t } = useLanguage();
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -18,17 +20,13 @@ export default function ChatArea({ messages }: ChatAreaProps) {
       <div className="chat-messages">
         <div className="chat-welcome">
           <div className="chat-welcome-icon">🤖</div>
-          <h2 className="gradient-text">Asistente de IA para Publicar Repositorios</h2>
-          <p>
-            Escribe una instrucción en lenguaje natural y el asistente gestionará
-            tus repositorios de GitHub por ti. Puedes crear archivos, actualizar
-            READMEs, añadir licencias, y mucho más.
-          </p>
+          <h2 className="gradient-text">{t('chat.area.title')}</h2>
+          <p>{t('chat.area.intro')}</p>
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center', marginTop: '8px' }}>
             {[
-              '"Crea un README.md para mi repo my-project"',
-              '"Añade una licencia MIT a all-projects"',
-              '"Lista mis repositorios públicos"',
+              t('chat.area.example1'),
+              t('chat.area.example2'),
+              t('chat.area.example3'),
             ].map(example => (
               <div
                 key={example}
@@ -52,7 +50,7 @@ export default function ChatArea({ messages }: ChatAreaProps) {
   }
 
   return (
-    <div className="chat-messages" role="log" aria-live="polite" aria-label="Conversación">
+    <div className="chat-messages" role="log" aria-live="polite" aria-label={t('chat.area.ariaLabel')}>
       {messages.map(msg => (
         <ChatMessageBubble key={msg.id} message={msg} />
       ))}
