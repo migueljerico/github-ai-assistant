@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.22.2] — 2026-07-05
+
+### Fixed
+- **Rotura con modelos no-Llama en Groq (Qwen, Gemma…)** — desde v3.22.0, la directiva de idioma `withLangDirective` se aplicaba **también al prompt de acción** (que exige JSON puro), lo que confundía a modelos menos dóciles: priorizaban "Responde al usuario en español" sobre "Responde SOLO con JSON" y devolvían prosa → el parser no encontraba JSON → la acción no se ejecutaba **y además en silencio**. Tres arreglos:
+  1. La directiva de idioma ahora **solo se aplica al modo chat** (texto Markdown); el modo acción (JSON) queda sin directiva, como antes de v3.22.0.
+  2. `parseGeminiAction` es ahora **tolerante**: extrae el primer bloque `{...}` balanceado aunque el modelo lo envuelva en prosa ("Aquí tienes: {...}") o incluya llaves dentro de strings. Antes exigía que toda la cadena fuera JSON.
+  3. Cuando una acción no produce JSON válido, el usuario recibe un **aviso claro** ("⚠️ El modelo no devolvió una acción válida…") seguido del texto recibido, en vez del texto crudo sin explicar.
+
+### Notes
+- **Bug 2 (no resuelto, documentado como #55 y #56):** con la interfaz en inglés, las plantillas del panel lateral (#55) y las descripciones del historial de acciones de solo lectura (#56) siguen en español. Causa raíz ya diagnosticada en `MEJORAS_FUTURAS.md`; se dejan para la próxima sesión por la regla de "no quedarse a medias".
+- _Investigación, fix y tests asistidos por **ZCode** (GLM-5.2)._
+
 ## [3.22.1] — 2026-07-04
 
 ### Changed

@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v3.22.1 · Julio 2026
+**Actualizado a:** v3.22.2 · Julio 2026
 
 ---
 
@@ -360,14 +360,44 @@ función `t(lang, key)` pura (no hook); se deja para el futuro si hay demanda re
 
 ---
 
+#### #55 — Plantillas del panel lateral sin traducir (i18n)
+**Esfuerzo:** 1–1.5h
+**Origen:** bug detectado por el autor (v3.22.2); análisis completo hecho.
+
+**Problema actual:** con la interfaz en inglés, el panel lateral de Plantillas (`TemplatePanel`) sigue mostrando texto en español.
+
+**Causa raíz:** `client/src/utils/templateData.ts` exporta un array **estático** (`TEMPLATE_CATEGORIES`) con ~24 literales en español duros (categoría "Licencias", 12 descripciones, 12 instrucciones, "Solo-docs"). La Fase 3 de i18n (v3.22.0) refactorizó `instructionSuggestions.ts` (las sugerencias del chat) a factoría `buildTemplates(t)`, pero **no tocó** `templateData.ts` (el panel lateral). Mismo patrón pendiente.
+
+**Solución propuesta:** replicar el patrón de `instructionSuggestions.ts` — convertir `templateData.ts` en una factoría `buildTemplateCategories(t)` con ids/emojis fijos y textos vía `t('panelTmpl.{id}.name/description/instruction')`; añadir ~36 claves (12 items × 3 campos) a `es.ts`/`en.ts`; llamar la factoría en `TemplatePanel.tsx:34`.
+
+**Beneficio:** panel de plantillas coherente con el idioma activo (cierra el bilingüe de extremo a extremo que arrancó la Fase 1).
+
+---
+
+#### #56 — Descripciones del historial de acciones de solo lectura en español (i18n)
+**Esfuerzo:** 1–1.5h
+**Origen:** bug detectado por el autor (v3.22.2); análisis parcial hecho.
+
+**Problema actual:** con la interfaz en inglés, las descripciones de las entradas del historial que provienen de **acciones de solo lectura / confirmadas** salen en español. Las descripciones de los flujos documentar/resumir/changelog/salud SÍ se traducen (usan `deps.t('history.*')` desde la Fase 3).
+
+**Causa raíz:** los flujos de acción (`runSend` modo lectura, `runConfirmAction`, `executeActionMultiRepo`) escriben `result.message` / `message` (de `executeAction`/`actionExecutor.ts`) directamente en la `description` de la entry, **sin pasar por `t()`** (assistantActions.ts:516, 549, 556 aprox.). Esos mensajes los emite `actionExecutor.ts` en español duro.
+
+**Solución propuesta:** auditar `client/src/services/actionExecutor.ts` para identificar los mensajes visibles que emite; envolverlos en `deps.t('history.exec.*')` con claves nuevas (inyectando `t` al executor como ya se hace con `ChatDeps`), o bien construir las descripciones en `assistantActions.ts` a partir del resultado en vez de usar `result.message` directo.
+
+**Caveat:** las entries previas al cambio de idioma seguirán en su idioma original — el historial es **inmutable por diseño** (ver `HistoryContext.tsx:5-22`: "session-only, intentionally not persisted"). No es un bug retraducir entries antiguas; el fix aplica a las nuevas.
+
+**Beneficio:** historial coherente con el idioma activo en todos los flujos, no solo en los de documentación.
+
+---
+
 ## 📊 Resumen
 
 | Prioridad | Total | ✅ Resueltos | ⏳ Pendientes |
 |---|---|---|---|
 | 🔴 Alta | 8 | 8 (#1, #2, #13, #14, #27, #45, #15, #28) | 0 |
 | 🟡 Media | 17 | 14 (#12, #17, #18, #19, #21, #37, #41, #32, #42, #38, #20, #49, #39, #44) | 3 (#26, #50, #51) |
-| 🟢 Baja | 14 | 5 (#23, #24, #34, #40, #46) | 9 (#22, #25, #33, #35, #36, #48, #52, #53, #54) |
-| **TOTAL** | **39** | **27** | **12** |
+| 🟢 Baja | 16 | 5 (#23, #24, #34, #40, #46) | 11 (#22, #25, #33, #35, #36, #48, #52, #53, #54, #55, #56) |
+| **TOTAL** | **41** | **27** | **14** |
 
 > **#28** cubierto en su **norte** por las Fases 1 (v3.0.0, adjuntar como contexto) y
 > 2 (v3.1.0, documentar→publicar). **Más formatos:** Fase 3a (v3.2.0, Excel/CSV) y
