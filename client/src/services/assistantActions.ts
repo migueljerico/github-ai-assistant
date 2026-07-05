@@ -444,8 +444,14 @@ export async function runSend(deps: SendDeps, config: AIProviderConfig, params: 
   const basePrompt = finalMode === 'chat'
     ? (combinedContext ? chatPromptWithContext(combinedContext) : CHAT_PROMPT)
     : ACTION_PROMPT;
-  // #24 Fase 3: fuerza que la respuesta del modelo respete el idioma activo de la interfaz.
-  const systemPrompt = withLangDirective(basePrompt, deps.lang);
+  // #24 Fase 3: la directiva de idioma SOLO aplica al modo chat (texto Markdown).
+  // El modo acción devuelve JSON, que no tiene idioma; forzar la directiva ahí rompía
+  // modelos menos dóciles (Qwen, Gemma en Groq) que priorizaban "responde en español"
+  // sobre "responde SOLO con JSON" y devolvían prosa → parseGeminiAction fallaba.
+  // Fix v3.22.2.
+  const systemPrompt = finalMode === 'chat'
+    ? withLangDirective(basePrompt, deps.lang)
+    : basePrompt;
 
   console.log(`[Opción D] Modo: ${finalMode} | Override: ${modeOverride} | Contexto: ${hasContext}`);
 
@@ -482,8 +488,13 @@ export async function runSend(deps: SendDeps, config: AIProviderConfig, params: 
     // Modo acción: procesar JSON.
     const action = parseGeminiAction(rawResponse);
     if (!action) {
-      updateMessage(loadingId, { content: rawResponse, isLoading: false });
-      setConversationHistory([...newHistory, { role: 'assistant', content: rawResponse }]);
+      // v3.22.2: antes esto fallaba en silencio (mostraba el texto crudo sin explicar).
+      // Ahora avisamos al usuario de que el modelo no devolvió una acción válida,
+      // para que sepa que puede probar otro modelo o reformular.
+      const notice = deps.t('chat.actionParseFailed');
+      const content = `${notice}\n\n---\n${rawResponse}`;
+      updateMessage(loadingId, { content, isLoading: false });
+      setConversationHistory([...newHistory, { role: 'assistant', content }]);
       setIsChatLoading(false);
       return;
     }

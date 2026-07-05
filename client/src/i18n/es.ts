@@ -154,6 +154,7 @@ export const es = {
   'chat.attachDocHint': 'Cuando quieras **documentarlo y publicarlo**, pulsa **📤 Documentar y publicar** (abajo): ahí eliges commit, Draft PR o Release, e incluso subir el propio archivo al repo.',
   'chat.fileTextExtractFailed': 'No pude extraer texto del archivo (¿es un PDF escaneado o una imagen?). Prueba con un PDF de texto o un archivo de texto/código.',
   'chat.unknownError': 'Error desconocido',
+  'chat.actionParseFailed': '⚠️ El modelo no devolvió una acción válida (probablemente JSON mal formado). Prueba con otro modelo o reformula la instrucción. Respuesta recibida:',
 
   // ────── FASE 2: Paneles ──────
   'panel.history.clearAria': 'Eliminar el historial de sesión',

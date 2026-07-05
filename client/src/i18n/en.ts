@@ -154,6 +154,7 @@ export const en = {
   'chat.attachDocHint': 'When you want to **document and publish it**, press **📤 Document and publish** (below): there you choose commit, Draft PR or Release, and even upload the file itself to the repo.',
   'chat.fileTextExtractFailed': 'I couldn\'t extract text from the file (is it a scanned PDF or an image?). Try a text-based PDF or a text/code file.',
   'chat.unknownError': 'Unknown error',
+  'chat.actionParseFailed': '⚠️ The model didn\'t return a valid action (likely malformed JSON). Try another model or rephrase the instruction. Received response:',
 
   // ────── PHASE 2: Panels ──────
   'panel.history.clearAria': 'Delete session history',

@@ -407,19 +407,65 @@ function isValidAction(a: Record<string, unknown>): boolean {
 }
 
 export function parseGeminiAction(rawText: string): GeminiAction | null {
-  try {
-    const cleaned = rawText
-      .replace(/^```(?:json)?\s*/i, '')
-      .replace(/\s*```\s*$/, '')
-      .trim();
-    const parsed = JSON.parse(cleaned);
-    // #40: validación estricta (allowlist de método/tipo + endpoint relativo). Si no
-    // cumple, se trata como respuesta conversacional (null), igual que un JSON inválido.
-    if (!isValidAction(parsed)) return null;
-    return parsed as GeminiAction;
-  } catch {
-    return null;
+  // v3.22.2: además de quitar fences, extraemos el primer bloque `{...}` balanceado.
+  // Algunos modelos (Qwen, Gemma) envuelven el JSON en prosa ("Aquí tienes: {...}");
+  // el parser anterior exigía que TODA la cadena fuera JSON y fallaba en silencio.
+  const candidates = extractJsonCandidates(rawText);
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate);
+      // #40: validación estricta (allowlist de método/tipo + endpoint relativo). Si no
+      // cumple, se trata como respuesta conversacional (null), igual que un JSON inválido.
+      if (isValidAction(parsed)) return parsed as GeminiAction;
+    } catch {
+      // probamos el siguiente candidato
+    }
   }
+  return null;
+}
+
+/**
+ * Extrae posibles substrings JSON de la respuesta del modelo, en orden de
+ * preferencia: (1) la cadena entera sin fences, (2) el primer bloque `{...}`
+ * balanceado (para modelos que envuelven el JSON en prosa).
+ */
+function extractJsonCandidates(rawText: string): string[] {
+  const candidates: string[] = [];
+  // (1) cadena entera sin fences ```json ... ```
+  const stripped = rawText
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```\s*$/, '')
+    .trim();
+  candidates.push(stripped);
+  // (2) primer {...} balanceado (ignora strings con llaves escapadas)
+  const balanced = firstBalancedJsonObject(rawText);
+  if (balanced && balanced !== stripped) candidates.push(balanced);
+  return candidates;
+}
+
+/** Encuentra el primer objeto JSON balanceado `{...}` dentro de un texto. */
+function firstBalancedJsonObject(text: string): string | null {
+  const start = text.indexOf('{');
+  if (start === -1) return null;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === '\\') escaped = true;
+      else if (ch === '"') inString = false;
+    } else if (ch === '"') {
+      inString = true;
+    } else if (ch === '{') {
+      depth++;
+    } else if (ch === '}') {
+      depth--;
+      if (depth === 0) return text.slice(start, i + 1);
+    }
+  }
+  return null;
 }
 
 // ── Primary language detector ─────────────────────────────────────────────────
