@@ -73,6 +73,14 @@ sesión:
    verificación) y esperar aprobación. Usar `EnterPlanMode` para tareas no
    triviales; `AskUserQuestion` solo para decisiones reales del usuario, no para
    validar lo obvio.
+   - **⚠️ Aviso de límite de sesión/tokens (rector, v3.22.1):** antes de empezar
+     a ejecutar, estimar si la tarea cabe en el presupuesto de tokens/tiempo de
+     la sesión. Si existe riesgo razonable de quedarse a medias, **avisar al
+     autor antes de tocar nada** y proponer dividir o reordenar el trabajo. **No
+     iniciar una ejecución que se pueda quedar a mitad** — un cambio a medias
+     (rama sin merge, código sin verificar, docs sin commitear) es peor que no
+     empezar. Si la sesión se corta a pesar de todo, dejar el estado del repo en
+     un punto coherente y comunicado.
 4. **Ejecutar en una rama** nacida de `main` actualizado (trunk-based). Commits
    atómicos con Conventional Commits.
 5. **Verificar** antes de pushear: `npm run build` (tsc estricto), `npm run lint`
