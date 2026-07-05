@@ -9,14 +9,32 @@ herramientas y modelos distintos.
 > proyecto; ver `CLAUDE.md §5`). Las instrucciones a un asistente en el chat de la
 > sesión también van en castellano.
 
-> **Relación con otros documentos:**
-> - [`CLAUDE.md`](./CLAUDE.md) → **cómo está hecho** el código (guía técnica para
->   cualquier asistente de IA: arquitectura, comandos, convenciones, trampas).
+> **Relación con otros documentos y jerarquía canónica:**
+>
+> El proyecto tiene **dos capas documentales**. Si hay discrepancia entre ellas,
+> **la capa interna es la fuente de verdad**; la externa se actualiza a partir de ella.
+>
+> **Capa interna (canónica, para asistentes y mantenedores):**
+> - [`CLAUDE.md`](./CLAUDE.md) → **cómo está hecho** el código (guía técnica:
+>   arquitectura, comandos, convenciones, trampas).
 > - [`MEJORAS_FUTURAS.md`](./MEJORAS_FUTURAS.md) → **qué queda por hacer**
 >   (roadmap, estado de issues por versión).
 > - [`CONTRIBUTING.md`](./CONTRIBUTING.md) → **cómo contribuir** (reglas de PR,
 >   Zero-Storage, estilo).
+> - [`MANUAL_TECNICO.md`](./MANUAL_TECNICO.md) → referencia técnica histórica
+>   (parcialmente cubierta por `CLAUDE.md`, se conserva por completitud).
 > - **Este documento** → **cómo trabajamos juntos** (el proceso de colaboración).
+>
+> **Capa externa (portfolio / público, orientada al lector final):**
+> - [`README.md`](./README.md) y la carpeta [`docs/`](./docs/) (`ARQUITECTURA.md`,
+>   `DESARROLLO_IA.md`, `FUNCIONALIDADES.md`, `INSTALACION.md`, `SEGURIDAD.md`,
+>   `TESTING_CALIDAD.md`, `COMPARATIVA_COPILOT.md`) → son la "ventana al exterior",
+>   más narrativas y extensas. **Reorganizadas por GPT 5.5 en v3.22.1.**
+>
+> **Regla práctica:** al tocar una convención técnica o de seguridad en la capa
+> interna (p. ej. `CLAUDE.md §5`), recordar que `docs/SEGURIDAD.md`,
+> `docs/ARQUITECTURA.md` y el `README.md` la parafrasean y puede que necesiten
+> actualizarse para no divergir. La capa interna manda; la externa se deriva.
 
 ---
 
