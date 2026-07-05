@@ -221,12 +221,15 @@ Ejecutar **un solo test**: `cd client && npm run test:run -- src/services/github
 
 ## 5. Convenciones y trampas
 
-- **Zero-Storage (seguridad crítica):** las API keys de IA viven **solo** en
-  estado de React (`AIProviderContext`), **nunca** en `localStorage` ni
-  `sessionStorage`. Recargar la página obliga a re-introducir la key — es
-  intencionado (mitiga XSS). El token de GitHub sí va en `sessionStorage` (llega
-  por el hash de la URL tras el OAuth). **No introduzcas credenciales en
-  almacenamiento del navegador** — CONTRIBUTING rechaza PRs que lo hacen.
+- **Zero-Storage (seguridad crítica):** las API keys de IA **y** el token de
+  GitHub viven **solo** en estado de React (`AIProviderContext`, `AuthContext`),
+  **nunca** en `localStorage`, `sessionStorage`, cookies ni ninguna otra storage
+  del navegador. Recargar la página (F5) pierde la sesión y obliga a re-autenticarse
+  y re-introducir la key — es **intencionado** (mitiga robo vía XSS). El token llega
+  por el **hash** de la URL tras el OAuth y se extrae inmediatamente a memoria (no se
+  persistite). Ver `AuthContext.tsx` (cabecera "ZERO-STORAGE ARCHITECTURE") y
+  `docs/SEGURIDAD.md`. **No introduzcas credenciales en almacenamiento del
+  navegador** — CONTRIBUTING rechaza PRs que lo hacen.
 - **Proxies de proveedores de IA — patrón cliente, NO backend (rector):** los
   proveedores OpenAI-compatible (Groq, OpenRouter y cualquier NIM/futuro como
   NVIDIA Build) se llaman **directo desde el navegador** con la key del usuario en
