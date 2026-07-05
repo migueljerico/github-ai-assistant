@@ -436,7 +436,7 @@ describe('runSend', () => {
     expect(resolveMode).toHaveBeenCalledWith('háblame del PBIX que acabo de subir', 'auto', false, true);
   });
 
-  it('modo acción sin JSON: muestra texto plano', async () => {
+  it('modo acción sin JSON: muestra aviso + texto plano (v3.22.2)', async () => {
     vi.mocked(resolveMode).mockReturnValue('action');
     vi.mocked(callAI).mockResolvedValue('texto');
     vi.mocked(parseGeminiAction).mockReturnValue(null);
@@ -444,7 +444,10 @@ describe('runSend', () => {
 
     await runSend(deps, CONFIG, SEND_PARAMS);
 
-    expect(deps.updateMessage).toHaveBeenCalledWith('msg-2', { content: 'texto', isLoading: false });
+    // v3.22.2: ahora se antepone un aviso (chat.actionParseFailed) al texto crudo,
+    // para que el usuario entienda que el modelo no devolvió una acción válida.
+    const notice = deps.t('chat.actionParseFailed');
+    expect(deps.updateMessage).toHaveBeenCalledWith('msg-2', { content: `${notice}\n\n---\ntexto`, isLoading: false });
     expect(deps.setPendingAction).not.toHaveBeenCalled();
   });
 

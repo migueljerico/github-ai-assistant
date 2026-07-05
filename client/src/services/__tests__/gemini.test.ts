@@ -73,6 +73,35 @@ describe('gemini.ts - Utilidades', () => {
       expect(a).not.toBeNull();
       expect(a?.metodo).toBe('GET');
     });
+
+    // v3.22.2 — parser robusto: extrae el JSON aunque el modelo lo envuelva en prosa
+    // (caso de modelos menos dóciles como Qwen/Gemma en Groq).
+    it('extrae el JSON aunque venga envuelto en prosa (v3.22.2)', () => {
+      const raw = 'Claro, aquí tienes la acción solicitada:\n\n{"tipo":"listado","accion":"Listar repos","metodo":"GET","endpoint":"/user/repos","requiereConfirmacion":false}\n\nEspero que te sirva.';
+      const result = parseGeminiAction(raw);
+      expect(result).not.toBeNull();
+      expect(result?.tipo).toBe('listado');
+      expect(result?.endpoint).toBe('/user/repos');
+    });
+
+    it('extrae el JSON aunque venga con prefijo "Aquí tienes:" sin fences (v3.22.2)', () => {
+      const raw = 'Aquí tienes: {"tipo":"lectura","accion":"Ver perfil","metodo":"GET","endpoint":"/user","requiereConfirmacion":false}';
+      const result = parseGeminiAction(raw);
+      expect(result).not.toBeNull();
+      expect(result?.accion).toBe('Ver perfil');
+    });
+
+    it('no se confunde con llaves dentro de strings (v3.22.2)', () => {
+      // El valor del string contiene { y } que NO deben contar para el balance.
+      const raw = '{"tipo":"lectura","accion":"Mensaje con {llaves}","metodo":"GET","endpoint":"/user","requiereConfirmacion":false}';
+      const result = parseGeminiAction(raw);
+      expect(result).not.toBeNull();
+      expect(result?.accion).toBe('Mensaje con {llaves}');
+    });
+
+    it('sigue devolviendo null si no hay ningún objeto JSON en la respuesta', () => {
+      expect(parseGeminiAction('Lo siento, no entendí qué quieres hacer.')).toBeNull();
+    });
   });
 
   describe('detectPrimaryLanguage', () => {
