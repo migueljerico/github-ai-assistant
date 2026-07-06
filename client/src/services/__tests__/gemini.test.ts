@@ -102,6 +102,44 @@ describe('gemini.ts - Utilidades', () => {
     it('sigue devolviendo null si no hay ningún objeto JSON en la respuesta', () => {
       expect(parseGeminiAction('Lo siento, no entendí qué quieres hacer.')).toBeNull();
     });
+
+    // v3.22.3 — modelos de razonamiento (Qwen, QwQ, DeepSeek-R1) emiten un bloque
+    // <think> con un JSON de ejemplo ANTES del JSON real; el parser debe ignorarlo.
+    it('ignora el bloque <think> y extrae el JSON real (v3.22.3, Qwen)', () => {
+      const raw = `<think>
+The user wants to list their repositories.
+This is a read-only operation.
+Constructing the JSON:
+{
+  "tipo": "listado",
+  "accion": "Listar los repositorios del usuario autenticado",
+  "endpoint": "/user/repos",
+  "metodo": "GET",
+  "repo": null,
+  "archivo": null,
+  "contenidoPropuesto": null,
+  "payload": {},
+  "requiereConfirmacion": false
+}
+</think>
+
+{
+  "tipo": "listado",
+  "accion": "Listar los repositorios del usuario autenticado",
+  "endpoint": "/user/repos",
+  "metodo": "GET",
+  "repo": null,
+  "archivo": null,
+  "contenidoPropuesto": null,
+  "payload": {},
+  "requiereConfirmacion": false
+}`;
+      const result = parseGeminiAction(raw);
+      expect(result).not.toBeNull();
+      expect(result?.tipo).toBe('listado');
+      expect(result?.endpoint).toBe('/user/repos');
+      expect(result?.accion).toBe('Listar los repositorios del usuario autenticado');
+    });
   });
 
   describe('detectPrimaryLanguage', () => {

@@ -163,6 +163,8 @@ beforeEach(() => { vi.clearAllMocks(); });
 
 describe('runDocumentRepo', () => {
   it('devuelve el análisis en el camino feliz', async () => {
+    // v3.22.3: runDocumentRepo ahora pre-chequea getRepo y usa su default_branch.
+    vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
     vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'a' }, { path: 'b' }], totalScanned: 2, truncated: false } as any);
     vi.mocked(generateRepoDocs).mockResolvedValue({ readme: 'R', manualTecnico: 'M' } as any);
     const deps = makeDeps();
@@ -170,12 +172,15 @@ describe('runDocumentRepo', () => {
     const result = await runDocumentRepo(deps, CONFIG, 'owner/repo');
 
     expect(result).toEqual({ readme: 'R', manualTecnico: 'M', filesAnalyzed: 2, totalFiles: 2, truncated: false, repoName: 'owner/repo' });
+    expect(getRepo).toHaveBeenCalledWith('tok', 'owner', 'repo');
+    expect(fetchRepoTreeRecursive).toHaveBeenCalledWith('tok', 'owner', 'repo', 'main');
     expect(generateRepoDocs).toHaveBeenCalledWith('owner/repo', expect.any(Array), CONFIG, 'es');
     expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'pending' }));
     expect(deps.setIsChatLoading).toHaveBeenLastCalledWith(false);
   });
 
   it('devuelve null y marca error si falla la descarga', async () => {
+    vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
     vi.mocked(fetchRepoTreeRecursive).mockRejectedValue(new Error('boom'));
     const deps = makeDeps();
 
@@ -184,6 +189,20 @@ describe('runDocumentRepo', () => {
     expect(result).toBeNull();
     expect(deps.updateMessage).toHaveBeenLastCalledWith('msg-1', expect.objectContaining({ content: expect.stringContaining('boom'), isLoading: false }));
     expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'error' }));
+  });
+
+  it('muestra mensaje amable si el repo no existe / 404 (v3.22.3)', async () => {
+    // Antes el 404 crudo "Not Found" subía sin traducir.
+    const { GitHubAPIError } = await import('../github');
+    vi.mocked(getRepo).mockRejectedValue(new GitHubAPIError('Not Found', 404));
+    const deps = makeDeps();
+
+    const result = await runDocumentRepo(deps, CONFIG, 'owner/repo');
+
+    expect(result).toBeNull();
+    // Mensaje amable traducido (no "Not Found" crudo).
+    const notice = deps.t('chat.docRepoNotFound', { repo: 'owner/repo' });
+    expect(deps.updateMessage).toHaveBeenLastCalledWith('msg-1', expect.objectContaining({ content: notice, isLoading: false }));
   });
 });
 
