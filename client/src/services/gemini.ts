@@ -431,14 +431,22 @@ export function parseGeminiAction(rawText: string): GeminiAction | null {
  */
 function extractJsonCandidates(rawText: string): string[] {
   const candidates: string[] = [];
+  // v3.22.3: quitamos los bloques de razonamiento visibles que algunos modelos
+  // (Qwen, QwQ, DeepSeek-R1) emiten ANTES del JSON. Si no, firstBalancedJsonObject
+  // se queda con el JSON de ejemplo del interior del <think> y descarta el real.
+  const cleaned = rawText
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '')
+    .replace(/<reflection>[\s\S]*?<\/reflection>/gi, '')
+    .trim();
   // (1) cadena entera sin fences ```json ... ```
-  const stripped = rawText
+  const stripped = cleaned
     .replace(/^```(?:json)?\s*/i, '')
     .replace(/\s*```\s*$/, '')
     .trim();
   candidates.push(stripped);
   // (2) primer {...} balanceado (ignora strings con llaves escapadas)
-  const balanced = firstBalancedJsonObject(rawText);
+  const balanced = firstBalancedJsonObject(cleaned);
   if (balanced && balanced !== stripped) candidates.push(balanced);
   return candidates;
 }
@@ -642,15 +650,19 @@ No incluyas ningún texto fuera del JSON. No uses bloques de código externos.`;
     );
   }
 
-  const cleaned = rawText
-    .replace(/^```(?:json)?\s*/i, '')
-    .replace(/\s*```\s*$/, '')
-    .trim();
-
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = JSON.parse(cleaned);
-  } catch {
+  // v3.22.3: reutilizamos el parser robusto de parseGeminiAction (extrae el JSON
+  // aunque el modelo lo envuelva en prosa o emita un bloque <think> antes), en vez
+  // del parser simple (solo fences + JSON.parse) que rompía con respuestas verbosas.
+  let parsed: Record<string, unknown> | undefined;
+  for (const candidate of extractJsonCandidates(rawText)) {
+    try {
+      parsed = JSON.parse(candidate) as Record<string, unknown>;
+      break;
+    } catch {
+      // probamos el siguiente candidato
+    }
+  }
+  if (!parsed) {
     throw new Error('La IA no devolvió JSON válido');
   }
 

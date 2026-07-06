@@ -130,7 +130,11 @@ export async function runDocumentRepo(
   const histId = addEntry({ status: 'pending', description: deps.t('history.documenting', { repo: `${owner}/${repoName}` }), repo: `${owner}/${repoName}` });
 
   try {
-    const { files, totalScanned, truncated } = await fetchRepoTreeRecursive(token, owner, repoName);
+    // v3.22.3: pre-chequeo amable (antes el 404 crudo "Not Found" subía sin traducir)
+    // + uso de la rama por defecto real (no asumir 'main'; repos con otra rama daban 404).
+    // Patrón tomado de runCodeHealth (#44), que ya resolvía esto correctamente.
+    const meta = await getRepo(token, owner, repoName);
+    const { files, totalScanned, truncated } = await fetchRepoTreeRecursive(token, owner, repoName, meta.default_branch);
     updateMessage(loadingId, {
       content: `📄 Analizando ${files.length} archivos de **${owner}/${repoName}**${truncated ? ` (de ${totalScanned} totales)` : ''}... Generando documentación con ${providerName}...`,
       isLoading: true,
@@ -146,7 +150,13 @@ export async function runDocumentRepo(
 
     return { readme, manualTecnico, filesAnalyzed: files.length, totalFiles: totalScanned, truncated, repoName: `${owner}/${repoName}` };
   } catch (err) {
-    updateMessage(loadingId, { content: `❌ Error al documentar: ${(err as Error).message}`, isLoading: false });
+    // v3.22.3: distinguir "repo no encontrado / sin acceso" (404) de otros errores.
+    const status = err instanceof GitHubAPIError ? err.status : undefined;
+    const isNotFound = status === 404 || /not found/i.test((err as Error).message);
+    const content = isNotFound
+      ? deps.t('chat.docRepoNotFound', { repo: `${owner}/${repoName}` })
+      : `❌ Error al documentar: ${(err as Error).message}`;
+    updateMessage(loadingId, { content, isLoading: false });
     updateEntry(histId, { status: 'error', description: deps.t('history.errorDocumenting', { repo: `${owner}/${repoName}` }) });
     return null;
   } finally {
