@@ -417,7 +417,24 @@ El usuario los encuentra confusos: no sabe cuándo usar cuál, y con un repo car
 
 **Componentes implicados:** `DocumentRepoButton.tsx`, el inline `publish-file-btn` de `ChatInput.tsx`, `DocModal.tsx`, `FilePublishModal.tsx`, `PublishActions.tsx` (sin tocar), `App.tsx` (state/handlers), `assistantActions.ts` (`runDocumentRepo`, `runGenerateFileDoc`, `runPublishFileDoc*`).
 
-**Beneficio:** un solo flujo claro donde el usuario decide qué documentar (repo/archivo/opinión) y cómo publicar (commit/PR/release), sin adivinar qué botón usar. Cierra la deuda UX del módulo de documentación.
+### 🔧 Requisitos adicionales (v3.22.3, reporte con Llama 4 Scout)
+
+Reportados por el autor tras crear un repo inexistente desde "📤 Documentar y publicar" de un PDF. **Causa raíz ya diagnosticada (leer junto con el MVP de arriba):**
+
+- **Bug del README vacío:** cuando se **crea** un repo inexistente desde el flujo "Documentar y publicar" (archivo), GitHub crea un README por defecto (`# repo`, vía `auto_init`) y la documentación generada por IA se commitea en `docs/{archivo}.md`, **NO en README.md** (`docPublisher.ts:publishFileDoc` escribe solo `docs/`, no toca README; README custom solo lo escribe `writeDocFiles` del flujo "Documentar repo"). Resultado: README casi vacío y sin firma. **Fix:** en el flujo unificado, al crear un repo, el README debe generarse con contenido (de la IA) y con la firma — no dejar el `auto_init` de GitHub.
+- **About del repo pobre:** `runCreateRepo` (`assistantActions.ts:729`) usa el fallback estático `'Creado desde el Asistente de IA'` cuando el caller no pasa `opts.description`. El autor quiere: *"Creado y documentado a través de la app Asistente de IA para Publicar Repositorios"* + **una breve descripción del proyecto** (no solo el placeholder).
+  - **⚠️ Punto de decisión abierto:** en el momento de **crear** el repo todavía no hay contenido del que extraer la descripción. Opciones: (a) generarla con la IA a partir del archivo adjunto / instrucción; (b) pedirla al usuario en el modal; (c) dejar que la IA la proponga y el usuario la edite. **Decidir al abordar #57.**
+- **Firma del README sin modelo:** hoy la firma vive en `generateRepoDocs` (`gemini.ts:578`) como `"Desarrollado por @{docOwner} · {docYear}"` — **no incluye el modelo**. `config.model` ya está disponible en esa función (pasa a `callAI` pero no al prompt). El autor quiere: *"Desarrollado por @{user} · {año} **y documentado por {modelo}** a través de la app Asistente de IA para Publicar Repositorios"*.
+- **`generateFileDoc` no lleva firma** (`gemini.ts:701`) — solo `generateRepoDocs`. En el flujo unificado, decidir si la doc de archivo también lleva la firma (probablemente sí, para coherencia).
+- **Sobreescritura del README al hacer "Commit directo" en "Documentar repo":** al re-documentar un repo que ya tenía README, el commit lo sobreescribe (incluida la firma/badges). No es un bug per se, pero conviene avisar en el modal que se va a actualizar (ver "actualizar documentación" arriba).
+
+**Puntos de código concretos a tocar (anotados para la sesión de implementación):**
+- `gemini.ts:550-551, 578-579` — añadir `docModel = config?.model ?? 'IA'` e incluirlo en la plantilla del footer (tanto en `generateRepoDocs` como, decididamente, en `generateFileDoc`).
+- `assistantActions.ts:729` — el fallback del About; y `App.tsx:handleConfirmCreateRepo` (`~205-220`) que hoy llama `runCreateRepo(deps, repo)` **sin `opts.description`** — pasarle la descripción (generada/pedida según la decisión de arriba).
+- `docPublisher.ts:publishFileDoc` — cuando el destino es un repo recién creado, escribir también un README con contenido (no dejar el `auto_init`).
+- Test afectado: `gemini.test.ts:636` (`expect(...).toContain('@migueljerico · ${year}')`) — actualizar al nuevo formato de firma.
+
+**Beneficio:** un solo flujo claro donde el usuario decide qué documentar (repo/archivo/opinión) y cómo publicar (commit/PR/release), sin adivinar qué botón usar; además, los repos creados/documentados quedan con un README y un About profesionales y con atribución correcta (modelo + app). Cierra la deuda UX del módulo de documentación.
 
 **Nota:** los fixes de v3.22.3 (Qwen `<think>`, 404 amable, parser robusto en `generateRepoDocs`, rama por defecto real) ya eliminan los errores concretos que bloqueaban el uso; #57 es puramente la unificación de la experiencia.
 
