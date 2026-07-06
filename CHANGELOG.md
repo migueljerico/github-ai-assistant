@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.22.3] — 2026-07-06
+
+### Fixed
+- **Modelos de razonamiento (Qwen 3.6, QwQ, DeepSeek-R1) fallaban en modo acción** — estos modelos emiten un bloque `<think>...</think>` con un JSON de ejemplo *antes* del JSON real; el parser se quedaba con el del `<think>` (se cierra antes) y descartaba el correcto. Ahora `extractJsonCandidates` quita los bloques `<think>`/`<reasoning>`/`<reflection>` antes de extraer candidatos. Mismo fix aplicado a `generateRepoDocs`, que usaba un parser simple distinto.
+- **"❌ Error al documentar: Not Found"** al documentar un repo inexistente o sin acceso — `runDocumentRepo` ahora pre-chequea con `getRepo` y muestra un mensaje claro en el idioma activo ("No encontré owner/repo. ¿Existe y tu token tiene acceso?") en vez del 404 crudo de GitHub.
+- **"❌ La IA no devolvió JSON válido"** al documentar un repo (especialmente ya documentado) — `generateRepoDocs` ahora usa el mismo parser robusto que el modo acción (extrae JSON aunque el modelo lo envuelva en prosa o emita `<think>` antes).
+- **404 en repos cuya rama por defecto no es `main`** — `runDocumentRepo` ahora obtiene la rama por defecto real vía `getRepo` (patrón de `runCodeHealth`), en vez de asumir `main`.
+
+### Notes
+- **La confusión de la UI de documentación (dos botones/modales divergentes) persiste** y se documenta como **#57** en `MEJORAS_FUTURAS.md`: unificar en un solo flujo (un botón "📝 Documentar" → modal con selector de origen: repo / archivo adjunto / contexto-opinión). Los fixes de v3.22.3 quitan los errores concretos, pero la unificación de UX queda para otra sesión.
+- _Investigación, fix y tests asistidos por **ZCode** (GLM-5.2)._
+
 ## [3.22.2] — 2026-07-05
 
 ### Fixed

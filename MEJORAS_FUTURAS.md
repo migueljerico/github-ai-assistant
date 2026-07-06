@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v3.22.2 · Julio 2026
+**Actualizado a:** v3.22.3 · Julio 2026
 
 ---
 
@@ -390,14 +390,47 @@ función `t(lang, key)` pura (no hook); se deja para el futuro si hay demanda re
 
 ---
 
+#### #57 — Unificar la UI de documentación en un solo flujo
+**Esfuerzo:** 1–2 días (refactor acotado-medio)
+**Origen:** reporte del autor (v3.22.3); la confusión de UX persiste aunque los errores concretos ya están arreglados.
+
+**Problema actual:** existen **dos botones/modales divergentes** para documentar:
+- **"📄 Documentar repo"** (`DocumentRepoButton` → `DocModal`): genera README + MANUAL_TECNICO de un repo entero, con tabs.
+- **"📤 Documentar y publicar"** (inline en `ChatInput`, **solo visible con archivo adjunto** → `FilePublishModal`): genera un MD a partir de un archivo, con extras + repo destino + oferta de crearlo.
+
+El usuario los encuentra confusos: no sabe cuándo usar cuál, y con un repo cargado como contexto (opinión) **el segundo botón ni aparece**, así que no puede publicar la opinión. Además el flujo "documentar repo" no avisa si el repo ya está documentado (debería decir "actualizar").
+
+**Lo que ya está unificado (no se toca):** `PublishActions` (barra commit/PR/release) ya es **compartido** por ambos modales desde v3.10.0. La capa de "cómo publicar" está limpia y reusable.
+
+**Lo que diverge y hay que fundir:**
+- Dos disparadores (botones) → uno solo.
+- Dos modales de revisión (`DocModal` tabs vs `FilePublishModal` MD único) → uno con selector de origen.
+- Dos sets de handlers/state en `App.tsx` (`handleDocumentRepo` / `handleDocumentAndPublishFile` + los de publicación paralelos) → despachar por `kind` como ya hace `runPublishFileDocByKind`.
+
+**Diseño propuesto (MVP):** un solo botón **"📝 Documentar"** abre un `DocumentModal` unificado con:
+1. **Selector de origen** (segmented/radio):
+   - **Repo** → pide `owner/repo` (reusa `runDocumentRepo`; el pre-chequeo `repoExists` + default_branch ya están tras v3.22.3).
+   - **Archivo adjunto** → habilitado solo si `fileContext` activo (reusa `runGenerateFileDoc`).
+   - **Contexto de opinión (repo activo)** → NUEVO: si hay `repoContext`, genera doc usando ese contexto (`runDocumentRepo(repoContext.repoName)` precargado). Resuelve el dolor "no puedo publicar la opinión".
+2. **Vista previa** (tabs si repo, MD único si archivo) — reusa el cuerpo de los modales actuales.
+3. **Barra de publicación** = `PublishActions` existente, sin tocar.
+
+**Componentes implicados:** `DocumentRepoButton.tsx`, el inline `publish-file-btn` de `ChatInput.tsx`, `DocModal.tsx`, `FilePublishModal.tsx`, `PublishActions.tsx` (sin tocar), `App.tsx` (state/handlers), `assistantActions.ts` (`runDocumentRepo`, `runGenerateFileDoc`, `runPublishFileDoc*`).
+
+**Beneficio:** un solo flujo claro donde el usuario decide qué documentar (repo/archivo/opinión) y cómo publicar (commit/PR/release), sin adivinar qué botón usar. Cierra la deuda UX del módulo de documentación.
+
+**Nota:** los fixes de v3.22.3 (Qwen `<think>`, 404 amable, parser robusto en `generateRepoDocs`, rama por defecto real) ya eliminan los errores concretos que bloqueaban el uso; #57 es puramente la unificación de la experiencia.
+
+---
+
 ## 📊 Resumen
 
 | Prioridad | Total | ✅ Resueltos | ⏳ Pendientes |
 |---|---|---|---|
 | 🔴 Alta | 8 | 8 (#1, #2, #13, #14, #27, #45, #15, #28) | 0 |
 | 🟡 Media | 17 | 14 (#12, #17, #18, #19, #21, #37, #41, #32, #42, #38, #20, #49, #39, #44) | 3 (#26, #50, #51) |
-| 🟢 Baja | 16 | 5 (#23, #24, #34, #40, #46) | 11 (#22, #25, #33, #35, #36, #48, #52, #53, #54, #55, #56) |
-| **TOTAL** | **41** | **27** | **14** |
+| 🟢 Baja | 17 | 5 (#23, #24, #34, #40, #46) | 12 (#22, #25, #33, #35, #36, #48, #52, #53, #54, #55, #56, #57) |
+| **TOTAL** | **42** | **27** | **15** |
 
 > **#28** cubierto en su **norte** por las Fases 1 (v3.0.0, adjuntar como contexto) y
 > 2 (v3.1.0, documentar→publicar). **Más formatos:** Fase 3a (v3.2.0, Excel/CSV) y
