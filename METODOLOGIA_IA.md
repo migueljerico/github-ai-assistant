@@ -81,6 +81,26 @@ sesión:
      (rama sin merge, código sin verificar, docs sin commitear) es peor que no
      empezar. Si la sesión se corta a pesar de todo, dejar el estado del repo en
      un punto coherente y comunicado.
+   - **🪙 Economía de contexto (rector, v3.22.3) — el contexto de la sesión es
+     finito y caro; gastarlo bien prolonga lo que da de sí cada sesión:**
+     1. **Subagentes para investigar, no para volcar.** Delegar la exploración
+        amplia (barrer muchos archivos, buscar patrones) a un subagente
+        `Explore`, **pidiendo explícitamente un informe compacto**: solo
+        conclusiones + líneas/rutas exactas, sin transcriptciones de archivos
+        enteros. El subagente gasta SU contexto, no el de la sesión principal.
+     2. **Lecturas selectivas.** `Read` con `offset`/`limit` o `grep -n` antes
+        que leer un archivo completo de 800 líneas. Releer lo que ya está en
+        contexto es derroche.
+     3. **Outputs filtrados.** Tras `build`/`test:run`, leer solo el resumen
+        (`grep "Tests "`) en vez de todo el log. Redirigir a fichero temporal y
+        `grep`ear es más barato que volcar stdout.
+     4. **Paralelizar con criterio.** Varios `Explore` en paralelo solo si
+        investigan cosas **distintas**; si se solapan, uno basta.
+     5. **Dividir el cierre.** El "fix de código mergeado y pusheado" ya está a
+        salvo en `main` (y desplegado por Cloud Build). El **tag + release** es
+        la única acción pública/formal y va **en último lugar**: si queda poco
+        margen, **postergar el tag/release al inicio de la siguiente sesión** (2
+        comandos, 30 s) antes que arriesgarlo a medias.
 4. **Ejecutar en una rama** nacida de `main` actualizado (trunk-based). Commits
    atómicos con Conventional Commits.
 5. **Verificar** antes de pushear: `npm run build` (tsc estricto), `npm run lint`
