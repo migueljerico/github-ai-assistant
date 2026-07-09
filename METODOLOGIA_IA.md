@@ -168,6 +168,7 @@ Quién ha hecho qué, para reconocimiento y contexto. El autor figura como
 | **Gemma 4 31B** | (OpenRouter) | Dogfooding: sugerencias de #51 (transparencia contextRanker), #52 (auditoría de seguridad), #53 (commit semántico) | 2026 |
 | **GLM-5.2 (web)** | Zhipu | La **v3.20.0** (i18n Fase 1) se hizo con GLM-5.2 en su versión web | Junio 2026 |
 | **ZCode** | GLM-5.2 (ZCode) | **Desde v3.20.0:** cierre de la v3.20.0 (bump+tag+release+docs), **v3.21.0** (i18n Fase 2: modales, DiffViewer, mensajes de chat vía `ChatDeps.t`; refactor del `labelMap`; corrección de bugs). Toma el control del roadmap y la documentación. | Julio 2026 – actualidad |
+| **Tencent HY3** | (OpenRouter, desde 06/07) | Dogfooding (06/07): revisión del roadmap con el repo cargado (154 archivos). Aportó **decidir la poda de #33 (revisores) y #35 (auto-labels)** — confirmó lo que ya eran "candidatos a poda". Propuso además un "#50 claridad para no técnicos" que **ya existía** (#50 es presupuesto de contexto) y cuya idea de base (que la IA explique términos) **ya vive en `chat.md`**; validación cruzada: se incorporó lo accionable (la poda) y se descartó lo duplicado. | Julio 2026 |
 
 > **Dogfooding:** el proyecto se prueba a sí mismo. Varias mejoras del roadmap
 > surgieron de pedir opinión a distintos modelos con el repo cargado como contexto.

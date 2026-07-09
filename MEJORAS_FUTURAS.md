@@ -73,7 +73,7 @@ herramienta**: si el trabajo continúa en otro entorno, este es el orden de refe
   **#24 Fase 3** (chat central + historial + plantillas de autocompletado + **respuestas de la IA en el idioma activo** vía `lang` cableado a los system prompts) ✅ **(v3.22.0)**.
 - **📋 Backlog:** #25 (logs/health), #22 (aviso de sesión), #48 (sync repo), **#36** (GitHub App —
   hito grande aparte). #26 (cobertura) es transversal: sube con cada sprint.
-- **🗑️ Candidatos a poda:** **#33** (sugerir revisores) y **#35** (auto-labels) — nicho/fuera del núcleo.
+- **🗑️ Descartados (v3.22.3, dogfooding Tencent HY3):** **#33** (sugerir revisores) y **#35** (auto-labels) — nicho/fuera del núcleo; eran "candidatos a poda" desde hacía versiones.
 
 > **Cómo se prioriza (criterios):** un ítem pasa de **backlog → sprint** por su **valor para el
 > usuario** y su **encaje con la misión** (asistente NL para no técnicos, *propón→confirma→ejecuta*),
@@ -216,7 +216,7 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 ---
 
-#### #33 — Sugerir revisores de código basándose en historial
+#### ~~#33 — Sugerir revisores de código basándose en historial~~ ❌ DESCARTADO (v3.22.3)
 **Esfuerzo:** 4h
 
 **Problema actual:** Elegir revisores de PRs es subjetivo y manual.
@@ -228,11 +228,11 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 **Beneficio:** PRs revisados más rápido; distribución equilibrada de carga de revisión.
 
-**Nota:** nicho — bajo valor en repos pequeños o individuales; candidato a corte en una futura poda.
+**Nota:** nicho — bajo valor en repos pequeños o individuales. **Descartado definitivamente en v3.22.3** (era "candidato a poda" desde hacía versiones; confirmado por dogfooding con **Tencent HY3**, 06/07). No se reabre salvo demanda real.
 
 ---
 
-#### #35 — Automatizar gestión de labels/proyectos
+#### ~~#35 — Automatizar gestión de labels/proyectos~~ ❌ DESCARTADO (v3.22.3)
 **Esfuerzo:** 3h
 
 **Problema actual:** Etiquetar issues y organizar proyectos es manual y tedioso.
@@ -482,8 +482,9 @@ El usuario los encuentra confusos: no sabe cuándo usar cuál, y con un repo car
 |---|---|---|---|
 | 🔴 Alta | 8 | 8 (#1, #2, #13, #14, #27, #45, #15, #28) | 0 |
 | 🟡 Media | 17 | 14 (#12, #17, #18, #19, #21, #37, #41, #32, #42, #38, #20, #49, #39, #44) | 3 (#26, #50, #51) |
-| 🟢 Baja | 17 | 5 (#23, #24, #34, #40, #46) | 12 (#22, #25, #33, #35, #36, #48, #52, #53, #54, #55, #56, #57) |
-| **TOTAL** | **42** | **27** | **15** |
+| 🟢 Baja | 17 | 5 (#23, #24, #34, #40, #46) | 10 (#22, #25, #36, #48, #52, #53, #54, #55, #56, #57) |
+| **🗑️ Descartados** | — | — | 2 (#33, #35) descartados en v3.22.3 |
+| **TOTAL** | **42** | **27** | **13** |
 
 > **#28** cubierto en su **norte** por las Fases 1 (v3.0.0, adjuntar como contexto) y
 > 2 (v3.1.0, documentar→publicar). **Más formatos:** Fase 3a (v3.2.0, Excel/CSV) y
