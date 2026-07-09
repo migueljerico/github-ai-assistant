@@ -390,53 +390,89 @@ función `t(lang, key)` pura (no hook); se deja para el futuro si hay demanda re
 
 ---
 
-#### #57 — Unificar la UI de documentación en un solo flujo
-**Esfuerzo:** 1–2 días (refactor acotado-medio)
-**Origen:** reporte del autor (v3.22.3); la confusión de UX persiste aunque los errores concretos ya están arreglados.
+#### #57 — Unificar la UI de documentación en un solo flujo + atribución correcta
+**Esfuerzo:** ~2 sesiones (dividido en 2 tandas; ver abajo)
+**Origen:** reporte del autor (v3.22.3); la confusión de UX persiste aunque los errores concretos ya están arreglados. Ampliado con el reporte Llama 4 Scout (README vacío al crear repo, About pobre, firma sin modelo).
 
 **Problema actual:** existen **dos botones/modales divergentes** para documentar:
-- **"📄 Documentar repo"** (`DocumentRepoButton` → `DocModal`): genera README + MANUAL_TECNICO de un repo entero, con tabs.
-- **"📤 Documentar y publicar"** (inline en `ChatInput`, **solo visible con archivo adjunto** → `FilePublishModal`): genera un MD a partir de un archivo, con extras + repo destino + oferta de crearlo.
+- **"📄 Documentar repo"** (`DocumentRepoButton` → `DocModal` con tabs README/MANUAL): genera README + MANUAL_TECNICO de un repo entero.
+- **"📤 Documentar y publicar"** (inline en `ChatInput:227`, **solo visible con archivo adjunto** → `FilePublishModal`): genera un MD a partir de un archivo, con extras + repo destino + oferta de crearlo.
 
-El usuario los encuentra confusos: no sabe cuándo usar cuál, y con un repo cargado como contexto (opinión) **el segundo botón ni aparece**, así que no puede publicar la opinión. Además el flujo "documentar repo" no avisa si el repo ya está documentado (debería decir "actualizar").
+El usuario los encuentra confusos: no sabe cuándo usar cuál, y con un repo cargado como contexto (opinión) **el segundo botón ni aparece**. Además, al crear un repo inexistente desde el flujo de archivo, el README queda vacío (`auto_init` de GitHub), el About es un placeholder estático, y la firma no incluye el modelo.
 
-**Lo que ya está unificado (no se toca):** `PublishActions` (barra commit/PR/release) ya es **compartido** por ambos modales desde v3.10.0. La capa de "cómo publicar" está limpia y reusable.
+**Lo que ya está unificado (no se toca):** `PublishActions` (barra commit/PR/release, `PublishActions.tsx:41`) ya es **compartido** por ambos modales desde v3.10.0. La capa de "cómo publicar" está limpia y reusable.
 
-**Lo que diverge y hay que fundir:**
-- Dos disparadores (botones) → uno solo.
-- Dos modales de revisión (`DocModal` tabs vs `FilePublishModal` MD único) → uno con selector de origen.
-- Dos sets de handlers/state en `App.tsx` (`handleDocumentRepo` / `handleDocumentAndPublishFile` + los de publicación paralelos) → despachar por `kind` como ya hace `runPublishFileDocByKind`.
+---
 
-**Diseño propuesto (MVP):** un solo botón **"📝 Documentar"** abre un `DocumentModal` unificado con:
+### 🅰️ TANDA A — Atribución + README vacío al crear repo (~3–4h, aislada, baja dependencia)
+
+**Objetivo:** arreglar la atribución (firma con modelo + About con descripción) y el bug del README vacío, **sin tocar la UI de botones/modales** (eso va en Tanda B). Es un cambio de fondo (servicios + prompts) con superficie acotada → cabe en una sesión con margen.
+
+**Decisiones cerradas (acordadas con el autor):**
+- ✅ La firma incluye el **modelo**: *"Desarrollado por @{user} · {año} **y documentado por {modelo}** a través de la app Asistente de IA para Publicar Repositorios"*.
+- ✅ La firma se aplica **a ambos** generadores (`generateRepoDocs` y `generateFileDoc`).
+- ✅ Al crear un repo, la **descripción (About) la genera la IA** a partir del archivo adjunto / instrucción, y se muestra en el modal antes de confirmar (editable).
+- ✅ Al crear un repo desde el flujo de archivo, el **README se genera con contenido** (de la IA + firma), no se deja el `auto_init` de GitHub.
+
+**Pasos de implementación (puntos de código confirmados, HEAD `cf050bf`):**
+
+1. **Firma con modelo en `generateRepoDocs`** (`gemini.ts`):
+   - Líneas 550-551: `docOwner`/`docYear` (mantener).
+   - Añadir `const docModel = config?.model ?? 'IA';` junto a esas.
+   - Línea 579 (footer en el system prompt): cambiar la plantilla a
+     `<p align="center">Desarrollado por @${docOwner} · ${docYear} y documentado por ${docModel} a través de la app Asistente de IA para Publicar Repositorios</p>`.
+   - `config.model` ya está disponible (líneas 638-640).
+
+2. **Firma nueva en `generateFileDoc`** (`gemini.ts:701`):
+   - Hoy no tiene footer. Añadir al system prompt (710-722) una instrucción equivalente: que el documento termine con la misma firma, interpolando `config.model` (disponible, se pasa a callAI en 731), `fileName` para derivar un owner si procede, y el año.
+
+3. **About del repo al crearlo** (`assistantActions.ts` + `App.tsx`):
+   - `runCreateRepo` (`assistantActions.ts:721-729`): hoy el fallback es `'Creado desde el Asistente de IA'`. Cambiar la firma para aceptar la descripción generada por la IA y componer: *"Creado y documentado a través de la app Asistente de IA para Publicar Repositorios — {descripción IA}"*.
+   - `handleConfirmCreateRepo` (`App.tsx:205-220`): hoy llama `runCreateRepo(deps, repo)` **sin** `opts.description` (línea 211). Pasarle la descripción generada por la IA (nueva llamada corta al LLM a partir del `fileContext`/instrucción; reusa el transporte existente).
+   - Decidir si la generación de la descripción va en un nuevo `runGenerateRepoDescription` (aislado y testeable) o inline en `handleConfirmCreateRepo`.
+
+4. **README con contenido al crear repo desde flujo de archivo** (`docPublisher.ts` + `assistantActions.ts`):
+   - Hoy `publishFileDoc` (`docPublisher.ts:141`) escribe solo en `docs/{archivo}.md`; el README queda el `auto_init` de GitHub (`# repo`).
+   - Cuando el destino sea un repo **recién creado**, además de `docs/{archivo}.md`, commitear un `README.md` con contenido (el `doc` generado por `generateFileDoc`, que ya llevará la firma nueva) — reusa `createOrUpdateFile` de `github.ts`. Cuidado de no duplicar la lógica de `writeDocFiles` (que es del flujo repo).
+
+5. **Tests:**
+   - `gemini.test.ts:636` — aserta `toContain(\`@migueljerico · ${year}\`)`; actualizar al nuevo formato de firma (con `y documentado por`).
+   - Añadir test de que `generateFileDoc` ahora incluye la firma.
+   - No hay test del `'Creado desde el Asistente de IA'` (confirmado: no aparece en tests) — añadir uno para el nuevo About si se cambia `runCreateRepo`.
+
+**Cierre Tanda A:** bump menor (p. ej. v3.23.0 o v3.22.4), build/lint/tests verdes, tag/release.
+
+---
+
+### 🅱️ TANDA B — Unificación de la UI en un solo flujo (~1 día, sesión dedicada)
+
+**Objetivo:** reemplazar los 2 botones/modales divergentes por **un solo botón "📝 Documentar"** que abre un modal unificado. Hacer **después** de la Tanda A (que ya deja la atribución correcta).
+
+**Diseño (MVP) del `DocumentModal` unificado:**
 1. **Selector de origen** (segmented/radio):
-   - **Repo** → pide `owner/repo` (reusa `runDocumentRepo`; el pre-chequeo `repoExists` + default_branch ya están tras v3.22.3).
+   - **Repo** → pide `owner/repo` (reusa `runDocumentRepo`; pre-chequeo `repoExists` + default_branch ya están tras v3.22.3).
    - **Archivo adjunto** → habilitado solo si `fileContext` activo (reusa `runGenerateFileDoc`).
-   - **Contexto de opinión (repo activo)** → NUEVO: si hay `repoContext`, genera doc usando ese contexto (`runDocumentRepo(repoContext.repoName)` precargado). Resuelve el dolor "no puedo publicar la opinión".
-2. **Vista previa** (tabs si repo, MD único si archivo) — reusa el cuerpo de los modales actuales.
-3. **Barra de publicación** = `PublishActions` existente, sin tocar.
+   - **Contexto de opinión (repo activo)** → NUEVO: si hay `repoContext`, genera doc usando ese contexto (`runDocumentRepo(repoContext.repoName)` precargado). Resuelve "no puedo publicar la opinión".
+2. **Vista previa** (tabs si repo — reusa `DocModal` body; MD único si archivo — reusa `FilePublishModal` body).
+3. **Barra de publicación** = `PublishActions` existente (`PublishActions.tsx:41`), sin tocar.
 
-**Componentes implicados:** `DocumentRepoButton.tsx`, el inline `publish-file-btn` de `ChatInput.tsx`, `DocModal.tsx`, `FilePublishModal.tsx`, `PublishActions.tsx` (sin tocar), `App.tsx` (state/handlers), `assistantActions.ts` (`runDocumentRepo`, `runGenerateFileDoc`, `runPublishFileDoc*`).
+**Lo que diverge hoy y hay que fundir:**
+- Dos disparadores → uno: `DocumentRepoButton.tsx` + inline `publish-file-btn` (`ChatInput.tsx:227`) → 1 botón.
+- Dos modales de revisión (`DocModal.tsx` con tabs vs `FilePublishModal.tsx` con MD único + extras + repo destino) → 1 `DocumentModal` con selector de origen.
+- Dos sets de handlers/state en `App.tsx` (`handleDocumentRepo` ~225-234 / `handleDocumentAndPublishFile` ~160-173 + los de publicación paralelos) → despachar por `kind` como ya hace `runPublishFileDocByKind` (`assistantActions.ts:823-829`).
+- Avisar "actualizar documentación" cuando el repo ya esté documentado (detectar README existente).
 
-### 🔧 Requisitos adicionales (v3.22.3, reporte con Llama 4 Scout)
+**Componentes implicados:** `DocumentRepoButton.tsx`, inline `publish-file-btn` de `ChatInput.tsx:227`, `DocModal.tsx`, `FilePublishModal.tsx`, `PublishActions.tsx` (**sin tocar**), `App.tsx` (state/handlers), `assistantActions.ts` (`runDocumentRepo`, `runGenerateFileDoc`, `runPublishFileDoc*`).
 
-Reportados por el autor tras crear un repo inexistente desde "📤 Documentar y publicar" de un PDF. **Causa raíz ya diagnosticada (leer junto con el MVP de arriba):**
+**Tests a actualizar:** `DocModal.test.tsx`, `FilePublishModal.test.tsx`, `PublishActions.test.tsx`, `useActions.test.ts`, `assistantActions.test.ts` (se romperán al cambiar la superficie de componentes — contabilizar medio día).
 
-- **Bug del README vacío:** cuando se **crea** un repo inexistente desde el flujo "Documentar y publicar" (archivo), GitHub crea un README por defecto (`# repo`, vía `auto_init`) y la documentación generada por IA se commitea en `docs/{archivo}.md`, **NO en README.md** (`docPublisher.ts:publishFileDoc` escribe solo `docs/`, no toca README; README custom solo lo escribe `writeDocFiles` del flujo "Documentar repo"). Resultado: README casi vacío y sin firma. **Fix:** en el flujo unificado, al crear un repo, el README debe generarse con contenido (de la IA) y con la firma — no dejar el `auto_init` de GitHub.
-- **About del repo pobre:** `runCreateRepo` (`assistantActions.ts:729`) usa el fallback estático `'Creado desde el Asistente de IA'` cuando el caller no pasa `opts.description`. El autor quiere: *"Creado y documentado a través de la app Asistente de IA para Publicar Repositorios"* + **una breve descripción del proyecto** (no solo el placeholder).
-  - **⚠️ Punto de decisión abierto:** en el momento de **crear** el repo todavía no hay contenido del que extraer la descripción. Opciones: (a) generarla con la IA a partir del archivo adjunto / instrucción; (b) pedirla al usuario en el modal; (c) dejar que la IA la proponga y el usuario la edite. **Decidir al abordar #57.**
-- **Firma del README sin modelo:** hoy la firma vive en `generateRepoDocs` (`gemini.ts:578`) como `"Desarrollado por @{docOwner} · {docYear}"` — **no incluye el modelo**. `config.model` ya está disponible en esa función (pasa a `callAI` pero no al prompt). El autor quiere: *"Desarrollado por @{user} · {año} **y documentado por {modelo}** a través de la app Asistente de IA para Publicar Repositorios"*.
-- **`generateFileDoc` no lleva firma** (`gemini.ts:701`) — solo `generateRepoDocs`. En el flujo unificado, decidir si la doc de archivo también lleva la firma (probablemente sí, para coherencia).
-- **Sobreescritura del README al hacer "Commit directo" en "Documentar repo":** al re-documentar un repo que ya tenía README, el commit lo sobreescribe (incluida la firma/badges). No es un bug per se, pero conviene avisar en el modal que se va a actualizar (ver "actualizar documentación" arriba).
+**Cierre Tanda B:** bump (p. ej. v3.24.0), build/lint/tests verdes, tag/release. Marcar #57 como ✅.
 
-**Puntos de código concretos a tocar (anotados para la sesión de implementación):**
-- `gemini.ts:550-551, 578-579` — añadir `docModel = config?.model ?? 'IA'` e incluirlo en la plantilla del footer (tanto en `generateRepoDocs` como, decididamente, en `generateFileDoc`).
-- `assistantActions.ts:729` — el fallback del About; y `App.tsx:handleConfirmCreateRepo` (`~205-220`) que hoy llama `runCreateRepo(deps, repo)` **sin `opts.description`** — pasarle la descripción (generada/pedida según la decisión de arriba).
-- `docPublisher.ts:publishFileDoc` — cuando el destino es un repo recién creado, escribir también un README con contenido (no dejar el `auto_init`).
-- Test afectado: `gemini.test.ts:636` (`expect(...).toContain('@migueljerico · ${year}')`) — actualizar al nuevo formato de firma.
+---
 
-**Beneficio:** un solo flujo claro donde el usuario decide qué documentar (repo/archivo/opinión) y cómo publicar (commit/PR/release), sin adivinar qué botón usar; además, los repos creados/documentados quedan con un README y un About profesionales y con atribución correcta (modelo + app). Cierra la deuda UX del módulo de documentación.
+**Beneficio global:** un solo flujo claro donde el usuario decide qué documentar (repo/archivo/opinión) y cómo publicar (commit/PR/release), sin adivinar qué botón usar; además, los repos creados/documentados quedan con un README y un About profesionales y con atribución correcta (modelo + app). Cierra la deuda UX del módulo de documentación.
 
-**Nota:** los fixes de v3.22.3 (Qwen `<think>`, 404 amable, parser robusto en `generateRepoDocs`, rama por defecto real) ya eliminan los errores concretos que bloqueaban el uso; #57 es puramente la unificación de la experiencia.
+**Nota:** los fixes de v3.22.3 (Qwen `<think>`, 404 amable, parser robusto en `generateRepoDocs`, rama por defecto real) ya eliminan los errores concretos que bloqueaban el uso; #57 es la unificación de la experiencia + la atribución.
 
 ---
 
