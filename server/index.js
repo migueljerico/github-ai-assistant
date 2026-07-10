@@ -142,13 +142,17 @@ app.post('/api/gemini', geminiLimiter, async (req, res) => {
   }
 });
 
-// ─── Gemini Models Proxy (#58, v3.23.0) ──────────────────────────────────────
+// ─── Gemini Models Proxy (#58, v3.23.0 / hotfix v3.23.2) ─────────────────────
 // La API de listado de Gemini también está bloqueada en UE desde el navegador
 // (como el chat), así que el catálogo de modelos se pide a través del proxy.
 // Devuelve { data: [{ id, name }] } — el formato que fetchModels ya parsea.
 // La apiKey del usuario viaja en el header Authorization (mismo patrón que
 // Groq/OpenRouter en fetchModels), nunca se persiste. Mismo rate limit que el
 // chat. Es GET para encajar con fetchModels (que hace fetch GET + header).
+//
+// IMPORTANTE: @google/generative-ai (0.21–0.24) NO expone listModels(). Hay que
+// llamar a la REST API de Google AI. Los `name` llegan como "models/gemini-…";
+// se recorta el prefijo para que coincida con getGenerativeModel({ model }).
 app.get('/api/gemini/models', geminiLimiter, async (req, res) => {
   const auth = req.headers.authorization || '';
   const apiKey = auth.startsWith('Bearer ') ? auth.slice(7) : '';
@@ -158,14 +162,34 @@ app.get('/api/gemini/models', geminiLimiter, async (req, res) => {
   }
 
   try {
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const { models } = await genAI.listModels();
-    // Filtrar modelos no generativos (embeddings, vision-only, imagen, AQA).
-    // El catálogo de Gemini incluye muchos modelos que no sirven para chat.
+    const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`;
+    const upstream = await fetch(url);
+    if (!upstream.ok) {
+      let message = 'Error al contactar con la API de Gemini';
+      try {
+        const body = await upstream.json();
+        message = body?.error?.message || message;
+      } catch { /* respuesta no-JSON */ }
+      const safeStatus = (upstream.status >= 400 && upstream.status < 600) ? upstream.status : 500;
+      return res.status(safeStatus).json({ error: message });
+    }
+
+    const payload = await upstream.json();
+    const models = Array.isArray(payload?.models) ? payload.models : [];
+    // Filtrar no generativos: exige generateContent + denylist de subcadenas.
+    // El catálogo de Gemini incluye embeddings, imagen, AQA, etc.
     const GEMINI_EXCLUDED = ['embed', 'vision', 'aqa', 'imagen', 'chirp'];
     const chatModels = models
-      .filter(m => !GEMINI_EXCLUDED.some(p => m.name.includes(p)))
-      .map(m => ({ id: m.name, name: m.displayName || m.name }));
+      .filter(m => {
+        const methods = m.supportedGenerationMethods || [];
+        if (!methods.includes('generateContent')) return false;
+        const id = String(m.name || '').replace(/^models\//, '');
+        return !GEMINI_EXCLUDED.some(p => id.includes(p));
+      })
+      .map(m => {
+        const id = String(m.name || '').replace(/^models\//, '');
+        return { id, name: m.displayName || id };
+      });
     res.json({ data: chatModels });
   } catch (err) {
     console.error('Gemini models proxy error:', err);

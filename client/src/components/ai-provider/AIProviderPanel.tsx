@@ -47,8 +47,14 @@ export default function AIProviderPanel() {
   useEffect(() => {
     if (!def.modelsEndpoint) return;
     const key = keys[selected];
-    // Si el endpoint requiere key (Groq), espera a que tenga pinta válida.
-    if (def.modelsNeedKey && (!def.keyPrefix || !key.startsWith(def.keyPrefix) || key.length < 20)) return;
+    // Si el endpoint requiere key, espera a que tenga pinta válida.
+    // keyPrefix es opcional: si no está definido, basta con longitud mínima.
+    // Antes `!def.keyPrefix` bloqueaba Gemini por completo y el catálogo
+    // dinámico nunca se pedía (#58 hotfix v3.23.2).
+    if (def.modelsNeedKey) {
+      if (!key || key.length < 20) return;
+      if (def.keyPrefix && !key.startsWith(def.keyPrefix)) return;
+    }
 
     let cancelled = false;
     const load = async () => {

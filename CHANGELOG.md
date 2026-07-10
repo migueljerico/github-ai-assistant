@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.23.2] — 2026-07-10
+
+### Fixed
+- **El catálogo dinámico de Gemini seguía sin cargar (#58 hotfix 2)** — v3.23.0/3.23.1 corrigieron el método del endpoint (GET + header), pero el catálogo seguía fallando por **tres causas encadenadas**, todas arregladas ahora:
+  1. **`listModels()` no existe en el SDK.** El backend llamaba `new GoogleGenerativeAI(apiKey).listModels()`, pero `@google/generative-ai` (v0.21–0.24) **no expone ese método** → `TypeError` → 500. Reemplazado por una llamada directa a la **REST API de Google AI** (`GET /v1beta/models?key=…`), que sí devuelve `{ models: [{ name, displayName, supportedGenerationMethods }] }`. El filtrado ahora exige `generateContent` (además del denylist de subcadenas) y recorta el prefijo `models/` para que los IDs encajen con `getGenerativeModel({ model })`.
+  2. **La UI nunca disparaba la petición.** El `useEffect` de `AIProviderPanel` exigía `def.keyPrefix` para lanzar `fetchModels`, y Gemini no lo tenía definido → el catálogo se quedaba siempre en el array estático. El gate se relajó (si no hay `keyPrefix`, basta con longitud ≥20) y se añadió `keyPrefix: 'AIza'` al registro de Gemini.
+  3. **Sin proxy `/api` en desarrollo.** Vite solo proxyaba `/auth`, así que en local `fetch('/api/gemini/models')` caía en el dev server de Vite (404/HTML). Añadido el proxy `/api → http://localhost:3001`. En producción no hace falta (Express sirve SPA + `/api` del mismo origen).
+
+### Tests
+- Reescrito `server/__tests__/geminiModelsProxy.test.js`: el mock anterior inventaba un método `listModels()` en el SDK (que no existe), por lo que el test pasaba aunque el código real rompía. Ahora mockea `fetch` global y simula la respuesta REST real de Google (incluye `supportedGenerationMethods` y el prefijo `models/`), validando el shaping, el filtrado y la propagación de status.
+- Añadidos 2 tests en `AIProviderPanel.test.tsx` que cubren el gate corregido: dispara `fetchModels` con una key `AIzaSy…` válida y no lo dispara con una key demasiado corta.
+- Suite completa en verde: **485/485 tests cliente** + **3/3 tests servidor** + `tsc -b` limpio.
+
+### Notes
+- _Investigación de causas raíz iniciada por **Grok 4.5** (x.ai); fix, tests y verificación completados por **ZCode** (GLM-5.2)._
+
 ## [3.23.1] — 2026-07-08
 
 ### Fixed

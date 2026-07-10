@@ -100,6 +100,9 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     staticModels: GEMINI_MODELS,
     defaultModel: GEMINI_MODELS[0].value,
     keyPlaceholder: 'AIzaSy...',
+    // Prefijo real de las keys de Google AI Studio (AIzaSy…). Necesario para
+    // que el gate de AIProviderPanel dispare fetchModels (#58 hotfix v3.23.2).
+    keyPrefix: 'AIza',
     signupUrl: 'https://aistudio.google.com/apikey',
     signupLabel: 'provider.gemini.signupLabel',
     note: 'provider.gemini.note',

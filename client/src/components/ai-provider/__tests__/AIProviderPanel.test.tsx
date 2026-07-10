@@ -59,6 +59,40 @@ describe('AIProviderPanel — recuerda proveedor/modelo (#40)', () => {
   });
 });
 
+describe('AIProviderPanel — catálogo dinámico de Gemini (#58 hotfix v3.23.2)', () => {
+  it('dispara fetchModels al pegar una key válida de Gemini (AIzaSy…)', async () => {
+    // Antes el gate exigía keyPrefix y Gemini no lo tenía → el catálogo nunca
+    // se pedía. Ahora keyPrefix='AIza' + longitud ≥20 dispara la carga.
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [{ id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' }] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { container } = renderPanel();
+    // Selecciona Gemini y pega una key con pinta real.
+    fireEvent.click(container.querySelector('#select-gemini-btn') as HTMLElement);
+    const input = container.querySelector('#gemini-key-input') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'AIzaSyFakeKeyForTest1234567890' } });
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    // La primera llamada corresponde al catálogo de Gemini (/api/gemini/models).
+    expect(fetchMock.mock.calls[0][0]).toContain('/api/gemini/models');
+  });
+
+  it('no dispara fetchModels con una key demasiado corta (<20)', () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { container } = renderPanel();
+    fireEvent.click(container.querySelector('#select-gemini-btn') as HTMLElement);
+    const input = container.querySelector('#gemini-key-input') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'AIzaSyShort' } });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
 describe('AIProviderPanel — OpenRouter (#15)', () => {
   it('renderiza la tarjeta de OpenRouter con modelos etiquetados como gratuitos 🆓', async () => {
     // El catálogo dinámico falla → cae al fallback estático (modelos :free)
