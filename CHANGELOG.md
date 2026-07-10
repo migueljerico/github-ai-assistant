@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.25.0] — 2026-07-10
+
+### Changed
+- **Internacionalización del panel lateral de plantillas (#55).** Las 12
+  plantillas y 3 categorías del panel lateral (`README`, `.gitignore`,
+  `Licencias`) estaban hardcodeadas en español. Se agregó el namespace
+  `tmpl_panel.*` a `i18n/es.ts` e `i18n/en.ts` (~36 claves) y
+  `templateData.ts` se refactorizó a la factoría
+  `buildTemplateCategories(t)`, misma arquitectura que
+  `instructionSuggestions.ts`. El componente `TemplatePanel.tsx` ahora
+  consume la factoría dentro del contexto de idioma.
+
+### Notes
+- _Cambio de código por **ZCode** (step-3.7-flash-free / GLM-5.2)._
+
 ## [3.24.0] — 2026-07-10
 
 ### Changed

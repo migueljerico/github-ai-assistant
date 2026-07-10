@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v3.23.0 · Julio 2026
+**Actualizado a:** v3.25.0 · Julio 2026
 
 ---
 
@@ -360,17 +360,17 @@ función `t(lang, key)` pura (no hook); se deja para el futuro si hay demanda re
 
 ---
 
-#### #55 — Plantillas del panel lateral sin traducir (i18n)
+#### #55 — Plantillas del panel lateral sin traducir (i18n) ✅ RESUELTO en v3.25.0
 **Esfuerzo:** 1–1.5h
 **Origen:** bug detectado por el autor (v3.22.2); análisis completo hecho.
 
-**Problema actual:** con la interfaz en inglés, el panel lateral de Plantillas (`TemplatePanel`) sigue mostrando texto en español.
+**Problema:** con la interfaz en inglés, el panel lateral de Plantillas (`TemplatePanel`) seguía mostrando texto en español.
 
-**Causa raíz:** `client/src/utils/templateData.ts` exporta un array **estático** (`TEMPLATE_CATEGORIES`) con ~24 literales en español duros (categoría "Licencias", 12 descripciones, 12 instrucciones, "Solo-docs"). La Fase 3 de i18n (v3.22.0) refactorizó `instructionSuggestions.ts` (las sugerencias del chat) a factoría `buildTemplates(t)`, pero **no tocó** `templateData.ts` (el panel lateral). Mismo patrón pendiente.
+**Causa raíz:** `client/src/components/templates/templateData.ts` exportaba un array estático (`TEMPLATE_CATEGORIES`) con literales en español duros. La Fase 3 de i18n (v3.22.0) refactorizó `instructionSuggestions.ts` a factoría `buildTemplates(t)`, pero no tocó `templateData.ts`.
 
-**Solución propuesta:** replicar el patrón de `instructionSuggestions.ts` — convertir `templateData.ts` en una factoría `buildTemplateCategories(t)` con ids/emojis fijos y textos vía `t('panelTmpl.{id}.name/description/instruction')`; añadir ~36 claves (12 items × 3 campos) a `es.ts`/`en.ts`; llamar la factoría en `TemplatePanel.tsx:34`.
+**Solución aplicada (v3.25.0):** replicar el patrón de `instructionSuggestions.ts` — factoría `buildTemplateCategories(t)` con ids/emojis fijos y textos vía `t('tmpl_panel.*')`; ~36 claves en `es.ts`/`en.ts`; `TemplatePanel.tsx` consume la factoría.
 
-**Beneficio:** panel de plantillas coherente con el idioma activo (cierra el bilingüe de extremo a extremo que arrancó la Fase 1).
+**Beneficio:** panel de plantillas coherente con el idioma activo (cierra el bilingüe de extremo a extremo).
 
 ---
 
@@ -482,7 +482,7 @@ El usuario los encuentra confusos: no sabe cuándo usar cuál, y con un repo car
 |---|---|---|---|
 | 🔴 Alta | 8 | 8 (#1, #2, #13, #14, #27, #45, #15, #28) | 0 |
 | 🟡 Media | 17 | 14 (#12, #17, #18, #19, #21, #37, #41, #32, #42, #38, #20, #49, #39, #44) | 3 (#26, #50, #51) |
-| 🟢 Baja | 18 | 6 (#23, #24, #34, #40, #46, #58) | 10 (#22, #25, #36, #48, #52, #53, #54, #55, #56, #57) |
+| 🟢 Baja | 18 | 7 (#23, #24, #34, #40, #46, #58, #55) | 9 (#22, #25, #36, #48, #52, #53, #54, #56, #57) |
 | **🗑️ Descartados** | — | — | 2 (#33, #35) descartados en v3.22.3 |
 | **TOTAL** | **43** | **28** | **13** |
 
