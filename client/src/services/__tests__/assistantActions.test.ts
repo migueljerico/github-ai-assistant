@@ -150,7 +150,7 @@ const SEND_PARAMS = {
   conversationHistory: [] as Array<{ role: 'user' | 'assistant'; content: string }>,
   modeOverride: 'auto' as const,
   repoContext: null,
-  fileContext: null,
+  fileContext: [] as Array<{ name: string; contextText: string; file?: File }>,
   multiRepoEnabled: false,
   selectedRepos: [] as never[],
 };
@@ -165,18 +165,29 @@ describe('runDocumentRepo', () => {
   it('devuelve el análisis en el camino feliz', async () => {
     // v3.22.3: runDocumentRepo ahora pre-chequea getRepo y usa su default_branch.
     vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
-    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'a' }, { path: 'b' }], totalScanned: 2, truncated: false } as any);
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'a' }, { path: 'b' }], totalScanned: 2, truncated: false, allPaths: ['a', 'b'] } as any);
     vi.mocked(generateRepoDocs).mockResolvedValue({ readme: 'R', manualTecnico: 'M' } as any);
     const deps = makeDeps();
 
     const result = await runDocumentRepo(deps, CONFIG, 'owner/repo');
 
-    expect(result).toEqual({ readme: 'R', manualTecnico: 'M', filesAnalyzed: 2, totalFiles: 2, truncated: false, repoName: 'owner/repo' });
+    expect(result).toEqual({ readme: 'R', manualTecnico: 'M', filesAnalyzed: 2, totalFiles: 2, truncated: false, repoName: 'owner/repo', alreadyDocumented: false });
     expect(getRepo).toHaveBeenCalledWith('tok', 'owner', 'repo');
     expect(fetchRepoTreeRecursive).toHaveBeenCalledWith('tok', 'owner', 'repo', 'main');
     expect(generateRepoDocs).toHaveBeenCalledWith('owner/repo', expect.any(Array), CONFIG, 'es');
     expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'pending' }));
     expect(deps.setIsChatLoading).toHaveBeenLastCalledWith(false);
+  });
+
+  it('marca alreadyDocumented cuando el repo ya tiene README.md (#57 Tanda B)', async () => {
+    vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'README.md' }, { path: 'src/a' }], totalScanned: 2, truncated: false, allPaths: ['README.md', 'src/a'] } as any);
+    vi.mocked(generateRepoDocs).mockResolvedValue({ readme: 'R', manualTecnico: 'M' } as any);
+    const deps = makeDeps();
+
+    const result = await runDocumentRepo(deps, CONFIG, 'owner/repo');
+
+    expect(result).toEqual(expect.objectContaining({ alreadyDocumented: true, repoName: 'owner/repo' }));
   });
 
   it('devuelve null y marca error si falla la descarga', async () => {
@@ -191,17 +202,27 @@ describe('runDocumentRepo', () => {
     expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'error' }));
   });
 
-  it('muestra mensaje amable si el repo no existe / 404 (v3.22.3)', async () => {
-    // Antes el 404 crudo "Not Found" subía sin traducir.
+  it('repo 404 ajeno → null con mensaje accionable (no puede crear en otra cuenta)', async () => {
     const { GitHubAPIError } = await import('../github');
     vi.mocked(getRepo).mockRejectedValue(new GitHubAPIError('Not Found', 404));
-    const deps = makeDeps();
+    const deps = makeDeps(); // user.login = 'me' → 'owner/repo' no es propio
 
     const result = await runDocumentRepo(deps, CONFIG, 'owner/repo');
 
     expect(result).toBeNull();
-    // Mensaje amable traducido (no "Not Found" crudo).
-    const notice = deps.t('chat.docRepoNotFound', { repo: 'owner/repo' });
+    const notice = deps.t('chat.docRepoMissingOther', { repo: 'owner/repo' });
+    expect(deps.updateMessage).toHaveBeenLastCalledWith('msg-1', expect.objectContaining({ content: notice, isLoading: false }));
+  });
+
+  it('repo 404 propio → "repo-missing" para ofrecer crear (#57 Tanda B)', async () => {
+    const { GitHubAPIError } = await import('../github');
+    vi.mocked(getRepo).mockRejectedValue(new GitHubAPIError('Not Found', 404));
+    const deps = makeDeps(); // user.login = 'me'
+
+    const result = await runDocumentRepo(deps, CONFIG, 'me/nuevo-repo');
+
+    expect(result).toBe('repo-missing');
+    const notice = deps.t('chat.docRepoMissingCreate', { repo: 'me/nuevo-repo' });
     expect(deps.updateMessage).toHaveBeenLastCalledWith('msg-1', expect.objectContaining({ content: notice, isLoading: false }));
   });
 });
@@ -449,7 +470,7 @@ describe('runSend', () => {
     await runSend(deps, CONFIG, {
       ...SEND_PARAMS,
       userText: 'háblame del PBIX que acabo de subir',
-      fileContext: { name: 'x.pbix', contextText: 'CTX' },
+      fileContext: [{ name: 'x.pbix', contextText: 'CTX' }],
     });
 
     expect(resolveMode).toHaveBeenCalledWith('háblame del PBIX que acabo de subir', 'auto', false, true);
@@ -883,7 +904,7 @@ describe('runSend — contexto de archivo (#28)', () => {
     vi.mocked(parseGeminiAction).mockReturnValue(null);
     const deps = makeDeps();
 
-    await runSend(deps, CONFIG, { ...SEND_PARAMS, fileContext: { name: 'a.md', contextText: 'FILE_CTX' } });
+    await runSend(deps, CONFIG, { ...SEND_PARAMS, fileContext: [{ name: 'a.md', contextText: 'FILE_CTX' }] });
 
     expect(chatPromptWithContext).toHaveBeenCalledWith(expect.stringContaining('FILE_CTX'));
   });

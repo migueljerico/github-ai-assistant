@@ -17,7 +17,7 @@ import { fetchRepoTreeRecursive, getFileContents, decodeBase64, createRepo, repo
 import { rankFilesByQuery } from '../utils/contextRanker';
 import { isContextTooLargeError } from '../utils/retry';
 import { languageDistribution, countTechnicalDebt, commitsByWeek, type LanguageSlice, type TechnicalDebt, type CommitWeek } from '../utils/codeHealth';
-import { writeDocFiles, createDocsDraftPr, publishFileDoc } from './docPublisher';
+import { writeDocFiles, createDocsDraftPr, publishFileDoc, uploadFilesToRepo } from './docPublisher';
 import { summarizeThread, parseThreadInput, listOpenThreads, formatThreadList } from './threadSummary';
 import { generateChangelog } from './changelogGenerator';
 import { executeAction, executeActionMultiRepo } from './actionExecutor';
@@ -122,7 +122,8 @@ export interface SendParams {
   conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>;
   modeOverride: 'auto' | 'chat' | 'action';
   repoContext: RepoContext | null;
-  fileContext: FileContext | null;
+  /** #57 Tanda B: ahora multi-archivo (array, vacío = ninguno). */
+  fileContext: FileContext[];
   multiRepoEnabled: boolean;
   selectedRepos: GitHubRepo[];
   /** #40: si se pasa, permite cancelar la generación en curso (botón Detener). */
@@ -132,12 +133,16 @@ export interface SendParams {
 /**
  * Documenta un repo entero (README + MANUAL). Devuelve el análisis para que App
  * lo muestre en el DocModal, o `null` si falló.
+ *
+ * Si el repo NO existe y es de la cuenta del usuario, devuelve `'repo-missing'`
+ * (señal distinguible) para que App ofrezca crearlo + adjuntar archivos y
+ * documentarlo — equiparando el flujo de repo al de archivo (#57 Tanda B).
  */
 export async function runDocumentRepo(
   deps: ChatDeps,
   config: AIProviderConfig,
   repoInput: string,
-): Promise<RepoAnalysis | null> {
+): Promise<RepoAnalysis | null | 'repo-missing'> {
   const { token, user, providerName, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading } = deps;
   const { owner, repo: repoName } = resolveRepoRef(repoInput, user.login);
 
@@ -154,7 +159,7 @@ export async function runDocumentRepo(
     // + uso de la rama por defecto real (no asumir 'main'; repos con otra rama daban 404).
     // Patrón tomado de runCodeHealth (#44), que ya resolvía esto correctamente.
     const meta = await getRepo(token, owner, repoName);
-    const { files, totalScanned, truncated } = await fetchRepoTreeRecursive(token, owner, repoName, meta.default_branch);
+    const { files, totalScanned, truncated, allPaths } = await fetchRepoTreeRecursive(token, owner, repoName, meta.default_branch);
     updateMessage(loadingId, {
       content: `📄 Analizando ${files.length} archivos de **${owner}/${repoName}**${truncated ? ` (de ${totalScanned} totales)` : ''}... Generando documentación con ${providerName}...`,
       isLoading: true,
@@ -162,21 +167,39 @@ export async function runDocumentRepo(
 
     const { readme, manualTecnico } = await generateRepoDocs(`${owner}/${repoName}`, files, config, deps.lang);
 
+    // #57 Tanda B: detectar si el repo ya está documentado (README.md o
+    // MANUAL_TECNICO.md en la raíz) para avisar al usuario de que se actualizará.
+    // `allPaths` trae el árbol completo de ficheros de texto (puede ser undefined si
+    // el fetch truncó); caemos a los paths de `files` cargados en memoria como respaldo.
+    const knownPaths = allPaths ?? files.map(f => f.path);
+    const alreadyDocumented = knownPaths.some(p => p === 'README.md' || p === 'MANUAL_TECNICO.md');
+
     updateMessage(loadingId, {
       content: `✅ Documentación generada para **${owner}/${repoName}**. Revisa el contenido antes de hacer commit.`,
       isLoading: false,
     });
     updateEntry(histId, { status: 'pending', description: deps.t('history.docReady') });
 
-    return { readme, manualTecnico, filesAnalyzed: files.length, totalFiles: totalScanned, truncated, repoName: `${owner}/${repoName}` };
+    return { readme, manualTecnico, filesAnalyzed: files.length, totalFiles: totalScanned, truncated, repoName: `${owner}/${repoName}`, alreadyDocumented };
   } catch (err) {
     // v3.22.3: distinguir "repo no encontrado / sin acceso" (404) de otros errores.
     const status = err instanceof GitHubAPIError ? err.status : undefined;
     const isNotFound = status === 404 || /not found/i.test((err as Error).message);
-    const content = isNotFound
-      ? deps.t('chat.docRepoNotFound', { repo: `${owner}/${repoName}` })
-      : `❌ Error al documentar: ${(err as Error).message}`;
-    updateMessage(loadingId, { content, isLoading: false });
+    if (isNotFound) {
+      // #57 Tanda B: si el repo no existe y es de la cuenta del usuario, ofrecer crearlo
+      // + adjuntar archivos + documentar (igual que ya hace el flujo de archivo).
+      // Si es de otra cuenta, no podemos crearlo: mensaje accionable y nada que hacer aquí.
+      const isOwnAccount = owner === user.login;
+      updateMessage(loadingId, {
+        content: isOwnAccount
+          ? deps.t('chat.docRepoMissingCreate', { repo: `${owner}/${repoName}` })
+          : deps.t('chat.docRepoMissingOther', { repo: `${owner}/${repoName}` }),
+        isLoading: false,
+      });
+      updateEntry(histId, { status: 'error', description: deps.t('history.errorDocumenting', { repo: `${owner}/${repoName}` }) });
+      return isOwnAccount ? 'repo-missing' : null;
+    }
+    updateMessage(loadingId, { content: `❌ Error al documentar: ${(err as Error).message}`, isLoading: false });
     updateEntry(histId, { status: 'error', description: deps.t('history.errorDocumenting', { repo: `${owner}/${repoName}` }) });
     return null;
   } finally {
@@ -454,7 +477,8 @@ export async function runSend(deps: SendDeps, config: AIProviderConfig, params: 
 
   // #41/#28: si hay repo y/o archivo como contexto, resolveMode sesga a chat (salvo
   // acción explícita) y se combinan ambos contextos en el prompt.
-  const hasContext = repoContext !== null || fileContext !== null;
+  // #57 Tanda B: fileContext ahora es un array (multi-archivo).
+  const hasContext = repoContext !== null || fileContext.length > 0;
 
   // #50: presupuesto de contexto adaptativo al proveedor (Groq free = 6/60; el
   // resto = 12/80). Si el primer intento falla por contexto excesivo (TPM/context
@@ -463,7 +487,7 @@ export async function runSend(deps: SendDeps, config: AIProviderConfig, params: 
 
   // Con archivo adjunto, resolveMode fuerza chat (ninguna acción de GitHub lee un
   // archivo local); el repo y el archivo se pasan por separado.
-  const finalMode = resolveMode(userText, modeOverride, repoContext !== null, fileContext !== null);
+  const finalMode = resolveMode(userText, modeOverride, repoContext !== null, fileContext.length > 0);
 
   // #38: en modo chat (texto Markdown largo) mostramos la respuesta en streaming,
   // token a token. En modo acción la respuesta es JSON → no se streamea (se vería feo).
@@ -492,7 +516,7 @@ export async function runSend(deps: SendDeps, config: AIProviderConfig, params: 
   const attemptSend = async (): Promise<{ rawResponse: string; consultedPaths: string[] }> => {
     for (let attempt = 0; ; attempt++) {
       const { contextText: repoContextText, consultedPaths } = buildContextForBudget(activeBudget);
-      const combinedContext = [repoContextText, fileContext?.contextText].filter(Boolean).join('\n\n');
+      const combinedContext = [repoContextText, ...fileContext.map(f => f.contextText)].filter(Boolean).join('\n\n');
       const basePrompt = finalMode === 'chat'
         ? (combinedContext ? chatPromptWithContext(combinedContext) : CHAT_PROMPT)
         : ACTION_PROMPT;
@@ -782,6 +806,49 @@ export async function runCreateRepo(
     updateEntry(histId, { status: 'error', description: deps.t('history.errorRepo', { name }) });
     return false;
   }
+}
+
+/**
+ * Crea un repositorio inexistente en la cuenta del usuario, sube (opcionalmente)
+ * archivos adjuntos para poblarlo y, a continuación, lo documenta. Orquesta los
+ * tres pasos del flujo "crear + documentar" del scope repo (#57 Tanda B):
+ *   1. `runCreateRepo` (crea con auto_init → rama por defecto lista).
+ *   2. `uploadFilesToRepo` (sube archivos del usuario; routing por tipo).
+ *   3. `runDocumentRepo` (reintenta la generación ahora que el repo existe).
+ *
+ * @returns el análisis generado, o `null` si algún paso falló (los mensajes de
+ *          error ya se publican en el chat dentro de cada run*).
+ */
+export async function runCreateRepoAndDocument(
+  deps: ChatDeps,
+  config: AIProviderConfig,
+  repoInput: string,
+  files?: File[],
+): Promise<RepoAnalysis | null> {
+  const { token, user, addMessage } = deps;
+  const { owner, repo: repoName } = resolveRepoRef(repoInput, user.login);
+  const isOwnAccount = owner === user.login;
+  if (!isOwnAccount) {
+    addMessage({ role: 'assistant', content: deps.t('chat.docRepoMissingOther', { repo: `${owner}/${repoName}` }) });
+    return null;
+  }
+  // 1. Crear el repo (mensajes de progreso dentro de runCreateRepo).
+  const ok = await runCreateRepo(deps, repoName);
+  if (!ok) return null;
+  // 2. Subir archivos adjuntos (si los hay) para poblar el repo recién creado.
+  if (files && files.length > 0) {
+    try {
+      await uploadFilesToRepo(token, owner, repoName, files);
+      addMessage({ role: 'assistant', content: `📎 Subidos ${files.length} archivo(s) a **${owner}/${repoName}**.` });
+    } catch (err) {
+      addMessage({ role: 'assistant', content: `⚠️ No pude subir los archivos a **${owner}/${repoName}** (${(err as Error).message}). Procedo a documentar el repo igualmente.` });
+    }
+  }
+  // 3. Reintentar la documentación ahora que el repo existe. Tras crearlo no cabe
+  // un 'repo-missing' (ya existe), pero el tipo de runDocumentRepo lo permite → se
+  // filtra para devolver solo RepoAnalysis | null.
+  const analysis = await runDocumentRepo(deps, config, repoInput);
+  return analysis === 'repo-missing' ? null : analysis;
 }
 
 /** Deriva `docs/{base}.md` a partir del nombre del archivo adjunto. */

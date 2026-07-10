@@ -22,8 +22,9 @@ interface ChatInputProps {
   onMultiRepoChange: (enabled: boolean) => void;
   selectedRepos: GitHubRepo[];
   onSelectedReposChange: (repos: GitHubRepo[]) => void;
-  // #57 - Abrir el flujo único de documentación (stepper)
-  onOpenDocumentFlow: () => void;
+  // #57 - Abrir el flujo único de documentación (stepper). Admite un repo inicial
+  // opcional (#57 Tanda B: botón "Actualizar documentación" sobre repoContext).
+  onOpenDocumentFlow: (initialRepo?: string) => void;
   // #32 - Resumir hilo de comentarios de un issue/PR
   onSummarizeThread: (input: string) => void;
   // #34 - Generar changelog del repo
@@ -38,10 +39,11 @@ interface ChatInputProps {
   repoContextName: string | null;
   onLoadRepoContext: (repoName: string) => void;
   onClearRepoContext: () => void;
-  // #28 - Adjuntar archivo local como contexto
-  fileContextName: string | null;
-  onAttachFile: (file: File) => void;
-  onClearFile: () => void;
+  // #28 - Adjuntar archivos locales como contexto (#57 Tanda B: multi-archivo)
+  fileContextNames: string[];
+  onAttachFiles: (files: File[]) => void;
+  onClearFileAt: (index: number) => void;
+  onClearAllFiles: () => void;
   // 🔥 OPCIÓN D - Props para el selector de modo (opcionales para retrocompatibilidad)
   modeOverride?: 'auto' | 'chat' | 'action';
   onModeOverrideChange?: (mode: 'auto' | 'chat' | 'action') => void;
@@ -68,9 +70,10 @@ export default function ChatInput({
   repoContextName,
   onLoadRepoContext,
   onClearRepoContext,
-  fileContextName,
-  onAttachFile,
-  onClearFile,
+  fileContextNames,
+  onAttachFiles,
+  onClearFileAt,
+  onClearAllFiles,
   modeOverride = 'auto',
   onModeOverrideChange,
 }: ChatInputProps) {
@@ -186,6 +189,21 @@ export default function ChatInput({
           onOpen={onOpenDocumentFlow}
         />
 
+        {/* #57 Tanda B: botón "Actualizar documentación" — solo cuando hay un repo
+            cargado en memoria (repoContext). Abre el stepper con el repo pre-rellenado. */}
+        {repoContextName && (
+          <button
+            id="update-docs-btn"
+            className="doc-repo-btn"
+            disabled={disabled}
+            type="button"
+            title={repoContextName}
+            onClick={() => onOpenDocumentFlow(repoContextName)}
+          >
+            🔄 {t('chat.updateDocs')}
+          </button>
+        )}
+
         <ThreadSummaryButton
           disabled={disabled}
           onSummarizeThread={onSummarizeThread}
@@ -217,9 +235,9 @@ export default function ChatInput({
 
         <FileAttachButton
           disabled={disabled}
-          fileName={fileContextName}
-          onAttach={onAttachFile}
-          onClear={onClearFile}
+          fileNames={fileContextNames}
+          onAttach={onAttachFiles}
+          onClearAt={onClearFileAt}
         />
       </div>
     </div>

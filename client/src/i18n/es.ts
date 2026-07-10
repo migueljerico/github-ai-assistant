@@ -161,6 +161,10 @@ export const es = {
   'modal.flow.destination': 'Repositorio destino',
   'modal.flow.destinationPlaceholder': 'owner/repo o repo',
   'modal.flow.finish': 'Finalizar',
+  'modal.flow.repoMissing': '⚠️ El repositorio **{repo}** no existe en tu cuenta. Puedes crearlo, adjuntar archivos para subir y documentarlo.',
+  'modal.flow.createAndDocument': '➕ Crear repo y documentar',
+  'modal.flow.alreadyDocumented': 'ℹ️ Este repositorio ya tiene documentación. Al publicar se **actualizará** (no se duplicará).',
+  'modal.flow.addExtrasCreate': '➕ Añadir archivos para subir al repo nuevo (imágenes, datos, código…)',
 
   // ────── FASE 2: Visor de diferencias ──────
   'diff.currentVersion': 'Versión actual',
@@ -182,6 +186,10 @@ export const es = {
   'chat.contextTooLarge': '⚠️ El contexto del repositorio sigue siendo demasiado grande para este modelo (límite de tokens por minuto). Ya intenté reducirlo automáticamente. Prueba con un repo más pequeño, otro modelo (p. ej. Gemini) o cambia de proveedor.',
   'chat.contactError': 'Error al contactar con el asistente',
   'chat.docRepoNotFound': '❌ No encontré el repositorio **{repo}**. ¿Existe y tu token de GitHub tiene acceso a él?',
+  'chat.docRepoMissingCreate': '⚠️ El repositorio **{repo}** no existe. ¿Quieres que lo cree y lo documente? Puedes adjuntar archivos para subirlos al repo recién creado.',
+  'chat.docRepoMissingOther': '❌ No encontré **{repo}** y solo puedo crear repositorios en tu cuenta. Créalo en GitHub o elige otro destino.',
+  'chat.updateDocs': '🔄 Actualizar documentación',
+  'chat.attachFileMulti': '{count} archivos adjuntos',
 
   // ────── FASE 2: Paneles ──────
   'panel.history.clearAria': 'Eliminar el historial de sesión',

@@ -173,6 +173,8 @@ export interface RepoAnalysis {
   totalFiles: number;
   truncated: boolean;
   repoName: string;
+  /** True si el repo ya tenía README.md o MANUAL_TECNICO.md (se va a actualizar, no a crear). */
+  alreadyDocumented?: boolean;
 }
 
 // ── Re-export types from gemini service for convenience ──────────────────────

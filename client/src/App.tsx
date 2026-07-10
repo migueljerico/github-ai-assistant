@@ -7,7 +7,7 @@ import { getProvider } from './services/providers';
 import {
   runDocumentRepo, runLoadRepoContext, runSummarizeThread, runGenerateChangelog, runCodeHealth, runCommitDocs, runCreateDraftPr, runCreateRepoRelease,
   runSend, runConfirmAction, runCancelAction, runAttachFile,
-  runGenerateFileDoc, runCreateRepo, runStartPublish, runPublishFileDocByKind, formatConversation,
+  runGenerateFileDoc, runCreateRepo, runCreateRepoAndDocument, runStartPublish, runPublishFileDocByKind, formatConversation,
 } from './services/assistantActions';
 import type { RepoContext, FileContext, PublishTarget, StartPublishResult, CodeHealth } from './services/assistantActions';
 import { serializeConversation, parseConversation, conversationFilename } from './utils/conversationIO';
@@ -56,13 +56,15 @@ export default function App() {
 
   // #57 - Flujo único de documentación (stepper)
   const [documentFlowOpen, setDocumentFlowOpen] = useState(false);
+  // #57 Tanda B: repo inicial opcional (botón "Actualizar documentación" sobre repoContext).
+  const [documentFlowInitialRepo, setDocumentFlowInitialRepo] = useState<string | undefined>(undefined);
   const [codeHealth, setCodeHealth] = useState<CodeHealth | null>(null);
 
   // #41 - Contexto de repo activo para opiniones de chat fundamentadas
   const [repoContext, setRepoContext] = useState<RepoContext | null>(null);
 
-  // #28 - Archivo local adjunto como contexto del chat
-  const [fileContext, setFileContext] = useState<FileContext | null>(null);
+  // #28 - Archivos locales adjuntos como contexto del chat (#57 Tanda B: multi-archivo)
+  const [fileContext, setFileContext] = useState<FileContext[]>([]);
 
   // 🔥 OPCIÓN D - Modo override: 'auto' | 'chat' | 'action'
   // El setter aún no está cableado a la UI; de momento queda fijado en 'auto'.
@@ -124,20 +126,26 @@ export default function App() {
     });
   }, [addMessage]);
 
-  // ── #28: Adjuntar archivo local como contexto ───────────────────────────────
-  const handleAttachFile = useCallback(async (file: File) => {
+  // ── #28: Adjuntar archivos locales como contexto (multi-archivo, #57 Tanda B) ──
+  const handleAttachFiles = useCallback(async (files: File[]) => {
     if (!token || !user) return;
-    const ctx = await runAttachFile(
-      { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
-      file,
-    );
-    // Conserva el File original para poder subirlo al repo al publicar (#28 4a).
-    if (ctx) setFileContext({ ...ctx, file });
+    const deps = { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading };
+    // Procesa cada archivo y acumula los que se lean correctamente (no reemplaza).
+    const loaded: FileContext[] = [];
+    for (const file of files) {
+      const ctx = await runAttachFile(deps, file);
+      if (ctx) loaded.push({ ...ctx, file }); // conserva el File original para subirlo al publicar (#28 4a)
+    }
+    if (loaded.length > 0) setFileContext(prev => [...prev, ...loaded]);
   }, [token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
 
-  const handleClearFile = useCallback(() => {
-    setFileContext(null);
-    addMessage({ role: 'assistant', content: '🧹 Archivo adjunto descartado.' });
+  const handleClearFileAt = useCallback((index: number) => {
+    setFileContext(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const handleClearAllFiles = useCallback(() => {
+    setFileContext([]);
+    addMessage({ role: 'assistant', content: '🧹 Archivos adjuntos descartados.' });
   }, [addMessage]);
 
   // Texto plano de la conversación, como contexto al documentar (el doc refleja lo
@@ -152,10 +160,18 @@ export default function App() {
   // Sustituye los dos flujos divergentes previos ("Documentar repo" → DocModal y
   // "Documentar y publicar" → FilePublishModal). El modal (DocumentFlowModal) orquesta
   // los pasos y estas funciones cablean estado/UI con las run* (patrón #42).
-  const openDocumentFlow = useCallback(() => setDocumentFlowOpen(true), []);
-  const closeDocumentFlow = useCallback(() => setDocumentFlowOpen(false), []);
+  // #57 Tanda B: `openDocumentFlow` admite un repo inicial opcional para el flujo
+  // "Actualizar documentación" cuando hay un repo cargado en memoria (repoContext).
+  const openDocumentFlow = useCallback((initialRepo?: string) => {
+    if (initialRepo) setDocumentFlowInitialRepo(initialRepo);
+    setDocumentFlowOpen(true);
+  }, []);
+  const closeDocumentFlow = useCallback(() => {
+    setDocumentFlowOpen(false);
+    setDocumentFlowInitialRepo(undefined);
+  }, []);
 
-  const flowGenerateRepo = useCallback(async (repoInput: string): Promise<RepoAnalysis | null> => {
+  const flowGenerateRepo = useCallback(async (repoInput: string): Promise<RepoAnalysis | null | 'repo-missing'> => {
     // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto
     if (!token || !user || !provider || !apiKey || !model) return null;
     return runDocumentRepo(
@@ -167,11 +183,14 @@ export default function App() {
 
   const flowGenerateFile = useCallback(async (): Promise<string | null> => {
     // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto
-    if (!fileContext || !token || !user || !provider || !apiKey || !model) return null;
+    // #57 Tanda B: con multi-archivo, se documenta el PRIMER archivo adjunto (el
+    // resto pueden subirse como extras en el paso de publicación).
+    const primary = fileContext[0];
+    if (!primary || !token || !user || !provider || !apiKey || !model) return null;
     return runGenerateFileDoc(
       { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
       { provider, apiKey, model },
-      fileContext,
+      primary,
       buildConversationText(),
     );
   }, [fileContext, token, user, provider, apiKey, model, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, buildConversationText]);
@@ -201,6 +220,21 @@ export default function App() {
       version || undefined,
     );
   }, [token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
+
+  // #57 Tanda B: crear repo inexistente + subir archivos + documentarlo (scope repo).
+  const flowCreateRepoAndGenerateRepo = useCallback(async (
+    repoInput: string,
+    files?: File[],
+  ): Promise<RepoAnalysis | null> => {
+    // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto
+    if (!token || !user || !provider || !apiKey || !model) return null;
+    return runCreateRepoAndDocument(
+      { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+      { provider, apiKey, model },
+      repoInput,
+      files,
+    );
+  }, [token, user, provider, apiKey, model, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading]);
 
   // Publicación de la doc del archivo (destino elegido; maneja repo inexistente).
   const flowPublishFile = useCallback(async (target: PublishTarget): Promise<StartPublishResult> => {
@@ -359,9 +393,10 @@ export default function App() {
             repoContextName={repoContext?.repoName ?? null}
             onLoadRepoContext={handleLoadRepoContext}
             onClearRepoContext={handleClearRepoContext}
-            fileContextName={fileContext?.name ?? null}
-            onAttachFile={handleAttachFile}
-            onClearFile={handleClearFile}
+            fileContextNames={fileContext.map(f => f.name)}
+            onAttachFiles={handleAttachFiles}
+            onClearFileAt={handleClearFileAt}
+            onClearAllFiles={handleClearAllFiles}
           />
         </div>
 
@@ -381,11 +416,13 @@ export default function App() {
       {/* #57 - Flujo único de documentación (stepper) */}
       {documentFlowOpen && (
         <DocumentFlowModal
-          hasAttachedFile={!!fileContext}
-          attachedFileName={fileContext?.name}
-          attachedFile={fileContext?.file}
+          hasAttachedFile={fileContext.length > 0}
+          attachedFileName={fileContext[0]?.name}
+          attachedFile={fileContext[0]?.file}
           currentUserLogin={user?.login ?? ''}
+          initialRepo={documentFlowInitialRepo}
           onGenerateRepo={flowGenerateRepo}
+          onCreateRepoAndGenerate={flowCreateRepoAndGenerateRepo}
           onGenerateFile={flowGenerateFile}
           onCommitRepo={flowCommitRepo}
           onDraftPrRepo={flowDraftPrRepo}

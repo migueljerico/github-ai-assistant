@@ -16,9 +16,16 @@ interface DocumentFlowModalProps {
   attachedFile?: File;
   /** Login del usuario (dueño por defecto al resolver el repo destino). */
   currentUserLogin: string;
+  /** #57 Tanda B: repo inicial opcional (botón "Actualizar documentación").
+   *  Si se pasa, abre el stepper en el paso 2 (rama repo) con el campo pre-rellenado. */
+  initialRepo?: string;
 
-  /** Genera la documentación de un repositorio entero. Devuelve el análisis o null. */
-  onGenerateRepo: (repoInput: string) => Promise<RepoAnalysis | null>;
+  /** Genera la documentación de un repositorio entero. Devuelve el análisis,
+   *  `null` si falló, o `'repo-missing'` si el repo no existe y es del usuario
+   *  (→ se ofrece crearlo + adjuntar archivos + documentar). */
+  onGenerateRepo: (repoInput: string) => Promise<RepoAnalysis | null | 'repo-missing'>;
+  /** Crea un repo inexistente, sube (opcionalmente) archivos y lo documenta. */
+  onCreateRepoAndGenerate: (repoInput: string, files?: File[]) => Promise<RepoAnalysis | null>;
   /** Genera la documentación del archivo adjunto. Devuelve el Markdown o null. */
   onGenerateFile: () => Promise<string | null>;
 
@@ -48,7 +55,9 @@ export default function DocumentFlowModal({
   attachedFileName,
   attachedFile,
   currentUserLogin,
+  initialRepo,
   onGenerateRepo,
+  onCreateRepoAndGenerate,
   onGenerateFile,
   onCommitRepo,
   onDraftPrRepo,
@@ -60,11 +69,13 @@ export default function DocumentFlowModal({
   const { t } = useLanguage();
   const modalRef = useModalDialog<HTMLDivElement>(onCancel);
 
-  const [step, setStep] = useState<Step>(1);
-  const [scope, setScope] = useState<Scope | null>(null);
+  // #57 Tanda B: si llega `initialRepo` (botón "Actualizar documentación"), abre
+  // directo en el paso 2 (rama repo) con el campo pre-rellenado.
+  const [step, setStep] = useState<Step>(initialRepo ? 2 : 1);
+  const [scope, setScope] = useState<Scope | null>(initialRepo ? 'repo' : null);
 
   // Paso 2 (repo)
-  const [repoInput, setRepoInput] = useState('');
+  const [repoInput, setRepoInput] = useState(initialRepo ?? '');
   const [analysis, setAnalysis] = useState<RepoAnalysis | null>(null);
 
   // Paso 2 (archivo)
@@ -83,15 +94,40 @@ export default function DocumentFlowModal({
   const [busy, setBusy] = useState(false);
   const [repoMissing, setRepoMissing] = useState<{ owner: string; repo: string } | null>(null);
 
+  // #57 Tanda B: archivos para poblar el repo recién creado (scope repo, rama crear).
+  const [createExtras, setCreateExtras] = useState<File[]>([]);
+
   // ── Paso 2: generación ─────────────────────────────────────────────────────────
   const handleGenerateRepo = async () => {
     if (!repoInput.trim()) return;
     setBusy(true);
     try {
       const a = await onGenerateRepo(repoInput.trim());
-      if (a) {
+      if (a === 'repo-missing') {
+        // El repo no existe y es del usuario → ofrecer crearlo + adjuntar archivos.
+        const ref = resolveRepoRef(repoInput.trim(), currentUserLogin);
+        setRepoMissing({ owner: ref.owner, repo: ref.repo });
+      } else if (a) {
         setAnalysis(a);
         setDestRepo(a.repoName); // el destino fijo es el repo analizado
+        setStep(3);
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // #57 Tanda B: crear el repo inexistente, subir archivos adjuntos y documentarlo.
+  const doCreateRepoAndGenerate = async () => {
+    if (!repoInput.trim() || !repoMissing) return;
+    setBusy(true);
+    try {
+      const a = await onCreateRepoAndGenerate(repoInput.trim(), createExtras.length > 0 ? createExtras : undefined);
+      if (a) {
+        setRepoMissing(null);
+        setCreateExtras([]);
+        setAnalysis(a);
+        setDestRepo(a.repoName);
         setStep(3);
       }
     } finally {
@@ -273,6 +309,50 @@ export default function DocumentFlowModal({
                   {busy ? t('modal.flow.generating') : t('modal.flow.generate')}
                 </button>
               </div>
+
+              {/* #57 Tanda B: el repo no existe y es del usuario → crear + adjuntar + documentar */}
+              {repoMissing && (
+                <div
+                  id="flow-repo-missing-create"
+                  style={{
+                    marginTop: '12px', padding: '10px 12px', borderRadius: '8px', fontSize: '0.85rem',
+                    background: 'rgba(234, 179, 8, 0.12)', border: '1px solid rgba(234, 179, 8, 0.4)',
+                  }}
+                >
+                  <div style={{ marginBottom: '8px' }}>
+                    {t('modal.flow.repoMissing', { repo: `${repoMissing.owner}/${repoMissing.repo}` })}
+                  </div>
+                  <div style={{ marginBottom: '8px' }}>
+                    <label id="flow-create-add-extras" className="btn btn-secondary" style={{ cursor: 'pointer', display: 'inline-block', padding: '6px 10px' }}>
+                      {t('modal.flow.addExtrasCreate')}
+                      <input
+                        type="file"
+                        multiple
+                        style={{ display: 'none' }}
+                        disabled={busy}
+                        onChange={e => { const fl = e.target.files; if (fl) setCreateExtras(prev => [...prev, ...Array.from(fl)]); e.target.value = ''; }}
+                      />
+                    </label>
+                    {createExtras.length > 0 && (
+                      <ul id="flow-create-extras-list" style={{ margin: '8px 0 0', paddingLeft: '18px' }}>
+                        {createExtras.map((f, i) => (
+                          <li key={`create-${f.name}-${i}`}>
+                            <strong>{f.name}</strong> → <code>{destFor(f.name)}</code>
+                            <button
+                              type="button"
+                              className="repo-context-clear"
+                              disabled={busy}
+                              onClick={() => setCreateExtras(prev => prev.filter((_, j) => j !== i))}
+                              aria-label={t('modal.filepub.removeExtra', { fileName: f.name })}
+                              style={{ marginLeft: '8px' }}
+                            >✕</button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              )}
             </>
           )}
 
@@ -282,6 +362,11 @@ export default function DocumentFlowModal({
               {analysis.truncated && (
                 <div className="warning-banner">
                   {t('modal.doc.truncatedWarning', { filesAnalyzed: analysis.filesAnalyzed })}
+                </div>
+              )}
+              {analysis.alreadyDocumented && (
+                <div className="info-banner" style={{ marginTop: '8px', padding: '8px 12px', borderRadius: '8px', fontSize: '0.85rem', background: 'rgba(59, 130, 246, 0.12)', border: '1px solid rgba(59, 130, 246, 0.4)' }}>
+                  {t('modal.flow.alreadyDocumented')}
                 </div>
               )}
               <div className="doc-preview-tabs">
@@ -379,6 +464,26 @@ export default function DocumentFlowModal({
           <div className="modal-footer">
             <button id="flow-cancel-btn" className="btn btn-danger" onClick={onCancel}>{t('modal.publish.cancel')}</button>
             <button id="flow-back-btn" className="btn btn-secondary" onClick={() => setStep(1)}>{t('modal.flow.back')}</button>
+            {repoMissing && !isFile && (
+              <>
+                <button
+                  id="flow-cancel-create-btn"
+                  className="btn btn-secondary"
+                  onClick={() => setRepoMissing(null)}
+                  disabled={busy}
+                >
+                  {t('modal.publish.changeTarget')}
+                </button>
+                <button
+                  id="flow-create-repo-btn"
+                  className="btn btn-success"
+                  onClick={doCreateRepoAndGenerate}
+                  disabled={busy}
+                >
+                  {busy ? <><span className="spinner spinner-sm" /> {t('modal.publish.creating')}...</> : t('modal.flow.createAndDocument')}
+                </button>
+              </>
+            )}
           </div>
         )}
 

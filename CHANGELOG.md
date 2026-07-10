@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.29.0] — 2026-07-10
+
+### Added
+- **Soporte multi-archivo en el chat (#57 Tanda B).** El botón de adjuntar ahora acepta múltiples archivos simultáneamente. Se muestran como chips individuales y todos se concatenan como contexto para la IA.
+- **Flujo "Crear repo + Documentar" (#57 Tanda B).** Al intentar documentar un repositorio inexistente en la cuenta del usuario, la app ahora ofrece crearlo automáticamente, permitir la subida de archivos para poblarlo y generar la documentación sobre el resultado.
+- **Detección de documentación existente (#57 Tanda B).** El sistema detecta si el repo ya tiene README.md o MANUAL_TECNICO.md y avisa que la publicación actualizará los archivos existentes.
+- **Botón "Actualizar documentación" (#57 Tanda B).** Nuevo acceso directo en el chat cuando hay un repositorio cargado en memoria, que abre el flujo de documentación pre-rellenado.
+
 ## [3.28.0] — 2026-07-10
 
 ### Added

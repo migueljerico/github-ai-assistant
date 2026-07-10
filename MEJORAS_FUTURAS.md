@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v3.28.0 · Julio 2026
+**Actualizado a:** v3.29.0 · Julio 2026
 
 ---
 
@@ -148,7 +148,7 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 - ✅ CI con GitHub Actions ejecutando tests (cliente + servidor) automáticamente
 - ✅ Badge de Codecov en README
 - ✅ Cobertura actual: ver Codecov (oscila según versión; histórico ~60–64%)
-- ✅ 492 tests en el cliente (v3.28.0; 48 archivos `.test.ts(x)` co-locados). Implementados para:
+- ✅ 497 tests en el cliente (v3.29.0; 48 archivos `.test.ts(x)` co-locados). Implementados para:
   - `AuthContext.tsx` (login, logout, OAuth flow, Zero-Storage)
   - `AIProviderContext.tsx` (conexión/desconexión de proveedores)
   - `providers.ts` (registro de proveedores, detección de modelos 🆓, caché, `pickDefaultModel`)

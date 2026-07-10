@@ -124,6 +124,23 @@ async function commitExtras(
   }
 }
 
+/**
+ * Sube una lista de archivos a un repositorio (commit directo por archivo, con
+ * routing por tipo: imágenes→`screenshots/`, datos→`data/`, resto→raíz). Si un
+ * fichero ya existe, se actualiza por SHA. Usado por el flujo "crear repo +
+ * documentar" (#57 Tanda B) para poblar el repo recién creado antes de generar la
+ * documentación, y reutilizable para "subir más archivos a un repo ya documentado".
+ */
+export async function uploadFilesToRepo(
+  token: string,
+  owner: string,
+  repo: string,
+  files: File[],
+  branch?: string
+): Promise<void> {
+  await commitExtras(token, owner, repo, { extraFiles: files }, branch);
+}
+
 /** Resultado de publicar un fichero suelto (#28 Fase 2). */
 export interface PublishFileResult {
   /** El PR creado (solo en modo Draft PR); `null` en commit directo. */

@@ -24,9 +24,10 @@ function setup(overrides: Partial<React.ComponentProps<typeof ChatInput>> = {}) 
     repoContextName: null,
     onLoadRepoContext: vi.fn(),
     onClearRepoContext: vi.fn(),
-    fileContextName: null,
-    onAttachFile: vi.fn(),
-    onClearFile: vi.fn(),
+    fileContextNames: [],
+    onAttachFiles: vi.fn(),
+    onClearFileAt: vi.fn(),
+    onClearAllFiles: vi.fn(),
     ...overrides,
   };
   const { container } = render(<ChatInput {...props} />);

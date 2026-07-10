@@ -161,6 +161,10 @@ export const en = {
   'modal.flow.destination': 'Target repository',
   'modal.flow.destinationPlaceholder': 'owner/repo or repo',
   'modal.flow.finish': 'Finish',
+  'modal.flow.repoMissing': '⚠️ Repository **{repo}** does not exist in your account. You can create it, attach files to upload, and document it.',
+  'modal.flow.createAndDocument': '➕ Create repo and document',
+  'modal.flow.alreadyDocumented': 'ℹ️ This repo already has documentation. Publishing will **update** it (not duplicate).',
+  'modal.flow.addExtrasCreate': '➕ Add files to upload to the new repo (images, data, code…)',
 
   // ────── PHASE 2: Diff viewer ──────
   'diff.currentVersion': 'Current version',
@@ -182,6 +186,10 @@ export const en = {
   'chat.contextTooLarge': '⚠️ The repository context is still too large for this model (tokens-per-minute limit). I already tried shrinking it automatically. Try a smaller repo, another model (e.g. Gemini), or switch provider.',
   'chat.contactError': 'Error contacting the assistant',
   'chat.docRepoNotFound': '❌ Repository **{repo}** not found. Does it exist and does your GitHub token have access to it?',
+  'chat.docRepoMissingCreate': '⚠️ Repository **{repo}** does not exist. Want me to create and document it? You can attach files to upload to the new repo.',
+  'chat.docRepoMissingOther': '❌ Repository **{repo}** not found and I can only create repos in your account. Create it on GitHub or pick another target.',
+  'chat.updateDocs': '🔄 Update docs',
+  'chat.attachFileMulti': '{count} files attached',
 
   // ────── PHASE 2: Panels ──────
   'panel.history.clearAria': 'Delete session history',

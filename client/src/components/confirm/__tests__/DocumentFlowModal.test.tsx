@@ -19,6 +19,7 @@ function baseProps(overrides: Partial<Props> = {}): Props {
     hasAttachedFile: false,
     currentUserLogin: 'me',
     onGenerateRepo: vi.fn().mockResolvedValue(analysis),
+    onCreateRepoAndGenerate: vi.fn().mockResolvedValue(analysis),
     onGenerateFile: vi.fn().mockResolvedValue('# doc'),
     onCommitRepo: vi.fn().mockResolvedValue(undefined),
     onDraftPrRepo: vi.fn().mockResolvedValue(undefined),
