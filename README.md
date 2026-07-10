@@ -244,9 +244,12 @@ Este proyecto fue construido con un flujo humano ↔ IA basado en validación cr
 
 - **Claude / Claude Code:** arquitectura, revisión crítica, implementación asistida y documentación.
 - **Antigravity 2.0:** construcción inicial agéntica de la versión full-stack.
-- **ZCode / GLM-5.2:** roadmap, cierre de versiones y documentación desde v3.20.0.
+- **ZCode / step-3.7-flash-free (GLM-5.2):** cierre de versiones, build, sincronización de documentación y release desde v3.25.0.
+- **GLM-5.2 (web, Zhipu):** i18n Fase 1 (v3.20.0) y tareas puntuales previas.
 - **Gemini, Gemma, DeepSeek, Qwen y otros modelos:** revisión de arquitectura, propuestas de mejora y contraste técnico.
-- **Microsoft 365 Copilot — GPT 5.5 Razonamiento:** revisión editorial del README, propuesta de modularización documental y reestructuración de la documentación en archivos separados dentro de `docs/`.
+- **Nemotron 3 Super 120B (NVIDIA, vía OpenRouter):** validación cruzada en Z.ai — sugirió incluir el deploy automático de Cloud Run en la rutina de cierre y corregir la regla de oro (commit → push → tag → release → deploy) en `CLAUDE.md`.
+- **Tencent HY3 (OpenRouter):** dogfooding (06/07) con el repo cargado (154 archivos). Aportó la poda de #33 (revisores) y #35 (auto-labels); validado por el autor y confirmado.
+- **Microsoft 365 Copilot — GPT-5 Razonamiento:** revisión editorial del README, propuesta de modularización documental y reestructuración de la documentación en archivos separados.
 
 Además, el proyecto se desarrolló aplicando **dogfooding**: la propia app se usó para cargar y analizar el repositorio `github-ai-assistant`, revisar su arquitectura, detectar límites reales de contexto, contrastar propuestas entre modelos y generar nuevas mejoras del roadmap.
 
