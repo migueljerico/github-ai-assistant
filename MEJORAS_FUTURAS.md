@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v3.22.3 · Julio 2026
+**Actualizado a:** v3.23.0 · Julio 2026
 
 ---
 
@@ -482,9 +482,9 @@ El usuario los encuentra confusos: no sabe cuándo usar cuál, y con un repo car
 |---|---|---|---|
 | 🔴 Alta | 8 | 8 (#1, #2, #13, #14, #27, #45, #15, #28) | 0 |
 | 🟡 Media | 17 | 14 (#12, #17, #18, #19, #21, #37, #41, #32, #42, #38, #20, #49, #39, #44) | 3 (#26, #50, #51) |
-| 🟢 Baja | 17 | 5 (#23, #24, #34, #40, #46) | 10 (#22, #25, #36, #48, #52, #53, #54, #55, #56, #57) |
+| 🟢 Baja | 18 | 6 (#23, #24, #34, #40, #46, #58) | 10 (#22, #25, #36, #48, #52, #53, #54, #55, #56, #57) |
 | **🗑️ Descartados** | — | — | 2 (#33, #35) descartados en v3.22.3 |
-| **TOTAL** | **42** | **27** | **13** |
+| **TOTAL** | **43** | **28** | **13** |
 
 > **#28** cubierto en su **norte** por las Fases 1 (v3.0.0, adjuntar como contexto) y
 > 2 (v3.1.0, documentar→publicar). **Más formatos:** Fase 3a (v3.2.0, Excel/CSV) y

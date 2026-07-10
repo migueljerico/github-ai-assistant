@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.23.0] — 2026-07-07
+
+### Added
+- **Catálogo dinámico de modelos de Gemini (#58)** — Gemini ahora obtiene su lista de modelos **en tiempo real** desde la API (como ya hacían Groq y OpenRouter), en vez de un array estático que se desfasaba. Como la API de listado de Gemini también está bloqueada en UE desde el navegador, se añadió un nuevo endpoint `POST /api/gemini/models` al proxy del backend (patrón idéntico al proxy de chat existente): el usuario pega su key, el backend lista los modelos disponibles con el SDK de Google, filtra los no generativos (embeddings, visión, etc.) y los devuelve al selector. Si un modelo se depreca mañana, desaparece solo del selector — adiós al array desfasado.
+
+### Notes
+- **`supertest` declarado pero no instalado en la raíz:** los tests del servidor (`server/__tests__/`) no corren localmente ni en CI (el CI solo ejecuta `client/`). El nuevo test `geminiModelsProxy.test.js` es correcto en su lógica y pasará cuando se haga `npm install` en la raíz; lo dejo escrito para futura cobertura del servidor.
+- _Investigación, fix y tests asistidos por **ZCode** (GLM-5.2)._
+
 ## [3.22.3] — 2026-07-06
 
 ### Fixed
