@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { TEMPLATE_CATEGORIES } from './templateData'; // ← Ruta corregida
+import { buildTemplateCategories } from './templateData';
 import type { Template } from '../../types';
 import { useLanguage } from '../../context/LanguageContext';
 
@@ -10,6 +10,7 @@ interface TemplatePanelProps {
 
 export default function TemplatePanel({ isOpen, onSelectTemplate }: TemplatePanelProps) {
   const { t } = useLanguage();
+  const categories = buildTemplateCategories(t);
   const [openCategories, setOpenCategories] = useState<Set<string>>(new Set(['readme']));
 
   const toggleCategory = (id: string) => {
@@ -31,7 +32,7 @@ export default function TemplatePanel({ isOpen, onSelectTemplate }: TemplatePane
         <span className="sidebar-title">📋 {t('templates.title')}</span>
       </div>
       <div className="sidebar-content">
-        {TEMPLATE_CATEGORIES.map(category => {
+        {categories.map(category => {
           const isOpen = openCategories.has(category.id);
           return (
             <div key={category.id} className="template-category">
