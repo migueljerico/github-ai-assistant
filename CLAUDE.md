@@ -358,22 +358,29 @@ El flujo con el usuario es siempre el mismo, **no lo cambies**:
    1. **Bump de versión** (`package.json` ×2 + lockfiles con `npm install`).
    2. **`CHANGELOG.md`** con la entrada de la versión (crédito al modelo que
       investigó vs. el que cerró el fix).
-   3. **Commit** convencional con todos los cambios de la gestión.
-   4. **Push a `main`** (`git push origin main`).
-   5. **Tag anotado** `vX.Y.Z` + push del tag (`git push origin vX.Y.Z`).
-   6. **GitHub release** (`gh release create vX.Y.Z --title ... --notes-file ...`,
+   3. **`README.md`** sincronizado: badge de versión, métricas actualizadas (tests,
+      features). **Antes de cada push, toda la documentación del repo debe quedar
+      actualizada.** No se permite pushear con el README desfasado respecto a la
+      versión publicada.
+   4. **`MEJORAS_FUTURAS.md`** actualizado: versión, puntos resueltos marcados,
+      contadores ajustados. Debe reflejar el estado real del repo tras el cierre.
+   5. **Commit** convencional con todos los cambios de la gestión (código + docs).
+   6. **Push a `main`** (`git push origin main`).
+   7. **Tag anotado** `vX.Y.Z` + push del tag (`git push origin vX.Y.Z`).
+   8. **GitHub release** (`gh release create vX.Y.Z --title ... --notes-file ...`,
       con la misma sección del `CHANGELOG.md` como notas). Automático desde
-      v3.23.2 (lo pidió el autor para no frenar el ciclo).
-   7. **Deploy a Cloud Run: automático.** El push a `main` dispara el trigger de
+      v3.23.2 (lo pidió el autor para no frenar el ciclo). Incluir la línea
+      `Cambio de código por [asistente] ([modelo])` en las notas del release.
+   9. **Deploy a Cloud Run: automático.** El push a `main` dispara el trigger de
       Cloud Build (`rmgpgab-github-ai-assistant-...`), que construye la imagen y
       actualiza el servicio. **No** requiere comando `gcloud` manual ni
       confirmación del autor. Tras cerrar, **verificar** que llegó a prod
       (`gcloud run services describe github-ai-assistant --region=us-central1
       --project=proyecto-app-antigravity --format="value(...image)"`: el tag de
       la imagen debe coincidir con el hash del commit recién pusheado).
-   8. **Mensaje de handoff** (bloque de código listo para copiar en la siguiente
-      sesión: repo, versión, qué se cerró, próximo trabajo priorizado, reglas de
-      economía de contexto y crédito).
+   10. **Mensaje de handoff** (bloque de código listo para copiar en la siguiente
+       sesión: repo, versión, qué se cerró, próximo trabajo priorizado, reglas de
+       economía de contexto y crédito).
 3. **No hay puntos de parada manuales** en la rutina de cierre: el push, el tag,
    el GitHub release **y el deploy a Cloud Run** son todos automáticos. Lo único
    que espera confirmación del usuario son acciones **fuera** de esta rutina.

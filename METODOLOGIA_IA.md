@@ -132,13 +132,20 @@ el asistente ejecuta **sin pedir permiso**:
 1. **Bump de versión** (`package.json` ×2 + lockfiles con `npm install`).
 2. **`CHANGELOG.md`** con la entrada de la versión (crédito al modelo que hizo
    la investigación vs. el que cerró el fix).
-3. **Commit** convencional con todos los cambios de la gestión.
-4. **Push a `main`** (`git push origin main`).
-5. **Tag anotado** `vX.Y.Z` y push del tag (`git push origin vX.Y.Z`).
-6. **GitHub release** (`gh release create vX.Y.Z --title ... --notes-file ...`,
+3. **`README.md`** sincronizado: badge de versión, métricas actualizadas (tests,
+   features). **Antes de cada push, toda la documentación del repo debe quedar
+   actualizada.** No se permite pushear con el README desfasado respecto a la
+   versión publicada.
+4. **`MEJORAS_FUTURAS.md`** actualizado: versión, puntos resueltos marcados,
+   contadores ajustados. Debe reflejar el estado real del repo tras el cierre.
+5. **Commit** convencional con todos los cambios de la gestión (código + docs).
+6. **Push a `main`** (`git push origin main`).
+7. **Tag anotado** `vX.Y.Z` y push del tag (`git push origin vX.Y.Z`).
+8. **GitHub release** (`gh release create vX.Y.Z --title ... --notes-file ...`,
    con la misma sección del `CHANGELOG.md` como notas). Automático desde
-   v3.23.2.
-7. **Mensaje de handoff** (ver §2.7): bloque de texto listo para pegar en la
+   v3.23.2. **Incluir la línea `Cambio de código por [asistente] ([modelo])`**
+   en las notas del release.
+9. **Mensaje de handoff** (ver §2.7): bloque de texto listo para pegar en la
    siguiente sesión.
 
 La confirmación del usuario se pide **solo** para cualquier acción fuera de esta rutina.
@@ -197,6 +204,7 @@ patrones nuevos.
 | v3.7.0 | Bugs recurrentes por detección de intención | `intentDetection.ts` adivinaba la intención por palabras clave; era frágil y reintroducía el mismo bug cada ronda | **UI explícita > heurística por keywords.** Un botón/modal claro es más robusto. No reintroducir la heurística. |
 | v3.21.0 (rama descartada) | 14 claves de diccionario i18n "muertas" | Se añadieron claves `docs.*` al diccionario destinadas a servicios (`docPublisher.ts`, `github.ts`), pero `useLanguage()` es un hook de React y **no puede usarse en módulos puros** → claves sin consumidor | Antes de añadir claves `t()`, verificar que el consumidor pueda importar `t()`. Para servicios, **inyectar** `t()` desde el componente llamador (patrón `ChatDeps.t`). Ver `CLAUDE.md §5` (i18n). |
 | v3.21.0 (rama descartada) | Cambio espurio en `provider.openrouter.note` | Un asistente modificó una traducción ya existente (quitó "(Gemma suele estar disponible)") sin relación con la tarea, sin justificación ni entrada en changelog | Al reaprovechar trabajo de una rama, **revisar cada diff** y descartar los cambios fuera de alcance. No modificar strings existentes "de paso". |
+| v3.25.0 | README.md desactualizado al publicar release | El badge de versión, CHANGELOG.md y MEJORAS_FUTURAS.md no se sincronizaron antes del release. El release no incluyó la línea de crédito al asistente | **Antes de cada push/tag/release, sincronizar obligatoriamente**: `README.md` (badge + métricas), `CHANGELOG.md` (entrada nueva), `MEJORAS_FUTURAS.md` (versión + puntos resueltos). El release debe incluir `Cambio de código por [asistente] ([modelo])`. Ver `CLAUDE.md §8` (rutina de releases). |
 
 ---
 
@@ -213,6 +221,7 @@ Quién ha hecho qué, para reconocimiento y contexto. El autor figura como
 | **Gemma 4 31B** | (OpenRouter) | Dogfooding: sugerencias de #51 (transparencia contextRanker), #52 (auditoría de seguridad), #53 (commit semántico) | 2026 |
 | **GLM-5.2 (web)** | Zhipu | La **v3.20.0** (i18n Fase 1) se hizo con GLM-5.2 en su versión web | Junio 2026 |
 | **ZCode (step-3.7-flash-free)** | GLM-5.2 (ZCode) | Corrección de **CLAUDE.md** y **METODOLOGIA_IA.md** (§1, §2.5, §2.6, §2.7, puntos de parada): al descubrirse que el trigger de Cloud Build depliega automáticamente al hacer push a `main`, actualizó las convenciones para reflejar que el **deploy a Cloud Run es automático** y no requiere punto de parada manual. | Julio 2026 |
+| **ZCode (step-3.7-flash-free)** | GLM-5.2 (ZCode / Zhipu) | **v3.25.0:** i18n del panel lateral (#55) — refactor `templateData.ts` a factoría `buildTemplateCategories(t)`, ~36 claves en `tmpl_panel.*`; sincronización de `README.md`, `CHANGELOG.md` y `MEJORAS_FUTURAS.md`; release con crédito de autoría. Lección registrada en §4. | Julio 2026 |
 | **Nemotron 3 Super 120B (nvidia)** | NVIDIA (vía OpenRouter, :free) | Validación cruzada en Z.ai: sugirió incluir el deploy automático de Cloud Run en la rutina de cierre y corregir la regla de oro (commit → push → tag → release → deploy) en `CLAUDE.md` y `METODOLOGIA_IA.md`. Verificado por el autor y confirmado. | Julio 2026 |
 | **Tencent HY3** | (OpenRouter, desde 06/07) | Dogfooding (06/07): revisión del roadmap con el repo cargado (154 archivos). Aportó **decidir la poda de #33 (revisores) y #35 (auto-labels)** — confirmó lo que ya eran "candidatos a poda". Propuso además un "#50 claridad para no técnicos" que **ya existía** (#50 es presupuesto de contexto) y cuya idea de base (que la IA explique términos) **ya vive en `chat.md`**; validación cruzada: se incorporó lo accionable (la poda) y se descartó lo duplicado. | Julio 2026 |
 
