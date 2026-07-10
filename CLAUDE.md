@@ -13,9 +13,25 @@ probar, y las convenciones que es fácil romper sin querer.
 
 ---
 
+## 0. Lectura inicial obligatoria (arranque de cada sesión)
+
+**Antes de tocar nada**, lee en este orden:
+
+1. **Este archivo (`CLAUDE.md`)** — cómo está hecho el código, convenciones,
+   trampas y la rutina de cierre (§5).
+2. **`METODOLOGIA_IA.md`** — cómo se colabora humano↔IA, qué asistente hizo qué
+   y las lecciones registradas.
+
+Es **obligatorio** para no repetir errores ya documentados ni romper
+convenciones asentadas. Si el usuario pasa un handoff de una sesión anterior,
+ese handoff referencia estos dos documentos; úsalos como contexto, no los
+reemplazan. Saltarse este paso es la causa nº1 de trabajar en bucle.
+
+---
+
 ## 1. Visión general
 
-**GitHub AI Assistant** (v3.22.1) es una app web que permite operar la **GitHub
+**GitHub AI Assistant** (v3.30.2) es una app web que permite operar la **GitHub
 REST API en lenguaje natural** a través de un proveedor de IA (Google Gemini o
 Groq Cloud). El usuario escribe una instrucción, la IA propone una acción, y
 **cada operación de escritura se confirma manualmente** antes de ejecutarse.

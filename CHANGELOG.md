@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.30.2] — 2026-07-11
+
+### Fixed
+- **Crash `TypeError: S.trim is not a function` al pulsar "Documentar" (regresión de v3.29.0).** El botón "Documentar" (`DocumentRepoButton`) usaba `onClick={onOpen}`, así que React inyectaba el `MouseEvent` como primer argumento de `openDocumentFlow`. En v3.27.0 el callback ignoraba ese argumento, pero la Tanda B (v3.29.0) lo cambió a `(initialRepo?: string) => { if (initialRepo) setDocumentFlowInitialRepo(initialRepo); … }`: el evento (truthy) se guardaba como `initialRepo`, el modal hacía `useState(initialRepo ?? '')` y `repoInput` pasaba a ser un evento → `repoInput.trim()` lanzaba "is not a function" → pantalla "Algo ha fallado" del ErrorBoundary. TypeScript no lo detectó porque `() => void` admite `(arg?: string) => void` por contravarianza.
+  - **Fix puntual:** `DocumentRepoButton.tsx` ahora envuelve `onClick={() => onOpen()}` para descartar el evento (igual que ya hacía el botón "Actualizar documentación").
+  - **Defensa:** `DocumentFlowModal.tsx` sanea `initialRepo` a string (`typeof initialRepo === 'string' ? initialRepo : ''`) antes de inicializar el estado, para que un valor no-string nunca llegue a un `.trim()` del render.
+  - **Tests de regresión:** +2 en `DocumentFlowModal.test.tsx` (15 total). 506/506 verdes.
+  - **Nota:** v3.30.0/v3.30.1 no resolvieron este bug — se centraron en el flujo multi-archivo (lectores PDF/PBIX), pero la causa raíz era el cableado del botón, no los archivos.
+
 ## [3.30.1] — 2026-07-10
 
 ### Fixed

@@ -15,7 +15,7 @@ export default function DocumentRepoButton({ disabled, onOpen }: DocumentRepoBut
     <button
       id="doc-repo-btn"
       className="doc-repo-btn"
-      onClick={onOpen}
+      onClick={() => onOpen()}
       disabled={disabled}
       type="button"
     >

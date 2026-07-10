@@ -76,11 +76,15 @@ export default function DocumentFlowModal({
 
   // #57 Tanda B: si llega `initialRepo` (botón "Actualizar documentación"), abre
   // directo en el paso 2 (rama repo) con el campo pre-rellenado.
-  const [step, setStep] = useState<Step>(initialRepo ? 2 : 1);
-  const [scope, setScope] = useState<Scope | null>(initialRepo ? 'repo' : null);
+  // Defensa (regresión v3.30): sanea a string. Si un caller pasa React.MouseEvent
+  // u otro valor truthy no-string (p. ej. DocumentRepoButton con onClick={onOpen}
+  // sin envolver), `repoInput.trim()` en el render lanzaría "is not a function".
+  const safeInitialRepo = typeof initialRepo === 'string' ? initialRepo : '';
+  const [step, setStep] = useState<Step>(safeInitialRepo ? 2 : 1);
+  const [scope, setScope] = useState<Scope | null>(safeInitialRepo ? 'repo' : null);
 
   // Paso 2 (repo)
-  const [repoInput, setRepoInput] = useState(initialRepo ?? '');
+  const [repoInput, setRepoInput] = useState(safeInitialRepo);
   const [analysis, setAnalysis] = useState<RepoAnalysis | null>(null);
 
   // Paso 2 (archivo)

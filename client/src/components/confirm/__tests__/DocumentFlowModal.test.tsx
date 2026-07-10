@@ -249,4 +249,30 @@ describe('DocumentFlowModal (#57)', () => {
       ]),
     ));
   });
+
+  // ── v3.30.2: regresión TypeError "S.trim is not a function" ─────────────────
+  // El botón "Documentar" (DocumentRepoButton) usaba onClick={onOpen}, así que React
+  // inyectaba el MouseEvent como argumento de openDocumentFlow(initialRepo). Al ser
+  // truthy, se guardaba como `initialRepo` y `repoInput` pasaba a ser el evento →
+  // `repoInput.trim()` lanzaba "is not a function" → ErrorBoundary.
+  // Este test reproduce el sintoma (un `initialRepo` truthy pero NO string) y verifica
+  // que el modal ya no crashea: sanea a '' y abre en el paso 1.
+  it('regresión: un initialRepo truthy pero no-string (p. ej. un MouseEvent) no crashea', () => {
+    // Simula lo que llegaba antes: React pasa el evento como primer arg.
+    const fakeEvent = { type: 'click', target: {} } as unknown as string;
+    setup({ initialRepo: fakeEvent });
+
+    // Sin saneado, esto lanzaría TypeError durante el render. Con el saneado,
+    // arranca sano en el paso 1 (alcance).
+    expect(screen.getByText('¿Qué quieres documentar?')).toBeInTheDocument();
+  });
+
+  it('initialRepo con string válido sigue abriendo en paso 2 con el repo pre-rellenado', () => {
+    setup({ initialRepo: 'migueljerico/mi-repo' });
+    // Paso 2 (repo): el input trae el valor inicial.
+    const input = screen.getByPlaceholderText(/nombre-del-repo o owner\/repo/) as HTMLInputElement;
+    expect(input.value).toBe('migueljerico/mi-repo');
+    // El botón de generar está habilitado (repoInput.trim() no rompe).
+    expect(screen.getByRole('button', { name: /Generar documentación/ })).not.toBeDisabled();
+  });
 });
