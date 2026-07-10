@@ -82,12 +82,17 @@ const GEMINI_MODELS: ModelOption[] = [
 ];
 
 // Fallback de Groq mientras carga el catálogo o si la API falla.
-// Ordenado por defecto primero: `llama-3.1-8b-instant` (vigente). `llama-3.3-70b-versatile`
-// queda como segunda opción porque Groq lo depreca en agosto — al recargar el catálogo
-// dinámico desaparece solo del selector; aquí solo es red de seguridad si la API falla.
+// Ordenado por relevancia en el tier gratuito. `llama-3.1-8b-instant` como default
+// (rápido y fiable). `llama-3.3-70b-versatile` queda segundo aunque se deprecie
+// en agosto — al recargar el catálogo desaparece solo del selector; aquí es red de
+// seguridad si la API falla.
 const GROQ_FALLBACK: ModelOption[] = [
-  { value: 'llama-3.1-8b-instant', label: 'llama-3.1-8b-instant' },
-  { value: 'llama-3.3-70b-versatile', label: 'llama-3.3-70b-versatile' },
+  { value: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B (fast)' },
+  { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B (versatile)' },
+  { value: 'gemma2-9b-it', label: 'Gemma 2 9B' },
+  { value: 'llama3-70b-8192', label: 'Llama 3 70B' },
+  { value: 'llama3-8b-8192', label: 'Llama 3 8B' },
+  { value: 'mixtral-8x7b-32768', label: 'Mixtral 8x7B' },
 ];
 
 // Prefijos de modelos Groq no-chat que se excluyen del selector.
@@ -103,6 +108,10 @@ const OPENROUTER_FALLBACK: ModelOption[] = [
   { value: 'deepseek/deepseek-r1:free', label: 'DeepSeek R1 (free)', free: true },
   { value: 'meta-llama/llama-3.3-70b-instruct:free', label: 'Llama 3.3 70B (free)', free: true },
   { value: 'google/gemini-2.0-flash-exp:free', label: 'Gemini 2.0 Flash exp (free)', free: true },
+  { value: 'google/gemma-2-9b-it:free', label: 'Gemma 2 9B (free)', free: true },
+  { value: 'qwen/qwen-2.5-7b-instruct:free', label: 'Qwen 2.5 7B (free)', free: true },
+  { value: 'mistralai/mistral-7b-instruct:free', label: 'Mistral 7B (free)', free: true },
+  { value: 'nousresearch/hermes-3-llama-3.1-8b:free', label: 'Hermes 3 8B (free)', free: true },
 ];
 
 export const PROVIDERS: Record<AIProviderType, ProviderDef> = {

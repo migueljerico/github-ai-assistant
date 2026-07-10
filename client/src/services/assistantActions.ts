@@ -533,7 +533,7 @@ export async function runSend(deps: SendDeps, config: AIProviderConfig, params: 
       // Solo lectura: ejecutar directamente.
       const histId = addEntry({ status: 'pending', description: enrichedAction.accion, repo: enrichedAction.repo });
       updateEntry(histId, { status: 'pending' });
-      const result = await executeAction(token, user, enrichedAction);
+      const result = await executeAction(token, user, enrichedAction, undefined, deps.t);
       updateEntry(histId, { status: result.success ? 'completed' : 'error', description: result.message });
       if (result.success && result.data) {
         addMessage({ role: 'assistant', content: `✅ ${result.message}\n\n${formatResultData(result.data)}` });
@@ -561,7 +561,7 @@ export async function runSend(deps: SendDeps, config: AIProviderConfig, params: 
  * `setPendingAction(null)`) lo gestiona el wrapper de App.
  */
 export async function runConfirmAction(deps: ChatDeps, pendingAction: PendingAction): Promise<void> {
-  const { token, user, addMessage, addEntry, updateEntry } = deps;
+  const { token, user, addMessage, addEntry, updateEntry, t } = deps;
   const { action, targetRepos } = pendingAction;
 
   if (targetRepos.length > 1) {
@@ -569,11 +569,11 @@ export async function runConfirmAction(deps: ChatDeps, pendingAction: PendingAct
       onProgress: (repo, status, message) => {
         addEntry({ status, description: message, repo });
       },
-    });
-    addMessage({ role: 'assistant', content: `✅ Acción aplicada a ${targetRepos.length} repositorios` });
+    }, t);
+    addMessage({ role: 'assistant', content: t(targetRepos.length !== 1 ? 'history.multiRepoAppliedPlural' : 'history.multiRepoApplied', { count: targetRepos.length }) });
   } else {
     const histId = addEntry({ status: 'pending', description: action.accion, repo: action.repo });
-    const result = await executeAction(token, user, action);
+    const result = await executeAction(token, user, action, undefined, t);
     updateEntry(histId, { status: result.success ? 'completed' : 'error', description: result.message });
     addMessage({
       role: 'assistant',

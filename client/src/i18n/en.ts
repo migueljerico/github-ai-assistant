@@ -202,6 +202,8 @@ export const en = {
   'history.releaseCreated': 'Release {tag} created in {repo}',
   'history.errorRelease': 'Error creating release in {repo}',
   'history.cancelledAction': 'Cancelled: {action}',
+  'history.multiRepoApplied': '✅ Action applied to {count} repository',
+  'history.multiRepoAppliedPlural': '✅ Action applied to {count} repositories',
   'history.creatingRepo': 'Creating repository {name}',
   'history.repoCreated': 'Repository {name} created',
   'history.errorRepo': 'Error creating repository {name}',
@@ -210,6 +212,23 @@ export const en = {
   'history.errorPublishing': 'Error publishing in {repo}',
   'history.logHeader': '=== AI Assistant for Publishing Repositories — Session {date} ===',
   'history.logFilename': 'session-log-{date}.txt',
+
+  // ────── PHASE 3: Action executor (i18n) ──────
+  'history.exec.fileRead': 'File {path} read successfully',
+  'history.exec.reposFound': '{count} repositories found',
+  'history.exec.completed': 'Operation completed',
+  'history.exec.repoCreated': 'Repository "{name}" created successfully',
+  'history.exec.fileCreated': 'File {path} created successfully in {owner}/{repo}',
+  'history.exec.fileUpdated': 'File {path} updated successfully in {owner}/{repo}',
+  'history.exec.fileDeleted': 'File {path} deleted successfully',
+  'history.exec.commentAdded': 'Comment added successfully',
+  'history.exec.issueStateChanged': 'Issue {state} successfully',
+  'history.exec.prMerged': 'Pull Request merged successfully',
+  'history.exec.workflowRerun': 'Workflow re-run successfully',
+  'history.exec.processing': 'Processing {repo}...',
+  'history.exec.unknownIssueAction': 'Unrecognized issue action',
+  'history.exec.unknownPRAction': 'Unrecognized PR action',
+  'history.exec.unknownWorkflowAction': 'Unrecognized workflow action',
 
   // ────── PHASE 3: Instruction templates ──────
   'tmpl.create-readme.title': 'Create README',

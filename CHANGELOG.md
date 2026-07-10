@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.26.0] — 2026-07-10
+
+### Fixed
+- **i18n de descripciones del historial de acciones (#56).** Las entradas del
+  historial generadas por `executeAction` y funciones relacionadas (issue, PR,
+  workflow, multi-repo) emitían mensajes en español duro independientemente del
+  idioma activo. Se añadió el parámetro opcional `t` a
+  `executeAction`/`executeActionMultiRepo`/`executeIssueAction`/`executePRAction`/
+  `executeWorkflowAction` y se envolvieron los mensajes del switch en
+  `t('history.exec.*')` (~14 claves nuevas en `i18n/es.ts` e `i18n/en.ts`).
+  `assistantActions.ts` propaga `deps.t` al executor.
+
+### Notes
+- _Cambio de código por **ZCode** (step-3.7-flash-free / GLM-5.2)._
+
 ## [3.25.0] — 2026-07-10
 
 ### Changed

@@ -102,40 +102,19 @@ function resolveEndpoint(
 /**
  * Execute a single confirmed GeminiAction against the GitHub API.
  *
- * Action routing by HTTP method + endpoint pattern:
- *
- * GET:
- *   - /user/repos or /users/:username/repos -> listAllRepos() (full pagination)
- *   - contains /contents/ -> getFileContents() + Base64 decode
- *   - anything else -> generic authenticated GET
- *
- * POST:
- *   - /user/repos -> createRepo() with name/description/private from payload
- *   - anything else -> generic authenticated POST with action.payload as body
- *
- * PATCH:
- *   - Generic authenticated PATCH with action.payload as body
- *   - Used for partial updates (e.g., repo description, permissions, etc.)
- *
- * PUT:
- *   - Fetches the current file SHA if the file exists (needed for updates)
- *   - Calls createOrUpdateFile() — works for both new files and updates
- *
- * DELETE:
- *   - Fetches the current file SHA (required by the GitHub API)
- *   - Calls deleteFile()
- *
  * @param token      - GitHub OAuth token or PAT
  * @param user       - Authenticated user (used to resolve owner defaults)
  * @param action     - The confirmed action to execute
  * @param targetRepo - Optional override for the target repo (used in multi-repo mode)
+ * @param t          - Translation function (i18n) for localized result messages (#56)
  * @returns ExecutionResult with success flag, message, and optional data
  */
 export async function executeAction(
   token: string,
   user: { login: string },
   action: GeminiAction,
-  targetRepo?: GitHubRepo
+  targetRepo?: GitHubRepo,
+  t?: (key: string, params?: Record<string, string | number>) => string,
 ): Promise<ExecutionResult> {
   const repoTarget = targetRepo
     ? { owner: targetRepo.owner.login, repo: targetRepo.name }
@@ -151,7 +130,7 @@ export async function executeAction(
           const path = action.archivo || '';
           const file = await getFileContents(token, repoTarget.owner, repoTarget.repo, path);
           const content = file.content ? decodeBase64(file.content) : '';
-          return { success: true, message: `Archivo ${path} leído correctamente`, data: content };
+          return { success: true, message: t ? t('history.exec.fileRead', { path }) : `Archivo ${path} leído correctamente`, data: content };
         }
         // Match both /user/repos (authenticated) and /users/:username/repos (public endpoint)
         if (
@@ -159,18 +138,18 @@ export async function executeAction(
           endpoint.match(/\/users\/[^/]+\/repos/)
         ) {
           const repos = await listAllRepos(token);
-          return { success: true, message: `${repos.length} repositorios encontrados`, data: repos };
+          return { success: true, message: t ? t('history.exec.reposFound', { count: repos.length }) : `${repos.length} repositorios encontrados`, data: repos };
         }
         // Generic GET — delegate to ghFetch (auth headers managed centrally)
         const data = await ghFetch<unknown>(token, endpoint);
-        return { success: true, message: 'Operación completada', data };
+        return { success: true, message: t ? t('history.exec.completed') : 'Operación completada', data };
       }
 
       case 'POST': {
         if (endpoint === '/user/repos') {
           const payload = action.payload as { name: string; description?: string; private?: boolean };
           const newRepo = await createRepo(token, payload.name, payload.description, payload.private);
-          return { success: true, message: `Repositorio "${newRepo.name}" creado correctamente`, data: newRepo };
+          return { success: true, message: t ? t('history.exec.repoCreated', { name: newRepo.name }) : `Repositorio "${newRepo.name}" creado correctamente`, data: newRepo };
         }
         // Generic POST — delegate to ghFetch (auth headers managed centrally)
         const data = await ghFetch<unknown>(token, endpoint, {
@@ -178,7 +157,7 @@ export async function executeAction(
           body: JSON.stringify(action.payload),
           headers: { 'Content-Type': 'application/json' },
         });
-        return { success: true, message: 'Operación completada', data };
+        return { success: true, message: t ? t('history.exec.completed') : 'Operación completada', data };
       }
 
       case 'PATCH': {
@@ -188,7 +167,7 @@ export async function executeAction(
           body: JSON.stringify(action.payload),
           headers: { 'Content-Type': 'application/json' },
         });
-        return { success: true, message: 'Operación completada', data };
+        return { success: true, message: t ? t('history.exec.completed') : 'Operación completada', data };
       }
 
       case 'PUT': {
@@ -217,10 +196,11 @@ export async function executeAction(
           message,
           sha
         );
-        const verb = sha ? 'actualizado' : 'creado';
+        const verb = sha ? 'updated' : 'created';
+        const msgKey = sha ? 'history.exec.fileUpdated' : 'history.exec.fileCreated';
         return {
           success: true,
-          message: `Archivo ${path} ${verb} correctamente en ${repoTarget.owner}/${repoTarget.repo}`,
+          message: t ? t(msgKey, { path, owner: repoTarget.owner, repo: repoTarget.repo }) : (verb === 'updated' ? `Archivo ${path} actualizado correctamente en ${repoTarget.owner}/${repoTarget.repo}` : `Archivo ${path} creado correctamente en ${repoTarget.owner}/${repoTarget.repo}`),
           data: result,
         };
       }
@@ -231,7 +211,7 @@ export async function executeAction(
         const existing = await getFileContents(token, repoTarget.owner, repoTarget.repo, path);
         const message = (action.payload as { message?: string }).message || `chore: delete ${path} via Asistente de IA`;
         await deleteFile(token, repoTarget.owner, repoTarget.repo, path, existing.sha, message);
-        return { success: true, message: `Archivo ${path} eliminado correctamente` };
+        return { success: true, message: t ? t('history.exec.fileDeleted', { path }) : `Archivo ${path} eliminado correctamente` };
       }
 
       default:
@@ -265,12 +245,14 @@ export async function executeActionMultiRepo(
   user: { login: string },
   action: GeminiAction,
   repos: GitHubRepo[],
-  callbacks: ExecutionCallbacks
+  callbacks: ExecutionCallbacks,
+  t?: (key: string, params?: Record<string, string | number>) => string,
 ): Promise<ExecutionResult[]> {
   const results: ExecutionResult[] = [];
   for (const repo of repos) {
-    callbacks.onProgress?.(repo.full_name, 'pending', `Procesando ${repo.full_name}...`);
-    const result = await executeAction(token, user, action, repo);
+    const processingMsg = t ? t('history.exec.processing', { repo: repo.full_name }) : `Procesando ${repo.full_name}...`;
+    callbacks.onProgress?.(repo.full_name, 'pending', processingMsg);
+    const result = await executeAction(token, user, action, repo, t);
     callbacks.onProgress?.(
       repo.full_name,
       result.success ? 'completed' : 'error',
@@ -288,13 +270,15 @@ export async function executeActionMultiRepo(
  * @param user - Authenticated GitHub user
  * @param action - The confirmed action
  * @param targetRepo - Target repository
+ * @param t - Translation function (i18n) for localized result messages (#56)
  * @returns ExecutionResult
  */
 export async function executeIssueAction(
   token: string,
   user: { login: string },
   action: GeminiAction,
-  targetRepo: GitHubRepo
+  targetRepo: GitHubRepo,
+  t?: (key: string, params?: Record<string, string | number>) => string,
 ): Promise<ExecutionResult> {
   const repoTarget = { owner: targetRepo.owner.login, repo: targetRepo.name };
   const endpoint = resolveEndpoint(action.endpoint, user, repoTarget);
@@ -309,17 +293,18 @@ export async function executeIssueAction(
     if (endpoint.includes('/comments')) {
       const body = (action.payload as { body?: string }).body || '';
       const comment = await commentOnIssue(token, repoTarget.owner, repoTarget.repo, issueNumber, body);
-      return { success: true, message: 'Comentario añadido correctamente', data: comment };
+      return { success: true, message: t ? t('history.exec.commentAdded') : 'Comentario añadido correctamente', data: comment };
     }
     
     // Close/reopen issue
     if (action.metodo === 'PATCH') {
       const state = (action.payload as { state?: string }).state || 'open';
       const issue = await updateIssueState(token, repoTarget.owner, repoTarget.repo, issueNumber, state as 'open' | 'closed');
-      return { success: true, message: `Issue ${state === 'closed' ? 'cerrado' : 'reabierto'} correctamente`, data: issue };
+      const stateLabel = state === 'closed' ? 'closed' : 'reopened';
+      return { success: true, message: t ? t('history.exec.issueStateChanged', { state: stateLabel }) : `Issue ${state === 'closed' ? 'cerrado' : 'reabierto'} correctamente`, data: issue };
     }
     
-    return { success: false, message: 'Acción de issue no reconocida' };
+    return { success: false, message: t ? t('history.exec.unknownIssueAction') : 'Acción de issue no reconocida' };
   } catch (err) {
     return { success: false, message: (err as Error).message };
   }
@@ -332,13 +317,15 @@ export async function executeIssueAction(
  * @param user - Authenticated GitHub user
  * @param action - The confirmed action
  * @param targetRepo - Target repository
+ * @param t - Translation function (i18n) for localized result messages (#56)
  * @returns ExecutionResult
  */
 export async function executePRAction(
   token: string,
   user: { login: string },
   action: GeminiAction,
-  targetRepo: GitHubRepo
+  targetRepo: GitHubRepo,
+  t?: (key: string, params?: Record<string, string | number>) => string,
 ): Promise<ExecutionResult> {
   const repoTarget = { owner: targetRepo.owner.login, repo: targetRepo.name };
   const endpoint = resolveEndpoint(action.endpoint, user, repoTarget);
@@ -361,10 +348,10 @@ export async function executePRAction(
         payload.commit_title,
         payload.commit_message
       );
-      return { success: true, message: 'Pull Request fusionado correctamente', data: result };
+      return { success: true, message: t ? t('history.exec.prMerged') : 'Pull Request fusionado correctamente', data: result };
     }
     
-    return { success: false, message: 'Acción de PR no reconocida' };
+    return { success: false, message: t ? t('history.exec.unknownPRAction') : 'Acción de PR no reconocida' };
   } catch (err) {
     return { success: false, message: (err as Error).message };
   }
@@ -377,13 +364,15 @@ export async function executePRAction(
  * @param user - Authenticated GitHub user
  * @param action - The confirmed action
  * @param targetRepo - Target repository
+ * @param t - Translation function (i18n) for localized result messages (#56)
  * @returns ExecutionResult
  */
 export async function executeWorkflowAction(
   token: string,
   user: { login: string },
   action: GeminiAction,
-  targetRepo: GitHubRepo
+  targetRepo: GitHubRepo,
+  t?: (key: string, params?: Record<string, string | number>) => string,
 ): Promise<ExecutionResult> {
   const repoTarget = { owner: targetRepo.owner.login, repo: targetRepo.name };
   const endpoint = resolveEndpoint(action.endpoint, user, repoTarget);
@@ -397,10 +386,10 @@ export async function executeWorkflowAction(
     // Re-run workflow
     if (endpoint.includes('/rerun')) {
       const result = await triggerWorkflowRun(token, repoTarget.owner, repoTarget.repo, runId);
-      return { success: true, message: 'Workflow re-ejecutado correctamente', data: result };
+      return { success: true, message: t ? t('history.exec.workflowRerun') : 'Workflow re-ejecutado correctamente', data: result };
     }
     
-    return { success: false, message: 'Acción de workflow no reconocida' };
+    return { success: false, message: t ? t('history.exec.unknownWorkflowAction') : 'Acción de workflow no reconocida' };
   } catch (err) {
     return { success: false, message: (err as Error).message };
   }

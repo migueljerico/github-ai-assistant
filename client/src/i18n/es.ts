@@ -202,6 +202,8 @@ export const es = {
   'history.releaseCreated': 'Release {tag} creado en {repo}',
   'history.errorRelease': 'Error al crear release en {repo}',
   'history.cancelledAction': 'Cancelado: {action}',
+  'history.multiRepoApplied': '✅ Acción aplicada a {count} repositorio',
+  'history.multiRepoAppliedPlural': '✅ Acción aplicada a {count} repositorios',
   'history.creatingRepo': 'Creando repositorio {name}',
   'history.repoCreated': 'Repositorio {name} creado',
   'history.errorRepo': 'Error al crear repositorio {name}',
@@ -210,6 +212,23 @@ export const es = {
   'history.errorPublishing': 'Error al publicar en {repo}',
   'history.logHeader': '=== Asistente de IA para Publicar Repositorios — Sesión {date} ===',
   'history.logFilename': 'sesion-log-{date}.txt',
+
+  // ────── FASE 3: Ejecutor de acciones (i18n) ──────
+  'history.exec.fileRead': 'Archivo {path} leído correctamente',
+  'history.exec.reposFound': '{count} repositorios encontrados',
+  'history.exec.completed': 'Operación completada',
+  'history.exec.repoCreated': 'Repositorio "{name}" creado correctamente',
+  'history.exec.fileCreated': 'Archivo {path} creado correctamente en {owner}/{repo}',
+  'history.exec.fileUpdated': 'Archivo {path} actualizado correctamente en {owner}/{repo}',
+  'history.exec.fileDeleted': 'Archivo {path} eliminado correctamente',
+  'history.exec.commentAdded': 'Comentario añadido correctamente',
+  'history.exec.issueStateChanged': 'Issue {state} correctamente',
+  'history.exec.prMerged': 'Pull Request fusionado correctamente',
+  'history.exec.workflowRerun': 'Workflow re-ejecutado correctamente',
+  'history.exec.processing': 'Procesando {repo}...',
+  'history.exec.unknownIssueAction': 'Acción de issue no reconocida',
+  'history.exec.unknownPRAction': 'Acción de PR no reconocida',
+  'history.exec.unknownWorkflowAction': 'Acción de workflow no reconocida',
 
   // ────── FASE 3: Plantillas de instrucciones ──────
   'tmpl.create-readme.title': 'Crear README',

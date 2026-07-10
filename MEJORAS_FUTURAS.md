@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v3.25.0 · Julio 2026
+**Actualizado a:** v3.26.0 · Julio 2026
 
 ---
 
@@ -48,6 +48,8 @@ Estado del código, mejoras pendientes y roadmap del proyecto.
 | — | Seguridad: `state` de OAuth con CSPRNG (crypto.randomUUID) | server/index.js | v3.7.1 |
 | 24 | Internacionalización (i18n) ligera sin dependencias — Fase 1: `LanguageContext` + `t()` + ES/EN; selector 🌐; login, cabecera, `AIProviderPanel`, `ChatInput`, botones y paneles laterales | context/LanguageContext.tsx, i18n/{es,en}.ts, components/layout/LanguageSelector.tsx, Header.tsx, AIProviderPanel.tsx, ChatInput.tsx | v3.20.0 |
 | 24 | Internacionalización — Fase 2: modales + `DiffViewer` + mensajes visibles del chat (`t()` inyectada en `ChatDeps`); refactor del `labelMap` por `labelKey`; fix de clave inexistente y 3 tests rotos | components/confirm/{ConfirmModal,DocModal,FilePublishModal,PublishActions,DiffViewer}.tsx, services/assistantActions.ts (ChatDeps.t), App.tsx, i18n/{es,en}.ts | v3.21.0 |
+| 55 | Plantillas del panel lateral hardcodeadas en español — i18n con `buildTemplateCategories(t)` + ~36 claves `tmpl_panel.*` | components/templates/templateData.ts (factoría), i18n/{es,en}.ts, components/templates/TemplatePanel.tsx | v3.25.0 |
+| 56 | Descripciones del historial de acciones de solo lectura emitidas en español — i18n con `history.exec.*` + `t` opcional en el executor | client/src/services/actionExecutor.ts, client/src/services/assistantActions.ts, i18n/{es,en}.ts | v3.26.0 |
 
 ---
 
@@ -482,7 +484,7 @@ El usuario los encuentra confusos: no sabe cuándo usar cuál, y con un repo car
 |---|---|---|---|
 | 🔴 Alta | 8 | 8 (#1, #2, #13, #14, #27, #45, #15, #28) | 0 |
 | 🟡 Media | 17 | 14 (#12, #17, #18, #19, #21, #37, #41, #32, #42, #38, #20, #49, #39, #44) | 3 (#26, #50, #51) |
-| 🟢 Baja | 18 | 7 (#23, #24, #34, #40, #46, #58, #55) | 9 (#22, #25, #36, #48, #52, #53, #54, #56, #57) |
+| 🟢 Baja | 18 | 8 (#23, #24, #34, #40, #46, #58, #55, #56) | 8 (#22, #25, #36, #48, #52, #53, #54, #57) |
 | **🗑️ Descartados** | — | — | 2 (#33, #35) descartados en v3.22.3 |
 | **TOTAL** | **43** | **28** | **13** |
 
