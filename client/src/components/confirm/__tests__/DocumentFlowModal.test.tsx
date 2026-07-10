@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import DocumentFlowModal from '../DocumentFlowModal';
 import type { RepoAnalysis } from '../../../types';
+import type { FileContext } from '../../../services/assistantActions';
 
 const analysis: RepoAnalysis = {
   readme: 'README CONTENT',
@@ -35,6 +36,11 @@ function setup(overrides: Partial<Props> = {}) {
   const props = baseProps(overrides);
   render(<DocumentFlowModal {...props} />);
   return props;
+}
+
+// Mock File para los tests multi-archivo.
+function mockFile(name: string, content = 'contenido'): File {
+  return new File([content], name, { type: 'text/plain' });
 }
 
 describe('DocumentFlowModal (#57)', () => {
@@ -137,5 +143,110 @@ describe('DocumentFlowModal (#57)', () => {
     const props = setup();
     fireEvent.click(screen.getByRole('button', { name: /Cancelar/ }));
     expect(props.onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  // ── #57 Tanda B fix: tests multi-archivo ────────────────────────────────────
+
+  it('Paso 2 (archivo, multi-archivo): muestra todos los archivos con rol (primary / extra)', async () => {
+    const files: FileContext[] = [
+      { name: 'principal.pdf', contextText: '...', file: mockFile('principal.pdf') },
+      { name: 'extra1.png', contextText: '...', file: mockFile('extra1.png') },
+      { name: 'extra2.csv', contextText: '...', file: mockFile('extra2.csv') },
+    ];
+    setup({
+      hasAttachedFile: true,
+      attachedFileName: 'principal.pdf',
+      attachedFile: files[0].file,
+      allAttachedFiles: files,
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Archivo adjunto/ }));
+
+    // Primary marcado como "se documentará"
+    expect(screen.getByText(/se documentará/)).toBeInTheDocument();
+    expect(screen.getByText('principal.pdf')).toBeInTheDocument();
+    // Extras marcados como "se subirá al repo"
+    expect(screen.getByText(/extra1\.png/)).toBeInTheDocument();
+    expect(screen.getByText(/extra2\.csv/)).toBeInTheDocument();
+    expect(screen.getAllByText(/se subirá al repo/)).toHaveLength(2);
+  });
+
+  it('Paso 2 (archivo, mono-archivo): sigue mostrando el nombre simple', async () => {
+    setup({
+      hasAttachedFile: true,
+      attachedFileName: 'notas.txt',
+      attachedFile: mockFile('notas.txt'),
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Archivo adjunto/ }));
+    // Sin multi-archivo → vista simple
+    expect(screen.getByText('📎 notas.txt')).toBeInTheDocument();
+    expect(screen.queryByText(/se subirá al repo/)).not.toBeInTheDocument();
+  });
+
+  it('Paso 4 (archivo, multi-archivo): auto-puebla los extras con los no-principales', async () => {
+    const f1 = mockFile('principal.pdf');
+    const f2 = mockFile('extra1.png');
+    const f3 = mockFile('extra2.csv');
+    const files: FileContext[] = [
+      { name: 'principal.pdf', contextText: '...', file: f1 },
+      { name: 'extra1.png', contextText: '...', file: f2 },
+      { name: 'extra2.csv', contextText: '...', file: f3 },
+    ];
+    const props = setup({
+      hasAttachedFile: true,
+      attachedFileName: 'principal.pdf',
+      attachedFile: f1,
+      allAttachedFiles: files,
+      onPublishFile: vi.fn().mockResolvedValue('published' as const),
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Archivo adjunto/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Generar documentación/ }));
+    await screen.findByText('# doc');
+    fireEvent.click(screen.getByRole('button', { name: /Continuar/ }));
+
+    // Los extras no-principales deben estar pre-cargados en Paso 4
+    expect(screen.getByText('extra1.png')).toBeInTheDocument();
+    expect(screen.getByText('extra2.csv')).toBeInTheDocument();
+
+    const dest = screen.getByPlaceholderText(/owner\/repo o repo/);
+    fireEvent.change(dest, { target: { value: 'owner/repo' } });
+    fireEvent.click(screen.getByRole('button', { name: /Commit directo/ }));
+
+    await waitFor(() => expect(props.onPublishFile).toHaveBeenCalled());
+    const target = (props.onPublishFile as ReturnType<typeof vi.fn>).mock.calls[0][0] as { extraFiles?: File[] };
+    // Los extras deben incluirse como extraFiles (no como sourceFile = principal)
+    expect(target.extraFiles?.map((f: File) => f.name)).toEqual(['extra1.png', 'extra2.csv']);
+  });
+
+  it('Paso 2 repo (multi-archivo en contexto): doCreateRepoAndGenerate incluye los no-principales', async () => {
+    const f1 = mockFile('main.ts');
+    const f2 = mockFile('logo.png');
+    const f3 = mockFile('data.csv');
+    const files: FileContext[] = [
+      { name: 'main.ts', contextText: '...', file: f1 },
+      { name: 'logo.png', contextText: '...', file: f2 },
+      { name: 'data.csv', contextText: '...', file: f3 },
+    ];
+    const props = setup({
+      hasAttachedFile: true,
+      attachedFileName: 'main.ts',
+      attachedFile: f1,
+      allAttachedFiles: files,
+      onGenerateRepo: vi.fn().mockResolvedValue('repo-missing' as any),
+      onCreateRepoAndGenerate: vi.fn().mockResolvedValue({ ...analysis, repoName: 'me/nuevo-repo' }),
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Repositorio entero/ }));
+    fireEvent.change(screen.getByPlaceholderText(/nombre-del-repo o owner\/repo/), { target: { value: 'me/nuevo-repo' } });
+    fireEvent.click(screen.getByRole('button', { name: /Generar documentación/ }));
+
+    await waitFor(() => expect(screen.getByText(/no existe en tu cuenta/)).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /Crear repo y documentar/ }));
+
+    await waitFor(() => expect(props.onCreateRepoAndGenerate).toHaveBeenCalledWith(
+      'me/nuevo-repo',
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'logo.png' }),
+        expect.objectContaining({ name: 'data.csv' }),
+      ]),
+    ));
   });
 });

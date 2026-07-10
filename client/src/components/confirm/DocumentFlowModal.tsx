@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { RepoAnalysis } from '../../types';
-import type { PublishTarget, PublishKind, StartPublishResult } from '../../services/assistantActions';
+import type { PublishTarget, PublishKind, StartPublishResult, FileContext } from '../../services/assistantActions';
 import { resolveRepoRef } from '../../utils/repoRef';
 import PublishActions from './PublishActions';
 import { useModalDialog } from '../../hooks/useModalDialog';
@@ -16,6 +16,10 @@ interface DocumentFlowModalProps {
   attachedFile?: File;
   /** Login del usuario (dueño por defecto al resolver el repo destino). */
   currentUserLogin: string;
+  /** #57 Tanda B fix: archivos adjuntos completos (multi-archivo). Cuando se
+   *  proporciona, el modal muestra el primary (índice 0) como "a documentar" y
+   *  el resto como "extras a subir" en los pasos 2 y 4. */
+  allAttachedFiles?: FileContext[];
   /** #57 Tanda B: repo inicial opcional (botón "Actualizar documentación").
    *  Si se pasa, abre el stepper en el paso 2 (rama repo) con el campo pre-rellenado. */
   initialRepo?: string;
@@ -56,6 +60,7 @@ export default function DocumentFlowModal({
   attachedFile,
   currentUserLogin,
   initialRepo,
+  allAttachedFiles,
   onGenerateRepo,
   onCreateRepoAndGenerate,
   onGenerateFile,
@@ -97,6 +102,15 @@ export default function DocumentFlowModal({
   // #57 Tanda B: archivos para poblar el repo recién creado (scope repo, rama crear).
   const [createExtras, setCreateExtras] = useState<File[]>([]);
 
+  // #57 Tanda B fix: al entrar en Paso 4 (publicación, scope archivo), auto-poblar
+  // los extras con los archivos no-principales del contexto multi-archivo.
+  useEffect(() => {
+    if (step === 4 && scope === 'file' && allAttachedFiles && allAttachedFiles.length > 1) {
+      const nonPrimary = allAttachedFiles.slice(1).map(f => f.file).filter((f): f is File => !!f);
+      setExtras(nonPrimary);
+    }
+  }, [step, scope, allAttachedFiles]);
+
   // ── Paso 2: generación ─────────────────────────────────────────────────────────
   const handleGenerateRepo = async () => {
     if (!repoInput.trim()) return;
@@ -117,12 +131,20 @@ export default function DocumentFlowModal({
     }
   };
 
-  // #57 Tanda B: crear el repo inexistente, subir archivos adjuntos y documentarlo.
+  // #57 Tanda B fix: crear el repo inexistente, subir archivos adjuntos y documentarlo.
   const doCreateRepoAndGenerate = async () => {
     if (!repoInput.trim() || !repoMissing) return;
     setBusy(true);
     try {
-      const a = await onCreateRepoAndGenerate(repoInput.trim(), createExtras.length > 0 ? createExtras : undefined);
+      // Merge manual createExtras with remaining multi-archivo files (non-primary).
+      const remainingFromContext = allAttachedFiles && allAttachedFiles.length > 1
+        ? allAttachedFiles.slice(1).map(f => f.file).filter((f): f is File => !!f)
+        : [];
+      const merged = [...createExtras, ...remainingFromContext];
+      const a = await onCreateRepoAndGenerate(
+        repoInput.trim(),
+        merged.length > 0 ? merged : undefined,
+      );
       if (a) {
         setRepoMissing(null);
         setCreateExtras([]);
@@ -272,7 +294,26 @@ export default function DocumentFlowModal({
             <>
               <p>{t('modal.flow.stepScope')}</p>
               <div style={{ marginTop: '8px' }}>
-                <div style={{ fontWeight: 600, marginBottom: '10px' }}>📎 {attachedFileName}</div>
+                {allAttachedFiles && allAttachedFiles.length > 1 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '10px' }}>
+                    {allAttachedFiles.map((fc, i) => (
+                      <div key={`${fc.name}-${i}`} style={{
+                        padding: '8px 10px', borderRadius: '6px', fontSize: '0.85rem',
+                        background: i === 0 ? 'rgba(34,197,94,0.1)' : 'rgba(148,163,184,0.1)',
+                        border: `1px solid ${i === 0 ? 'rgba(34,197,94,0.3)' : 'rgba(148,163,184,0.2)'}`,
+                        display: 'flex', alignItems: 'center', gap: '6px',
+                      }}>
+                        <span>{i === 0 ? '📝' : '📎'}</span>
+                        <strong>{fc.name}</strong>
+                        <span style={{ fontSize: '0.72rem', opacity: 0.7 }}>
+                          {i === 0 ? '(se documentará)' : '(se subirá al repo)'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ fontWeight: 600, marginBottom: '10px' }}>📎 {attachedFileName}</div>
+                )}
                 <button
                   id="flow-generate-btn"
                   type="button"

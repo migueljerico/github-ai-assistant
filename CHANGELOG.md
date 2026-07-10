@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.30.0] — 2026-07-10
+
+### Fixed
+- **Crash al documentar con multi-archivo (#57 Tanda B fix).** El `DocumentFlowModal` solo recibía `fileContext[0]` y perdía el resto de archivos adjuntos, causando un error de render que el `ErrorBoundary` capturaba como pantalla "Algo ha fallado". Ahora el modal recibe el array completo (`allAttachedFiles`), muestra cada archivo con su rol (primary / extra) en el Paso 2, auto-puebla los extras en el Paso 4 y fusiona los no-principales en el flujo "crear repo + documentar".
+- **Lint: eliminada prop `onClearAllFiles` sin uso en `ChatInput.tsx`.**
+
 ## [3.29.0] — 2026-07-10
 
 ### Added

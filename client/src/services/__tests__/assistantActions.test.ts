@@ -36,6 +36,7 @@ vi.mock('../docPublisher', () => ({
   writeDocFiles: vi.fn(),
   createDocsDraftPr: vi.fn(),
   publishFileDoc: vi.fn(),
+  uploadFilesToRepo: vi.fn(),
 }));
 vi.mock('../../utils/releaseGenerator', () => ({
   createGitHubRelease: vi.fn(),
@@ -76,7 +77,7 @@ import { readSpreadsheet } from '../../utils/spreadsheetReader';
 import { readPowerBI } from '../../utils/powerbiReader';
 import { readDocx } from '../../utils/docxReader';
 import { fetchRepoTreeRecursive, getFileContents, createRepo, repoExists, getRepo, listCommitDates } from '../github';
-import { writeDocFiles, createDocsDraftPr, publishFileDoc } from '../docPublisher';
+import { writeDocFiles, createDocsDraftPr, publishFileDoc, uploadFilesToRepo } from '../docPublisher';
 import { summarizeThread, parseThreadInput, listOpenThreads, formatThreadList } from '../threadSummary';
 import { generateChangelog } from '../changelogGenerator';
 import { executeAction, executeActionMultiRepo } from '../actionExecutor';
@@ -99,6 +100,7 @@ import {
   runPublishFileDoc,
   runCreateFileRelease,
   runCreateRepo,
+  runCreateRepoAndDocument,
   runStartPublish,
   runPublishFileDocByKind,
   runCreateRepoRelease,
@@ -1202,6 +1204,50 @@ describe('runStartPublish (#28 fix)', () => {
     expect(res).toBe('handled');
     expect(deps.addMessage).toHaveBeenCalledWith(expect.objectContaining({
       content: expect.stringContaining('No pude comprobar'),
+    }));
+  });
+});
+
+// ── runCreateRepoAndDocument (#57 Tanda B fix) ────────────────────────────────
+describe('runCreateRepoAndDocument (#57 Tanda B fix)', () => {
+  const makeFile = (name: string) => new File(['x'], name, { type: 'text/plain' });
+
+  it('crea el repo, sube archivos extras y devuelve el análisis', async () => {
+    vi.mocked(createRepo).mockResolvedValue({ full_name: 'me/nuevo' } as any);
+    vi.mocked(uploadFilesToRepo).mockResolvedValue(undefined);
+    vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'a' }], totalScanned: 1, truncated: false, allPaths: ['a'] } as any);
+    vi.mocked(generateRepoDocs).mockResolvedValue({ readme: 'R', manualTecnico: 'M' } as any);
+    const deps = makeDeps();
+
+    const files = [makeFile('logo.png'), makeFile('data.csv')];
+    const result = await runCreateRepoAndDocument(deps, CONFIG, 'me/nuevo-repo', files);
+
+    expect(result).not.toBeNull();
+    expect(createRepo).toHaveBeenCalledWith('tok', 'nuevo-repo', expect.any(String));
+    expect(uploadFilesToRepo).toHaveBeenCalledWith('tok', 'me', 'nuevo-repo', files);
+    expect(generateRepoDocs).toHaveBeenCalled();
+  });
+
+  it('sin archivos extras: solo crea el repo y documenta', async () => {
+    vi.mocked(createRepo).mockResolvedValue({ full_name: 'me/nuevo' } as any);
+    vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'a' }], totalScanned: 1, truncated: false, allPaths: ['a'] } as any);
+    vi.mocked(generateRepoDocs).mockResolvedValue({ readme: 'R', manualTecnico: 'M' } as any);
+    const deps = makeDeps();
+
+    const result = await runCreateRepoAndDocument(deps, CONFIG, 'me/nuevo-repo');
+
+    expect(result).not.toBeNull();
+    expect(uploadFilesToRepo).not.toHaveBeenCalled();
+  });
+
+  it('repo de otra cuenta → aviso y null', async () => {
+    const deps = makeDeps();
+    const result = await runCreateRepoAndDocument(deps, CONFIG, 'otro/nuevo-repo');
+    expect(result).toBeNull();
+    expect(deps.addMessage).toHaveBeenCalledWith(expect.objectContaining({
+      content: expect.stringContaining('solo puedo crear repositorios en tu cuenta'),
     }));
   });
 });

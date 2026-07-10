@@ -421,6 +421,7 @@ export default function App() {
           attachedFile={fileContext[0]?.file}
           currentUserLogin={user?.login ?? ''}
           initialRepo={documentFlowInitialRepo}
+          allAttachedFiles={fileContext}
           onGenerateRepo={flowGenerateRepo}
           onCreateRepoAndGenerate={flowCreateRepoAndGenerateRepo}
           onGenerateFile={flowGenerateFile}

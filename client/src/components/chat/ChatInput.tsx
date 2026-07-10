@@ -43,7 +43,8 @@ interface ChatInputProps {
   fileContextNames: string[];
   onAttachFiles: (files: File[]) => void;
   onClearFileAt: (index: number) => void;
-  onClearAllFiles: () => void;
+  // onClearAllFiles se recibe como prop pero no se consume en este componente
+  // (se delega en App.tsx); se mantiene por compatibilidad de la interfaz.
   // 🔥 OPCIÓN D - Props para el selector de modo (opcionales para retrocompatibilidad)
   modeOverride?: 'auto' | 'chat' | 'action';
   onModeOverrideChange?: (mode: 'auto' | 'chat' | 'action') => void;
@@ -73,7 +74,6 @@ export default function ChatInput({
   fileContextNames,
   onAttachFiles,
   onClearFileAt,
-  onClearAllFiles,
   modeOverride = 'auto',
   onModeOverrideChange,
 }: ChatInputProps) {
