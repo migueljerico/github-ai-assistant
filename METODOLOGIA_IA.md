@@ -47,9 +47,12 @@ El proyecto se construye íntegramente **con** asistencia de IA, pero bajo
   arquitectura o alcance la toma el autor. La IA investiga, planifica y propone;
   el autor aprueba antes de cualquier cambio.
 - **Propón → apruebo → ejecutas.** Extiende al chat la misma garantía que la app
-  aplica a la GitHub API (*propón→confirmar→ejecutar*). Las acciones irreversibles
-  o hacia el exterior (push, release, borrado de ramas) **siempre** esperan
-  confirmación explícita.
+  aplica a la GitHub API (*propón→confirmar→ejecutar*). **Excepción desde v3.23.2:
+  push a `main` + tag anotado se hacen de forma automática al cerrar una gestión**
+  (lo pidió el autor expresamente para no frenar el ciclo). El **GitHub release**
+  (página pública, notas) y los cambios irreversibles sobre el repo —merge de
+  ramas que tocan orquestación, borrado de ramas/archivos, envío de contenido a
+  servicios externos— **siguen esperando confirmación explícita**.
 - **Honestidad por encima de elogios.** Si algo falla, se dice con la salida real
   del comando. Si un paso se saltó, se declara. No se infla lo conseguido. Las
   revisiones externas (otras IAs) se filtran: se incorpora lo accionable, se
@@ -96,26 +99,64 @@ sesión:
         `grep`ear es más barato que volcar stdout.
      4. **Paralelizar con criterio.** Varios `Explore` en paralelo solo si
         investigan cosas **distintas**; si se solapan, uno basta.
-     5. **Dividir el cierre.** El "fix de código mergeado y pusheado" ya está a
-        salvo en `main` (y desplegado por Cloud Build). El **tag + release** es
-        la única acción pública/formal y va **en último lugar**: si queda poco
-        margen, **postergar el tag/release al inicio de la siguiente sesión** (2
-        comandos, 30 s) antes que arriesgarlo a medias.
+     5. **Dividir el cierre.** El "fix de código commiteado" ya está a salvo.
+        Desde v3.23.2, **push a `main` + tag se hacen automáticamente** al cerrar
+        la gestión (no necesitan confirmación); el **GitHub release** sigue siendo
+        la única acción pública/formal que espera visto bueno del autor.
 4. **Ejecutar en una rama** nacida de `main` actualizado (trunk-based). Commits
    atómicos con Conventional Commits.
 5. **Verificar** antes de pushear: `npm run build` (tsc estricto), `npm run lint`
    (0 errores), `npm run test:run` (suite completa verde). Reportar los números
    reales.
-6. **Cerrar la versión**: bump + `CHANGELOG.md` + `MEJORAS_FUTURAS.md` + tag +
-   release. El deploy a Cloud Run es automático vía Cloud Build.
+6. **Cerrar la gestión** (rutina automática desde v3.23.2, ver §2 "Rutina de
+   cierre"): bump + `CHANGELOG.md` + commit + **push a `main`** + **tag
+   anotado** + **mensaje de handoff**. El **GitHub release** y el deploy a
+   Cloud Run (vía Cloud Build) esperan confirmación del autor.
 
 ### Puntos de parada (siempre confirmar antes de)
 
-- **Push a `main`** y creación de **tag**.
-- **GitHub release** (es pública y dispara deploy).
+- **GitHub release** (es pública y dispira deploy). El **push a `main` + tag
+  anotado** NO esperan confirmación desde v3.23.2: se hacen automáticamente al
+  cerrar una gestión (ver §2.6).
 - **Merge de ramas** que tocan la capa de orquestación.
 - **Borrado de ramas o archivos** del repo.
 - **Enviar contenido a servicios externos** (se publica, puede indexarse).
+
+### Rutina de cierre (automática desde v3.23.2)
+
+Al cerrar una gestión (fix, feature, iteración con tests verdes y build limpio),
+el asistente ejecuta **sin pedir permiso**:
+
+1. **Bump de versión** (`package.json` ×2 + lockfiles con `npm install`).
+2. **`CHANGELOG.md`** con la entrada de la versión (crédito al modelo que hizo
+   la investigación vs. el que cerró el fix).
+3. **Commit** convencional con todos los cambios de la gestión.
+4. **Push a `main`** (`git push origin main`).
+5. **Tag anotado** `vX.Y.Z` y push del tag (`git push origin vX.Y.Z`).
+6. **Mensaje de handoff** (ver §2.7): bloque de texto listo para pegar en la
+   siguiente sesión.
+
+La confirmación del usuario se pide **solo** para el **GitHub release** (notas
+públicas) y para cualquier acción fuera de esta rutina.
+
+### Mensaje de handoff (generar siempre al cerrar)
+
+Cada cierre termina con un **bloque de handoff compacto** que el autor copia en
+la siguiente sesión para retomar el trabajo con mínima inversión de tokens. Es
+el mismo formato que se usó para abrir esta sesión con Grok 4.5 → ZCode. Debe
+contener:
+
+- **Repo, rama y versión** recién publicada.
+- **Qué se acaba de cerrar** (1-3 frases, con número de issue y archivo clave).
+- **Próximo trabajo priorizado** (sacado de `MEJORAS_FUTURAS.md`, con
+  estimación).
+- **Reglas de la sesión** (economía de contexto: subagentes Explore con
+  informes compactos, lecturas con offset/limit, outputs filtrados; push+tag
+  automáticos; crédito de modelo).
+
+El asistente lo entrega como último mensaje de la sesión, en un bloque de
+código para copiar fácil. Si queda trabajo a medias (contra la regla de §2), el
+handoff lo declara sin inflar lo conseguido.
 
 ---
 
@@ -183,14 +224,17 @@ Quién ha hecho qué, para reconocimiento y contexto. El autor figura como
 Si retomas el proyecto en otra sesión/herramienta, este es el punto de partida:
 
 1. **Cargar contexto:** leer `CLAUDE.md` (guía técnica) y este documento
-   (metodología). El asistente debe asimilarlos **antes** de proponer nada.
+   (metodología). El asistente debe asimilarlos **antes** de proponer nada. Si el
+   autor pega un **mensaje de handoff** de la sesión anterior (formato §2.7),
+   ese es el contexto de arranque — leerlo antes que nada.
 2. **Verificar estado real del repo** (no asumir): versión en `package.json`,
    rama activa, últimos commits, `git tag`, ramas sin mergear, divergencias. Una
    discrepancia entre lo que dice la doc y el código real es señal de que algo
    quedó a medias — investigar antes de avanzar.
 3. **Revisar `MEJORAS_FUTURAS.md`** para el siguiente ítem del roadmap.
 4. **Acordar el alcance** de la iteración con el autor antes de escribir código.
-5. **Seguir el flujo de §2** y registrar el resultado al cerrar la versión.
+5. **Seguir el flujo de §2** y, al cerrar, ejecutar la rutina automática de
+   cierre (push + tag + handoff).
 
 ---
 
