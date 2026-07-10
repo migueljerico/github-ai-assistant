@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.23.1] — 2026-07-08
+
+### Fixed
+- **El catálogo dinámico de Gemini no cargaba (#58 hotfix)** — el backend tenía el endpoint como `POST` que leía la `apiKey` del body, pero `fetchModels` (cliente) envía `GET` con la key en el header `Authorization` (mismo patrón que Groq/OpenRouter). Cambiado el endpoint a `GET` + lectura del header `Authorization: Bearer ...`. Ahora el selector de modelos de Gemini sí pobla dinámicamente con los modelos reales disponibles para la key del usuario.
+
+### Notes
+- Creado skill personal `context-saver` (`~/.agents/skills/context-saver/`) con técnicas de economía de contexto para sesiones largas.
+- _Fix asistido por **ZCode** (GLM-5.2)._
+
 ## [3.23.0] — 2026-07-07
 
 ### Added

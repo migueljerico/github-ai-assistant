@@ -146,13 +146,15 @@ app.post('/api/gemini', geminiLimiter, async (req, res) => {
 // La API de listado de Gemini también está bloqueada en UE desde el navegador
 // (como el chat), así que el catálogo de modelos se pide a través del proxy.
 // Devuelve { data: [{ id, name }] } — el formato que fetchModels ya parsea.
-// La apiKey del usuario viaja en el body (igual que en /api/gemini), nunca se
-// persiste. Mismo rate limit que el chat.
-app.post('/api/gemini/models', geminiLimiter, async (req, res) => {
-  const { apiKey } = req.body;
+// La apiKey del usuario viaja en el header Authorization (mismo patrón que
+// Groq/OpenRouter en fetchModels), nunca se persiste. Mismo rate limit que el
+// chat. Es GET para encajar con fetchModels (que hace fetch GET + header).
+app.get('/api/gemini/models', geminiLimiter, async (req, res) => {
+  const auth = req.headers.authorization || '';
+  const apiKey = auth.startsWith('Bearer ') ? auth.slice(7) : '';
 
   if (!apiKey) {
-    return res.status(400).json({ error: 'Falta el campo requerido: apiKey' });
+    return res.status(400).json({ error: 'Falta la apiKey (header Authorization: Bearer ...)' });
   }
 
   try {

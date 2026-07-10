@@ -35,9 +35,10 @@ const createTestApp = () => {
   app.use(express.json());
 
   // Réplica mínima del endpoint /api/gemini/models de server/index.js (#58).
-  app.post('/api/gemini/models', async (req, res) => {
-    const { apiKey } = req.body;
-    if (!apiKey) return res.status(400).json({ error: 'Falta el campo requerido: apiKey' });
+  app.get('/api/gemini/models', async (req, res) => {
+    const auth = req.headers.authorization || '';
+    const apiKey = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+    if (!apiKey) return res.status(400).json({ error: 'Falta la apiKey' });
     try {
       const genAI = new GoogleGenerativeAI(apiKey);
       const { models } = await genAI.listModels();
@@ -56,14 +57,14 @@ const createTestApp = () => {
   return app;
 };
 
-describe('POST /api/gemini/models — proxy de catálogo (#58)', () => {
+describe('GET /api/gemini/models — proxy de catálogo (#58)', () => {
   let app;
   beforeEach(() => { app = createTestApp(); });
 
   it('devuelve { data: [...] } con los modelos generativos y filtra los no-chat', async () => {
     const res = await request(app)
-      .post('/api/gemini/models')
-      .send({ apiKey: 'VALID_KEY' });
+      .get('/api/gemini/models')
+      .set('Authorization', 'Bearer VALID_KEY');
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.data)).toBe(true);
@@ -77,16 +78,16 @@ describe('POST /api/gemini/models — proxy de catálogo (#58)', () => {
     expect(res.body.data.find(m => m.id === 'gemini-2.5-flash').name).toBe('Gemini 2.5 Flash');
   });
 
-  it('responde 400 si falta la apiKey', async () => {
-    const res = await request(app).post('/api/gemini/models').send({});
+  it('responde 400 si falta la apiKey (sin header Authorization)', async () => {
+    const res = await request(app).get('/api/gemini/models');
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/apiKey/);
+    expect(res.body.error).toMatch(/apiKey/i);
   });
 
   it('propaga el error del SDK con su status (API key inválida)', async () => {
     const res = await request(app)
-      .post('/api/gemini/models')
-      .send({ apiKey: 'INVALID' });
+      .get('/api/gemini/models')
+      .set('Authorization', 'Bearer INVALID');
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/not valid/i);
   });
