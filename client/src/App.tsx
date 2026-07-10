@@ -111,9 +111,10 @@ export default function App() {
     const ctx = await runLoadRepoContext(
       { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
       repoInput,
+      provider ?? undefined,
     );
     if (ctx) setRepoContext(ctx);
-  }, [token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [token, user, provider, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
 
   const handleClearRepoContext = useCallback(() => {
     setRepoContext(null);

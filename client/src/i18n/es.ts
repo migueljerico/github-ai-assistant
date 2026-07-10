@@ -178,6 +178,9 @@ export const es = {
   'chat.fileTextExtractFailed': 'No pude extraer texto del archivo (¿es un PDF escaneado o una imagen?). Prueba con un PDF de texto o un archivo de texto/código.',
   'chat.unknownError': 'Error desconocido',
   'chat.actionParseFailed': '⚠️ El modelo no devolvió una acción válida (probablemente JSON mal formado). Prueba con otro modelo o reformula la instrucción. Respuesta recibida:',
+  // #50: contexto demasiado grande incluso tras el reintento con menos archivos.
+  'chat.contextTooLarge': '⚠️ El contexto del repositorio sigue siendo demasiado grande para este modelo (límite de tokens por minuto). Ya intenté reducirlo automáticamente. Prueba con un repo más pequeño, otro modelo (p. ej. Gemini) o cambia de proveedor.',
+  'chat.contactError': 'Error al contactar con el asistente',
   'chat.docRepoNotFound': '❌ No encontré el repositorio **{repo}**. ¿Existe y tu token de GitHub tiene acceso a él?',
 
   // ────── FASE 2: Paneles ──────
@@ -193,6 +196,7 @@ export const es = {
   'chat.message.thinking': 'Pensando...',
   'chat.message.actionPending': '⏸️ Acción pendiente de confirmación',
   'chat.message.readAction': '✅ Acción de lectura',
+  'chat.message.consultedFiles': 'Archivos consultados para esta respuesta',
   'chat.suggestions.title': '💡 Sugerencias de instrucciones',
   'chat.suggestions.hint': '↑↓ Navegar • Enter Seleccionar • Esc Cerrar',
 

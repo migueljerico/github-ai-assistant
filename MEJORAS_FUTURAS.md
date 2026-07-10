@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v3.26.0 · Julio 2026
+**Actualizado a:** v3.28.0 · Julio 2026
 
 ---
 
@@ -50,6 +50,8 @@ Estado del código, mejoras pendientes y roadmap del proyecto.
 | 24 | Internacionalización — Fase 2: modales + `DiffViewer` + mensajes visibles del chat (`t()` inyectada en `ChatDeps`); refactor del `labelMap` por `labelKey`; fix de clave inexistente y 3 tests rotos | components/confirm/{ConfirmModal,DocModal,FilePublishModal,PublishActions,DiffViewer}.tsx, services/assistantActions.ts (ChatDeps.t), App.tsx, i18n/{es,en}.ts | v3.21.0 |
 | 55 | Plantillas del panel lateral hardcodeadas en español — i18n con `buildTemplateCategories(t)` + ~36 claves `tmpl_panel.*` | components/templates/templateData.ts (factoría), i18n/{es,en}.ts, components/templates/TemplatePanel.tsx | v3.25.0 |
 | 56 | Descripciones del historial de acciones de solo lectura emitidas en español — i18n con `history.exec.*` + `t` opcional en el executor | client/src/services/actionExecutor.ts, client/src/services/assistantActions.ts, i18n/{es,en}.ts | v3.26.0 |
+| 50 | Presupuesto de contexto adaptativo (TPM bajo) + reintento con menos contexto + fix del mensaje duplicado | services/providers.ts (contextBudget), services/assistantActions.ts (getActiveContextBudget, reintento TPM), services/gemini.ts (error diferenciado), utils/retry.ts (isContextTooLargeError) | v3.28.0 |
+| 51 | "Archivos consultados para esta respuesta" (transparencia del contextRanker) | types/index.ts (consultedFiles), services/assistantActions.ts (propagación), components/chat/ChatMessage.tsx (bloque plegable), i18n/{es,en}.ts | v3.28.0 |
 
 ---
 
@@ -146,7 +148,7 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 - ✅ CI con GitHub Actions ejecutando tests (cliente + servidor) automáticamente
 - ✅ Badge de Codecov en README
 - ✅ Cobertura actual: ver Codecov (oscila según versión; histórico ~60–64%)
-- ✅ 476 tests en el cliente (v3.19.0+; 48 archivos `.test.ts(x)` co-locados). Implementados para:
+- ✅ 492 tests en el cliente (v3.28.0; 48 archivos `.test.ts(x)` co-locados). Implementados para:
   - `AuthContext.tsx` (login, logout, OAuth flow, Zero-Storage)
   - `AIProviderContext.tsx` (conexión/desconexión de proveedores)
   - `providers.ts` (registro de proveedores, detección de modelos 🆓, caché, `pickDefaultModel`)
@@ -179,25 +181,25 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 ---
 
-#### #50 — Presupuesto de contexto ajustado (que quepa en modelos con TPM bajo)
+#### #50 — Presupuesto de contexto ajustado (que quepa en modelos con TPM bajo) ✅ RESUELTO en v3.28.0
 **Esfuerzo:** 2–3h
 **Origen:** **dogfooding** — al pedir opinión del roadmap con el repo cargado, **Groq (tier gratuito) rechazó la petición por límite TPM** (`Request too large`: ~16-20k tokens pedidos vs. límite 6-12k). Gemini sí lo aguantó.
 
-**Problema actual:** con un repo grande cargado como contexto (#41/#49), el bloque de contexto (árbol completo + contenido de los 12 archivos más relevantes a 80 líneas) puede superar el límite de tokens por minuto de los modelos pequeños (Groq free), que devuelven error.
+**Problema:** con un repo grande cargado como contexto (#41/#49), el bloque de contexto (árbol completo + contenido de los 12 archivos más relevantes a 80 líneas) podía superar el límite de tokens por minuto de los modelos pequeños (Groq free), que devolvían error. Además, el hint de error genérico de "saturación" se pegaba también a los errores de contexto excesivo.
 
-**Solución propuesta:** como **#49 ya selecciona los archivos relevantes**, enviar **menos** contenido sin perder calidad: bajar el top-N (12 → ~6-8) y/o aplicar un **tope de tokens/caracteres** al bloque de contexto; opcionalmente **adaptativo por proveedor** (más margen en Gemini, menos en Groq). Incluir el **fix del mensaje de error de Groq duplicado** (hoy el hint se concatena dos veces).
+**Solución aplicada (v3.28.0):** presupuesto **declarativo por proveedor** — nuevo campo `contextBudget?` en `ProviderDef`; Groq declara `{ maxFiles: 6, maxLinesPerFile: 60 }`, el resto usa los defaults 12/80. Helper `getActiveContextBudget()` lo lee en `runSend`/`runLoadRepoContext`. **Reintento automático**: si el primer intento falla por contexto excesivo, `runSend` reintenta con la mitad de archivos (`isContextTooLargeError` en `retry.ts`). **Fix del mensaje duplicado**: el error de TPM ahora es diferenciado en `gemini.ts` (flag `contextTooLarge`, sin hint de saturación) y muestra un mensaje accionable i18n (`chat.contextTooLarge`).
 
-**Beneficio:** que el chat con repo cargado funcione también en Groq y otros modelos con TPM bajo; menos coste de tokens.
+**Beneficio:** que el chat con repo cargado funcione también en Groq y otros modelos con TPM bajo; menos coste de tokens; UX de error clara y accionable.
 
 ---
 
-#### #51 — "Archivos consultados para esta respuesta" (transparencia del contextRanker)
+#### #51 — "Archivos consultados para esta respuesta" (transparencia del contextRanker) ✅ RESUELTO en v3.28.0
 **Esfuerzo:** 2–3h
 **Origen:** sugerencia de **Gemma 4 31B** (OpenRouter), **dogfooding**.
 
-**Problema actual:** con #49 la IA responde basándose en los archivos que el `contextRanker` selecciona, pero el usuario no ve **cuáles**; queda como "caja negra".
+**Problema:** con #49 la IA responde basándose en los archivos que el `contextRanker` selecciona, pero el usuario no ve **cuáles**; queda como "caja negra".
 
-**Solución propuesta:** mostrar bajo la respuesta del chat una lista plegable de **"Archivos consultados para esta respuesta"** (los rankeados que se enviaron). `runSend` ya calcula esa lista (`rankFilesByQuery`); solo hay que propagarla al mensaje y renderizarla.
+**Solución aplicada (v3.28.0):** nuevo campo `consultedFiles?: string[]` en `ChatMessage`; `runSend` captura el resultado de `rankFilesByQuery` (antes descartado) y lo propaga en el `updateMessage` final (ramas chat y acción). Render: bloque `<details>` plegable bajo la respuesta con clase `.message-consulted-files`, clave i18n `chat.message.consultedFiles`. La lista refleja lo realmente enviado (incluso tras el reintento con menos contexto de #50).
 
 **Beneficio:** transparencia y confianza; el usuario entiende qué partes de su código leyó la IA.
 
@@ -483,10 +485,10 @@ El usuario los encuentra confusos: no sabe cuándo usar cuál, y con un repo car
 | Prioridad | Total | ✅ Resueltos | ⏳ Pendientes |
 |---|---|---|---|
 | 🔴 Alta | 8 | 8 (#1, #2, #13, #14, #27, #45, #15, #28) | 0 |
-| 🟡 Media | 17 | 14 (#12, #17, #18, #19, #21, #37, #41, #32, #42, #38, #20, #49, #39, #44) | 3 (#26, #50, #51) |
+| 🟡 Media | 17 | 16 (#12, #17, #18, #19, #21, #37, #41, #32, #42, #38, #20, #49, #39, #44, #50, #51) | 1 (#26) |
 | 🟢 Baja | 18 | 9 (#23, #24, #34, #40, #46, #58, #55, #56, #57) | 7 (#22, #25, #36, #48, #52, #53, #54) |
 | **🗑️ Descartados** | — | — | 2 (#33, #35) descartados en v3.22.3 |
-| **TOTAL** | **43** | **29** | **12** |
+| **TOTAL** | **43** | **31** | **10** |
 
 > **#28** cubierto en su **norte** por las Fases 1 (v3.0.0, adjuntar como contexto) y
 > 2 (v3.1.0, documentar→publicar). **Más formatos:** Fase 3a (v3.2.0, Excel/CSV) y

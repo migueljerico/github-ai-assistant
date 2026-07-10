@@ -240,8 +240,17 @@ async function callOpenAICompatible(
   if (!res.ok) {
     const err = await res.json().catch(() => ({})) as Record<string, unknown>;
     const msg = (err?.error as Record<string, unknown>)?.message as string | undefined;
-    const hint = ' — el modelo no está disponible ahora mismo (saturación del tier gratuito). Prueba otro modelo (p.ej. Gemma) o cambia a Gemini/Groq.';
-    throw Object.assign(new Error((msg || `AI provider error ${res.status}`) + hint), { status: res.status });
+    // #50: distinguir el error de contexto excesivo (TPM/context length) del de
+    // saturación del tier. El primero se marca con `contextTooLarge` para que runSend
+    // pueda reintentar con menos contexto y mostrar un mensaje accionable; el segundo
+    // mantiene el hint de "prueba otro modelo".
+    const base = msg || `AI provider error ${res.status}`;
+    const isTooLarge = typeof msg === 'string' && /too large|reduce the length|tokens per minute|context length|maximum.{0,12}tokens|payload too|rate limit/i.test(msg);
+    if (isTooLarge || res.status === 413) {
+      throw Object.assign(new Error(base), { status: res.status, contextTooLarge: true });
+    }
+    const hint = ' — el modelo no está disponible ahora mismo (saturación del tier gratuito). Prueba otro modelo (p. ej. Gemma) o cambia a Gemini/Groq.';
+    throw Object.assign(new Error(base + hint), { status: res.status });
   }
 
   // Mensaje de error reutilizado cuando el modelo no devuelve contenido.

@@ -178,6 +178,9 @@ export const en = {
   'chat.fileTextExtractFailed': 'I couldn\'t extract text from the file (is it a scanned PDF or an image?). Try a text-based PDF or a text/code file.',
   'chat.unknownError': 'Unknown error',
   'chat.actionParseFailed': '⚠️ The model didn\'t return a valid action (likely malformed JSON). Try another model or rephrase the instruction. Received response:',
+  // #50: context still too large even after the retry with fewer files.
+  'chat.contextTooLarge': '⚠️ The repository context is still too large for this model (tokens-per-minute limit). I already tried shrinking it automatically. Try a smaller repo, another model (e.g. Gemini), or switch provider.',
+  'chat.contactError': 'Error contacting the assistant',
   'chat.docRepoNotFound': '❌ Repository **{repo}** not found. Does it exist and does your GitHub token have access to it?',
 
   // ────── PHASE 2: Panels ──────
@@ -193,6 +196,7 @@ export const en = {
   'chat.message.thinking': 'Thinking...',
   'chat.message.actionPending': '⏸️ Action pending confirmation',
   'chat.message.readAction': '✅ Read-only action',
+  'chat.message.consultedFiles': 'Files consulted for this response',
   'chat.suggestions.title': '💡 Instruction suggestions',
   'chat.suggestions.hint': '↑↓ Navigate • Enter Select • Esc Close',
 

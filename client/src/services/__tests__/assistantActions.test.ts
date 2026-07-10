@@ -559,11 +559,84 @@ describe('runSend', () => {
 
     // buildRepoContextSummary se llama con los archivos RANKEADOS por la pregunta
     // (MEJORAS_FUTURAS.md primero por la mención) y el árbol completo (allPaths).
+    // #50: con provider=groq, el presupuesto es 6 archivos / 60 líneas (no 12/80).
     const calls = vi.mocked(buildRepoContextSummary).mock.calls;
     const call = calls[calls.length - 1];
     expect(call[0]).toBe('owner/repo');
     expect((call[1] as any[])[0].path).toBe('MEJORAS_FUTURAS.md');
-    expect(call[2]).toEqual({ allPaths: ['a.ts', 'MEJORAS_FUTURAS.md', 'extra.ts'] });
+    expect(call[2]).toEqual({ allPaths: ['a.ts', 'MEJORAS_FUTURAS.md', 'extra.ts'], maxFiles: 6, maxLinesPerFile: 60 });
+    // #51: la lista de archivos consultados se propaga al mensaje del asistente.
+    const updateCalls = vi.mocked(deps.updateMessage).mock.calls;
+    const lastUpdate = updateCalls[updateCalls.length - 1][1];
+    expect(lastUpdate.consultedFiles).toEqual(['MEJORAS_FUTURAS.md', 'a.ts']);
+  });
+
+  it('provider con budget alto (gemini) usa 12/80 (#50)', async () => {
+    vi.mocked(resolveMode).mockReturnValue('chat');
+    vi.mocked(callAI).mockResolvedValue('opinión');
+    vi.mocked(parseGeminiAction).mockReturnValue(null);
+    const deps = makeDeps();
+
+    await runSend(deps, { provider: 'gemini' as const, apiKey: 'k', model: 'm' }, {
+      ...SEND_PARAMS,
+      userText: '¿qué me dices de a.ts?',
+      repoContext: {
+        repoName: 'owner/repo',
+        contextText: 'VIEJO',
+        filesAnalyzed: 1,
+        totalFiles: 1,
+        truncated: false,
+        files: [{ path: 'a.ts', content: 'codigo', size: 0 }],
+        allPaths: ['a.ts'],
+      } as any,
+    });
+
+    const calls = vi.mocked(buildRepoContextSummary).mock.calls;
+    const call = calls[calls.length - 1];
+    // Gemini no declara contextBudget → defaults 12/80.
+    expect(call[2]).toEqual({ allPaths: ['a.ts'], maxFiles: 12, maxLinesPerFile: 80 });
+  });
+
+  it('reintenta con menos contexto si el primer intento falla por TPM (#50)', async () => {
+    vi.mocked(resolveMode).mockReturnValue('chat');
+    // Primer intento: error de contexto excesivo (too large). Segundo: éxito.
+    const tooLargeErr = Object.assign(new Error('Request too large for model'), { contextTooLarge: true });
+    vi.mocked(callAI)
+      .mockRejectedValueOnce(tooLargeErr)
+      .mockResolvedValueOnce('opinión reducida');
+    vi.mocked(parseGeminiAction).mockReturnValue(null);
+    const deps = makeDeps();
+
+    await runSend(deps, CONFIG, {
+      ...SEND_PARAMS,
+      userText: 'pregunta sobre MEJORAS_FUTURAS',
+      repoContext: {
+        repoName: 'owner/repo',
+        contextText: 'VIEJO',
+        filesAnalyzed: 2,
+        totalFiles: 3,
+        truncated: false,
+        files: [
+          { path: 'a.ts', content: 'codigo', size: 0 },
+          { path: 'MEJORAS_FUTURAS.md', content: 'roadmap', size: 0 },
+          { path: 'extra.ts', content: 'extra', size: 0 },
+          { path: 'd.ts', content: 'd', size: 0 },
+          { path: 'e.ts', content: 'e', size: 0 },
+          { path: 'f.ts', content: 'f', size: 0 },
+        ],
+        allPaths: ['a.ts', 'MEJORAS_FUTURAS.md', 'extra.ts', 'd.ts', 'e.ts', 'f.ts'],
+      } as any,
+    });
+
+    // Tras el error, se reintenta con la mitad de archivos (groq 6 → 3).
+    const calls = vi.mocked(buildRepoContextSummary).mock.calls;
+    expect(calls.length).toBe(2);
+    expect((calls[0][2] as any).maxFiles).toBe(6);
+    expect((calls[1][2] as any).maxFiles).toBe(3);
+    // El mensaje final refleja la respuesta del segundo intento.
+    const updateCalls = vi.mocked(deps.updateMessage).mock.calls;
+    const lastUpdate = updateCalls[updateCalls.length - 1][1];
+    expect(lastUpdate.content).toBe('opinión reducida');
   });
 
   it('al cancelar en streaming conserva el texto parcial con la nota (detenido) (#40)', async () => {

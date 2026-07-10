@@ -51,6 +51,20 @@ export default function ChatMessageBubble({ message }: { message: ChatMessage })
                 </div>
               </div>
             )}
+
+            {/* #51: archivos del repo consultados para esta respuesta (transparencia
+                del contextRanker). Lista plegable nativa, solo en mensajes del
+                asistente que se basaron en un contexto de repo. */}
+            {!isUser && message.consultedFiles && message.consultedFiles.length > 0 && (
+              <details className="message-consulted-files">
+                <summary>📂 {t('chat.message.consultedFiles')} ({message.consultedFiles.length})</summary>
+                <ul className="consulted-files-list">
+                  {message.consultedFiles.map((p) => (
+                    <li key={p}><code>{p}</code></li>
+                  ))}
+                </ul>
+              </details>
+            )}
           </div>
         )}
         <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px', paddingLeft: '4px' }}>

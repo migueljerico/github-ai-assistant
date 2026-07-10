@@ -419,6 +419,53 @@ describe('Cancelación de la generación (#40)', () => {
   });
 });
 
+describe('Error de contexto excesivo (TPM) — diferenciado del de saturación (#50)', () => {
+  beforeEach(() => { vi.restoreAllMocks(); });
+
+  it('status 413 → error con contextTooLarge:true, SIN el hint de saturación', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 413,
+      json: async () => ({ error: { message: 'Payload Too Large' } }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      callAI([{ role: 'user', content: 'hola' }], 'sys', 'groq', 'k', 'm', 'chat'),
+    ).rejects.toMatchObject({ contextTooLarge: true, status: 413 });
+  });
+
+  it('mensaje "too large / tokens per minute" → error con contextTooLarge:true', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 413,
+      json: async () => ({ error: { message: 'Request too large: exceeded tokens per minute' } }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      callAI([{ role: 'user', content: 'hola' }], 'sys', 'groq', 'k', 'm', 'chat'),
+    ).rejects.toMatchObject({ contextTooLarge: true });
+  });
+
+  it('error de saturación (no TPM) → SIN contextTooLarge y CON el hint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: async () => ({ error: { message: 'Service Unavailable' } }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    try {
+      await callAI([{ role: 'user', content: 'hola' }], 'sys', 'groq', 'k', 'm', 'chat');
+      throw new Error('debería haber lanzado');
+    } catch (e) {
+      expect((e as any).contextTooLarge).toBeUndefined();
+      expect((e as Error).message).toMatch(/saturación|Prueba otro modelo/);
+    }
+  });
+});
+
 describe('Contexto de repo para chat (#41)', () => {
   const files = [
     { path: 'README.md', content: '# Mi proyecto\nlínea2\nlínea3' },
@@ -458,6 +505,19 @@ describe('Contexto de repo para chat (#41)', () => {
       expect(out).toContain('MEJORAS_FUTURAS.md'); // en la ESTRUCTURA aunque no haya contenido
       expect(out).toContain('src/deep/thing.ts');
       expect(out).toContain('# R'); // contenido solo de README
+    });
+
+    it('presupuesto reducido combinado (6 archivos / 60 líneas) — Groq free (#50)', () => {
+      // Groq free tiene TPM bajo: runSend le pasa maxFiles:6, maxLinesPerFile:60.
+      const big = Array.from({ length: 120 }, (_, i) => `linea ${i}`).join('\n');
+      const many = Array.from({ length: 10 }, (_, i) => ({ path: `f${i}.ts`, content: big }));
+      const out = buildRepoContextSummary('owner/repo', many, { maxFiles: 6, maxLinesPerFile: 60 });
+      // El CONTENIDO (bloque `### path`) de solo los 6 primeros archivos…
+      expect(out).toContain('### f0.ts');
+      expect(out).toContain('### f5.ts');
+      expect(out).not.toContain('### f6.ts');
+      // …y cada archivo se trunca a 60 líneas (no 80).
+      expect(out).toMatch(/60 líneas más/);
     });
   });
 

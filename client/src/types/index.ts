@@ -130,6 +130,7 @@ export interface ChatMessage {
   timestamp: Date;
   action?: GeminiAction; // parsed action from Gemini
   isLoading?: boolean;
+  consultedFiles?: string[]; // #51: archivos del repo enviados al LLM para esta respuesta
 }
 
 // ── History ──────────────────────────────────────────────────────────────────

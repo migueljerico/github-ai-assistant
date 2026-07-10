@@ -41,6 +41,10 @@ export interface ProviderDef {
   signupLabel: string; // clave de traducción
   note?: string;             // clave de traducción
   extraHeaders?: Record<string, string>;
+  // #50: presupuesto de contexto adaptativo para que el chat con repo cargado
+  // funcione también en modelos con TPM bajo (p. ej. Groq free rechazaba la
+  // petición por tamaño). Si se omite, runSend usa los defaults 12 archivos / 80 líneas.
+  contextBudget?: { maxFiles: number; maxLinesPerFile: number };
 }
 
 // Catálogo FIJO de Gemini. El listado dinámico vía proxy fue retirado: la API
@@ -149,6 +153,10 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     keyPrefix: 'gsk_',
     signupUrl: 'https://console.groq.com',
     signupLabel: 'provider.groq.signupLabel',
+    // #50: el tier gratuito de Groq tiene un TPM bajo (~6-12k) y rechazaba el
+    // contexto completo (12 archivos / 80 líneas). Aquí lo recortamos para que
+    // el chat con repo cargado funcione sin superar el límite.
+    contextBudget: { maxFiles: 6, maxLinesPerFile: 60 },
   },
   openrouter: {
     id: 'openrouter',

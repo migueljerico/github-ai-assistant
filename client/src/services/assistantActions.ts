@@ -12,8 +12,10 @@
 import { generateRepoDocs, generateFileDoc, buildRepoContextSummary, callAI, parseGeminiAction, isAbortError, CHAT_PROMPT, ACTION_PROMPT, chatPromptWithContext, withLangDirective } from './gemini';
 import type { Language } from '../context/LanguageContext';
 import type { AIProviderConfig } from './gemini';
+import { getProvider, type AIProviderType } from './providers';
 import { fetchRepoTreeRecursive, getFileContents, decodeBase64, createRepo, repoExists, getRepo, listCommitDates, GitHubAPIError, type RepoTreeFile } from './github';
 import { rankFilesByQuery } from '../utils/contextRanker';
+import { isContextTooLargeError } from '../utils/retry';
 import { languageDistribution, countTechnicalDebt, commitsByWeek, type LanguageSlice, type TechnicalDebt, type CommitWeek } from '../utils/codeHealth';
 import { writeDocFiles, createDocsDraftPr, publishFileDoc } from './docPublisher';
 import { summarizeThread, parseThreadInput, listOpenThreads, formatThreadList } from './threadSummary';
@@ -52,6 +54,24 @@ export interface CodeHealth {
   commits: CommitWeek[];
   filesAnalyzed: number;
   truncated: boolean;
+}
+
+/** Presupuesto de contexto (archivos × líneas/archivo) para el resumen de repo. */
+export interface ContextBudget {
+  maxFiles: number;
+  maxLinesPerFile: number;
+}
+
+/** Defaults de contexto cuando el proveedor no declara `contextBudget` (#50). */
+export const DEFAULT_CONTEXT_BUDGET: ContextBudget = { maxFiles: 12, maxLinesPerFile: 80 };
+
+/**
+ * #50: presupuesto de contexto adaptativo al proveedor. Los proveedores con TPM
+ * bajo (p. ej. Groq free) declaran un `contextBudget` menor en `providers.ts`;
+ * los que no, usan los defaults (12/80). Función pura (testeable).
+ */
+export function getActiveContextBudget(provider: AIProviderType): ContextBudget {
+  return getProvider(provider).contextBudget ?? DEFAULT_CONTEXT_BUDGET;
 }
 
 /** Dependencias inyectadas (estado de chat e historial) que usan las acciones. */
@@ -168,9 +188,11 @@ export async function runDocumentRepo(
  * Carga un repo como contexto activo del chat (#41). Devuelve el contexto para
  * que App lo guarde en estado, o `null` si falló.
  */
-export async function runLoadRepoContext(deps: ChatDeps, repoInput: string): Promise<RepoContext | null> {
+export async function runLoadRepoContext(deps: ChatDeps, repoInput: string, provider?: AIProviderType): Promise<RepoContext | null> {
   const { token, user, addMessage, updateMessage, setIsChatLoading } = deps;
   const { owner, repo: repoName } = resolveRepoRef(repoInput, user.login);
+  // #50: aplicar el presupuesto de contexto del proveedor (Groq = 6/60; resto = 12/80).
+  const budget = provider ? getActiveContextBudget(provider) : DEFAULT_CONTEXT_BUDGET;
 
   setIsChatLoading(true);
   const loadingId = addMessage({
@@ -184,7 +206,7 @@ export async function runLoadRepoContext(deps: ChatDeps, repoInput: string): Pro
     const safeAllPaths = allPaths ?? files.map(f => f.path);
     // Contexto inicial (sin pregunta aún): árbol completo + primeros archivos por prioridad.
     // En cada turno, runSend lo reconstruye seleccionando los relevantes a la pregunta (#49).
-    const contextText = buildRepoContextSummary(`${owner}/${repoName}`, files, { allPaths: safeAllPaths });
+    const contextText = buildRepoContextSummary(`${owner}/${repoName}`, files, { allPaths: safeAllPaths, maxFiles: budget.maxFiles, maxLinesPerFile: budget.maxLinesPerFile });
     updateMessage(loadingId, {
       content:
         `✅ Contexto cargado de **${owner}/${repoName}** ` +
@@ -433,37 +455,15 @@ export async function runSend(deps: SendDeps, config: AIProviderConfig, params: 
   // #41/#28: si hay repo y/o archivo como contexto, resolveMode sesga a chat (salvo
   // acción explícita) y se combinan ambos contextos en el prompt.
   const hasContext = repoContext !== null || fileContext !== null;
-  // #49: el contexto del repo se RE-SELECCIONA por pregunta — se eligen los archivos
-  // más relevantes a `userText` (ranking léxico) y se muestra el árbol completo. Si no
-  // hay `files` cargados (compat), se usa el contextText fijo.
-  const repoContextText = repoContext
-    ? (repoContext.files && repoContext.files.length
-        ? buildRepoContextSummary(
-            repoContext.repoName,
-            rankFilesByQuery(userText, repoContext.files, 12),
-            { allPaths: repoContext.allPaths },
-          )
-        : repoContext.contextText)
-    : undefined;
-  const combinedContext = [repoContextText, fileContext?.contextText]
-    .filter(Boolean)
-    .join('\n\n');
+
+  // #50: presupuesto de contexto adaptativo al proveedor (Groq free = 6/60; el
+  // resto = 12/80). Si el primer intento falla por contexto excesivo (TPM/context
+  // length), abajo se reintenta con un presupuesto reducido a la mitad.
+  let activeBudget = getActiveContextBudget(config.provider);
+
   // Con archivo adjunto, resolveMode fuerza chat (ninguna acción de GitHub lee un
   // archivo local); el repo y el archivo se pasan por separado.
   const finalMode = resolveMode(userText, modeOverride, repoContext !== null, fileContext !== null);
-  const basePrompt = finalMode === 'chat'
-    ? (combinedContext ? chatPromptWithContext(combinedContext) : CHAT_PROMPT)
-    : ACTION_PROMPT;
-  // #24 Fase 3: la directiva de idioma SOLO aplica al modo chat (texto Markdown).
-  // El modo acción devuelve JSON, que no tiene idioma; forzar la directiva ahí rompía
-  // modelos menos dóciles (Qwen, Gemma en Groq) que priorizaban "responde en español"
-  // sobre "responde SOLO con JSON" y devolvían prosa → parseGeminiAction fallaba.
-  // Fix v3.22.2.
-  const systemPrompt = finalMode === 'chat'
-    ? withLangDirective(basePrompt, deps.lang)
-    : basePrompt;
-
-  console.log(`[Opción D] Modo: ${finalMode} | Override: ${modeOverride} | Contexto: ${hasContext}`);
 
   // #38: en modo chat (texto Markdown largo) mostramos la respuesta en streaming,
   // token a token. En modo acción la respuesta es JSON → no se streamea (se vería feo).
@@ -473,8 +473,51 @@ export async function runSend(deps: SendDeps, config: AIProviderConfig, params: 
     ? (textSoFar: string) => { lastText = textSoFar; updateMessage(loadingId, { content: textSoFar, isLoading: true }); }
     : undefined;
 
+  // #49/#51: construye el contexto del repo re-seleccionando los archivos relevantes
+  // a la pregunta (ranking léxico) según el presupuesto activo, y devuelve también la
+  // lista de rutas consultadas para mostrársela al usuario (transparencia #51).
+  const buildContextForBudget = (budget: ContextBudget): { contextText: string | undefined; consultedPaths: string[] } => {
+    if (!repoContext) return { contextText: undefined, consultedPaths: [] };
+    if (!repoContext.files || !repoContext.files.length) return { contextText: repoContext.contextText, consultedPaths: [] };
+    const ranked = rankFilesByQuery(userText, repoContext.files, budget.maxFiles);
+    return {
+      contextText: buildRepoContextSummary(repoContext.repoName, ranked, { allPaths: repoContext.allPaths, maxFiles: budget.maxFiles, maxLinesPerFile: budget.maxLinesPerFile }),
+      consultedPaths: ranked.map(f => f.path),
+    };
+  };
+
+  // #50: intenta la llamada con el presupuesto activo; si falla por contexto excesivo
+  // (TPM/context length), reintenta una vez con la mitad de archivos. Devuelve la
+  // respuesta y la lista de archivos realmente enviados.
+  const attemptSend = async (): Promise<{ rawResponse: string; consultedPaths: string[] }> => {
+    for (let attempt = 0; ; attempt++) {
+      const { contextText: repoContextText, consultedPaths } = buildContextForBudget(activeBudget);
+      const combinedContext = [repoContextText, fileContext?.contextText].filter(Boolean).join('\n\n');
+      const basePrompt = finalMode === 'chat'
+        ? (combinedContext ? chatPromptWithContext(combinedContext) : CHAT_PROMPT)
+        : ACTION_PROMPT;
+      // #24 Fase 3: la directiva de idioma SOLO aplica al modo chat (texto Markdown).
+      const systemPrompt = finalMode === 'chat' ? withLangDirective(basePrompt, deps.lang) : basePrompt;
+      try {
+        const rawResponse = await callAI(newHistory, systemPrompt, config.provider, config.apiKey, config.model, finalMode, onToken, params.signal);
+        return { rawResponse, consultedPaths };
+      } catch (err) {
+        // #50: si el contexto es demasiado grande, reintentar con menos archivos (una sola vez).
+        if (attempt === 0 && isContextTooLargeError(err) && repoContext && activeBudget.maxFiles > 2) {
+          activeBudget = { maxFiles: Math.max(2, Math.floor(activeBudget.maxFiles / 2)), maxLinesPerFile: activeBudget.maxLinesPerFile };
+          console.log(`[#50] Contexto excesivo — reintentando con ${activeBudget.maxFiles} archivos (era ${activeBudget.maxFiles * 2})`);
+          continue;
+        }
+        throw err;
+      }
+    }
+  };
+
+  console.log(`[Opción D] Modo: ${finalMode} | Override: ${modeOverride} | Contexto: ${hasContext} | Presupuesto: ${activeBudget.maxFiles}/${activeBudget.maxLinesPerFile}`);
+
   try {
-    const rawResponse = await callAI(newHistory, systemPrompt, config.provider, config.apiKey, config.model, finalMode, onToken, params.signal);
+    const { rawResponse, consultedPaths } = await attemptSend();
+    const consultedUpdate = consultedPaths.length ? { consultedFiles: consultedPaths } : {};
 
     // Modo chat: forzar texto, nunca ejecutar.
     if (finalMode === 'chat') {
@@ -489,7 +532,7 @@ export async function runSend(deps: SendDeps, config: AIProviderConfig, params: 
           textResponse = rawResponse;
         }
       }
-      updateMessage(loadingId, { content: textResponse, isLoading: false });
+      updateMessage(loadingId, { content: textResponse, isLoading: false, ...consultedUpdate });
       setConversationHistory([...newHistory, { role: 'assistant', content: textResponse }]);
       setIsChatLoading(false);
       return;
@@ -503,7 +546,7 @@ export async function runSend(deps: SendDeps, config: AIProviderConfig, params: 
       // para que sepa que puede probar otro modelo o reformular.
       const notice = deps.t('chat.actionParseFailed');
       const content = `${notice}\n\n---\n${rawResponse}`;
-      updateMessage(loadingId, { content, isLoading: false });
+      updateMessage(loadingId, { content, isLoading: false, ...consultedUpdate });
       setConversationHistory([...newHistory, { role: 'assistant', content }]);
       setIsChatLoading(false);
       return;
@@ -523,7 +566,7 @@ export async function runSend(deps: SendDeps, config: AIProviderConfig, params: 
       }
     }
 
-    updateMessage(loadingId, { content: enrichedAction.accion, isLoading: false, action: enrichedAction });
+    updateMessage(loadingId, { content: enrichedAction.accion, isLoading: false, action: enrichedAction, ...consultedUpdate });
     setConversationHistory([...newHistory, { role: 'assistant', content: rawResponse }]);
 
     if (enrichedAction.requiereConfirmacion) {
@@ -547,8 +590,12 @@ export async function runSend(deps: SendDeps, config: AIProviderConfig, params: 
         content: lastText ? `${lastText}\n\n⏹️ _(detenido)_` : deps.t('chat.generationStopped'),
         isLoading: false,
       });
+    } else if (isContextTooLargeError(err)) {
+      // #50: el contexto sigue siendo demasiado grande incluso tras el reintento con
+      // menos archivos. Mensaje accionable (no el de "saturación" genérico).
+      updateMessage(loadingId, { content: deps.t('chat.contextTooLarge'), isLoading: false });
     } else {
-      updateMessage(loadingId, { content: ` Error al contactar con el asistente: ${(err as Error).message}`, isLoading: false });
+      updateMessage(loadingId, { content: `${deps.t('chat.contactError')}: ${(err as Error).message}`, isLoading: false });
     }
   } finally {
     setIsChatLoading(false);

@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.28.0] — 2026-07-10
+
+### Added
+- **"Archivos consultados para esta respuesta" (#51).** Bajo cada respuesta del
+  chat fundamentada en un contexto de repo aparece una lista plegable con las rutas
+  que el `contextRanker` seleccionó y envió al modelo. Hace transparente en qué
+  código se basó la IA. Nuevo campo `consultedFiles?: string[]` en `ChatMessage`,
+  bloque `<details>` en `ChatMessage.tsx`, clase `.message-consulted-files` y claves
+  `chat.message.consultedFiles` (ES/EN).
+
+### Changed
+- **Presupuesto de contexto adaptativo por proveedor (#50).** El bloque de contexto
+  del repo enviado al LLM ahora se ajusta al proveedor activo: Groq (tier gratuito,
+  TPM bajo) recibe 6 archivos × 60 líneas en lugar de 12 × 80. Nuevo campo
+  `contextBudget?` en `ProviderDef` + helper `getActiveContextBudget()`; aplicado en
+  `runSend` y `runLoadRepoContext`. Origen real: el dogfooding detectó que Groq free
+  rechazaba la petición por tamaño (TPM ~6–12k) mientras Gemini sí la aguantaba.
+- **Reintento automático con menos contexto ante error TPM (#50).** Si el primer
+  intento falla por contexto excesivo (`too large` / `tokens per minute` / 413),
+  `runSend` reintenta una vez con la mitad de archivos antes de rendirse. Nueva
+  función `isContextTooLargeError()` en `retry.ts`.
+- **Fix del mensaje de error duplicado (#50).** El hint genérico de "saturación del
+  tier gratuito" ya no se aplica a los errores de contexto excesivo, que ahora
+  muestran un mensaje accionable específico (`chat.contextTooLarge`) que indica que
+  ya se intentó reducir el contexto y sugiere cambiar de modelo/proveedor. También se
+  ha i18n-zado el prefijo "Error al contactar con el asistente" (`chat.contactError`).
+
+### Notes
+- _Cambio de código por **GLM-5.2** (builtin:zai-coding-plan/GLM-5.2)._
+- _Tests: 492 en el cliente (+16), 5 en el servidor, build verde._
+
 ## [3.27.0] — 2026-07-10
 
 ### Changed

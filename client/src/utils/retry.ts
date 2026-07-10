@@ -23,6 +23,23 @@ export function isTransientError(err: unknown): boolean {
   return TRANSIENT_PATTERN.test(e?.message ?? '');
 }
 
+// ── #50: contexto excesivo (TPM / context length) ────────────────────────────
+// Distinto de un error transitorio: reintentar tal cual no sirve (el prompt es
+// igual de grande). En runSend se reintenta SOLO tras reducir el contexto.
+// Patrones cubiertos: "Request too large" (Groq), "Please reduce the length of
+// the messages", "tokens per minute" (TPM), "context length"/"maximum context
+// tokens", 413 Payload Too Large.
+const CONTEXT_TOO_LARGE_PATTERN =
+  /too large|reduce the length|tokens per minute|context length|maximum.{0,12}tokens|payload too|rate limit/i;
+
+/** ¿El error indica que el contexto supera el límite (TPM/context length)? */
+export function isContextTooLargeError(err: unknown): boolean {
+  const e = err as { status?: number; contextTooLarge?: boolean; message?: string };
+  if (e?.contextTooLarge) return true;
+  if (e?.status === 413) return true;
+  return CONTEXT_TOO_LARGE_PATTERN.test(e?.message ?? '');
+}
+
 /**
  * Ejecuta `fn` reintentando ante errores transitorios con backoff exponencial.
  * Por defecto: hasta 2 reintentos (800ms, 1600ms). Los errores no transitorios y
