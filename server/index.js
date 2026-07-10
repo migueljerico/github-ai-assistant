@@ -99,52 +99,6 @@ const geminiLimiter = rateLimit({
         // Translate from internal Message format → Gemini SDK format.
         // All messages except the last form the chat history.
 
-    // ─── Gemini Dynamic Models Proxy (#58 v3.23.0 + hotfix v3.23.2) ──────────────────
-    // Permite al frontend obtener la lista de modelos de Gemini disponibles para una key.
-    // La API de listado de Gemini también bloquea en UE, por lo que necesita proxy.
-    // El frontend espera `{ models: [{ value: string, label: string }] }`.
-    // La API de Google AI devuelve `{ models: [{ name, displayName, supportedGenerationMethods }] }`
-    // Filtramos los no generativos y los adaptamos al formato del frontend.
-    app.get('/api/gemini/models', geminiLimiter, async (req, res) => {
-      const authHeader = req.headers.authorization;
-      const apiKey = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
-
-      if (!apiKey) {
-        return res.status(400).json({ error: 'API Key no proporcionada en el header Authorization.' });
-      }
-
-      try {
-        const geminiModelsUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
-        const modelsRes = await fetch(geminiModelsUrl);
-
-        if (!modelsRes.ok) {
-          const errorText = await modelsRes.text();
-          console.error(`Gemini models API error ${modelsRes.status}: ${errorText}`);
-          return res.status(modelsRes.status).json({
-            error: `Error al obtener modelos de Gemini: ${modelsRes.statusText || 'Unknown error'}`,
-            details: errorText,
-          });
-        }
-
-        const { models } = await modelsRes.json();
-
-        const GEMINI_EXCLUDED = ['embed', 'vision', 'aqa', 'imagen', 'chirp']; // Consistente con frontend
-
-        const filteredModels = models
-          .filter(m => m.supportedGenerationMethods?.includes('generateContent') && !GEMINI_EXCLUDED.some(p => m.name.includes(p)))
-          .map(m => ({
-            value: m.name.replace('models/', ''),
-            label: m.displayName || m.name.replace('models/', ''),
-          }))
-          .sort((a, b) => a.label.localeCompare(b.label));
-
-        res.status(200).json({ data: filteredModels });
-      } catch (error) {
-        console.error('Error in Gemini models proxy:', error);
-        res.status(500).json({ error: 'Error interno del servidor al obtener modelos de Gemini.' });
-      }
-    });
-
         // Translate from internal Message format → Gemini SDK format.
         // All messages except the last form the chat history.
     // Internal role 'assistant' maps to Gemini role 'model'.
@@ -192,6 +146,9 @@ const geminiLimiter = rateLimit({
 });
 
 // ─── Gemini Models Proxy (#58, v3.23.0 / hotfix v3.23.2) ─────────────────────
+// NOTA (v3.24.0): el frontend usa ahora un catálogo FIJO de modelos; ya NO
+// llama a este endpoint. Se mantiene por compatibilidad/observabilidad y por si
+// en el futuro se quiere volver a un catálogo dinámico.
 // La API de listado de Gemini también está bloqueada en UE desde el navegador
 // (como el chat), así que el catálogo de modelos se pide a través del proxy.
 // Devuelve { data: [{ id, name }] } — el formato que fetchModels ya parsea.

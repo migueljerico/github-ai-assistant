@@ -43,9 +43,10 @@ export interface ProviderDef {
   extraHeaders?: Record<string, string>;
 }
 
-// Modelos de Gemini (movidos desde AIProviderPanel).
-// IMPORTANTE: gemini-2.0-flash, 1.5-flash y 1.5-pro tienen cuota gratuita = 0
-// (Google) y devuelven 429. Solo la familia 2.5-* tiene cuota gratuita activa.
+// Catálogo FIJO de Gemini. El listado dinámico vía proxy fue retirado: la API
+// de Google no era fiable en prod (CORS/fallo del proxy), devolvía modelos
+// incompatibles y el usuario no veía los modelos correctos. Esta lista es la
+// fuente única de verdad — contiene exactamente los modelos operativos.
 const GEMINI_MODELS: ModelOption[] = [
   {
     value: 'gemini-2.5-flash',
@@ -54,10 +55,29 @@ const GEMINI_MODELS: ModelOption[] = [
     recommended: true,
   },
   {
-    value: 'gemini-2.5-flash-lite',
-    label: 'provider.gemini.model.lite',
-    description: 'provider.gemini.model.liteDesc',
-    recommended: false,
+    value: 'gemini-2.5-pro',
+    label: 'provider.gemini.model.pro',
+    description: 'provider.gemini.model.proDesc',
+  },
+  {
+    value: 'gemini-3.5-flash',
+    label: 'provider.gemini.model.flash35',
+    description: 'provider.gemini.model.flash35Desc',
+  },
+  {
+    value: 'gemini-3.1-flash-lite',
+    label: 'provider.gemini.model.flash31Lite',
+    description: 'provider.gemini.model.flash31LiteDesc',
+  },
+  {
+    value: 'gemini-2.0-flash',
+    label: 'provider.gemini.model.flash20',
+    description: 'provider.gemini.model.flash20Desc',
+  },
+  {
+    value: 'gemma-4-31b-it',
+    label: 'provider.gemini.model.gemma',
+    description: 'provider.gemini.model.gemmaDesc',
   },
 ];
 
@@ -93,19 +113,16 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     emoji: '🤖',
     cardDesc: 'provider.gemini.cardDesc',
     transport: 'gemini-proxy',
-    // #58 (v3.23.0): catálogo dinámico vía el proxy del backend (la API de
-    // listado de Gemini también está bloqueada en UE desde el navegador).
-    modelsEndpoint: '/api/gemini/models',
-    modelsNeedKey: true,
+    // Catálogo FIJO: no hay modelsEndpoint, así que AIProviderPanel usa
+    // directamente staticModels sin intentar ningún fetch dinámico.
     staticModels: GEMINI_MODELS,
     defaultModel: GEMINI_MODELS[0].value,
     keyPlaceholder: 'AIzaSy...',
-    // Prefijo real de las keys de Google AI Studio (AIzaSy…). Necesario para
-    // que el gate de AIProviderPanel dispare fetchModels (#58 hotfix v3.23.2).
+    // Prefijo real de las keys de Google AI Studio (AIzaSy…). Validación ligera
+    // en cliente (no es una validación real de la clave).
     keyPrefix: 'AIza',
     signupUrl: 'https://aistudio.google.com/apikey',
     signupLabel: 'provider.gemini.signupLabel',
-    note: 'provider.gemini.note',
   },
   groq: {
     id: 'groq',

@@ -7,6 +7,9 @@ import express from 'express';
 // `fetch` para simular la respuesta REST real de Google y validar el shaping del
 // endpoint (filtro por generateContent + denylist, recorte del prefijo
 // "models/", propagación de status). Así el test sí refleja el código en producción.
+//
+// NOTA (v3.24.0): el frontend usa ahora un catálogo FIJO y no llama a este
+// endpoint, pero el proxy sigue desplegado por compatibilidad/observabilidad.
 const googleModelsPayload = {
   models: [
     { name: 'models/gemini-2.5-flash', displayName: 'Gemini 2.5 Flash', supportedGenerationMethods: ['generateContent', 'countTokens'] },

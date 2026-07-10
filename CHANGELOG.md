@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.24.0] — 2026-07-10
+
+### Changed
+- **Catálogo de modelos de Gemini reescrito como lista fija.** El catálogo
+  dinámico (vía proxy `GET /api/gemini/models`) no era fiable en producción: el
+  frontend caía al fallback estático de 2 modelos (uno de ellos, `gemini-2.5-
+  flash-lite`, ni siquiera existe), la nota de deprecación estaba desactualizada
+  y el desplegable no mostraba los modelos operativos reales. Sustituido por un
+  **catálogo 100% fijo** en `providers.ts` con los 6 modelos confirmados:
+  `gemini-2.5-flash` (⭐ Recomendado), `gemini-2.5-pro`, `gemini-3.5-flash`,
+  `gemini-3.1-flash-lite`, `gemini-2.0-flash` y `gemma-4-31b-it`. Quitado
+  `modelsEndpoint` de Gemini → el selector usa directamente `staticModels`, sin
+  ningún fetch dinámico.
+
+### Removed
+- **Eliminado el aviso obsoleto** «Los modelos gemini-2.0 y gemini-1.5 están
+  deprecados y tienen cuota = 0. Solo usa modelos 2.5.» (claves i18n
+  `provider.gemini.note` en `es.ts` y `en.ts`).
+- **Eliminada la ruta duplicada** `GET /api/gemini/models` en `server/index.js`
+  que estaba anidada dentro del handler de chat (código muerto que nunca se
+  ejecutaba como ruta real; la ruta vigente se mantiene por
+  compatibilidad/observabilidad aunque el frontend ya no la llama).
+- Eliminado `gemini-2.5-flash-lite` del catálogo y de `modelLabels.ts` (no
+  existe / deprecado). Limpiados también `gemini-1.5-*`.
+
+### Notes
+- _Cambio de código por **ZCode** (GLM-5.2)._
+
 ## [3.23.3] — 2026-07-10
 
 ### Changed

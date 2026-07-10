@@ -1,7 +1,7 @@
 {
   "name": "github-ai-assistant-client",
   "private": true,
-  "version": "3.23.3",
+  "version": "3.24.0",
   "type": "module",
   "scripts": {
     "dev": "vite",

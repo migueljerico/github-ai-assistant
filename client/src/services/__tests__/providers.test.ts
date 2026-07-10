@@ -95,33 +95,27 @@ describe('providers — fetchModels', () => {
     expect(ids).not.toContain('whisper-large-v3');
   });
 
-  it('gemini: catálogo dinámico vía proxy, filtra modelos no generativos (v3.23.0)', async () => {
-    // El backend devuelve { data: [{ id, name }] }; el cliente repite el filtro.
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        data: [
-          { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
-          { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
-          { id: 'text-embedding-004', name: 'Text Embedding' },
-          { id: 'gemini-2.0-flash-vision', name: 'Vision' },
-        ],
-      }),
-    });
+  it('gemini: catálogo fijo (v3.24.0) — fetchModels devuelve null, no hay endpoint dinámico', async () => {
+    // El catálogo de Gemini es ahora 100% fijo (staticModels); no hay
+    // modelsEndpoint, así que fetchModels devuelve null sin llamar a fetch.
+    const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
 
-    const list = await fetchModels(PROVIDERS.gemini, 'AIzaSy_test');
-    const ids = list!.map(m => m.value);
-    expect(ids).toContain('gemini-2.5-flash');
-    expect(ids).toContain('gemini-2.5-pro');
-    // Filtrados (no generativos)
-    expect(ids).not.toContain('text-embedding-004');
-    expect(ids).not.toContain('gemini-2.0-flash-vision');
-    // El label usa name si está disponible
-    expect(list!.find(m => m.value === 'gemini-2.5-flash')!.label).toBe('Gemini 2.5 Flash');
+    expect(await fetchModels(PROVIDERS.gemini, 'AIzaSy_test')).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+    // El catálogo fijo tiene los 6 modelos operativos.
+    const values = PROVIDERS.gemini.staticModels.map(m => m.value);
+    expect(values).toEqual([
+      'gemini-2.5-flash',
+      'gemini-2.5-pro',
+      'gemini-3.5-flash',
+      'gemini-3.1-flash-lite',
+      'gemini-2.0-flash',
+      'gemma-4-31b-it',
+    ]);
   });
 
-  it('gemini sin key devuelve null (su catálogo requiere apiKey)', async () => {
+  it('gemini sin key devuelve null (no hay endpoint dinámico)', async () => {
     expect(await fetchModels(PROVIDERS.gemini)).toBeNull();
   });
 

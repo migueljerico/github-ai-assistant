@@ -59,37 +59,38 @@ describe('AIProviderPanel — recuerda proveedor/modelo (#40)', () => {
   });
 });
 
-describe('AIProviderPanel — catálogo dinámico de Gemini (#58 hotfix v3.23.2)', () => {
-  it('dispara fetchModels al pegar una key válida de Gemini (AIzaSy…)', async () => {
-    // Antes el gate exigía keyPrefix y Gemini no lo tenía → el catálogo nunca
-    // se pedía. Ahora keyPrefix='AIza' + longitud ≥20 dispara la carga.
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ data: [{ id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' }] }),
-    });
-    vi.stubGlobal('fetch', fetchMock);
-
-    const { container } = renderPanel();
-    // Selecciona Gemini y pega una key con pinta real.
-    fireEvent.click(container.querySelector('#select-gemini-btn') as HTMLElement);
-    const input = container.querySelector('#gemini-key-input') as HTMLInputElement;
-    fireEvent.change(input, { target: { value: 'AIzaSyFakeKeyForTest1234567890' } });
-
-    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    // La primera llamada corresponde al catálogo de Gemini (/api/gemini/models).
-    expect(fetchMock.mock.calls[0][0]).toContain('/api/gemini/models');
-  });
-
-  it('no dispara fetchModels con una key demasiado corta (<20)', () => {
+describe('AIProviderPanel — catálogo fijo de Gemini (v3.24.0)', () => {
+  it('muestra los 6 modelos fijos sin hacer ningún fetch dinámico', () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
 
     const { container } = renderPanel();
+    // Selecciona Gemini para que se muestre el selector de modelos.
     fireEvent.click(container.querySelector('#select-gemini-btn') as HTMLElement);
-    const input = container.querySelector('#gemini-key-input') as HTMLInputElement;
-    fireEvent.change(input, { target: { value: 'AIzaSyShort' } });
 
+    const select = container.querySelector('#gemini-model-select') as HTMLSelectElement;
+    expect(select).toBeInTheDocument();
+
+    const values = Array.from(select.options).map(o => o.value);
+    // Los 6 modelos operativos del catálogo fijo.
+    expect(values).toEqual([
+      'gemini-2.5-flash',
+      'gemini-2.5-pro',
+      'gemini-3.5-flash',
+      'gemini-3.1-flash-lite',
+      'gemini-2.0-flash',
+      'gemma-4-31b-it',
+    ]);
+
+    // No hay catálogo dinámico: fetch nunca se llama para Gemini.
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('no muestra el aviso de deprecación obsoleto', () => {
+    const { container } = renderPanel();
+    fireEvent.click(container.querySelector('#select-gemini-btn') as HTMLElement);
+    // La nota de deprecación fue eliminada del catálogo fijo.
+    expect(screen.queryByText(/deprecados/i)).not.toBeInTheDocument();
   });
 });
 
