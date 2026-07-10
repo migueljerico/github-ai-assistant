@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.27.0] — 2026-07-10
+
+### Changed
+- **Unificación de la UI de documentación en un solo flujo (#57).** Los dos botones
+  divergentes ("📄 Documentar repo" → `DocModal` y "📤 Documentar y publicar" →
+  `FilePublishModal`) se fusionan en un único botón "📄 Documentar" que abre un
+  stepper de 4 pasos: elegir alcance (repositorio entero / archivo adjunto) →
+  generar → revisar → destino + método. `DocumentFlowModal` reutiliza
+  `PublishActions` y las funciones `run*` del orquestador; el destino queda fijo al
+  repo analizado para la doc de repo y es elegible para la doc de archivo. Se
+  eliminan `DocModal` y `FilePublishModal` (y sus tests), sustituidos por
+  `DocumentFlowModal` y su test. Nuevas claves `modal.flow.*` en `i18n/es.ts` e
+  `i18n/en.ts`; se eliminan las pistas cruzadas redundantes (`modal.doc.fileFlowHint`,
+  `modal.filepub.repoFlowHint`).
+
+### Notes
+- _Cambio de código por **Tencent HY3** (OpenRouter / openrouter-free/tencent/hy3:free)._
+
 ## [3.26.0] — 2026-07-10
 
 ### Fixed

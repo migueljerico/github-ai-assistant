@@ -22,7 +22,8 @@ interface ChatInputProps {
   onMultiRepoChange: (enabled: boolean) => void;
   selectedRepos: GitHubRepo[];
   onSelectedReposChange: (repos: GitHubRepo[]) => void;
-  onDocumentRepo: (repoName: string) => void;
+  // #57 - Abrir el flujo único de documentación (stepper)
+  onOpenDocumentFlow: () => void;
   // #32 - Resumir hilo de comentarios de un issue/PR
   onSummarizeThread: (input: string) => void;
   // #34 - Generar changelog del repo
@@ -41,8 +42,6 @@ interface ChatInputProps {
   fileContextName: string | null;
   onAttachFile: (file: File) => void;
   onClearFile: () => void;
-  // #28 Fase 2 - Documentar y publicar el archivo adjunto
-  onPublishFile: () => void;
   // 🔥 OPCIÓN D - Props para el selector de modo (opcionales para retrocompatibilidad)
   modeOverride?: 'auto' | 'chat' | 'action';
   onModeOverrideChange?: (mode: 'auto' | 'chat' | 'action') => void;
@@ -59,7 +58,7 @@ export default function ChatInput({
   onMultiRepoChange,
   selectedRepos,
   onSelectedReposChange,
-  onDocumentRepo,
+  onOpenDocumentFlow,
   onSummarizeThread,
   onGenerateChangelog,
   onCodeHealth,
@@ -72,7 +71,6 @@ export default function ChatInput({
   fileContextName,
   onAttachFile,
   onClearFile,
-  onPublishFile,
   modeOverride = 'auto',
   onModeOverrideChange,
 }: ChatInputProps) {
@@ -185,7 +183,7 @@ export default function ChatInput({
 
         <DocumentRepoButton
           disabled={disabled}
-          onDocumentRepo={onDocumentRepo}
+          onOpen={onOpenDocumentFlow}
         />
 
         <ThreadSummaryButton
@@ -223,18 +221,6 @@ export default function ChatInput({
           onAttach={onAttachFile}
           onClear={onClearFile}
         />
-
-        {fileContextName && (
-          <button
-            id="publish-file-btn"
-            className="doc-repo-btn"
-            type="button"
-            disabled={disabled}
-            onClick={onPublishFile}
-          >
-            📤 {t('chat.publishFile')}
-          </button>
-        )}
       </div>
     </div>
   );

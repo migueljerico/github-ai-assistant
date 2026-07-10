@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { AIProviderContextProvider } from '../../../context/AIProviderContext';
 import AIProviderPanel from '../AIProviderPanel';
+import { getProvider } from '../../../services/providers';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -41,7 +42,9 @@ describe('AIProviderPanel — selector de modelos Groq', () => {
   it('muestra el contador de modelos disponibles junto al selector', () => {
     const { container } = renderPanel();
     selectGroq(container);
-    expect(screen.getByText(/Modelo · 2 disponibles/)).toBeInTheDocument();
+    // El conteo se deriva del catálogo estático de Groq (no se hardcodea el número).
+    const groqCount = getProvider('groq').staticModels.length;
+    expect(screen.getByText(new RegExp(`Modelo · ${groqCount} disponibles`))).toBeInTheDocument();
   });
 });
 

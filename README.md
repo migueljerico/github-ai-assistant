@@ -10,7 +10,7 @@
 ![OpenRouter](https://img.shields.io/badge/OpenRouter-6566F1?style=for-the-badge&logo=openai&logoColor=white)
 ![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
 ![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
-![Versión](https://img.shields.io/badge/Versión-v3.26.0-blue?style=for-the-badge)
+![Versión](https://img.shields.io/badge/Versión-v3.27.0-blue?style=for-the-badge)
 ![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)
 [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
 
@@ -248,7 +248,7 @@ Este proyecto fue construido con un flujo humano ↔ IA basado en validación cr
 - **GLM-5.2 (web, Zhipu):** i18n Fase 1 (v3.20.0) y tareas puntuales previas.
 - **Gemini, Gemma, DeepSeek, Qwen y otros modelos:** revisión de arquitectura, propuestas de mejora y contraste técnico.
 - **Nemotron 3 Super 120B (NVIDIA, vía OpenRouter):** validación cruzada en Z.ai — sugirió incluir el deploy automático de Cloud Run en la rutina de cierre y corregir la regla de oro (commit → push → tag → release → deploy) en `CLAUDE.md`.
-- **Tencent HY3 (OpenRouter):** dogfooding (06/07) con el repo cargado (154 archivos). Aportó la poda de #33 (revisores) y #35 (auto-labels); validado por el autor y confirmado.
+- **Tencent HY3 (OpenRouter):** retomó el proyecto y cerró **#57 (v3.27.0)**: unificó la UI de documentación en un único flujo stepper (4 pasos: alcance → generar → revisar → destino + método), fusionando los botones divergentes "Documentar repo" y "Documentar y publicar" y eliminando `DocModal`/`FilePublishModal`. Previamente, por dogfooding (06/07), había aportado la poda de #33 (revisores) y #35 (auto-labels); validado por el autor y confirmado.
 - **Microsoft 365 Copilot — GPT-5 Razonamiento:** revisión editorial del README, propuesta de modularización documental y reestructuración de la documentación en archivos separados.
 
 Además, el proyecto se desarrolló aplicando **dogfooding**: la propia app se usó para cargar y analizar el repositorio `github-ai-assistant`, revisar su arquitectura, detectar límites reales de contexto, contrastar propuestas entre modelos y generar nuevas mejoras del roadmap.

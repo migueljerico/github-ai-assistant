@@ -392,7 +392,7 @@ función `t(lang, key)` pura (no hook); se deja para el futuro si hay demanda re
 
 ---
 
-#### #57 — Unificar la UI de documentación en un solo flujo + atribución correcta
+#### ✅ #57 — Unificar la UI de documentación en un solo flujo + atribución correcta
 **Esfuerzo:** ~2 sesiones (dividido en 2 tandas; ver abajo)
 **Origen:** reporte del autor (v3.22.3); la confusión de UX persiste aunque los errores concretos ya están arreglados. Ampliado con el reporte Llama 4 Scout (README vacío al crear repo, About pobre, firma sin modelo).
 
@@ -484,9 +484,9 @@ El usuario los encuentra confusos: no sabe cuándo usar cuál, y con un repo car
 |---|---|---|---|
 | 🔴 Alta | 8 | 8 (#1, #2, #13, #14, #27, #45, #15, #28) | 0 |
 | 🟡 Media | 17 | 14 (#12, #17, #18, #19, #21, #37, #41, #32, #42, #38, #20, #49, #39, #44) | 3 (#26, #50, #51) |
-| 🟢 Baja | 18 | 8 (#23, #24, #34, #40, #46, #58, #55, #56) | 8 (#22, #25, #36, #48, #52, #53, #54, #57) |
+| 🟢 Baja | 18 | 9 (#23, #24, #34, #40, #46, #58, #55, #56, #57) | 7 (#22, #25, #36, #48, #52, #53, #54) |
 | **🗑️ Descartados** | — | — | 2 (#33, #35) descartados en v3.22.3 |
-| **TOTAL** | **43** | **28** | **13** |
+| **TOTAL** | **43** | **29** | **12** |
 
 > **#28** cubierto en su **norte** por las Fases 1 (v3.0.0, adjuntar como contexto) y
 > 2 (v3.1.0, documentar→publicar). **Más formatos:** Fase 3a (v3.2.0, Excel/CSV) y

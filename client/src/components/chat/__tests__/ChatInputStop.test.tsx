@@ -14,7 +14,7 @@ function setup(overrides: Partial<React.ComponentProps<typeof ChatInput>> = {}) 
     onMultiRepoChange: vi.fn(),
     selectedRepos: [],
     onSelectedReposChange: vi.fn(),
-    onDocumentRepo: vi.fn(),
+    onOpenDocumentFlow: vi.fn(),
     onSummarizeThread: vi.fn(),
     onGenerateChangelog: vi.fn(),
     onCodeHealth: vi.fn(),
@@ -27,7 +27,6 @@ function setup(overrides: Partial<React.ComponentProps<typeof ChatInput>> = {}) 
     fileContextName: null,
     onAttachFile: vi.fn(),
     onClearFile: vi.fn(),
-    onPublishFile: vi.fn(),
     ...overrides,
   };
   const { container } = render(<ChatInput {...props} />);

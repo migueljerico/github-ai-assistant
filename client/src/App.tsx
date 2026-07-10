@@ -9,8 +9,7 @@ import {
   runSend, runConfirmAction, runCancelAction, runAttachFile,
   runGenerateFileDoc, runCreateRepo, runStartPublish, runPublishFileDocByKind, formatConversation,
 } from './services/assistantActions';
-import type { RepoContext, FileContext, PublishKind, CodeHealth } from './services/assistantActions';
-import { resolveRepoRef } from './utils/repoRef';
+import type { RepoContext, FileContext, PublishTarget, StartPublishResult, CodeHealth } from './services/assistantActions';
 import { serializeConversation, parseConversation, conversationFilename } from './utils/conversationIO';
 import Header from './components/layout/Header';
 import HistoryPanel from './components/layout/HistoryPanel';
@@ -18,8 +17,7 @@ import TemplatePanel from './components/templates/TemplatePanel';
 import ChatArea from './components/chat/ChatArea';
 import ChatInput from './components/chat/ChatInput';
 import ConfirmModal from './components/confirm/ConfirmModal';
-import DocModal from './components/confirm/DocModal';
-import FilePublishModal from './components/confirm/FilePublishModal';
+import DocumentFlowModal from './components/confirm/DocumentFlowModal';
 import CodeHealthModal from './components/dashboard/CodeHealthModal';
 import type { ChatMessage, GitHubRepo, PendingAction, RepoAnalysis } from './types';
 
@@ -56,28 +54,15 @@ export default function App() {
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [isExecuting, setIsExecuting] = useState(false);
 
-  // Doc repo state
-  const [docAnalysis, setDocAnalysis] = useState<RepoAnalysis | null>(null);
+  // #57 - Flujo único de documentación (stepper)
+  const [documentFlowOpen, setDocumentFlowOpen] = useState(false);
   const [codeHealth, setCodeHealth] = useState<CodeHealth | null>(null);
-  const [isCommittingDocs, setIsCommittingDocs] = useState(false);
-  const [isCreatingDraftPr, setIsCreatingDraftPr] = useState(false);
-  const [isCreatingRepoRelease, setIsCreatingRepoRelease] = useState(false);
 
   // #41 - Contexto de repo activo para opiniones de chat fundamentadas
   const [repoContext, setRepoContext] = useState<RepoContext | null>(null);
 
   // #28 - Archivo local adjunto como contexto del chat
   const [fileContext, setFileContext] = useState<FileContext | null>(null);
-
-  // #28 Fase 2 - Documentación generada del archivo, pendiente de publicar
-  const [filePublish, setFilePublish] = useState<{ fileName: string; doc: string } | null>(null);
-  const [isPublishingFile, setIsPublishingFile] = useState(false);
-  // Repo destino precargado en el modal al pedir "publícalo en X" por lenguaje natural
-  const [publishInitialRepo, setPublishInitialRepo] = useState<string | undefined>(undefined);
-  // #28 fix - El repo destino no existe: oferta de crearlo y publicar el kind pendiente
-  const [repoMissing, setRepoMissing] = useState<
-    { owner: string; repo: string; kind: 'commit' | 'draftpr' | 'release'; version?: string; uploadSource: boolean; extras: File[] } | null
-  >(null);
 
   // 🔥 OPCIÓN D - Modo override: 'auto' | 'chat' | 'action'
   // El setter aún no está cableado a la UI; de momento queda fijado en 'auto'.
@@ -154,84 +139,83 @@ export default function App() {
     addMessage({ role: 'assistant', content: '🧹 Archivo adjunto descartado.' });
   }, [addMessage]);
 
-  // ── #28 Fase 2: documentar el archivo adjunto y abrir el modal de publicación ─
-  // `conversation` enriquece el doc con lo charlado; `initialRepo` precarga el modal
-  // (al pedir "publícalo en X" por lenguaje natural).
-  const handleDocumentAndPublishFile = useCallback(async (conversation?: string, initialRepo?: string) => {
+  // Texto plano de la conversación, como contexto al documentar (el doc refleja lo
+  // charlado). La lógica vive en formatConversation (testeable). Se define antes del
+  // flujo de documentación porque flowGenerateFile lo usa.
+  const buildConversationText = useCallback(
+    () => formatConversation(conversationHistory),
+    [conversationHistory],
+  );
+
+  // ── #57: Flujo único de documentación (stepper) ───────────────────────────────
+  // Sustituye los dos flujos divergentes previos ("Documentar repo" → DocModal y
+  // "Documentar y publicar" → FilePublishModal). El modal (DocumentFlowModal) orquesta
+  // los pasos y estas funciones cablean estado/UI con las run* (patrón #42).
+  const openDocumentFlow = useCallback(() => setDocumentFlowOpen(true), []);
+  const closeDocumentFlow = useCallback(() => setDocumentFlowOpen(false), []);
+
+  const flowGenerateRepo = useCallback(async (repoInput: string): Promise<RepoAnalysis | null> => {
     // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto
-    if (!fileContext || !token || !user || !provider || !apiKey || !model) return;
-    const doc = await runGenerateFileDoc(
-      { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
-      { provider, apiKey, model },
-      fileContext,
-      conversation,
-    );
-    if (doc) {
-      setPublishInitialRepo(initialRepo);
-      setFilePublish({ fileName: fileContext.name, doc });
-    }
-  }, [fileContext, token, user, provider, apiKey, model, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
-
-  // ── #28 Fase 2: publicar la doc generada (commit / Draft PR / Release) ────────
-  // La lógica (pre-chequeo de existencia + flujo de repo inexistente) vive en
-  // assistantActions (testeable); App solo cablea estado/UI (patrón #42).
-  const startPublish = useCallback(async (
-    repoInput: string, kind: PublishKind, version: string | undefined, uploadSource: boolean, extras: File[],
-  ) => {
-    if (!filePublish || !token || !user) return;
-    const ref = resolveRepoRef(repoInput, user.login);
-    const sourceFile = uploadSource ? fileContext?.file : undefined;
-    const target = { owner: ref.owner, repo: ref.repo, fileName: filePublish.fileName, doc: filePublish.doc, kind, version, sourceFile, extraFiles: extras };
-    const deps = { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading };
-    setIsPublishingFile(true);
-    try {
-      const result = await runStartPublish(deps, target, ref.owner === user.login);
-      if (result === 'repo-missing') setRepoMissing({ owner: ref.owner, repo: ref.repo, kind, version, uploadSource, extras });
-      else if (result === 'published') setFilePublish(null);
-    } finally {
-      setIsPublishingFile(false);
-    }
-  }, [filePublish, fileContext, token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
-
-  const handlePublishFileDoc = useCallback((repoInput: string, draft: boolean, uploadSource: boolean, extras: File[]) => {
-    void startPublish(repoInput, draft ? 'draftpr' : 'commit', undefined, uploadSource, extras);
-  }, [startPublish]);
-
-  const handleCreateFileRelease = useCallback((repoInput: string, version: string, uploadSource: boolean, extras: File[]) => {
-    void startPublish(repoInput, 'release', version, uploadSource, extras);
-  }, [startPublish]);
-
-  // ── #28 fix: confirmar la creación del repo inexistente y publicar ───────────
-  const handleConfirmCreateRepo = useCallback(async () => {
-    if (!repoMissing || !filePublish || !token || !user) return;
-    const { owner, repo, kind, version, uploadSource, extras } = repoMissing;
-    const deps = { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading };
-    setIsPublishingFile(true);
-    try {
-      const ok = await runCreateRepo(deps, repo);
-      if (!ok) return; // error ya notificado; el modal sigue abierto
-      setRepoMissing(null);
-      const sourceFile = uploadSource ? fileContext?.file : undefined;
-      await runPublishFileDocByKind(deps, { owner, repo, fileName: filePublish.fileName, doc: filePublish.doc, kind, version, sourceFile, extraFiles: extras });
-      setFilePublish(null);
-    } finally {
-      setIsPublishingFile(false);
-    }
-  }, [repoMissing, filePublish, fileContext, token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
-
-  const handleCancelCreateRepo = useCallback(() => setRepoMissing(null), []);
-
-  // ── Document repo ──────────────────────────────────────────────────────────
-  const handleDocumentRepo = useCallback(async (repoInput: string) => {
-    // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto
-    if (!token || !user || !provider || !apiKey || !model) return;
-    const analysis = await runDocumentRepo(
+    if (!token || !user || !provider || !apiKey || !model) return null;
+    return runDocumentRepo(
       { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
       { provider, apiKey, model },
       repoInput,
     );
-    if (analysis) setDocAnalysis(analysis);
   }, [token, user, provider, apiKey, model, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
+
+  const flowGenerateFile = useCallback(async (): Promise<string | null> => {
+    // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto
+    if (!fileContext || !token || !user || !provider || !apiKey || !model) return null;
+    return runGenerateFileDoc(
+      { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+      { provider, apiKey, model },
+      fileContext,
+      buildConversationText(),
+    );
+  }, [fileContext, token, user, provider, apiKey, model, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, buildConversationText]);
+
+  // Publicación de la doc de repo (destino fijo = repo analizado).
+  const flowCommitRepo = useCallback(async (analysis: RepoAnalysis): Promise<void> => {
+    if (!token || !user) return;
+    await runCommitDocs(
+      { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+      analysis,
+    );
+  }, [token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
+
+  const flowDraftPrRepo = useCallback(async (analysis: RepoAnalysis): Promise<void> => {
+    if (!token || !user) return;
+    await runCreateDraftPr(
+      { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+      analysis,
+    );
+  }, [token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
+
+  const flowReleaseRepo = useCallback(async (analysis: RepoAnalysis, version: string): Promise<void> => {
+    if (!token || !user) return;
+    await runCreateRepoRelease(
+      { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+      analysis,
+      version || undefined,
+    );
+  }, [token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
+
+  // Publicación de la doc del archivo (destino elegido; maneja repo inexistente).
+  const flowPublishFile = useCallback(async (target: PublishTarget): Promise<StartPublishResult> => {
+    if (!token || !user) return 'handled';
+    const deps = { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading };
+    return runStartPublish(deps, target, target.owner === user.login);
+  }, [token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
+
+  const flowCreateRepoAndPublishFile = useCallback(async (target: PublishTarget): Promise<StartPublishResult> => {
+    if (!token || !user) return 'handled';
+    const deps = { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading };
+    const ok = await runCreateRepo(deps, target.repo);
+    if (!ok) return 'handled';
+    await runPublishFileDocByKind(deps, target);
+    return 'published';
+  }, [token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
 
   // ── Send message to AI (Opción D - con detección de modo) ──────────────────
   // Con un archivo adjunto, resolveMode (en runSend) fuerza SIEMPRE chat: el archivo
@@ -258,13 +242,6 @@ export default function App() {
 
   // #40: cancela la petición en vuelo; runSend mostrará "⏹️ detenido".
   const handleStop = useCallback(() => abortRef.current?.abort(), []);
-
-  // Texto plano de la conversación, como contexto al documentar (el doc refleja lo
-  // charlado). La lógica vive en formatConversation (testeable).
-  const buildConversationText = useCallback(
-    () => formatConversation(conversationHistory),
-    [conversationHistory],
-  );
 
   // ── Resumir hilo (#32) ───────────────────────────────────────────────────────
   const handleSummarizeThread = useCallback(async (input: string) => {
@@ -323,51 +300,8 @@ export default function App() {
     }
   }, [token, user, addMessage, handleLoadRepoContext]);
 
-  // ── Commit docs (commit directo a la rama por defecto) ───────────────────────
-  const handleCommitDocs = useCallback(async () => {
-    if (!docAnalysis || !token || !user) return;
-    setIsCommittingDocs(true);
-    try {
-      await runCommitDocs(
-        { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
-        docAnalysis,
-      );
-    } finally {
-      setIsCommittingDocs(false);
-      setDocAnalysis(null);
-    }
-  }, [docAnalysis, token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
-
-  // ── Crear Draft PR con la documentación (#45) ────────────────────────────────
-  const handleCreateDraftPr = useCallback(async () => {
-    if (!docAnalysis || !token || !user) return;
-    setIsCreatingDraftPr(true);
-    try {
-      await runCreateDraftPr(
-        { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
-        docAnalysis,
-      );
-    } finally {
-      setIsCreatingDraftPr(false);
-      setDocAnalysis(null);
-    }
-  }, [docAnalysis, token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
-
-  // ── Crear Release con la documentación del repo (#28 Parte A v3.8.0) ─────────
-  const handleCreateRepoRelease = useCallback(async (version: string) => {
-    if (!docAnalysis || !token || !user) return;
-    setIsCreatingRepoRelease(true);
-    try {
-      await runCreateRepoRelease(
-        { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
-        docAnalysis,
-        version || undefined,
-      );
-    } finally {
-      setIsCreatingRepoRelease(false);
-      setDocAnalysis(null);
-    }
-  }, [docAnalysis, token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
+  // #57: la publicación de la doc de repo la orquesta DocumentFlowModal
+  // (flowCommitRepo / flowDraftPrRepo / flowReleaseRepo, definidos arriba).
 
   return (
     <>
@@ -414,7 +348,7 @@ export default function App() {
             onMultiRepoChange={setMultiRepoEnabled}
             selectedRepos={selectedRepos}
             onSelectedReposChange={setSelectedRepos}
-            onDocumentRepo={handleDocumentRepo}
+            onOpenDocumentFlow={openDocumentFlow}
             onSummarizeThread={handleSummarizeThread}
             onGenerateChangelog={handleGenerateChangelog}
             onCodeHealth={handleCodeHealth}
@@ -427,7 +361,6 @@ export default function App() {
             fileContextName={fileContext?.name ?? null}
             onAttachFile={handleAttachFile}
             onClearFile={handleClearFile}
-            onPublishFile={() => handleDocumentAndPublishFile(buildConversationText())}
           />
         </div>
 
@@ -444,41 +377,27 @@ export default function App() {
         />
       )}
 
-      {/* Documentation modal */}
-      {docAnalysis && (
-        <DocModal
-          analysis={docAnalysis}
-          onConfirm={handleCommitDocs}
-          onCreateDraftPr={handleCreateDraftPr}
-          onCreateRelease={handleCreateRepoRelease}
-          onCancel={() => setDocAnalysis(null)}
-          isCommitting={isCommittingDocs}
-          isCreatingDraftPr={isCreatingDraftPr}
-          isCreatingRelease={isCreatingRepoRelease}
+      {/* #57 - Flujo único de documentación (stepper) */}
+      {documentFlowOpen && (
+        <DocumentFlowModal
+          hasAttachedFile={!!fileContext}
+          attachedFileName={fileContext?.name}
+          attachedFile={fileContext?.file}
+          currentUserLogin={user?.login ?? ''}
+          onGenerateRepo={flowGenerateRepo}
+          onGenerateFile={flowGenerateFile}
+          onCommitRepo={flowCommitRepo}
+          onDraftPrRepo={flowDraftPrRepo}
+          onReleaseRepo={flowReleaseRepo}
+          onPublishFile={flowPublishFile}
+          onCreateRepoAndPublish={flowCreateRepoAndPublishFile}
+          onCancel={closeDocumentFlow}
         />
       )}
 
       {/* #44 - Dashboard "Salud del Código" */}
       {codeHealth && (
         <CodeHealthModal data={codeHealth} onClose={() => setCodeHealth(null)} />
-      )}
-
-      {/* #28 Fase 2 - Modal de publicación de la doc generada del archivo */}
-      {filePublish && (
-        <FilePublishModal
-          fileName={filePublish.fileName}
-          doc={filePublish.doc}
-          busy={isPublishingFile}
-          initialRepo={publishInitialRepo}
-          sourceFileName={fileContext?.file ? fileContext.name : undefined}
-          repoMissing={repoMissing}
-          onCommit={(repo, uploadSource, extras) => handlePublishFileDoc(repo, false, uploadSource, extras)}
-          onDraftPr={(repo, uploadSource, extras) => handlePublishFileDoc(repo, true, uploadSource, extras)}
-          onRelease={handleCreateFileRelease}
-          onCreateRepoAndPublish={handleConfirmCreateRepo}
-          onCancelCreate={handleCancelCreateRepo}
-          onCancel={() => { setRepoMissing(null); setFilePublish(null); setPublishInitialRepo(undefined); }}
-        />
       )}
     </>
   );
