@@ -72,32 +72,81 @@ const geminiLimiter = rateLimit({
 // Request body: { apiKey, model, messages: [{role, content}], systemPrompt, mode?, stream? }
 // Response:     { text }  — o, si stream===true, un flujo SSE de `data: {"text": "<chunk>"}`
 //               terminado con `data: [DONE]` (#38).
-//
-// Groq calls are NOT proxied — they go directly from the browser (no EU block).
-app.post('/api/gemini', geminiLimiter, async (req, res) => {
-  // 🔥 OPCIÓN D: Extraemos 'mode' opcional del body. #38: 'stream' opcional.
-  const { apiKey, model, messages, systemPrompt, mode, stream } = req.body;
+    //
+    // Groq calls are NOT proxied — they go directly from the browser (no EU block).
+    app.post('/api/gemini', geminiLimiter, async (req, res) => {
+      // 🔥 OPCIÓN D: Extraemos 'mode' opcional del body. #38: 'stream' opcional.
+      const { apiKey, model, messages, systemPrompt, mode, stream } = req.body;
+    
+      if (!apiKey || !model || !Array.isArray(messages) || !systemPrompt) {
+        return res.status(400).json({
+          error: 'Faltan campos requeridos: apiKey, model, messages, systemPrompt',
+        });
+      }
+    
+      try {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const gemModel = genAI.getGenerativeModel({
+          model,
+          systemInstruction: systemPrompt,
+        });
+    
+        // 🔥 OPCIÓN D: Log para ver el modo en Cloud Run (útil para debugging)
+        if (mode) {
+          console.log(`[Opción D] Gemini proxy received mode: ${mode}${stream ? ' (streaming)' : ''}`);
+        }
+    
+        // Translate from internal Message format → Gemini SDK format.
+        // All messages except the last form the chat history.
 
-  if (!apiKey || !model || !Array.isArray(messages) || !systemPrompt) {
-    return res.status(400).json({
-      error: 'Faltan campos requeridos: apiKey, model, messages, systemPrompt',
+    // ─── Gemini Dynamic Models Proxy (#58 v3.23.0 + hotfix v3.23.2) ──────────────────
+    // Permite al frontend obtener la lista de modelos de Gemini disponibles para una key.
+    // La API de listado de Gemini también bloquea en UE, por lo que necesita proxy.
+    // El frontend espera `{ models: [{ value: string, label: string }] }`.
+    // La API de Google AI devuelve `{ models: [{ name, displayName, supportedGenerationMethods }] }`
+    // Filtramos los no generativos y los adaptamos al formato del frontend.
+    app.get('/api/gemini/models', geminiLimiter, async (req, res) => {
+      const authHeader = req.headers.authorization;
+      const apiKey = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+      if (!apiKey) {
+        return res.status(400).json({ error: 'API Key no proporcionada en el header Authorization.' });
+      }
+
+      try {
+        const geminiModelsUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+        const modelsRes = await fetch(geminiModelsUrl);
+
+        if (!modelsRes.ok) {
+          const errorText = await modelsRes.text();
+          console.error(`Gemini models API error ${modelsRes.status}: ${errorText}`);
+          return res.status(modelsRes.status).json({
+            error: `Error al obtener modelos de Gemini: ${modelsRes.statusText || 'Unknown error'}`,
+            details: errorText,
+          });
+        }
+
+        const { models } = await modelsRes.json();
+
+        const GEMINI_EXCLUDED = ['embed', 'vision', 'aqa', 'imagen', 'chirp']; // Consistente con frontend
+
+        const filteredModels = models
+          .filter(m => m.supportedGenerationMethods?.includes('generateContent') && !GEMINI_EXCLUDED.some(p => m.name.includes(p)))
+          .map(m => ({
+            value: m.name.replace('models/', ''),
+            label: m.displayName || m.name.replace('models/', ''),
+          }))
+          .sort((a, b) => a.label.localeCompare(b.label));
+
+        res.status(200).json({ data: filteredModels });
+      } catch (error) {
+        console.error('Error in Gemini models proxy:', error);
+        res.status(500).json({ error: 'Error interno del servidor al obtener modelos de Gemini.' });
+      }
     });
-  }
 
-  try {
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const gemModel = genAI.getGenerativeModel({
-      model,
-      systemInstruction: systemPrompt,
-    });
-
-    // 🔥 OPCIÓN D: Log para ver el modo en Cloud Run (útil para debugging)
-    if (mode) {
-      console.log(`[Opción D] Gemini proxy received mode: ${mode}${stream ? ' (streaming)' : ''}`);
-    }
-
-    // Translate from internal Message format → Gemini SDK format.
-    // All messages except the last form the chat history.
+        // Translate from internal Message format → Gemini SDK format.
+        // All messages except the last form the chat history.
     // Internal role 'assistant' maps to Gemini role 'model'.
     const history = messages.slice(0, -1).map(m => ({
       role: m.role === 'assistant' ? 'model' : 'user',

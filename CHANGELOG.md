@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.23.3] — 2026-07-10
+
+### Changed
+- **El GitHub release pasa a ser automático.** Hasta v3.23.2, el `commit` + `push`
+  + `tag` se ejecutaban sin pedir permiso al cerrar una gestión, pero el **GitHub
+  release** (la página pública con notas) esperaba confirmación del autor. A petición
+  suya, ahora **también se publica automáticamente** como último paso de la rutina de
+  cierre (`gh release create vX.Y.Z --notes-file ...`). Lo **único** que sigue
+  esperando confirmación es el **deploy a Cloud Run** (vía Cloud Build). Documentado
+  en `CLAUDE.md §8` y `METODOLOGIA_IA.md §1/§2` (filosofía, rutina de cierre y puntos
+  de parada).
+- Publicado el release `v3.23.2` que había quedado pendiente.
+
+### Notes
+- _Cambio de documentación de proceso por **ZCode** (GLM-5.2)._
+
 ## [3.23.2] — 2026-07-10
 
 ### Fixed

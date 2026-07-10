@@ -354,24 +354,26 @@ El flujo con el usuario es siempre el mismo, **no lo cambies**:
 1. Desarrollar en la rama de feature, abrir PR, **vigilarlo** hasta merge (CI verde).
 2. **Rutina de cierre automática (desde v3.23.2):** al cerrar una gestión —con
    tests verdes y build limpio— el asistente ejecuta **sin pedir permiso**, en
-   este orden:
+   este orden (bump → changelog → commit → push → tag → release → handoff):
    1. **Bump de versión** (`package.json` ×2 + lockfiles con `npm install`).
    2. **`CHANGELOG.md`** con la entrada de la versión (crédito al modelo que
       investigó vs. el que cerró el fix).
    3. **Commit** convencional con todos los cambios de la gestión.
    4. **Push a `main`** (`git push origin main`).
    5. **Tag anotado** `vX.Y.Z` + push del tag (`git push origin vX.Y.Z`).
-   6. **Mensaje de handoff** (bloque de código listo para copiar en la siguiente
+   6. **GitHub release** (`gh release create vX.Y.Z --title ... --notes-file ...`,
+      con la misma sección del `CHANGELOG.md` como notas). Automático desde
+      v3.23.2 (lo pidió el autor para no frenar el ciclo).
+   7. **Mensaje de handoff** (bloque de código listo para copiar en la siguiente
       sesión: repo, versión, qué se cerró, próximo trabajo priorizado, reglas de
       economía de contexto y crédito).
-3. Lo **único** que sigue esperando confirmación del usuario es el **GitHub
-   release** (la página pública con notas) y el deploy de Cloud Build. El push +
-   tag **no** esperan: el autor lo pidió explícitamente en v3.23.2 para no frenar
-   el ciclo de iteración.
+3. Lo **único** que sigue esperando confirmación del usuario es el **deploy de
+   Cloud Build/Cloud Run** (requiere credenciales de GCP y verificación en prod).
+   El push, el tag **y el GitHub release** **no** esperan.
 
-> Regla de oro: el `commit` + `push` + `tag` van siempre juntos al cerrar. Nunca
-> commitees sin pushear, ni pushees sin tagear. El repo queda siempre en un
-> estado publicable.
+> Regla de oro: el `commit` + `push` + `tag` + `release` van siempre juntos al
+> cerrar. Nunca commitees sin pushear, ni pushees sin tagear, ni tagees sin
+> publicar el release. El repo queda siempre en un estado publicable.
 
 ---
 

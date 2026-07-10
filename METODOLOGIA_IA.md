@@ -48,11 +48,11 @@ El proyecto se construye íntegramente **con** asistencia de IA, pero bajo
   el autor aprueba antes de cualquier cambio.
 - **Propón → apruebo → ejecutas.** Extiende al chat la misma garantía que la app
   aplica a la GitHub API (*propón→confirmar→ejecutar*). **Excepción desde v3.23.2:
-  push a `main` + tag anotado se hacen de forma automática al cerrar una gestión**
-  (lo pidió el autor expresamente para no frenar el ciclo). El **GitHub release**
-  (página pública, notas) y los cambios irreversibles sobre el repo —merge de
-  ramas que tocan orquestación, borrado de ramas/archivos, envío de contenido a
-  servicios externos— **siguen esperando confirmación explícita**.
+  push a `main` + tag anotado + GitHub release se hacen de forma automática al
+  cerrar una gestión** (lo pidió el autor expresamente para no frenar el ciclo).
+  Los cambios irreversibles sobre el repo —deploy a Cloud Run (vía Cloud Build),
+  merge de ramas que tocan orquestación, borrado de ramas/archivos, envío de
+  contenido a servicios externos— **siguen esperando confirmación explícita**.
 - **Honestidad por encima de elogios.** Si algo falla, se dice con la salida real
   del comando. Si un paso se saltó, se declara. No se infla lo conseguido. Las
   revisiones externas (otras IAs) se filtran: se incorpora lo accionable, se
@@ -100,9 +100,10 @@ sesión:
      4. **Paralelizar con criterio.** Varios `Explore` en paralelo solo si
         investigan cosas **distintas**; si se solapan, uno basta.
      5. **Dividir el cierre.** El "fix de código commiteado" ya está a salvo.
-        Desde v3.23.2, **push a `main` + tag se hacen automáticamente** al cerrar
-        la gestión (no necesitan confirmación); el **GitHub release** sigue siendo
-        la única acción pública/formal que espera visto bueno del autor.
+        Desde v3.23.2, **push a `main` + tag + GitHub release se hacen
+        automáticamente** al cerrar la gestión (no necesitan confirmación); el
+        **deploy a Cloud Run (vía Cloud Build)** sigue siendo la única acción
+        pública/formal que espera visto bueno del autor.
 4. **Ejecutar en una rama** nacida de `main` actualizado (trunk-based). Commits
    atómicos con Conventional Commits.
 5. **Verificar** antes de pushear: `npm run build` (tsc estricto), `npm run lint`
@@ -110,14 +111,15 @@ sesión:
    reales.
 6. **Cerrar la gestión** (rutina automática desde v3.23.2, ver §2 "Rutina de
    cierre"): bump + `CHANGELOG.md` + commit + **push a `main`** + **tag
-   anotado** + **mensaje de handoff**. El **GitHub release** y el deploy a
-   Cloud Run (vía Cloud Build) esperan confirmación del autor.
+   anotado** + **GitHub release** + **mensaje de handoff**. El deploy a
+   Cloud Run (vía Cloud Build) espera confirmación del autor.
 
 ### Puntos de parada (siempre confirmar antes de)
 
-- **GitHub release** (es pública y dispira deploy). El **push a `main` + tag
-  anotado** NO esperan confirmación desde v3.23.2: se hacen automáticamente al
-  cerrar una gestión (ver §2.6).
+- **Deploy a Cloud Run (vía Cloud Build)** (requiere credenciales de GCP y
+  verificación en prod). El **push a `main` + tag anotado + GitHub release** NO
+  esperan confirmación desde v3.23.2: se hacen automáticamente al cerrar una
+  gestión (ver §2.6).
 - **Merge de ramas** que tocan la capa de orquestación.
 - **Borrado de ramas o archivos** del repo.
 - **Enviar contenido a servicios externos** (se publica, puede indexarse).
@@ -133,11 +135,14 @@ el asistente ejecuta **sin pedir permiso**:
 3. **Commit** convencional con todos los cambios de la gestión.
 4. **Push a `main`** (`git push origin main`).
 5. **Tag anotado** `vX.Y.Z` y push del tag (`git push origin vX.Y.Z`).
-6. **Mensaje de handoff** (ver §2.7): bloque de texto listo para pegar en la
+6. **GitHub release** (`gh release create vX.Y.Z --title ... --notes-file ...`,
+   con la misma sección del `CHANGELOG.md` como notas). Automático desde
+   v3.23.2.
+7. **Mensaje de handoff** (ver §2.7): bloque de texto listo para pegar en la
    siguiente sesión.
 
-La confirmación del usuario se pide **solo** para el **GitHub release** (notas
-públicas) y para cualquier acción fuera de esta rutina.
+La confirmación del usuario se pide **solo** para el **deploy a Cloud Run**
+(vía Cloud Build) y para cualquier acción fuera de esta rutina.
 
 ### Mensaje de handoff (generar siempre al cerrar)
 
