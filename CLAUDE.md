@@ -354,7 +354,7 @@ El flujo con el usuario es siempre el mismo, **no lo cambies**:
 1. Desarrollar en la rama de feature, abrir PR, **vigilarlo** hasta merge (CI verde).
 2. **Rutina de cierre automática (desde v3.23.2):** al cerrar una gestión —con
    tests verdes y build limpio— el asistente ejecuta **sin pedir permiso**, en
-   este orden (bump → changelog → commit → push → tag → release → handoff):
+   este orden (bump → changelog → commit → push → tag → release → deploy → handoff):
    1. **Bump de versión** (`package.json` ×2 + lockfiles con `npm install`).
    2. **`CHANGELOG.md`** con la entrada de la versión (crédito al modelo que
       investigó vs. el que cerró el fix).
@@ -364,16 +364,24 @@ El flujo con el usuario es siempre el mismo, **no lo cambies**:
    6. **GitHub release** (`gh release create vX.Y.Z --title ... --notes-file ...`,
       con la misma sección del `CHANGELOG.md` como notas). Automático desde
       v3.23.2 (lo pidió el autor para no frenar el ciclo).
-   7. **Mensaje de handoff** (bloque de código listo para copiar en la siguiente
+   7. **Deploy a Cloud Run: automático.** El push a `main` dispara el trigger de
+      Cloud Build (`rmgpgab-github-ai-assistant-...`), que construye la imagen y
+      actualiza el servicio. **No** requiere comando `gcloud` manual ni
+      confirmación del autor. Tras cerrar, **verificar** que llegó a prod
+      (`gcloud run services describe github-ai-assistant --region=us-central1
+      --project=proyecto-app-antigravity --format="value(...image)"`: el tag de
+      la imagen debe coincidir con el hash del commit recién pusheado).
+   8. **Mensaje de handoff** (bloque de código listo para copiar en la siguiente
       sesión: repo, versión, qué se cerró, próximo trabajo priorizado, reglas de
       economía de contexto y crédito).
-3. Lo **único** que sigue esperando confirmación del usuario es el **deploy de
-   Cloud Build/Cloud Run** (requiere credenciales de GCP y verificación en prod).
-   El push, el tag **y el GitHub release** **no** esperan.
+3. **No hay puntos de parada manuales** en la rutina de cierre: el push, el tag,
+   el GitHub release **y el deploy a Cloud Run** son todos automáticos. Lo único
+   que espera confirmación del usuario son acciones **fuera** de esta rutina.
 
-> Regla de oro: el `commit` + `push` + `tag` + `release` van siempre juntos al
-> cerrar. Nunca commitees sin pushear, ni pushees sin tagear, ni tagees sin
-> publicar el release. El repo queda siempre en un estado publicable.
+> Regla de oro: el `commit` + `push` + `tag` + `release` + `deploy` van siempre
+> juntos al cerrar. Nunca commitees sin pushear, ni pushees sin tagear, ni
+> tagees sin publicar el release, ni publiques el release sin haber desplegado.
+> El repo queda siempre en un estado publicable y en prod.
 
 ---
 
