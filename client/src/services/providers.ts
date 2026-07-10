@@ -73,6 +73,10 @@ const GROQ_FALLBACK: ModelOption[] = [
 // Prefijos de modelos Groq no-chat que se excluyen del selector.
 export const GROQ_EXCLUDED = ['whisper', 'distil-whisper', 'playai', 'llama-guard', 'tts'];
 
+// Subcadenas de modelos Gemini no generativos (embeddings, visión, etc.) que se
+// excluyen del selector. Debe coincidir con el filtro del backend (#58).
+export const GEMINI_EXCLUDED = ['embed', 'vision', 'aqa', 'imagen', 'chirp'];
+
 // Fallback de OpenRouter mientras carga el catálogo o si la API falla.
 // Modelos gratuitos (:free) conocidos y estables.
 const OPENROUTER_FALLBACK: ModelOption[] = [
@@ -89,6 +93,10 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     emoji: '🤖',
     cardDesc: 'provider.gemini.cardDesc',
     transport: 'gemini-proxy',
+    // #58 (v3.23.0): catálogo dinámico vía el proxy del backend (la API de
+    // listado de Gemini también está bloqueada en UE desde el navegador).
+    modelsEndpoint: '/api/gemini/models',
+    modelsNeedKey: true,
     staticModels: GEMINI_MODELS,
     defaultModel: GEMINI_MODELS[0].value,
     keyPlaceholder: 'AIzaSy...',
@@ -220,6 +228,13 @@ export async function fetchModels(
       }))
       // gratis primero, luego alfabético por etiqueta
       .sort((a, b) => (Number(b.free) - Number(a.free)) || a.label.localeCompare(b.label));
+  } else if (def.id === 'gemini') {
+    // #58 (v3.23.0): catálogo dinámico de Gemini vía proxy. El backend ya filtra
+    // los no-generativos, pero repetimos el filtro aquí (defensa en profundidad).
+    models = data.data
+      .filter(m => !GEMINI_EXCLUDED.some(p => m.id.includes(p)))
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .map(m => ({ value: m.id, label: m.name || m.id }));
   } else {
     // Groq (y cualquier OpenAI-compatible genérico): filtra no-chat
     models = data.data

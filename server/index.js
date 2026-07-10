@@ -142,6 +142,39 @@ app.post('/api/gemini', geminiLimiter, async (req, res) => {
   }
 });
 
+// ─── Gemini Models Proxy (#58, v3.23.0) ──────────────────────────────────────
+// La API de listado de Gemini también está bloqueada en UE desde el navegador
+// (como el chat), así que el catálogo de modelos se pide a través del proxy.
+// Devuelve { data: [{ id, name }] } — el formato que fetchModels ya parsea.
+// La apiKey del usuario viaja en el body (igual que en /api/gemini), nunca se
+// persiste. Mismo rate limit que el chat.
+app.post('/api/gemini/models', geminiLimiter, async (req, res) => {
+  const { apiKey } = req.body;
+
+  if (!apiKey) {
+    return res.status(400).json({ error: 'Falta el campo requerido: apiKey' });
+  }
+
+  try {
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const { models } = await genAI.listModels();
+    // Filtrar modelos no generativos (embeddings, vision-only, imagen, AQA).
+    // El catálogo de Gemini incluye muchos modelos que no sirven para chat.
+    const GEMINI_EXCLUDED = ['embed', 'vision', 'aqa', 'imagen', 'chirp'];
+    const chatModels = models
+      .filter(m => !GEMINI_EXCLUDED.some(p => m.name.includes(p)))
+      .map(m => ({ id: m.name, name: m.displayName || m.name }));
+    res.json({ data: chatModels });
+  } catch (err) {
+    console.error('Gemini models proxy error:', err);
+    const status = err?.status ?? err?.httpErrorCode ?? 500;
+    const safeStatus = (status >= 400 && status < 600) ? status : 500;
+    res.status(safeStatus).json({
+      error: err?.message || 'Error al contactar con la API de Gemini',
+    });
+  }
+});
+
 // ─── GitHub OAuth ─────────────────────────────────────────────────────────────
 app.get('/auth/github', (req, res) => {
   if (!GITHUB_CLIENT_ID) {
