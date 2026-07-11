@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v3.31.0 · Julio 2026
+**Actualizado a:** v3.32.1 · Julio 2026
 
 ---
 
@@ -151,7 +151,7 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 - ✅ CI con GitHub Actions ejecutando tests (cliente + servidor) automáticamente
 - ✅ Badge de Codecov en README
 - ✅ Cobertura actual: ver Codecov (oscila según versión; histórico ~60–64%)
-- ✅ 520 tests en el cliente (v3.31.0; 48 archivos `.test.ts(x)` co-locados). Implementados para:
+- ✅ 530 tests en el cliente (v3.32.1; 48 archivos `.test.ts(x)` co-locados). Implementados para:
   - `AuthContext.tsx` (login, logout, OAuth flow, Zero-Storage)
   - `AIProviderContext.tsx` (conexión/desconexión de proveedores)
   - `providers.ts` (registro de proveedores, detección de modelos 🆓, caché, `pickDefaultModel`)
@@ -489,7 +489,7 @@ El usuario los encuentra confusos: no sabe cuándo usar cuál, y con un repo car
 | 🟡 Media | 17 | 16 (#12, #17, #18, #19, #21, #37, #41, #32, #42, #38, #20, #49, #39, #44, #50, #51) | 1 (#26) |
 | 🟢 Baja | 18 | 10 (#23, #24, #34, #40, #46, #58, #55, #56, #57, #54) | 6 (#22, #25, #36, #48, #52, #53) |
 | **🗑️ Descartados** | — | — | 2 (#33, #35) descartados en v3.22.3 |
-| **TOTAL** | **43** | **32** | **9** |
+| **TOTAL** | **43** | **34** | **7** |
 
 > **#28** cubierto en su **norte** por las Fases 1 (v3.0.0, adjuntar como contexto) y
 > 2 (v3.1.0, documentar→publicar). **Más formatos:** Fase 3a (v3.2.0, Excel/CSV) y

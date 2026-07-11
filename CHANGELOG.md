@@ -5,13 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.32.1] — 2026-07-11
+
+### Fixed
+- **NVIDIA NIM: error "❌ Failed to fetch" al conectar/chatear (#54 hotfix).** NIM (`integrate.api.nvidia.com`) **no envía cabeceras CORS** (`Access-Control-Allow-Origin` ausente), de modo que el navegador bloquea las llamadas directas en la capa de red y muestran un `TypeError: Failed to fetch`. Verificado por contraste: Groq envía `access-control-allow-origin: *`, Zenmux también; NIM no envía nada. Afectaba tanto al chat (`validateProviderKey`/`callAI`) como al catálogo dinámico (`fetchModels`, que caía al fallback estático de forma silenciosa).
+  - Añadido **proxy backend transparente** en `server/index.js` (mismo patrón que el de Gemini): `POST /api/nim` (chat) y `GET /api/nim/models` (catálogo), con rate limiter propio (`nimLimiter`, 40 req/min) independiente del de Gemini. El proxy copia el body OpenAI-format y el header `Authorization` sin tocarlos; el stream SSE se reenvía sin bufferizar (`upstream.body.pipe(res)`).
+  - `providers.ts`: `nvidia.chatEndpoint` y `modelsEndpoint` cambiados a rutas relativas (`/api/nim`, `/api/nim/models`). El resto del frontend (`callOpenAICompatible`, `validateProviderKey`, `fetchModels`) no se toca: ya leía de `def.chatEndpoint`/`def.modelsEndpoint`. `NIM_FEATURED_URL` (NGC) sigue absoluto: sí envía CORS y va directo al navegador.
+  - Zero-Storage mantenido: la key viaja HTTPS cliente→backend y se descarta al terminar la petición (igual que `/api/gemini`).
+
+### Changed
+- **Documentación de v3.32.0 corregida** (Nemotron la dejó incompleta):
+  - README.md: badge de versión (v3.31.0 → v3.32.1), proveedores soportados (+NIM+Zenmux), modelos disponibles, tests (520 → 530) y tabla de stack.
+  - CLAUDE.md §1 y §5: versión y lista de proveedores; rector de proxies actualizado (ya no "el único proxy es Gemini" — NIM también, justificado por CORS).
+  - MEJORAS_FUTURAS.md: contador TOTAL corregido (32/9 → 34/7 resueltos/pendientes, #54 ya estaba en la fila Baja pero el TOTAL no cuadraba), conteo de tests (520 → 530) y versión del encabezado.
+  - METODOLOGIA_IA.md §5: añadidas filas de trazabilidad para v3.32.0 (Nemotron) y v3.32.1 (ZCode).
+  - docs/ (ARQUITECTURA, FUNCIONALIDADES, INSTALACION, COMPARATIVA_COPILOT, SEGURIDAD): 17 listas de proveedores actualizadas con NIM y Zenmux, incluyendo el diagrama ASCII de arquitectura (NIM movido a "vía proxy", Zenmux a "directas").
+
+### Notes
+- Cambio de código por ZCode (builtin:zai-coding-plan/GLM-5.2). 530/530 tests de cliente + 5/5 de servidor verdes, build limpio (tsc estricto), lint 0 errores.
+
 ## [3.32.0] — 2026-07-11
 
 ### Added
 - **NVIDIA Build (NIM) como proveedor de IA (#54).** Nuevo proveedor `nvidia` (transport `openai-compatible`) con endpoint `https://integrate.api.nvidia.com/v1`. Catálogo dinámico filtrado (excluye embeddings, rerank, vision, safety, etc.) y enriquecido con `featured-models.json` de NGC para priorizar modelos activos. Fallback estático con 12 modelos clave para documentación (Nemotron 3 Ultra, GLM 5.2, Llama 3.3 70B, Codestral 22B, DeepSeek V4 Pro, etc.). Key prefix `nvapi-`. Zero-Storage: key solo en memoria React.
 - **Zenmux como proveedor de IA.** Nuevo proveedor `zenmux` (transport `openai-compatible`) con endpoint `https://zenmux.ai/api/v1`. Catálogo dinámico con detección de modelos free por pricing (patrón OpenRouter). 7 modelos free en fallback (Step 3.7 Flash, Grok 4.5 500K ctx, GLM 4.7/4.6V Flash, Ling 2.6 Flash, MiniMax M2.5 Lightning, Qwen3 ASR Flash). Key prefix `sk-ai-v1-`.
 - **Modelos free en selector:** Zenmux muestra badge 🆓 en modelos gratuitos; ordena free primero. NIM sin distinción free/pago (la API no la provee).
-- **Tests:** Registro de proveedores, `fetchModels` (filtrado NIM, free Zenmux), `modelLabel`, panel UI.
+- **Tests:** Registro de proveedores, `fetchModels` (filtrado NIM, free Zenmux), `modelLabel`, panel UI. 530/530 tests verdes (+10 nuevos).
+
+### Notes
+- Investigación y cierre por Nemotron 3 Ultra (NVIDIA) vía ZCode. NIM no funcionaba en producción por CORS — corregido en v3.32.1 (ver abajo).
 
 ### Changed
 - `fetchModels` extendido para `nvidia` y `zenmux` (branch dedicado, sin tocar Gemini/Groq/OpenRouter).

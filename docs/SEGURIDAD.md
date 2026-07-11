@@ -67,6 +67,8 @@ Proveedores soportados:
 - Groq Cloud.
 - Google Gemini.
 - OpenRouter.
+- NVIDIA NIM.
+- Zenmux.
 
 La clave:
 
@@ -88,6 +90,8 @@ La clave:
 | Clave Groq | No | Memoria React |
 | Clave Gemini | No | Memoria React / tránsito HTTPS al proxy |
 | Clave OpenRouter | No | Memoria React |
+| Clave NVIDIA NIM | No | Memoria React / tránsito HTTPS al proxy |
+| Clave Zenmux | No | Memoria React |
 | Conversación | No automáticamente | Estado React o fichero exportado por el usuario |
 | Historial de sesión | No automáticamente | Estado React |
 | Preferencias no sensibles | Puede recordarse si aplica | Estado o almacenamiento no sensible |

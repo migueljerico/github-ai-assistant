@@ -225,8 +225,12 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     emoji: '🟢',
     cardDesc: 'provider.nvidia.cardDesc',
     transport: 'openai-compatible',
-    chatEndpoint: 'https://integrate.api.nvidia.com/v1/chat/completions',
-    modelsEndpoint: 'https://integrate.api.nvidia.com/v1/models',
+    // v3.32.1: NIM NO envía cabeceras CORS → el navegador bloquea las llamadas
+    // directas ("Failed to fetch"). Se enrutan por el proxy backend (/api/nim),
+    // mismo patrón que Gemini. El proxy es transparente: copia el body OpenAI y
+    // el header Authorization sin tocarlos. fetchModels recibe aquí el catálogo.
+    chatEndpoint: '/api/nim',
+    modelsEndpoint: '/api/nim/models',
     modelsNeedKey: true,
     staticModels: NIM_FALLBACK,
     defaultModel: NIM_FALLBACK[0].value,

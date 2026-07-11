@@ -35,7 +35,9 @@ APIs externas
   ├── GitHub REST API v3
   ├── Groq Cloud
   ├── Google Gemini
-  └── OpenRouter
+  ├── OpenRouter
+  ├── NVIDIA NIM
+  └── Zenmux
 ```
 
 ---
@@ -81,16 +83,17 @@ APIs externas
 │                                │   │                                │
 │ ├── GitHub REST API v3         │   │ ├── /auth/github               │
 │ ├── Groq Cloud                 │   │ ├── /auth/callback             │
-│ └── OpenRouter                 │   │ ├── /api/gemini                │
+│ ├── OpenRouter                 │   │ ├── /api/gemini                │
+│ └── Zenmux                     │   │ ├── /api/nim                   │
 │                                │   │ ├── /health                    │
 │                                │   │ └── static files               │
 └───────────────────────────────┘   └───────────────┬───────────────┘
                                                     │
                                                     ▼
                                       ┌───────────────────────────────┐
-                                      │ Google Gemini API              │
-                                      │ vía proxy por restricciones    │
-                                      │ regionales del navegador       │
+                                      │ Gemini + NVIDIA NIM APIs       │
+                                      │ vía proxy (bloqueo CORS/EEA    │
+                                      │ del navegador)                 │
                                       └───────────────────────────────┘
 ```
 
@@ -118,6 +121,8 @@ Esto aplica a:
 - Claves de Groq.
 - Claves de Gemini.
 - Claves de OpenRouter.
+- Claves de NVIDIA NIM.
+- Claves de Zenmux.
 
 ---
 
@@ -314,6 +319,8 @@ Responsabilidades:
 - Llamar a Gemini.
 - Llamar a Groq.
 - Llamar a OpenRouter.
+- Llamar a NVIDIA NIM (vía proxy `/api/nim`).
+- Llamar a Zenmux.
 - Gestionar streaming.
 - Validar claves.
 - Parsear respuestas.
@@ -582,7 +589,9 @@ Proveedores:
 |---|---|
 | Groq | OpenAI-compatible directo desde navegador |
 | OpenRouter | OpenAI-compatible directo desde navegador |
-| Gemini | Proxy Express `/api/gemini` |
+| Zenmux | OpenAI-compatible directo desde navegador |
+| Gemini | Proxy Express `/api/gemini` (bloqueo UE/EEA) |
+| NVIDIA NIM | Proxy Express `/api/nim` (sin cabeceras CORS) |
 
 ---
 

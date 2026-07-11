@@ -6,7 +6,7 @@ La aplicación está dividida en:
 
 - **Frontend:** React + TypeScript + Vite.
 - **Backend:** Express.js para OAuth, proxy Gemini y health check.
-- **APIs externas:** GitHub REST API, Groq Cloud, Google Gemini y OpenRouter.
+- **APIs externas:** GitHub REST API, Groq Cloud, Google Gemini, OpenRouter, NVIDIA NIM y Zenmux.
 
 ---
 
@@ -20,7 +20,7 @@ Antes de empezar necesitas:
 | npm | Incluido con Node.js |
 | Git | Requerido para clonar y trabajar con el repo |
 | GitHub OAuth App | Necesaria para login con GitHub |
-| API key de IA | Groq, Gemini u OpenRouter |
+| API key de IA | Groq, Gemini, OpenRouter, NVIDIA NIM u Zenmux |
 
 ---
 
@@ -71,6 +71,8 @@ Necesitarás al menos una clave de:
 | Groq Cloud | `https://console.groq.com` |
 | Google Gemini | `https://aistudio.google.com/apikey` |
 | OpenRouter | `https://openrouter.ai/keys` |
+| NVIDIA NIM | `https://build.nvidia.com/explore/discover` |
+| Zenmux | `https://zenmux.ai` |
 
 > La clave de IA **no** se configura en `.env`.  
 > Cada usuario la introduce directamente en la aplicación y vive solo en memoria durante la sesión.
@@ -160,7 +162,7 @@ http://localhost:5173
 2. Pulsa conectar con GitHub.
 3. Autoriza la OAuth App.
 4. Elige proveedor de IA.
-5. Pega tu clave de Groq, Gemini u OpenRouter.
+5. Pega tu clave de Groq, Gemini, OpenRouter, NVIDIA NIM u Zenmux.
 6. Empieza a trabajar con tus repositorios.
 
 ---

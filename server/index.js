@@ -61,6 +61,24 @@ const geminiLimiter = rateLimit({
   legacyHeaders: false, // Desactiva headers X-RateLimit-*
 });
 
+// ─── Rate Limiting para NVIDIA NIM Proxy (v3.32.1) ────────────────────────────
+// Ventana propia (independiente de Gemini) para que el abuso de un proveedor no
+// agote la cuota del otro. Mismo límite: 40 req/min por IP.
+const nimLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 40,
+  message: {
+    error: 'Demasiadas peticiones a NVIDIA NIM. Por favor espera un minuto.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// URL base de la API de NVIDIA NIM (el proxy reenvía a ella).
+// NIM NO envía cabeceras CORS → el navegador bloquea las llamadas directas con
+// "Failed to fetch". Este proxy elude el bloqueo igual que el de Gemini (#58).
+const NIM_BASE_URL = 'https://integrate.api.nvidia.com/v1';
+
 // ─── Gemini API Proxy (Opción D - Acepta 'mode' opcional) ─────────────────────
 // The Gemini API blocks direct browser requests from EU regions (EEA).
 // This proxy routes Gemini calls through the server, which is deployed in
@@ -212,6 +230,81 @@ app.get('/api/gemini/models', geminiLimiter, async (req, res) => {
   }
 });
 
+// ─── NVIDIA NIM Proxy (v3.32.1) ───────────────────────────────────────────────
+// NIM (integrate.api.nvidia.com) NO envía cabeceras CORS (Access-Control-Allow-
+// Origin), de modo que las llamadas directas desde el navegador se bloquean en la
+// capa de red ("Failed to fetch"). Esta pasarela resuelve el problema reenviando
+// la petición desde el servidor — mismo patrón que el proxy de Gemini (#58), pero
+// genérico: copia el body OpenAI-format y el header Authorization sin tocarlos, y
+// devuelve la respuesta (JSON o stream SSE) tal cual llega del upstream.
+//
+// La API key del usuario viaja en el header Authorization (HTTPS cliente→backend) y
+// se descarta al terminar la petición — nunca se persiste ni loguea (Zero-Storage).
+//
+//   POST /api/nim          → chat/completions (JSON o SSE streaming)
+//   GET  /api/nim/models   → catálogo de modelos ({ data: [...] })
+app.post('/api/nim', nimLimiter, async (req, res) => {
+  const auth = req.headers.authorization || '';
+  if (!auth.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Falta la API key (header Authorization: Bearer nvapi-...)' });
+  }
+  try {
+    const upstream = await fetch(`${NIM_BASE_URL}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': auth,
+        'Content-Type': 'application/json',
+        ...(req.headers['accept'] ? { 'Accept': req.headers['accept'] } : {}),
+      },
+      body: JSON.stringify(req.body),
+    });
+    // Pasarela transparente: copiar el status y el content-type del upstream para
+    // que JSON (200) y SSE (text/event-stream) lleguen idénticos al cliente.
+    res.status(upstream.status);
+    const ct = upstream.headers.get('content-type');
+    if (ct) res.setHeader('Content-Type', ct);
+    // Pipe del cuerpo sin bufferizar — vital para el streaming token a token.
+    if (upstream.body) {
+      upstream.body.pipe(res);
+    } else {
+      res.end();
+    }
+  } catch (err) {
+    console.error('NIM proxy error (chat):', err);
+    if (!res.headersSent) res.status(502).json({ error: 'Error al contactar con NVIDIA NIM' });
+    else { try { res.end(); } catch { /* noop */ } }
+  }
+});
+
+app.get('/api/nim/models', nimLimiter, async (req, res) => {
+  const auth = req.headers.authorization || '';
+  const apiKey = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  if (!apiKey) {
+    return res.status(401).json({ error: 'Falta la API key (header Authorization: Bearer nvapi-...)' });
+  }
+  try {
+    const upstream = await fetch(`${NIM_BASE_URL}/models`, {
+      headers: { 'Authorization': auth },
+    });
+    if (!upstream.ok) {
+      let message = 'Error al contactar con NVIDIA NIM';
+      try {
+        const body = await upstream.json();
+        message = body?.error?.message || body?.error || message;
+      } catch { /* respuesta no-JSON */ }
+      const safeStatus = (upstream.status >= 400 && upstream.status < 600) ? upstream.status : 500;
+      return res.status(safeStatus).json({ error: message });
+    }
+    const data = await upstream.json();
+    res.json(data);
+  } catch (err) {
+    console.error('NIM proxy error (models):', err);
+    const status = err?.status ?? 502;
+    const safeStatus = (status >= 400 && status < 600) ? status : 502;
+    res.status(safeStatus).json({ error: 'Error al contactar con NVIDIA NIM' });
+  }
+});
+
 // ─── GitHub OAuth ─────────────────────────────────────────────────────────────
 app.get('/auth/github', (req, res) => {
   if (!GITHUB_CLIENT_ID) {
@@ -307,8 +400,10 @@ app.listen(PORT, () => {
   console.log(`   Server:  http://localhost:${PORT}`);
   console.log(`   Health:  http://localhost:${PORT}/health`);
   console.log(`   OAuth:   http://localhost:${PORT}/auth/github`);
-  console.log(`   Proxy:   POST http://localhost:${PORT}/api/gemini`);
-  console.log(`   🛡️  Rate Limit: 40 req/min en /api/gemini`);
-  console.log(`\n   ℹ️  Groq  → llamadas directas desde el navegador`);
-  console.log(`   ℹ️  Gemini → proxiado via /api/gemini (elude bloqueo EU)\n`);
+  console.log(`   Proxy Gemini: POST http://localhost:${PORT}/api/gemini`);
+  console.log(`   Proxy NIM:    POST http://localhost:${PORT}/api/nim · GET /api/nim/models`);
+  console.log(`   🛡️  Rate Limit: 40 req/min en /api/gemini y /api/nim`);
+  console.log(`\n   ℹ️  Groq / OpenRouter / Zenmux → llamadas directas desde el navegador`);
+  console.log(`   ℹ️  Gemini → proxiado via /api/gemini (elude bloqueo EU)`);
+  console.log(`   ℹ️  NIM    → proxiado via /api/nim (elude bloqueo CORS)\n`);
 });
