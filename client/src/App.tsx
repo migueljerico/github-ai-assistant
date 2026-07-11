@@ -88,35 +88,35 @@ export default function App() {
     setIsExecuting(true);
     try {
       await runConfirmAction(
-        { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+        { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
         pa,
       );
     } finally {
       setIsExecuting(false);
     }
-  }, [pendingAction, token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [pendingAction, token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
 
   // ── Cancel action ──────────────────────────────────────────────────────────
   const handleCancel = useCallback(() => {
     if (pendingAction) {
       runCancelAction(
-        { token: token ?? '', user: user ?? { login: '' }, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+        { token: token ?? '', user: user ?? { login: '' }, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
         pendingAction,
       );
     }
     setPendingAction(null);
-  }, [pendingAction, token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [pendingAction, token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
 
   // ── #41: Cargar repo como contexto activo del chat ─────────────────────────
   const handleLoadRepoContext = useCallback(async (repoInput: string) => {
     if (!token || !user) return;
     const ctx = await runLoadRepoContext(
-      { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+      { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
       repoInput,
       provider ?? undefined,
     );
     if (ctx) setRepoContext(ctx);
-  }, [token, user, provider, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [token, user, provider, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
 
   const handleClearRepoContext = useCallback(() => {
     setRepoContext(null);
@@ -129,7 +129,7 @@ export default function App() {
   // ── #28: Adjuntar archivos locales como contexto (multi-archivo, #57 Tanda B) ──
   const handleAttachFiles = useCallback(async (files: File[]) => {
     if (!token || !user) return;
-    const deps = { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading };
+    const deps = { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading };
     // Procesa cada archivo y acumula los que se lean correctamente (no reemplaza).
     const loaded: FileContext[] = [];
     for (const file of files) {
@@ -137,7 +137,7 @@ export default function App() {
       if (ctx) loaded.push({ ...ctx, file }); // conserva el File original para subirlo al publicar (#28 4a)
     }
     if (loaded.length > 0) setFileContext(prev => [...prev, ...loaded]);
-  }, [token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
 
   const handleClearFileAt = useCallback((index: number) => {
     setFileContext(prev => prev.filter((_, i) => i !== index));
@@ -175,11 +175,11 @@ export default function App() {
     // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto
     if (!token || !user || !provider || !apiKey || !model) return null;
     return runDocumentRepo(
-      { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+      { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
       { provider, apiKey, model },
       repoInput,
     );
-  }, [token, user, provider, apiKey, model, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [token, user, provider, apiKey, model, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
 
   const flowGenerateFile = useCallback(async (): Promise<string | null> => {
     // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto
@@ -188,38 +188,38 @@ export default function App() {
     const primary = fileContext[0];
     if (!primary || !token || !user || !provider || !apiKey || !model) return null;
     return runGenerateFileDoc(
-      { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+      { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
       { provider, apiKey, model },
       primary,
       buildConversationText(),
     );
-  }, [fileContext, token, user, provider, apiKey, model, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, buildConversationText]);
+  }, [fileContext, token, user, provider, apiKey, model, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, buildConversationText]);
 
   // Publicación de la doc de repo (destino fijo = repo analizado).
   const flowCommitRepo = useCallback(async (analysis: RepoAnalysis): Promise<void> => {
     if (!token || !user) return;
     await runCommitDocs(
-      { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+      { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
       analysis,
     );
-  }, [token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
 
   const flowDraftPrRepo = useCallback(async (analysis: RepoAnalysis): Promise<void> => {
     if (!token || !user) return;
     await runCreateDraftPr(
-      { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+      { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
       analysis,
     );
-  }, [token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
 
   const flowReleaseRepo = useCallback(async (analysis: RepoAnalysis, version: string): Promise<void> => {
     if (!token || !user) return;
     await runCreateRepoRelease(
-      { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+      { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
       analysis,
       version || undefined,
     );
-  }, [token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
 
   // #57 Tanda B: crear repo inexistente + subir archivos + documentarlo (scope repo).
   const flowCreateRepoAndGenerateRepo = useCallback(async (
@@ -229,28 +229,28 @@ export default function App() {
     // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto
     if (!token || !user || !provider || !apiKey || !model) return null;
     return runCreateRepoAndDocument(
-      { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+      { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
       { provider, apiKey, model },
       repoInput,
       files,
     );
-  }, [token, user, provider, apiKey, model, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading]);
+  }, [token, user, provider, apiKey, model, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading]);
 
   // Publicación de la doc del archivo (destino elegido; maneja repo inexistente).
   const flowPublishFile = useCallback(async (target: PublishTarget): Promise<StartPublishResult> => {
     if (!token || !user) return 'handled';
-    const deps = { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading };
+    const deps = { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading };
     return runStartPublish(deps, target, target.owner === user.login);
-  }, [token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
 
   const flowCreateRepoAndPublishFile = useCallback(async (target: PublishTarget): Promise<StartPublishResult> => {
     if (!token || !user) return 'handled';
-    const deps = { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading };
+    const deps = { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading };
     const ok = await runCreateRepo(deps, target.repo);
     if (!ok) return 'handled';
     await runPublishFileDocByKind(deps, target);
     return 'published';
-  }, [token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
 
   // ── Send message to AI (Opción D - con detección de modo) ──────────────────
   // Con un archivo adjunto, resolveMode (en runSend) fuerza SIEMPRE chat: el archivo
@@ -269,11 +269,11 @@ export default function App() {
     abortRef.current = controller;
 
     await runSend(
-      { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading, setConversationHistory, setPendingAction },
+      { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading, setConversationHistory, setPendingAction },
       { provider, apiKey, model },
       { userText, conversationHistory, modeOverride, repoContext, fileContext, multiRepoEnabled, selectedRepos, signal: controller.signal },
     );
-  }, [inputValue, token, user, provider, apiKey, model, providerName, t, lang, conversationHistory, multiRepoEnabled, selectedRepos, modeOverride, repoContext, fileContext, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [inputValue, token, user, provider, apiKey, model, providerName, model, provider, t, lang, conversationHistory, multiRepoEnabled, selectedRepos, modeOverride, repoContext, fileContext, addMessage, updateMessage, addEntry, updateEntry]);
 
   // #40: cancela la petición en vuelo; runSend mostrará "⏹️ detenido".
   const handleStop = useCallback(() => abortRef.current?.abort(), []);
@@ -283,32 +283,32 @@ export default function App() {
     // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto
     if (!token || !user || !provider || !apiKey || !model) return;
     await runSummarizeThread(
-      { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+      { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
       { provider, apiKey, model },
       input,
       repoContext?.repoName ?? null,
     );
-  }, [token, user, provider, apiKey, model, providerName, t, lang, repoContext, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [token, user, provider, apiKey, model, providerName, model, provider, t, lang, repoContext, addMessage, updateMessage, addEntry, updateEntry]);
 
   // ── Generar changelog del repo (#34) ─────────────────────────────────────────
   const handleGenerateChangelog = useCallback(async (input: string) => {
     if (!token || !user || !provider || !apiKey || !model) return;
     await runGenerateChangelog(
-      { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+      { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
       { provider, apiKey, model },
       input,
     );
-  }, [token, user, provider, apiKey, model, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [token, user, provider, apiKey, model, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
 
   // ── Salud del código — dashboard (#44) ───────────────────────────────────────
   const handleCodeHealth = useCallback(async (input: string) => {
     if (!token || !user) return;
     const result = await runCodeHealth(
-      { token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+      { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
       input,
     );
     if (result) setCodeHealth(result);
-  }, [token, user, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
 
   // ── Exportar / importar conversación (#46, Zero-Storage) ─────────────────────
   const handleExportConversation = useCallback(() => {

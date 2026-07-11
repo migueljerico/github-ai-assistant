@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.31.0] — 2026-07-11
+
+### Fixed
+- **Error "La IA no devolvió JSON válido" al documentar (repos creados vacíos).** La generación de README + MANUAL_TECNICO requiere una salida larga, pero `callOpenAICompatible` limitaba la respuesta a **4096 tokens** y el proxy de Gemini no fijaba límite (usaba el default del SDK). En repos con cierta complejidad, el JSON se truncaba a medias → el parser no lo reconocía → lanzaba el error → el repo quedaba creado pero vacío (el flujo "crear + documentar" crea el repo *antes* de generar la doc).
+  - `callAI`/`callOpenAICompatible`/`callGeminiDirect` aceptan ahora `maxTokens?` (opcional, retrocompatible); `generateRepoDocs` lo pasa a `8192`.
+  - El proxy `/api/gemini` (`server/index.js`) lee `maxOutputTokens` opcional del body y lo traduce a `generationConfig`.
+  - El mensaje de error ahora incluye un hint accionable (probar repo más pequeño u otro modelo).
+
+### Added
+- **Firma de documentación con IA real.** La descripción ("about") del repo, los commit messages, los PR bodies y el footer del README citan ahora al usuario autenticado y al proveedor+modelo de IA activos:
+  - **ES:** `Creado por @{login} y documentado por {Provider} ({model}) desde la App Asistente de IA`
+  - **EN:** `Created by @{login} and documented by {Provider} ({model}) from the AI Assistant App`
+  - Sustituye al literal estático "Creado desde el Asistente de IA". Nuevo helper `buildSignature()` (i18n ES/EN), `modelLabel()` en `providers.ts` (devuelve la etiqueta legible del modelo), y `ChatDeps.model`/`ChatDeps.provider` para propagar la identidad de la IA.
+- **About del repo automático.** Tras publicar (commit directo o Draft PR), la app fija el "about" de GitHub con `{resumen IA} — {firma}` vía `updateRepo()` (PATCH `/repos/`, nueva función en `github.ts`). El `resumen` que la IA ya generaba (campo de `GeneratedDocs`) se aprovecha en lugar de descartarse. Si el PATCH falla (sin permiso de admin, rate limit…), la publicación no se rompe: solo se avisa.
+- **Botón "Actualizar documentación" siempre visible.** Antes solo aparecía cuando había un repo cargado como contexto. Ahora se muestra siempre junto a "📄 Documentar"; si hay repo en contexto, lo pre-rellena; si no, abre el stepper para que el usuario lo introduzca.
+- **Banner verde afirmativo para repos ya documentados.** El modal paso 3 cambiaba el banner azul pasivo por uno verde explícito: "✅ Este repositorio ya tiene documentación — al continuar se actualizará (no se duplicará)". La sobreescritura técnica ya funcionaba (`writeDocFiles` usa SHA); ahora la UX lo comunica claramente. ES/EN.
+
+### Changed
+- **`RepoAnalysis`** incluye ahora `resumen?: string` (generado por la IA, antes descartado).
+- **`writeDocFiles`/`createDocsDraftPr`/`publishFileDoc`/`buildDocsPrBody`** aceptan `signature?` para componer commit messages y PR bodies con la firma; sin signature usan el mensaje histórico (retrocompatible con tests).
+
 ## [3.30.2] — 2026-07-11
 
 ### Fixed

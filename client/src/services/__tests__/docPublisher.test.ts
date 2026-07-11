@@ -183,6 +183,45 @@ describe('docPublisher', () => {
   });
 });
 
+// ── Firma de documentación (v3.31.0) ─────────────────────────────────────────
+describe('docPublisher — signature (v3.31.0)', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  const SIG = 'Creado por @migueljerico y documentado por Groq (llama) desde la App Asistente de IA';
+
+  describe('writeDocFiles', () => {
+    it('con signature, los commit messages la incluyen', async () => {
+      vi.mocked(getFileContents).mockResolvedValue({ sha: 's' } as any);
+      vi.mocked(createOrUpdateFile).mockResolvedValue({ commit: { sha: 'c' } } as any);
+
+      await writeDocFiles(TOKEN, OWNER, REPO, 'R', 'M', undefined, SIG);
+
+      // El 6º arg de createOrUpdateFile es el message.
+      const messages = vi.mocked(createOrUpdateFile).mock.calls.map(c => c[5]);
+      expect(messages[0]).toContain('Creado por @migueljerico');
+      expect(messages[1]).toContain('Creado por @migueljerico');
+    });
+
+    it('sin signature, usa el mensaje histórico (retrocompatible)', async () => {
+      vi.mocked(getFileContents).mockResolvedValue({ sha: 's' } as any);
+      vi.mocked(createOrUpdateFile).mockResolvedValue({ commit: { sha: 'c' } } as any);
+
+      await writeDocFiles(TOKEN, OWNER, REPO, 'R', 'M');
+
+      const messages = vi.mocked(createOrUpdateFile).mock.calls.map(c => c[5]);
+      expect(messages[0]).toBe('docs: generate README via Asistente de IA');
+    });
+  });
+
+  describe('buildDocsPrBody', () => {
+    it('con signature, cita al proveedor/modelo en el cuerpo', () => {
+      const body = buildDocsPrBody('owner/repo', 5, SIG);
+      expect(body).toContain('Creado por @migueljerico');
+      expect(body).toContain('5 archivos analizados');
+    });
+  });
+});
+
 describe('uploadPathFor (#28 4b)', () => {
   it('imágenes → screenshots/, datos → data/, resto → raíz', () => {
     expect(uploadPathFor('captura.PNG')).toBe('screenshots/captura.PNG');
