@@ -17,7 +17,9 @@ describe('providers — registro', () => {
     expect(PROVIDERS.openrouter.transport).toBe('openai-compatible');
     expect(PROVIDERS.openrouter.chatEndpoint).toContain('openrouter.ai');
     expect(PROVIDERS.nvidia.transport).toBe('openai-compatible');
-    expect(PROVIDERS.nvidia.chatEndpoint).toContain('integrate.api.nvidia.com');
+    // v3.32.1: NIM va por proxy backend (no envía CORS) → rutas relativas
+    expect(PROVIDERS.nvidia.chatEndpoint).toBe('/api/nim');
+    expect(PROVIDERS.nvidia.modelsEndpoint).toBe('/api/nim/models');
     expect(PROVIDERS.zenmux.transport).toBe('openai-compatible');
     expect(PROVIDERS.zenmux.chatEndpoint).toContain('zenmux.ai');
     // El catálogo de OpenRouter es público (no necesita key)

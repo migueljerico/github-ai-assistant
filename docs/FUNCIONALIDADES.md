@@ -20,7 +20,7 @@ El usuario expresa lo que quiere hacer, la IA interpreta la intención, la aplic
 | 📝 Issues / PRs | Resumen de hilos con TL;DR, decisiones, pendientes y tono |
 | 📊 Salud del código | Lenguajes, commits por semana y deuda técnica |
 | 🌐 Experiencia | Streaming, detener generación, historial, export/import e i18n |
-| 🔑 IA | Groq Cloud, Google Gemini y OpenRouter |
+| 🔑 IA | Groq Cloud, Google Gemini, OpenRouter, NVIDIA NIM y Zenmux |
 
 ---
 
@@ -401,6 +401,8 @@ La app soporta varios proveedores de IA.
 | Groq Cloud | Respuestas rápidas con modelos Llama |
 | Google Gemini | Calidad de respuesta y documentación |
 | OpenRouter | Acceso a múltiples modelos, gratuitos y de pago |
+| NVIDIA NIM | Modelos optimizados (Nemotron, GLM, Llama) vía proxy |
+| Zenmux | Pasarela con modelos gratuitos (Grok, GLM, Step) |
 
 El usuario introduce su propia clave de API.
 

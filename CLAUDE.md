@@ -31,9 +31,10 @@ reemplazan. Saltarse este paso es la causa nº1 de trabajar en bucle.
 
 ## 1. Visión general
 
-**GitHub AI Assistant** (v3.31.0) es una app web que permite operar la **GitHub
-REST API en lenguaje natural** a través de un proveedor de IA (Google Gemini o
-Groq Cloud). El usuario escribe una instrucción, la IA propone una acción, y
+**GitHub AI Assistant** (v3.32.1) es una app web que permite operar la **GitHub
+REST API en lenguaje natural** a través de un proveedor de IA (Google Gemini,
+Groq Cloud, OpenRouter, NVIDIA NIM o Zenmux). El usuario escribe una instrucción,
+la IA propone una acción, y
 **cada operación de escritura se confirma manualmente** antes de ejecutarse.
 
 Es un proyecto pequeño con dos partes:
@@ -246,16 +247,23 @@ Ejecutar **un solo test**: `cd client && npm run test:run -- src/services/github
   persistite). Ver `AuthContext.tsx` (cabecera "ZERO-STORAGE ARCHITECTURE") y
   `docs/SEGURIDAD.md`. **No introduzcas credenciales en almacenamiento del
   navegador** — CONTRIBUTING rechaza PRs que lo hacen.
-- **Proxies de proveedores de IA — patrón cliente, NO backend (rector):** los
-  proveedores OpenAI-compatible (Groq, OpenRouter y cualquier NIM/futuro como
-  NVIDIA Build) se llaman **directo desde el navegador** con la key del usuario en
-  memoria (Zero-Storage), vía `callOpenAICompatible`. El **único** proxy que existe
-  (`POST /api/gemini` en `server/index.js`) se debe **únicamente al bloqueo UE/EEA**
-  de la API de Gemini, **NO a seguridad** — la key viaja en el body y nunca se
-  persistite. **No añadas proxies backend ni `process.env.*API_KEY` para nuevos
-  proveedores OpenAI-compatible sin aprobación explícita del autor.** Para añadir
-  un proveedor, basta una entrada en el registro `PROVIDERS` (`providers.ts`) — el
-  resto (UI, `callAI`, streaming, validación) funciona sin tocar más ficheros.
+- **Proxies de proveedores de IA — patrón cliente por defecto (rector):** los
+  proveedores OpenAI-compatible se llaman **directo desde el navegador** con la
+  key del usuario en memoria (Zero-Storage), vía `callOpenAICompatible`. Es el
+  caso de Groq, OpenRouter y Zenmux. **Excepciones** (proxies backend en
+  `server/index.js`) se justifican **únicamente por bloqueos del navegador**, no por
+  seguridad:
+  - `POST /api/gemini` → Gemini bloquea peticiones desde EEA (bloqueo geográfico).
+  - `POST /api/nim` + `GET /api/nim/models` → NVIDIA NIM **no envía cabeceras CORS**
+    (`Access-Control-Allow-Origin` ausente), así que el navegador bloquea las
+    llamadas directas ("Failed to fetch"). El proxy es transparente: copia el body
+    OpenAI-format y el header `Authorization` sin tocarlos, y el stream SSE se
+    reenvía sin bufferizar.
+  La key viaja en HTTPS (cliente→backend) y nunca se persistite ni loguea.
+  **No añadas proxies backend ni `process.env.*API_KEY` para nuevos proveedores
+  sin aprobación explícita del autor.** Para añadir un proveedor, basta una entrada
+  en el registro `PROVIDERS` (`providers.ts`) — el resto (UI, `callAI`, streaming,
+  validación) funciona sin tocar más ficheros.
 - **UX para no técnicos (rector):** ver §1 — toda función debe entender lenguaje
   natural y guiar al usuario sin exigir conocimientos de GitHub (números de issue,
   URLs, etc.); nunca dejes un error de formato como callejón sin salida.
