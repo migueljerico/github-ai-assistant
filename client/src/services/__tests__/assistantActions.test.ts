@@ -28,6 +28,7 @@ vi.mock('../github', () => {
     createRepo: vi.fn(),
     repoExists: vi.fn(),
     getRepo: vi.fn(),
+    updateRepo: vi.fn().mockResolvedValue(undefined),
     listCommitDates: vi.fn(),
     GitHubAPIError,
   };
@@ -76,7 +77,7 @@ import { assertSupportedFile, readFileContent } from '../../utils/pdfReader';
 import { readSpreadsheet } from '../../utils/spreadsheetReader';
 import { readPowerBI } from '../../utils/powerbiReader';
 import { readDocx } from '../../utils/docxReader';
-import { fetchRepoTreeRecursive, getFileContents, createRepo, repoExists, getRepo, listCommitDates } from '../github';
+import { fetchRepoTreeRecursive, getFileContents, createRepo, repoExists, getRepo, updateRepo, listCommitDates } from '../github';
 import { writeDocFiles, createDocsDraftPr, publishFileDoc, uploadFilesToRepo } from '../docPublisher';
 import { summarizeThread, parseThreadInput, listOpenThreads, formatThreadList } from '../threadSummary';
 import { generateChangelog } from '../changelogGenerator';
@@ -105,6 +106,7 @@ import {
   runPublishFileDocByKind,
   runCreateRepoRelease,
   formatConversation,
+  buildSignature,
 } from '../assistantActions';
 
 const CONFIG = { provider: 'groq' as const, apiKey: 'k', model: 'm' };
@@ -129,6 +131,8 @@ function makeDeps() {
     token: 'tok',
     user: { login: 'me' },
     providerName: 'Groq',
+    model: 'llama-3.1-8b-instant',
+    provider: 'groq' as const,
     lang: 'es' as const,
     // Mock de t() que usa el diccionario ES real + interpolación de {params},
     // para que los tests que asertan contenido de mensajes sigan pasando.
@@ -375,7 +379,9 @@ describe('runCommitDocs', () => {
 
     await runCommitDocs(deps, ANALYSIS);
 
-    expect(writeDocFiles).toHaveBeenCalledWith('tok', 'owner', 'repo', 'R', 'M');
+    // v3.31.0: writeDocFiles ahora recibe (token, owner, repo, readme, manual, branch?, signature?).
+    expect(writeDocFiles).toHaveBeenCalledWith('tok', 'owner', 'repo', 'R', 'M', undefined,
+      expect.stringContaining('Creado por @me y documentado por Groq'));
     expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'completed' }));
   });
 
@@ -397,7 +403,11 @@ describe('runCreateDraftPr', () => {
 
     await runCreateDraftPr(deps, ANALYSIS);
 
-    expect(createDocsDraftPr).toHaveBeenCalledWith('tok', 'owner', 'repo', expect.objectContaining({ repoName: 'owner/repo' }));
+    // v3.31.0: createDocsDraftPr ahora recibe (token, owner, repo, docs, now, signature).
+    expect(createDocsDraftPr).toHaveBeenCalledWith('tok', 'owner', 'repo',
+      expect.objectContaining({ repoName: 'owner/repo' }),
+      expect.any(Number),
+      expect.stringContaining('Creado por @me y documentado por Groq'));
     expect(deps.addMessage).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('#7') }));
     expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'completed' }));
   });
@@ -1114,11 +1124,22 @@ describe('runCreateRepo (#28 fix)', () => {
     const ok = await runCreateRepo(deps, 'nuevo');
 
     expect(ok).toBe(true);
-    expect(createRepo).toHaveBeenCalledWith('tok', 'nuevo', expect.any(String));
+    // v3.31.0: la descripción por defecto es ahora la firma dinámica (usuario + IA).
+    expect(createRepo).toHaveBeenCalledWith('tok', 'nuevo',
+      expect.stringContaining('Creado por @me y documentado por Groq'));
     expect(deps.addMessage).toHaveBeenCalledWith(expect.objectContaining({
       content: expect.stringContaining('creado'),
     }));
     expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'completed' }));
+  });
+
+  it('respeta una descripción explícita si se pasa (no usa la firma)', async () => {
+    vi.mocked(createRepo).mockResolvedValue({ full_name: 'me/nuevo' } as any);
+    const deps = makeDeps();
+
+    await runCreateRepo(deps, 'nuevo', { description: 'descripción personalizada' });
+
+    expect(createRepo).toHaveBeenCalledWith('tok', 'nuevo', 'descripción personalizada');
   });
 
   it('ante un error devuelve false y avisa', async () => {
@@ -1248,6 +1269,83 @@ describe('runCreateRepoAndDocument (#57 Tanda B fix)', () => {
     expect(result).toBeNull();
     expect(deps.addMessage).toHaveBeenCalledWith(expect.objectContaining({
       content: expect.stringContaining('solo puedo crear repositorios en tu cuenta'),
+    }));
+  });
+});
+
+// ── buildSignature (v3.31.0) ──────────────────────────────────────────────────
+describe('buildSignature (v3.31.0)', () => {
+  it('ES: "Creado por @{login} y documentado por {Provider} ({model}) desde la App Asistente de IA"', () => {
+    const sig = buildSignature({
+      user: { login: 'migueljerico' },
+      providerName: 'Google Gemini',
+      model: 'gemini-2.5-flash',
+      provider: 'gemini',
+      lang: 'es',
+    });
+    // gemini-2.5-flash tiene label i18n (provider.gemini.model.*) → se usa el value.
+    expect(sig).toBe('Creado por @migueljerico y documentado por Google Gemini (gemini-2.5-flash) desde la App Asistente de IA');
+  });
+
+  it('EN: "Created by @{login} and documented by {Provider} ({model}) from the AI Assistant App"', () => {
+    const sig = buildSignature({
+      user: { login: 'migueljerico' },
+      providerName: 'Google Gemini',
+      model: 'gemini-2.5-flash',
+      provider: 'gemini',
+      lang: 'en',
+    });
+    expect(sig).toBe('Created by @migueljerico and documented by Google Gemini (gemini-2.5-flash) from the AI Assistant App');
+  });
+
+  it('usa la label legible cuando no es clave i18n (Groq fallback)', () => {
+    const sig = buildSignature({
+      user: { login: 'me' },
+      providerName: 'Groq Cloud',
+      model: 'llama-3.1-8b-instant',
+      provider: 'groq',
+      lang: 'es',
+    });
+    expect(sig).toContain('Llama 3.1 8B (fast)');
+  });
+
+  it('cae al value si el modelo no está en el catálogo estático', () => {
+    const sig = buildSignature({
+      user: { login: 'me' },
+      providerName: 'OpenRouter',
+      model: 'foo/bar:free',
+      provider: 'openrouter',
+      lang: 'es',
+    });
+    expect(sig).toContain('foo/bar:free');
+  });
+});
+
+// ── runCommitDocs actualiza el about del repo (v3.31.0) ───────────────────────
+describe('runCommitDocs — about del repo (v3.31.0)', () => {
+  it('tras commitear, actualiza el about con resumen + firma', async () => {
+    vi.mocked(writeDocFiles).mockResolvedValue(undefined as any);
+    const deps = makeDeps();
+    const analysis = { ...ANALYSIS, resumen: 'Dashboard de Power BI de ventas' };
+
+    await runCommitDocs(deps, analysis);
+
+    expect(updateRepo).toHaveBeenCalledWith('tok', 'owner', 'repo', {
+      description: expect.stringContaining('Dashboard de Power BI de ventas — Creado por @me'),
+    });
+  });
+
+  it('si updateRepo falla, no rompe la publicación (la doc ya está commiteada)', async () => {
+    vi.mocked(writeDocFiles).mockResolvedValue(undefined as any);
+    vi.mocked(updateRepo).mockRejectedValueOnce(new Error('403 forbidden') as any);
+    const deps = makeDeps();
+
+    await runCommitDocs(deps, ANALYSIS);
+
+    // El commit se hizo y el entry quedó completed; el fallo del about solo avisa.
+    expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'completed' }));
+    expect(deps.addMessage).toHaveBeenCalledWith(expect.objectContaining({
+      content: expect.stringContaining('about'),
     }));
   });
 });

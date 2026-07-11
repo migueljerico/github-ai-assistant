@@ -8,6 +8,7 @@ import {
   createRepo,
   getRepo,
   repoExists,
+  updateRepo,
   getBranchSha,
   getFileContents,
   createOrUpdateFile,
@@ -199,6 +200,27 @@ describe('github.ts', () => {
         expect.objectContaining({
           method: 'POST',
           body: expect.stringContaining('new-repo'),
+        })
+      );
+    });
+  });
+
+  describe('updateRepo (v3.31.0)', () => {
+    it('debería hacer PATCH /repos/:owner/:repo con la descripción', async () => {
+      const mockRepo = { name: 'repo', full_name: 'owner/repo', description: 'nuevo about' };
+      vi.mocked(fetch).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockRepo,
+      } as any);
+
+      const result = await updateRepo('test-token', 'owner', 'repo', { description: 'nuevo about' });
+
+      expect(result).toEqual(mockRepo);
+      expect(fetch).toHaveBeenCalledWith(
+        'https://api.github.com/repos/owner/repo',
+        expect.objectContaining({
+          method: 'PATCH',
+          body: expect.stringContaining('nuevo about'),
         })
       );
     });

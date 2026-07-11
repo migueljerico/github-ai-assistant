@@ -693,7 +693,8 @@ describe('generateRepoDocs - no inventar autor/año (#28 4a)', () => {
 
     const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
     const sysMsg = body.messages.find((m: { role: string }) => m.role === 'system');
-    expect(sysMsg.content).toContain(`@migueljerico · ${new Date().getFullYear()}`);
+    // v3.31.0: el footer ahora cita usuario + proveedor + modelo (firma de documentación).
+    expect(sysMsg.content).toContain(`Creado por @migueljerico y documentado por Groq Cloud (llama) · ${new Date().getFullYear()}`);
     expect(sysMsg.content).not.toContain('[autor]');
     expect(sysMsg.content).not.toContain('[año]');
   });

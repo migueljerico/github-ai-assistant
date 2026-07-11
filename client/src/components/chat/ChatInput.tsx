@@ -189,20 +189,19 @@ export default function ChatInput({
           onOpen={onOpenDocumentFlow}
         />
 
-        {/* #57 Tanda B: botón "Actualizar documentación" — solo cuando hay un repo
-            cargado en memoria (repoContext). Abre el stepper con el repo pre-rellenado. */}
-        {repoContextName && (
-          <button
-            id="update-docs-btn"
-            className="doc-repo-btn"
-            disabled={disabled}
-            type="button"
-            title={repoContextName}
-            onClick={() => onOpenDocumentFlow(repoContextName)}
-          >
-            🔄 {t('chat.updateDocs')}
-          </button>
-        )}
+        {/* v3.31.0: botón "Actualizar documentación" siempre visible. Si hay un repo
+            cargado en contexto, abre el stepper con ese repo pre-rellenado; si no,
+            abre en el paso 2 para que el usuario introduzca el repo a actualizar. */}
+        <button
+          id="update-docs-btn"
+          className="doc-repo-btn"
+          disabled={disabled}
+          type="button"
+          title={repoContextName ?? t('chat.updateDocs')}
+          onClick={() => onOpenDocumentFlow(repoContextName ?? undefined)}
+        >
+          🔄 {t('chat.updateDocs')}
+        </button>
 
         <ThreadSummaryButton
           disabled={disabled}

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { PROVIDERS, getProvider, fetchModels, pickDefaultModel, type ModelOption } from '../providers';
+import { PROVIDERS, getProvider, fetchModels, pickDefaultModel, modelLabel, type ModelOption } from '../providers';
 
 describe('providers — registro', () => {
   it('los tres proveedores tienen su defaultModel dentro de staticModels', () => {
@@ -137,5 +137,22 @@ describe('providers — fetchModels', () => {
     const cached = sessionStorage.getItem('openrouter_models_cache');
     expect(cached).toBeTruthy();
     expect(cached).not.toContain('sk-or'); // nunca la key
+  });
+});
+
+describe('modelLabel (v3.31.0)', () => {
+  it('devuelve la .label legible si el modelo está en el catálogo y NO es clave i18n', () => {
+    // llama-3.1-8b-instant está en GROQ_FALLBACK con label literal "Llama 3.1 8B (fast)".
+    expect(modelLabel('groq', 'llama-3.1-8b-instant')).toBe('Llama 3.1 8B (fast)');
+  });
+
+  it('cae al value si la label es una clave i18n (contiene un punto)', () => {
+    // gemini-2.5-flash tiene label "provider.gemini.model.recommended" → clave i18n.
+    expect(modelLabel('gemini', 'gemini-2.5-flash')).toBe('gemini-2.5-flash');
+  });
+
+  it('devuelve el value tal cual si el modelo NO está en el catálogo (dinámico/desconocido)', () => {
+    expect(modelLabel('groq', 'openai/gpt-oss-120b:free')).toBe('openai/gpt-oss-120b:free');
+    expect(modelLabel('openrouter', 'algún/modelo:free')).toBe('algún/modelo:free');
   });
 });

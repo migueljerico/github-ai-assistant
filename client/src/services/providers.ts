@@ -183,6 +183,24 @@ export function getProvider(id: AIProviderType): ProviderDef {
   return PROVIDERS[id];
 }
 
+/**
+ * Devuelve la etiqueta legible de un modelo para mostrarla al usuario (p. ej. en
+ * la firma de documentación). Si el `value` está en el catálogo estático del
+ * proveedor y su `.label` es texto legible (tiene espacios), usa la label; si la
+ * label es una clave de traducción (sin espacios, p. ej.
+ * "provider.gemini.model.recommended") o el modelo no está en el catálogo,
+ * devuelve el `value` tal cual (identificador real y predecible, sin depender de
+ * i18n). Función pura (testeable).
+ */
+export function modelLabel(provider: AIProviderType, model: string): string {
+  const def = PROVIDERS[provider];
+  const hit = def.staticModels.find(m => m.value === model);
+  // Una clave i18n no tiene espacios ("provider.gemini.model.recommended"); una
+  // label legible sí ("Llama 3.1 8B (fast)"). Si hay duda, preferimos el value.
+  if (hit && /\s/.test(hit.label)) return hit.label;
+  return model;
+}
+
 // ── Elección de modelo por defecto ────────────────────────────────────────────
 // Los endpoints :free de OpenRouter están a menudo saturados/caídos ("Provider
 // returned error"), pero unos pocos suelen estar disponibles. Cuando el catálogo

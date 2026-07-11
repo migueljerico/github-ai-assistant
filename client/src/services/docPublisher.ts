@@ -55,6 +55,10 @@ async function getExistingSha(
 /**
  * Escribe README.md y MANUAL_TECNICO.md en el repositorio. Si se indica `branch`,
  * los commits van a esa rama; si no, a la rama por defecto.
+ *
+ * @param signature - v3.31.0: firma de documentación ("Creado por @x y documentado
+ *   por {IA}..."). Si se pasa, los commit messages la incluyen; si no, usan el
+ *   mensaje histórico (retrocompatible con tests).
  */
 export async function writeDocFiles(
   token: string,
@@ -62,13 +66,16 @@ export async function writeDocFiles(
   repo: string,
   readme: string,
   manualTecnico: string,
-  branch?: string
+  branch?: string,
+  signature?: string
 ): Promise<void> {
+  const readmeMessage = signature ? `docs: generate README — ${signature}` : README_MESSAGE;
+  const manualMessage = signature ? `docs: generate MANUAL_TECNICO — ${signature}` : MANUAL_MESSAGE;
   const readmeSha = await getExistingSha(token, owner, repo, README_PATH);
-  await createOrUpdateFile(token, owner, repo, README_PATH, readme, README_MESSAGE, readmeSha, branch);
+  await createOrUpdateFile(token, owner, repo, README_PATH, readme, readmeMessage, readmeSha, branch);
 
   const manualSha = await getExistingSha(token, owner, repo, MANUAL_PATH);
-  await createOrUpdateFile(token, owner, repo, MANUAL_PATH, manualTecnico, MANUAL_MESSAGE, manualSha, branch);
+  await createOrUpdateFile(token, owner, repo, MANUAL_PATH, manualTecnico, manualMessage, manualSha, branch);
 }
 
 /** Sanea el nombre de un fichero para usarlo como ruta de repo (sin espacios raros). */
@@ -161,10 +168,13 @@ export async function publishFileDoc(
   repo: string,
   path: string,
   content: string,
-  options: { draft?: boolean; sourceFile?: File; extraFiles?: File[] } = {},
+  options: { draft?: boolean; sourceFile?: File; extraFiles?: File[]; signature?: string } = {},
   now: number = Date.now()
 ): Promise<PublishFileResult> {
-  const message = `docs: ${path} generado por el Asistente de IA`;
+  const signature = options.signature;
+  const message = signature
+    ? `docs: ${path} generado por ${signature}`
+    : `docs: ${path} generado por el Asistente de IA`;
 
   if (!options.draft) {
     // Commit directo a la rama por defecto.
@@ -185,26 +195,36 @@ export async function publishFileDoc(
   await createOrUpdateFile(token, owner, repo, path, content, message, sha, branchName);
   await commitExtras(token, owner, repo, options, branchName);
 
+  const prTitle = signature ? `docs: ${path} (generado por ${signature})` : `docs: ${path} (generado por IA)`;
+  const prBody = signature
+    ? `## 📄 Documentación generada\n\nEste Draft PR añade \`${path}\`, generado por ${signature} a partir de un archivo adjunto.\n\n> Revisa el contenido antes de mergear.`
+    : `## 📄 Documentación generada\n\nEste Draft PR añade \`${path}\`, generado por el Asistente de IA a partir de un archivo adjunto.\n\n> Revisa el contenido antes de mergear.`;
   const pr = await createPullRequest(
     token,
     owner,
     repo,
-    `docs: ${path} (generado por IA)`,
+    prTitle,
     branchName,
     baseBranch,
-    `## 📄 Documentación generada\n\nEste Draft PR añade \`${path}\`, generado por el Asistente de IA a partir de un archivo adjunto.\n\n> Revisa el contenido antes de mergear.`,
+    prBody,
     true
   );
   return { pr, branchName };
 }
 
-/** Construye el cuerpo (Markdown) del Draft PR de documentación. */
-export function buildDocsPrBody(repoName: string, filesAnalyzed: number): string {
+/**
+ * Construye el cuerpo (Markdown) del Draft PR de documentación.
+ * @param signature - v3.31.0: firma de documentación para citar al proveedor/modelo.
+ */
+export function buildDocsPrBody(repoName: string, filesAnalyzed: number, signature?: string): string {
   const plural = filesAnalyzed !== 1;
+  const byLine = signature
+    ? `, generada por ${signature}`
+    : ', generada por el Asistente de IA';
   return [
     '## 📄 Documentación generada automáticamente',
     '',
-    `Este Draft PR añade/actualiza la documentación de **${repoName}**, generada por el Asistente de IA a partir de ${filesAnalyzed} archivo${plural ? 's' : ''} analizado${plural ? 's' : ''}.`,
+    `Este Draft PR añade/actualiza la documentación de **${repoName}**${byLine} a partir de ${filesAnalyzed} archivo${plural ? 's' : ''} analizado${plural ? 's' : ''}.`,
     '',
     '### Archivos',
     '- `README.md`',
@@ -226,7 +246,8 @@ export async function createDocsDraftPr(
   owner: string,
   repo: string,
   docs: DocsPayload,
-  now: number = Date.now()
+  now: number = Date.now(),
+  signature?: string
 ): Promise<DocsDraftPrResult> {
   const repoInfo = await getRepo(token, owner, repo);
   const baseBranch = repoInfo.default_branch;
@@ -236,16 +257,16 @@ export async function createDocsDraftPr(
   await createBranch(token, owner, repo, branchName, baseSha);
 
   // El SHA existente viene de la base; coincide porque la rama se acaba de bifurcar.
-  await writeDocFiles(token, owner, repo, docs.readme, docs.manualTecnico, branchName);
+  await writeDocFiles(token, owner, repo, docs.readme, docs.manualTecnico, branchName, signature);
 
   const pr = await createPullRequest(
     token,
     owner,
     repo,
-    'docs: documentación generada por IA',
+    signature ? `docs: documentación generada por ${signature}` : 'docs: documentación generada por IA',
     branchName,
     baseBranch,
-    buildDocsPrBody(docs.repoName, docs.filesAnalyzed),
+    buildDocsPrBody(docs.repoName, docs.filesAnalyzed, signature),
     true
   );
 

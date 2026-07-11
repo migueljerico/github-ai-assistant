@@ -164,6 +164,24 @@ export async function createRepo(
 }
 
 /**
+ * v3.31.0: actualiza metadatos de un repositorio existente (p. ej. el "about" /
+ * descripción). Requiere permiso de admin sobre el repo. Usado por el flujo de
+ * documentación para fijar la descripción del repo con el resumen + la firma.
+ */
+export async function updateRepo(
+  token: string,
+  owner: string,
+  repo: string,
+  fields: { description?: string }
+): Promise<GitHubRepo> {
+  return ghFetch<GitHubRepo>(token, `/repos/${owner}/${repo}`, {
+    method: 'PATCH',
+    body: JSON.stringify(fields),
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+/**
  * Comprueba si un repositorio existe y es accesible con el token. Devuelve `false`
  * solo ante un 404 (no existe o sin acceso); cualquier otro error se propaga.
  */

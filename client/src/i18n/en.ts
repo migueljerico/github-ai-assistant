@@ -163,7 +163,7 @@ export const en = {
   'modal.flow.finish': 'Finish',
   'modal.flow.repoMissing': '⚠️ Repository **{repo}** does not exist in your account. You can create it, attach files to upload, and document it.',
   'modal.flow.createAndDocument': '➕ Create repo and document',
-  'modal.flow.alreadyDocumented': 'ℹ️ This repo already has documentation. Publishing will **update** it (not duplicate).',
+  'modal.flow.alreadyDocumented': '✅ This repo already has documentation. Continuing will **update** it with the new version (not duplicate).',
   'modal.flow.addExtrasCreate': '➕ Add files to upload to the new repo (images, data, code…)',
 
   // ────── PHASE 2: Diff viewer ──────

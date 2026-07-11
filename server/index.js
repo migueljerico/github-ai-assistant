@@ -76,20 +76,25 @@ const geminiLimiter = rateLimit({
     // Groq calls are NOT proxied — they go directly from the browser (no EU block).
     app.post('/api/gemini', geminiLimiter, async (req, res) => {
       // 🔥 OPCIÓN D: Extraemos 'mode' opcional del body. #38: 'stream' opcional.
-      const { apiKey, model, messages, systemPrompt, mode, stream } = req.body;
-    
+      const { apiKey, model, messages, systemPrompt, mode, stream, maxOutputTokens } = req.body;
+
       if (!apiKey || !model || !Array.isArray(messages) || !systemPrompt) {
         return res.status(400).json({
           error: 'Faltan campos requeridos: apiKey, model, messages, systemPrompt',
         });
       }
-    
+
       try {
         const genAI = new GoogleGenerativeAI(apiKey);
-        const gemModel = genAI.getGenerativeModel({
-          model,
-          systemInstruction: systemPrompt,
-        });
+        // v3.31.0: maxOutputTokens opcional. La generación de documentación
+        // (README + MANUAL_TECNICO) emite salidas largas; sin este límite el SDK
+        // usa el default del modelo y la respuesta puede truncarse a medias,
+        // rompiendo el JSON. Retrocompatible: si no viene, no se envía.
+        const modelConfig = { model, systemInstruction: systemPrompt };
+        if (typeof maxOutputTokens === 'number' && maxOutputTokens > 0) {
+          modelConfig.generationConfig = { maxOutputTokens };
+        }
+        const gemModel = genAI.getGenerativeModel(modelConfig);
     
         // 🔥 OPCIÓN D: Log para ver el modo en Cloud Run (útil para debugging)
         if (mode) {

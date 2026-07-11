@@ -12,8 +12,8 @@
 import { generateRepoDocs, generateFileDoc, buildRepoContextSummary, callAI, parseGeminiAction, isAbortError, CHAT_PROMPT, ACTION_PROMPT, chatPromptWithContext, withLangDirective } from './gemini';
 import type { Language } from '../context/LanguageContext';
 import type { AIProviderConfig } from './gemini';
-import { getProvider, type AIProviderType } from './providers';
-import { fetchRepoTreeRecursive, getFileContents, decodeBase64, createRepo, repoExists, getRepo, listCommitDates, GitHubAPIError, type RepoTreeFile } from './github';
+import { getProvider, modelLabel, type AIProviderType } from './providers';
+import { fetchRepoTreeRecursive, getFileContents, decodeBase64, createRepo, repoExists, getRepo, updateRepo, listCommitDates, GitHubAPIError, type RepoTreeFile } from './github';
 import { rankFilesByQuery } from '../utils/contextRanker';
 import { isContextTooLargeError } from '../utils/retry';
 import { languageDistribution, countTechnicalDebt, commitsByWeek, type LanguageSlice, type TechnicalDebt, type CommitWeek } from '../utils/codeHealth';
@@ -79,6 +79,11 @@ export interface ChatDeps {
   token: string;
   user: { login: string };
   providerName: string;
+  /** v3.31.0: modelo de IA activo (value, p. ej. "gemini-2.5-flash"). Se usa en
+   *  la firma de documentación (buildSignature). */
+  model: string | null;
+  /** v3.31.0: proveedor activo (id, p. ej. "gemini"). Se usa en la firma. */
+  provider: AIProviderType | null;
   addMessage: (msg: Omit<ChatMessage, 'id' | 'timestamp'>) => string;
   updateMessage: (id: string, update: Partial<ChatMessage>) => void;
   addEntry: (entry: Omit<HistoryEntry, 'id' | 'timestamp'>) => string;
@@ -88,6 +93,28 @@ export interface ChatDeps {
   t: (key: string, params?: Record<string, string | number>) => string;
   /** Idioma activo (i18n) — inyectado para adaptar los system prompts del modelo. */
   lang: Language;
+}
+
+/**
+ * v3.31.0: construye la firma de documentación localizada (ES/EN) con el usuario
+ * autenticado y el proveedor+modelo de IA activos. Se usa en el "about" del repo,
+ * en los commit messages, en los PR bodies y en el footer del README. Función pura
+ * (testeable). Formato:
+ *   ES: "Creado por @{login} y documentado por {Provider} ({model}) desde la App Asistente de IA"
+ *   EN: "Created by @{login} and documented by {Provider} ({model}) from the AI Assistant App"
+ */
+export function buildSignature(
+  deps: Pick<ChatDeps, 'user' | 'providerName' | 'model' | 'provider' | 'lang'>,
+): string {
+  const login = deps.user.login;
+  const provider = deps.providerName;
+  const model = deps.model && deps.provider
+    ? modelLabel(deps.provider, deps.model)
+    : (deps.model ?? 'IA');
+  if (deps.lang === 'en') {
+    return `Created by @${login} and documented by ${provider} (${model}) from the AI Assistant App`;
+  }
+  return `Creado por @${login} y documentado por ${provider} (${model}) desde la App Asistente de IA`;
 }
 
 /** Deps adicionales que necesita `runSend` (núcleo del chat). */
@@ -165,7 +192,7 @@ export async function runDocumentRepo(
       isLoading: true,
     });
 
-    const { readme, manualTecnico } = await generateRepoDocs(`${owner}/${repoName}`, files, config, deps.lang);
+    const { readme, manualTecnico, resumen } = await generateRepoDocs(`${owner}/${repoName}`, files, config, deps.lang);
 
     // #57 Tanda B: detectar si el repo ya está documentado (README.md o
     // MANUAL_TECNICO.md en la raíz) para avisar al usuario de que se actualizará.
@@ -180,7 +207,7 @@ export async function runDocumentRepo(
     });
     updateEntry(histId, { status: 'pending', description: deps.t('history.docReady') });
 
-    return { readme, manualTecnico, filesAnalyzed: files.length, totalFiles: totalScanned, truncated, repoName: `${owner}/${repoName}`, alreadyDocumented };
+    return { readme, manualTecnico, filesAnalyzed: files.length, totalFiles: totalScanned, truncated, repoName: `${owner}/${repoName}`, alreadyDocumented, resumen };
   } catch (err) {
     // v3.22.3: distinguir "repo no encontrado / sin acceso" (404) de otros errores.
     const status = err instanceof GitHubAPIError ? err.status : undefined;
@@ -390,16 +417,42 @@ export async function runCodeHealth(deps: ChatDeps, repoInput: string): Promise<
   }
 }
 
+/**
+ * v3.31.0: fija el "about" (descripción) del repo tras publicar la documentación.
+ * Compone "resumen IA — firma" y hace PATCH `/repos/...`. Es secundario: si falla
+ * (sin permiso de admin, rate limit…) NO rompe la publicación, solo lo avisa.
+ */
+async function updateRepoAbout(
+  deps: ChatDeps,
+  owner: string,
+  repo: string,
+  analysis: RepoAnalysis,
+): Promise<void> {
+  const signature = buildSignature(deps);
+  const description = analysis.resumen
+    ? `${analysis.resumen} — ${signature}`
+    : signature;
+  try {
+    await updateRepo(deps.token, owner, repo, { description });
+  } catch (err) {
+    // No fatal: la doc ya está publicada. Se avisa sin bloquear el flujo.
+    deps.addMessage({ role: 'assistant', content: `ℹ️ No pude actualizar el «about» de **${owner}/${repo}** (${(err as Error).message}). La documentación se ha publicado correctamente.` });
+  }
+}
+
 /** Commit directo de la documentación generada a la rama por defecto. */
 export async function runCommitDocs(deps: ChatDeps, analysis: RepoAnalysis): Promise<void> {
   const { token, user, addMessage, addEntry, updateEntry } = deps;
   const { owner, repo } = resolveRepoRef(analysis.repoName, user.login);
   const histId = addEntry({ status: 'pending', description: deps.t('history.committingDocs', { repo: analysis.repoName }), repo: analysis.repoName });
+  const signature = buildSignature(deps);
 
   try {
-    await writeDocFiles(token, owner, repo, analysis.readme, analysis.manualTecnico);
+    await writeDocFiles(token, owner, repo, analysis.readme, analysis.manualTecnico, undefined, signature);
     addMessage({ role: 'assistant', content: `✅ README.md y MANUAL_TECNICO.md commiteados en **${analysis.repoName}**` });
     updateEntry(histId, { status: 'completed', description: deps.t('history.docsCommitted', { repo: analysis.repoName }) });
+    // v3.31.0: actualiza el "about" del repo (resumen + firma). No rompe si falla.
+    await updateRepoAbout(deps, owner, repo, analysis);
   } catch (err) {
     addMessage({ role: 'assistant', content: `❌ Error al hacer commit: ${(err as Error).message}` });
     updateEntry(histId, { status: 'error', description: deps.t('history.errorCommittingDocs') });
@@ -411,6 +464,7 @@ export async function runCreateDraftPr(deps: ChatDeps, analysis: RepoAnalysis): 
   const { token, user, addMessage, addEntry, updateEntry } = deps;
   const { owner, repo } = resolveRepoRef(analysis.repoName, user.login);
   const histId = addEntry({ status: 'pending', description: deps.t('history.creatingDraftPr', { repo: analysis.repoName }), repo: analysis.repoName });
+  const signature = buildSignature(deps);
 
   try {
     const { pr, branchName } = await createDocsDraftPr(token, owner, repo, {
@@ -418,9 +472,11 @@ export async function runCreateDraftPr(deps: ChatDeps, analysis: RepoAnalysis): 
       manualTecnico: analysis.manualTecnico,
       filesAnalyzed: analysis.filesAnalyzed,
       repoName: analysis.repoName,
-    });
+    }, Date.now(), signature);
     addMessage({ role: 'assistant', content: `✅ Draft PR [#${pr.number}](${pr.html_url}) creado en **${analysis.repoName}** (rama \`${branchName}\`). Revísalo antes de mergear.` });
     updateEntry(histId, { status: 'completed', description: deps.t('history.draftPrCreated', { number: pr.number, repo: analysis.repoName }) });
+    // v3.31.0: actualiza el "about" del repo (resumen + firma). No rompe si falla.
+    await updateRepoAbout(deps, owner, repo, analysis);
   } catch (err) {
     addMessage({ role: 'assistant', content: `❌ Error al crear Draft PR: ${(err as Error).message}` });
     updateEntry(histId, { status: 'error', description: deps.t('history.errorDraftPr', { repo: analysis.repoName }) });
@@ -797,7 +853,7 @@ export async function runCreateRepo(
   const { token, addMessage, addEntry, updateEntry } = deps;
   const histId = addEntry({ status: 'pending', description: deps.t('history.creatingRepo', { name }), repo: name });
   try {
-    await createRepo(token, name, opts.description ?? 'Creado desde el Asistente de IA');
+    await createRepo(token, name, opts.description ?? buildSignature(deps));
     addMessage({ role: 'assistant', content: `✅ Repositorio **${name}** creado en tu cuenta.` });
     updateEntry(histId, { status: 'completed', description: deps.t('history.repoCreated', { name }) });
     return true;

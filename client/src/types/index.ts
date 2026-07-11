@@ -175,6 +175,9 @@ export interface RepoAnalysis {
   repoName: string;
   /** True si el repo ya tenía README.md o MANUAL_TECNICO.md (se va a actualizar, no a crear). */
   alreadyDocumented?: boolean;
+  /** v3.31.0: resumen corto generado por la IA; se usa como "about" (descripción)
+   *  del repo al publicar, junto con la firma de documentación. */
+  resumen?: string;
 }
 
 // ── Re-export types from gemini service for convenience ──────────────────────

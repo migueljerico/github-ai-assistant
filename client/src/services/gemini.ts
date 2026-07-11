@@ -27,7 +27,7 @@
 
 import type { GeminiAction } from '../types';
 import type { Language } from '../context/LanguageContext';
-import { getProvider, type AIProviderType } from './providers';
+import { getProvider, modelLabel, type AIProviderType } from './providers';
 import { withTransientRetry, isAbortError, isTransientError } from '../utils/retry';
 // #23: los system prompts viven en archivos `.md` (mantenibilidad + base para i18n).
 // Se cargan como texto crudo con el import `?raw` de Vite. `.trimEnd()` evita que un
@@ -205,6 +205,7 @@ async function callOpenAICompatible(
   extraHeaders?: Record<string, string>,
   onToken?: (textSoFar: string) => void,  // ← #38: streaming opcional
   signal?: AbortSignal,  // ← #40: permite cancelar la petición (botón Detener)
+  maxTokens?: number,  // ← v3.31.0: límite de salida (4096 por defecto; docs usa 8192)
 ): Promise<string> {
   // Modo chat necesita más creatividad (0.7); modo acción debe ser determinista
   // para producir JSON estable (0.1). Por defecto se mantiene el comportamiento
@@ -222,7 +223,7 @@ async function callOpenAICompatible(
       })),
     ],
     temperature,
-    max_tokens: 4096,
+    max_tokens: maxTokens ?? 4096,
     ...(stream ? { stream: true } : {}),
   };
 
@@ -291,6 +292,7 @@ async function callGeminiDirect(
   mode?: 'chat' | 'action',  // ← NUEVO: modo opcional
   onToken?: (textSoFar: string) => void,  // ← #38: streaming opcional (vía proxy SSE)
   signal?: AbortSignal,  // ← #40: permite cancelar la petición (botón Detener)
+  maxTokens?: number,  // ← v3.31.0: límite de salida (docs usa 8192)
 ): Promise<string> {
   const stream = Boolean(onToken);
   const body: Record<string, unknown> = { apiKey, model, messages, systemPrompt };
@@ -298,6 +300,8 @@ async function callGeminiDirect(
   // Solo añadir mode si está definido (retrocompatible)
   if (mode) body.mode = mode;
   if (stream) body.stream = true;
+  // v3.31.0: límite de salida. El proxy lo traduce a generationConfig.maxOutputTokens.
+  if (maxTokens) body.maxOutputTokens = maxTokens;
 
   const res = await fetch('/api/gemini', {
     method: 'POST',
@@ -345,6 +349,7 @@ export async function callAI(
   mode?: 'chat' | 'action',  // ← NUEVO: modo opcional
   onToken?: (textSoFar: string) => void,  // ← #38: si se pasa, la respuesta llega en streaming
   signal?: AbortSignal,  // ← #40: cancelación de la petición (botón Detener)
+  maxTokens?: number,  // ← v3.31.0: límite de salida (docs usa 8192 para no truncar el JSON)
 ): Promise<string> {
   const def = getProvider(provider);
   // Reintento ante errores transitorios del servidor (503 "high demand",
@@ -354,8 +359,8 @@ export async function callAI(
   // reintento, el stream reinicia y sobrescribe la burbuja sin duplicar.
   return withTransientRetry(() =>
     def.transport === 'gemini-proxy'
-      ? callGeminiDirect(apiKey, model, messages, systemPrompt, mode, onToken, signal)
-      : callOpenAICompatible(def.chatEndpoint!, apiKey, model, messages, systemPrompt, mode, def.extraHeaders, onToken, signal),
+      ? callGeminiDirect(apiKey, model, messages, systemPrompt, mode, onToken, signal, maxTokens)
+      : callOpenAICompatible(def.chatEndpoint!, apiKey, model, messages, systemPrompt, mode, def.extraHeaders, onToken, signal, maxTokens),
   );
 }
 
@@ -558,6 +563,14 @@ export async function generateRepoDocs(
   // Autor y año REALES (no dejar que el modelo los invente — caso real: footer "· 2024").
   const docOwner = repoName.includes('/') ? repoName.split('/')[0] : repoName;
   const docYear = new Date().getFullYear();
+  // v3.31.0: proveedor y modelo REALES para el footer del README (firma de
+  // documentación). Si no hay config (tests), usamos valores genéricos.
+  const providerLabel = config ? getProvider(config.provider).name : 'IA';
+  const modelLabelVal = config ? modelLabel(config.provider, config.model) : 'IA';
+  // El footer cambia según el idioma de la interfaz (ES/EN).
+  const docFooter = lang === 'en'
+    ? `<p align="center">Created by @${docOwner} and documented by ${providerLabel} (${modelLabelVal}) · ${docYear}</p>`
+    : `<p align="center">Creado por @${docOwner} y documentado por ${providerLabel} (${modelLabelVal}) · ${docYear}</p>`;
 
   // ── Rich system prompt with structure template ────────────────────────────
   const docSystemPrompt = `Eres un experto en documentación técnica de software de nivel profesional.
@@ -585,7 +598,7 @@ REQUISITOS OBLIGATORIOS PARA EL README.md
    🛠️ Tecnologías (tabla: Herramienta | Versión/Detalle | Uso en el proyecto)
    📚 Contexto formativo o motivación del proyecto (si aplica)
    Footer EXACTO (NO inventes autor ni año; usa EXACTAMENTE estos valores reales):
-   <p align="center">Desarrollado por @${docOwner} · ${docYear}</p>
+   ${docFooter}
 
 3. CALIDAD:
    - Usa el contenido REAL del código para las explicaciones (nombres de funciones, rutas, comandos)
@@ -647,6 +660,10 @@ No incluyas ningún texto fuera del JSON. No uses bloques de código externos.`;
       config.provider,
       config.apiKey,
       config.model,
+      undefined,   // mode (no aplica a docs)
+      undefined,   // onToken (sin streaming)
+      undefined,   // signal
+      8192,        // v3.31.0: README + MANUAL_TECNICO requieren más salida que chat/action
     );
   } else {
     // Fallback para tests: usa valores por defecto
@@ -656,6 +673,10 @@ No incluyas ningún texto fuera del JSON. No uses bloques de código externos.`;
       'groq',
       'test-key',
       'test-model',
+      undefined,
+      undefined,
+      undefined,
+      8192,
     );
   }
 
@@ -672,7 +693,11 @@ No incluyas ningún texto fuera del JSON. No uses bloques de código externos.`;
     }
   }
   if (!parsed) {
-    throw new Error('La IA no devolvió JSON válido');
+    throw new Error(
+      'La IA no devolvió JSON válido. Suele ocurrir cuando la respuesta se trunca ' +
+      '(README + MANUAL_TECNICO son largos) o el modelo devuelve prosa. ' +
+      'Prueba con un repositorio más pequeño o con un modelo que admita más tokens de salida.',
+    );
   }
 
   // Validación de campos requeridos

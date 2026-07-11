@@ -163,7 +163,7 @@ export const es = {
   'modal.flow.finish': 'Finalizar',
   'modal.flow.repoMissing': '⚠️ El repositorio **{repo}** no existe en tu cuenta. Puedes crearlo, adjuntar archivos para subir y documentarlo.',
   'modal.flow.createAndDocument': '➕ Crear repo y documentar',
-  'modal.flow.alreadyDocumented': 'ℹ️ Este repositorio ya tiene documentación. Al publicar se **actualizará** (no se duplicará).',
+  'modal.flow.alreadyDocumented': '✅ Este repositorio ya tiene documentación. Al continuar se **actualizará** con la nueva versión (no se duplicará).',
   'modal.flow.addExtrasCreate': '➕ Añadir archivos para subir al repo nuevo (imágenes, datos, código…)',
 
   // ────── FASE 2: Visor de diferencias ──────

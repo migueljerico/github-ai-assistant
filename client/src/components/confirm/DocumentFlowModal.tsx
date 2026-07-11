@@ -410,7 +410,7 @@ export default function DocumentFlowModal({
                 </div>
               )}
               {analysis.alreadyDocumented && (
-                <div className="info-banner" style={{ marginTop: '8px', padding: '8px 12px', borderRadius: '8px', fontSize: '0.85rem', background: 'rgba(59, 130, 246, 0.12)', border: '1px solid rgba(59, 130, 246, 0.4)' }}>
+                <div className="info-banner" style={{ marginTop: '8px', padding: '8px 12px', borderRadius: '8px', fontSize: '0.85rem', background: 'rgba(34, 197, 94, 0.12)', border: '1px solid rgba(34, 197, 94, 0.4)' }}>
                   {t('modal.flow.alreadyDocumented')}
                 </div>
               )}
