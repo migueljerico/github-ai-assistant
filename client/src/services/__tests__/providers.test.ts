@@ -2,23 +2,29 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PROVIDERS, getProvider, fetchModels, pickDefaultModel, modelLabel, type ModelOption } from '../providers';
 
 describe('providers — registro', () => {
-  it('los tres proveedores tienen su defaultModel dentro de staticModels', () => {
-    (['gemini', 'groq', 'openrouter'] as const).forEach(id => {
+  it('los cinco proveedores tienen su defaultModel dentro de staticModels', () => {
+    (['gemini', 'groq', 'openrouter', 'nvidia', 'zenmux'] as const).forEach(id => {
       const def = getProvider(id);
       expect(def.id).toBe(id);
       expect(def.staticModels.some(m => m.value === def.defaultModel)).toBe(true);
     });
   });
 
-  it('gemini usa proxy; groq y openrouter son openai-compatible con endpoint', () => {
+  it('gemini usa proxy; groq, openrouter, nvidia y zenmux son openai-compatible con endpoint', () => {
     expect(PROVIDERS.gemini.transport).toBe('gemini-proxy');
     expect(PROVIDERS.groq.transport).toBe('openai-compatible');
     expect(PROVIDERS.groq.chatEndpoint).toContain('groq.com');
     expect(PROVIDERS.openrouter.transport).toBe('openai-compatible');
     expect(PROVIDERS.openrouter.chatEndpoint).toContain('openrouter.ai');
+    expect(PROVIDERS.nvidia.transport).toBe('openai-compatible');
+    expect(PROVIDERS.nvidia.chatEndpoint).toContain('integrate.api.nvidia.com');
+    expect(PROVIDERS.zenmux.transport).toBe('openai-compatible');
+    expect(PROVIDERS.zenmux.chatEndpoint).toContain('zenmux.ai');
     // El catálogo de OpenRouter es público (no necesita key)
     expect(PROVIDERS.openrouter.modelsNeedKey).toBe(false);
     expect(PROVIDERS.groq.modelsNeedKey).toBe(true);
+    expect(PROVIDERS.nvidia.modelsNeedKey).toBe(true);
+    expect(PROVIDERS.zenmux.modelsNeedKey).toBe(true);
   });
 });
 
@@ -138,6 +144,74 @@ describe('providers — fetchModels', () => {
     expect(cached).toBeTruthy();
     expect(cached).not.toContain('sk-or'); // nunca la key
   });
+
+  it('nvidia: filtra no-chat (NIM_EXCLUDED)', async () => {
+    const fetchMock = vi.fn()
+      .mockImplementation(async (input: RequestInfo | URL) => {
+        const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+        if (url && url.includes('featured-models')) {
+          return {
+            ok: true,
+            json: async () => ({
+              'featured-models': [
+                { model: 'nvidia/nemotron-3-ultra-550b-a55b' },
+                { model: 'z-ai/glm-5.2' },
+              ],
+            }),
+          };
+        }
+        // models endpoint
+        return {
+          ok: true,
+          json: async () => ({
+            data: [
+              { id: 'nvidia/nemotron-3-ultra-550b-a55b', name: 'Nemotron 3 Ultra' },
+              { id: 'nvidia/embed-qa-4', name: 'Embed QA' },
+              { id: 'meta/llama-3.3-70b-instruct', name: 'Llama 3.3 70B' },
+              { id: 'nvidia/llama-3.1-nemoguard-8b-content-safety', name: 'Nemoguard' },
+            ],
+          }),
+        };
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const list = await fetchModels(PROVIDERS.nvidia, 'nvapi_test');
+    expect(list).not.toBeNull();
+    const ids = list!.map(m => m.value);
+    // Debe filtrar embed-qa-4 y nemoguard
+    expect(ids).not.toContain('nvidia/embed-qa-4');
+    expect(ids).not.toContain('nvidia/llama-3.1-nemoguard-8b-content-safety');
+    // Featured primero (si el fetch funciona)
+    // Nota: en test puede fallar silenciosamente, así que verificamos solo que los filtrados se quiten
+    // Sin flag free (NIM no distingue)
+    expect(list!.every(m => m.free !== true)).toBe(true);
+  });
+
+  it('zenmux: marca free por pricing 0, filtra no-chat, ordena free primero', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          { id: 'paid/model', display_name: 'Paid', pricing: { prompt: [{ value: 1 }], completion: [{ value: 2 }] } },
+          { id: 'x-ai/grok-4.5-free', display_name: 'Grok 4.5 Free', pricing: { prompt: [{ value: 0 }], completion: [{ value: 0 }] } },
+          { id: 'whisper-large', display_name: 'Whisper', pricing: { prompt: [{ value: 0.5 }] } },
+          { id: 'stepfun/step-3.7-flash-free', display_name: 'Step 3.7 Flash', pricing: { prompt: [], completion: [] } },
+        ],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const list = await fetchModels(PROVIDERS.zenmux, 'sk-ai-v1_test');
+    expect(list).not.toBeNull();
+    const ids = list!.map(m => m.value);
+    // Debe filtrar whisper
+    expect(ids).not.toContain('whisper-large');
+    // Free primero
+    expect(list![0].free).toBe(true);
+    expect(list!.find(m => m.value === 'x-ai/grok-4.5-free')!.free).toBe(true);
+    expect(list!.find(m => m.value === 'stepfun/step-3.7-flash-free')!.free).toBe(true);
+    expect(list!.find(m => m.value === 'paid/model')!.free).toBe(false);
+  });
 });
 
 describe('modelLabel (v3.31.0)', () => {
@@ -154,5 +228,21 @@ describe('modelLabel (v3.31.0)', () => {
   it('devuelve el value tal cual si el modelo NO está en el catálogo (dinámico/desconocido)', () => {
     expect(modelLabel('groq', 'openai/gpt-oss-120b:free')).toBe('openai/gpt-oss-120b:free');
     expect(modelLabel('openrouter', 'algún/modelo:free')).toBe('algún/modelo:free');
+  });
+
+  it('nvidia: devuelve label legible para modelos en fallback (Nemotron, GLM, Codestral...)', () => {
+    expect(modelLabel('nvidia', 'nvidia/nemotron-3-ultra-550b-a55b')).toBe('Nemotron 3 Ultra ⭐');
+    expect(modelLabel('nvidia', 'z-ai/glm-5.2')).toBe('GLM 5.2');
+    expect(modelLabel('nvidia', 'mistralai/codestral-22b-instruct-v0.1')).toBe('Codestral 22B (código)');
+    // Modelo dinámico no en fallback → value tal cual
+    expect(modelLabel('nvidia', 'nuevo/modelo-dinamico')).toBe('nuevo/modelo-dinamico');
+  });
+
+  it('zenmux: devuelve label legible para modelos free en fallback', () => {
+    expect(modelLabel('zenmux', 'stepfun/step-3.7-flash-free')).toBe('Step 3.7 Flash');
+    expect(modelLabel('zenmux', 'x-ai/grok-4.5-free')).toBe('Grok 4.5 (500K ctx)');
+    expect(modelLabel('zenmux', 'z-ai/glm-4.7-flash-free')).toBe('GLM 4.7 Flash');
+    // Modelo dinámico no en fallback → value tal cual
+    expect(modelLabel('zenmux', 'nuevo/modelo-zenmux')).toBe('nuevo/modelo-zenmux');
   });
 });

@@ -18,14 +18,14 @@ function renderPanel() {
 }
 
 /** Selecciona la tarjeta de Groq para que se muestre el selector de modelos. */
-function selectGroq(container: HTMLElement) {
-  fireEvent.click(container.querySelector('#select-groq-btn') as HTMLElement);
+function selectProvider(container: HTMLElement, providerId: string) {
+  fireEvent.click(container.querySelector(`#select-${providerId}-btn`) as HTMLElement);
 }
 
 describe('AIProviderPanel — selector de modelos Groq', () => {
   it('muestra el catálogo fallback con etiquetas amigables (no ids crudos)', () => {
     const { container } = renderPanel();
-    selectGroq(container);
+    selectProvider(container, 'groq');
 
     const select = container.querySelector('#groq-model-select') as HTMLSelectElement;
     expect(select).toBeInTheDocument();
@@ -41,10 +41,76 @@ describe('AIProviderPanel — selector de modelos Groq', () => {
 
   it('muestra el contador de modelos disponibles junto al selector', () => {
     const { container } = renderPanel();
-    selectGroq(container);
+    selectProvider(container, 'groq');
     // El conteo se deriva del catálogo estático de Groq (no se hardcodea el número).
     const groqCount = getProvider('groq').staticModels.length;
     expect(screen.getByText(new RegExp(`Modelo · ${groqCount} disponibles`))).toBeInTheDocument();
+  });
+});
+
+describe('AIProviderPanel — NVIDIA NIM', () => {
+  it('muestra la tarjeta NIM con emoji 🟢 y descripción', () => {
+    renderPanel();
+    expect(screen.getByText('🟢')).toBeInTheDocument();
+    expect(screen.getByText('NVIDIA Build (NIM)')).toBeInTheDocument();
+    expect(screen.getByText(/Modelos optimizados/)).toBeInTheDocument();
+  });
+
+  it('muestra catálogo fallback con Nemotron 3 Ultra recomendado y 12 modelos', () => {
+    const { container } = renderPanel();
+    selectProvider(container, 'nvidia');
+
+    const select = container.querySelector('#nvidia-model-select') as HTMLSelectElement;
+    expect(select).toBeInTheDocument();
+
+    const labels = Array.from(select.options).map(o => o.textContent);
+    expect(labels).toContain('Nemotron 3 Ultra'); // modelLabel devuelve sin ⭐
+    expect(labels).toContain('GLM 5.2');
+    expect(labels).toContain('Llama 3.3 70B');
+    expect(labels).toContain('Codestral 22B (código)');
+    expect(select.options.length).toBe(12); // fallback tiene 12 modelos
+  });
+
+  it('valida prefijo de clave nvapi-', () => {
+    const { container } = renderPanel();
+    selectProvider(container, 'nvidia');
+    const input = container.querySelector('#nvidia-key-input') as HTMLInputElement;
+    expect(input).toBeInTheDocument();
+    expect(input.placeholder).toBe('nvapi-...');
+  });
+});
+
+describe('AIProviderPanel — Zenmux', () => {
+  it('muestra la tarjeta Zenmux con emoji 🧘 y descripción', () => {
+    renderPanel();
+    expect(screen.getByText('🧘')).toBeInTheDocument();
+    expect(screen.getByText('Zenmux')).toBeInTheDocument();
+    expect(screen.getByText(/Pasarela unificada/)).toBeInTheDocument();
+  });
+
+  it('muestra catálogo fallback con 7 modelos free y Step 3.7 Flash recomendado', () => {
+    const { container } = renderPanel();
+    selectProvider(container, 'zenmux');
+
+    const select = container.querySelector('#zenmux-model-select') as HTMLSelectElement;
+    expect(select).toBeInTheDocument();
+
+    const labels = Array.from(select.options).map(o => o.textContent);
+    expect(labels).toContain('🆓 Step 3.7 Flash');
+    expect(labels).toContain('🆓 Grok 4.5 (500K ctx)');
+    expect(labels).toContain('🆓 GLM 4.7 Flash');
+    expect(labels).toContain('🆓 GLM 4.6V Flash');
+    // Todos los 7 son free
+    Array.from(select.options).forEach(o => expect(o.textContent).toContain('🆓'));
+    expect(select.options.length).toBe(7);
+  });
+
+  it('valida prefijo de clave sk-ai-v1-', () => {
+    const { container } = renderPanel();
+    selectProvider(container, 'zenmux');
+    const input = container.querySelector('#zenmux-key-input') as HTMLInputElement;
+    expect(input).toBeInTheDocument();
+    expect(input.placeholder).toBe('sk-ai-v1-...');
   });
 });
 

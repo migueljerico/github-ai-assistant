@@ -100,6 +100,14 @@ export const es = {
   'provider.openrouter.signupLabel': 'Obtener clave (incluye modelos gratuitos) en openrouter.ai →',
   'provider.openrouter.note': '🆓 Los modelos marcados son gratuitos. Una sola key da acceso también a OpenAI, Claude y Llama (de pago). Los modelos :free van y vienen: si uno falla con "Provider returned error", prueba otro (Gemma suele estar disponible).',
 
+  'provider.nvidia.cardDesc': 'NVIDIA NIM · Modelos optimizados (Nemotron, Llama, Mistral, Codestral…) vía API OpenAI-compatible',
+  'provider.nvidia.signupLabel': 'Obtener clave en build.nvidia.com →',
+  'provider.nvidia.note': 'Modelos de alto rendimiento (Nemotron 3 Ultra, GLM 5.2, Llama 3.3 70B, Codestral 22B…). El catálogo incluye embeddings/rerank/vision que se filtran automáticamente. No hay distinción gratuita/pago; todos requieren clave nvapi-.',
+
+  'provider.zenmux.cardDesc': 'Pasarela unificada a OpenAI, Anthropic, Google, Meta… una sola clave para todos',
+  'provider.zenmux.signupLabel': 'Obtener clave en zenmux.ai →',
+  'provider.zenmux.note': '🆓 Modelos marcados son gratuitos. Una sola key sk-ai-v1- da acceso a GPT-4o-mini, Gemini Flash, Llama, Claude Haiku y más. El modelo "Auto" selecciona el mejor gratis disponible.',
+
   // ────── FASE 2: Modales ──────
   'modal.doc.title': 'Documentación generada para {repoName}',
   'modal.doc.subtitle': 'Analicé {filesAnalyzed} archivo',

@@ -100,6 +100,14 @@ export const en = {
   'provider.openrouter.signupLabel': 'Get API key (includes free models) at openrouter.ai →',
   'provider.openrouter.note': '🆓 Marked models are free. A single key also gives access to OpenAI, Claude and Llama (paid). The :free models come and go: if one fails with "Provider returned error", try another (Gemma is usually available).',
 
+  'provider.nvidia.cardDesc': 'NVIDIA NIM · Optimized models (Nemotron, Llama, Mistral, Codestral…) via OpenAI-compatible API',
+  'provider.nvidia.signupLabel': 'Get API key at build.nvidia.com →',
+  'provider.nvidia.note': 'High-performance models (Nemotron 3 Ultra, GLM 5.2, Llama 3.3 70B, Codestral 22B…). Catalog includes embeddings/rerank/vision which are filtered automatically. No free/paid distinction; all require nvapi- key.',
+
+  'provider.zenmux.cardDesc': 'Unified gateway to OpenAI, Anthropic, Google, Meta… one key for all',
+  'provider.zenmux.signupLabel': 'Get API key at zenmux.ai →',
+  'provider.zenmux.note': '🆓 Marked models are free. A single sk-ai-v1- key gives access to GPT-4o-mini, Gemini Flash, Llama, Claude Haiku and more. The "Auto" model picks the best free available.',
+
   // ────── PHASE 2: Modals ──────
   'modal.doc.title': 'Documentation generated for {repoName}',
   'modal.doc.subtitle': 'I analyzed {filesAnalyzed} file',

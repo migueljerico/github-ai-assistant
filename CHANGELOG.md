@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.32.0] — 2026-07-11
+
+### Added
+- **NVIDIA Build (NIM) como proveedor de IA (#54).** Nuevo proveedor `nvidia` (transport `openai-compatible`) con endpoint `https://integrate.api.nvidia.com/v1`. Catálogo dinámico filtrado (excluye embeddings, rerank, vision, safety, etc.) y enriquecido con `featured-models.json` de NGC para priorizar modelos activos. Fallback estático con 12 modelos clave para documentación (Nemotron 3 Ultra, GLM 5.2, Llama 3.3 70B, Codestral 22B, DeepSeek V4 Pro, etc.). Key prefix `nvapi-`. Zero-Storage: key solo en memoria React.
+- **Zenmux como proveedor de IA.** Nuevo proveedor `zenmux` (transport `openai-compatible`) con endpoint `https://zenmux.ai/api/v1`. Catálogo dinámico con detección de modelos free por pricing (patrón OpenRouter). 7 modelos free en fallback (Step 3.7 Flash, Grok 4.5 500K ctx, GLM 4.7/4.6V Flash, Ling 2.6 Flash, MiniMax M2.5 Lightning, Qwen3 ASR Flash). Key prefix `sk-ai-v1-`.
+- **Modelos free en selector:** Zenmux muestra badge 🆓 en modelos gratuitos; ordena free primero. NIM sin distinción free/pago (la API no la provee).
+- **Tests:** Registro de proveedores, `fetchModels` (filtrado NIM, free Zenmux), `modelLabel`, panel UI.
+
+### Changed
+- `fetchModels` extendido para `nvidia` y `zenmux` (branch dedicado, sin tocar Gemini/Groq/OpenRouter).
+- `modelLabels.ts`: etiquetas amigables para 18 modelos NIM + 7 Zenmux.
+- i18n ES/EN: claves `provider.nvidia.*` y `provider.zenmux.*`.
+- CSS: badges `.ai-badge-dot-nvidia` (verde NVIDIA) y `.ai-badge-dot-zenmux` (índigo).
+
+### Fixed
+- Tipado estricto en `fetchModels` para Zenmux (pricing arrays vs strings OpenRouter legacy).
+
 ## [3.31.0] — 2026-07-11
 
 ### Fixed

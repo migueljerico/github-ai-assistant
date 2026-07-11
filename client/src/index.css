@@ -1536,6 +1536,8 @@ textarea.input { resize: none; line-height: 1.6; }
 }
 .ai-badge-dot-gemini { background: #4285f4; }
 .ai-badge-dot-groq   { background: #f97316; }
+.ai-badge-dot-nvidia { background: #76b900; }  /* NVIDIA green */
+.ai-badge-dot-zenmux { background: #6366f1; }  /* Indigo/purple */
 
 /* ── Session Warning Banner — #13 ────────────────────────────────────────── */
 .session-warning-bar {

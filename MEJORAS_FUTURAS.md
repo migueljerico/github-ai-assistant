@@ -347,23 +347,21 @@ función `t(lang, key)` pura (no hook); se deja para el futuro si hay demanda re
 
 ---
 
-#### #54 — Añadir NVIDIA Build (NIM) como proveedor de IA
+#### #54 — Añadir NVIDIA Build (NIM) + Zenmux como proveedores de IA ✅ RESUELTO en v3.32.0
 **Esfuerzo:** 3–4h
-**Origen:** análisis de la propuesta de Claude Sonnet 5.0 (NVIDIA Build da acceso a GLM-5.2 y otros modelos vía API OpenAI-compatible).
+**Origen:** análisis de la propuesta de Claude Sonnet 5.0 + configuración ZCode existente.
 
-**Problema actual:** la app soporta Gemini, Groq y OpenRouter. NVIDIA Build (NIM) expone `integrate.api.nvidia.com/v1` con catálogo dinámico y modelos interesantes (incluido GLM-5.2, con el que se ha trabajado este roadmap).
+**Problema actual:** la app soporta Gemini, Groq y OpenRouter. NVIDIA Build (NIM) expone `integrate.api.nvidia.com/v1` con catálogo dinámico y modelos interesantes. Zenmux (configurado en ZCode) ofrece gateway unificado a múltiples proveedores.
 
-**Enfoque correcto (cliente, NO backend):** NIM es OpenAI-compatible, así que encaja en el patrón existente añadiendo una entrada a `PROVIDERS` con `transport: 'openai-compatible'`, `chatEndpoint` y `modelsEndpoint` apuntando a NVIDIA, y `keyPrefix: 'nvapi-'`. La petición sale **directa del navegador** (como Groq/OpenRouter), con la key del usuario en memoria React (Zero-Storage). **No requiere tocar `server/index.js` ni añadir el SDK de OpenAI.**
+**Enfoque correcto (cliente, NO backend):** Ambos son OpenAI-compatible → entrada en `PROVIDERS` con `transport: 'openai-compatible'`. Peticiones directas del navegador, key en memoria React (Zero-Storage). **No tocar `server/index.js` ni añadir SDK OpenAI.**
 
-> **⚠️ Trampa a evitar:** una propuesta externa (Claude Sonnet 5.0) sugirió un proxy en el backend Express con `process.env.NVIDIA_API_KEY` + SDK de `openai`. Esto **contradice la arquitectura Zero-Storage** (el proxy de Gemini existe solo por el bloqueo UE/EEA, no por seguridad; no hay ninguna `*API_KEY` de IA en el servidor). No reintroducir este enfoque sin aprobación explícita del autor. (Ver convención rectora en `CLAUDE.md §5` y lección en `METODOLOGIA_IA.md §4`.)
+**Implementación (v3.32.0):**
+- **NIM (`nvidia`):** endpoint `https://integrate.api.nvidia.com/v1`, `keyPrefix: 'nvapi-'`. Catálogo filtrado (`NIM_EXCLUDED`: embeddings, rerank, vision, safety...), enriquecido con `featured-models.json` (NGC) para priorizar activos. Fallback 12 modelos (Nemotron 3 Ultra, GLM 5.2, Llama 3.3 70B, Codestral 22B, DeepSeek V4 Pro, Minimax M3, etc.). Sin flag `free` (API no distingue).
+- **Zenmux (`zenmux`):** endpoint `https://zenmux.ai/api/v1`, `keyPrefix: 'sk-ai-v1-'`. Catálogo con pricing → marca `free: true` donde pricing=0 (patrón OpenRouter). 7 modelos free en fallback (Step 3.7 Flash, Grok 4.5 500K ctx, GLM 4.7/4.6V Flash, Ling 2.6, MiniMax M2.5, Qwen3 ASR). Badge 🆓 en selector, free primero.
+- Tests: registro, `fetchModels`, `modelLabel`, panel UI.
+- i18n ES/EN, badges CSS.
 
-**Particularidades de NIM a implementar (en el cliente, dentro de `fetchModels`):**
-- El endpoint `/v1/models` es **ruidoso** (mezcla chat/embeddings/reranking/visión): hay que filtrar los no-chat por nombre/tag (extender el patrón de `GROQ_EXCLUDED`).
-- **Enriquecer** con el feed público `https://assets.ngc.nvidia.com/products/api-catalog/featured-models.json` para **priorizar** modelos destacados/activos (NIM tiene modelos inactivos que fallan).
-- NIM **no distingue gratis de pago** en `/v1/models` → el flag `free` 🆓 no aplica (como con Groq).
-- Cacheo en `sessionStorage` (mismo patrón de 1h).
-
-**Beneficio:** un proveedor más (con GLM-5.2 y otros modelos de primera línea), reutilizando toda la infraestructura existente, sin deuda técnica.
+**Beneficio:** dos proveedores más (con modelos de primera línea), reutilizando toda la infraestructura, sin deuda técnica.
 
 ---
 
@@ -489,9 +487,9 @@ El usuario los encuentra confusos: no sabe cuándo usar cuál, y con un repo car
 |---|---|---|---|
 | 🔴 Alta | 8 | 8 (#1, #2, #13, #14, #27, #45, #15, #28) | 0 |
 | 🟡 Media | 17 | 16 (#12, #17, #18, #19, #21, #37, #41, #32, #42, #38, #20, #49, #39, #44, #50, #51) | 1 (#26) |
-| 🟢 Baja | 18 | 9 (#23, #24, #34, #40, #46, #58, #55, #56, #57) | 7 (#22, #25, #36, #48, #52, #53, #54) |
+| 🟢 Baja | 18 | 10 (#23, #24, #34, #40, #46, #58, #55, #56, #57, #54) | 6 (#22, #25, #36, #48, #52, #53) |
 | **🗑️ Descartados** | — | — | 2 (#33, #35) descartados en v3.22.3 |
-| **TOTAL** | **43** | **31** | **10** |
+| **TOTAL** | **43** | **32** | **9** |
 
 > **#28** cubierto en su **norte** por las Fases 1 (v3.0.0, adjuntar como contexto) y
 > 2 (v3.1.0, documentar→publicar). **Más formatos:** Fase 3a (v3.2.0, Excel/CSV) y

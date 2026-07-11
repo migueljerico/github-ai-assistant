@@ -12,7 +12,7 @@
 // sessionStorage es la LISTA de modelos (catálogo), nunca la clave.
 // ────────────────────────────────────────────────────────────────────────────
 
-export type AIProviderType = 'gemini' | 'groq' | 'openrouter';
+export type AIProviderType = 'gemini' | 'groq' | 'openrouter' | 'nvidia' | 'zenmux';
 export type ProviderTransport = 'gemini-proxy' | 'openai-compatible';
 
 export interface ModelOption {
@@ -85,6 +85,18 @@ const GEMINI_MODELS: ModelOption[] = [
   },
 ];
 
+// Fallback de OpenRouter mientras carga el catálogo o si la API falla.
+// Modelos gratuitos (:free) conocidos y estables.
+const OPENROUTER_FALLBACK: ModelOption[] = [
+  { value: 'deepseek/deepseek-r1:free', label: 'DeepSeek R1 (free)', free: true },
+  { value: 'meta-llama/llama-3.3-70b-instruct:free', label: 'Llama 3.3 70B (free)', free: true },
+  { value: 'google/gemini-2.0-flash-exp:free', label: 'Gemini 2.0 Flash exp (free)', free: true },
+  { value: 'google/gemma-2-9b-it:free', label: 'Gemma 2 9B (free)', free: true },
+  { value: 'qwen/qwen-2.5-7b-instruct:free', label: 'Qwen 2.5 7B (free)', free: true },
+  { value: 'mistralai/mistral-7b-instruct:free', label: 'Mistral 7B (free)', free: true },
+  { value: 'nousresearch/hermes-3-llama-3.1-8b:free', label: 'Hermes 3 8B (free)', free: true },
+];
+
 // Fallback de Groq mientras carga el catálogo o si la API falla.
 // Ordenado por relevancia en el tier gratuito. `llama-3.1-8b-instant` como default
 // (rápido y fiable). `llama-3.3-70b-versatile` queda segundo aunque se deprecie
@@ -106,16 +118,45 @@ export const GROQ_EXCLUDED = ['whisper', 'distil-whisper', 'playai', 'llama-guar
 // excluyen del selector. Debe coincidir con el filtro del backend (#58).
 export const GEMINI_EXCLUDED = ['embed', 'vision', 'aqa', 'imagen', 'chirp'];
 
-// Fallback de OpenRouter mientras carga el catálogo o si la API falla.
-// Modelos gratuitos (:free) conocidos y estables.
-const OPENROUTER_FALLBACK: ModelOption[] = [
-  { value: 'deepseek/deepseek-r1:free', label: 'DeepSeek R1 (free)', free: true },
-  { value: 'meta-llama/llama-3.3-70b-instruct:free', label: 'Llama 3.3 70B (free)', free: true },
-  { value: 'google/gemini-2.0-flash-exp:free', label: 'Gemini 2.0 Flash exp (free)', free: true },
-  { value: 'google/gemma-2-9b-it:free', label: 'Gemma 2 9B (free)', free: true },
-  { value: 'qwen/qwen-2.5-7b-instruct:free', label: 'Qwen 2.5 7B (free)', free: true },
-  { value: 'mistralai/mistral-7b-instruct:free', label: 'Mistral 7B (free)', free: true },
-  { value: 'nousresearch/hermes-3-llama-3.1-8b:free', label: 'Hermes 3 8B (free)', free: true },
+// Modelos NIM no-chat a excluir del catálogo dinámico (embeddings, rerank, vision, safety, etc.)
+export const NIM_EXCLUDED = [
+  'embed', 'rerank', 'ranking', 'vision', 'vlm', 'clip',
+  'nemo', 'guard', 'safety', 'audio', 'tts', 'asr', 'whisper',
+  'retrieval', 'embedding', 'detector', 'nemoretriever', 'parse',
+  'neva', 'vila', 'riva', 'nv-embed', 'nvclip', 'content-safety',
+  'reasoning', 'ising', 'gliner', 'calibration', 'translate',
+];
+
+// URL del feed de modelos destacados de NVIDIA (NGC) para priorizar activos
+const NIM_FEATURED_URL = 'https://assets.ngc.nvidia.com/products/api-catalog/featured-models.json';
+
+// Fallback de NVIDIA NIM mientras carga el catálogo o si la API falla.
+// Incluye modelos destacados (featured) y modelos clave para documentación de código.
+// NIM no distingue gratis/pago en la API → sin flag free.
+const NIM_FALLBACK: ModelOption[] = [
+  { value: 'nvidia/nemotron-3-ultra-550b-a55b', label: 'Nemotron 3 Ultra ⭐', recommended: true },
+  { value: 'z-ai/glm-5.2', label: 'GLM 5.2' },
+  { value: 'meta/llama-3.3-70b-instruct', label: 'Llama 3.3 70B' },
+  { value: 'meta/llama-3.1-405b-instruct', label: 'Llama 3.1 405B' },
+  { value: 'mistralai/codestral-22b-instruct-v0.1', label: 'Codestral 22B (código)' },
+  { value: 'deepseek-ai/deepseek-v4-pro', label: 'DeepSeek V4 Pro' },
+  { value: 'minimaxai/minimax-m3', label: 'Minimax M3' },
+  { value: 'qwen/qwen3-next-80b-a3b-instruct', label: 'Qwen3 Next 80B' },
+  { value: 'google/gemma-4-31b-it', label: 'Gemma 4 31B' },
+  { value: 'stepfun-ai/step-3.7-flash', label: 'Step 3.7 Flash' },
+  { value: 'mistralai/mistral-medium-3.5-128b', label: 'Mistral Medium 3.5' },
+  { value: 'nvidia/llama-3.3-nemotron-super-49b-v1.5', label: 'Nemotron Super 49B' },
+];
+
+// Fallback de Zenmux — TUS 7 modelos FREE confirmados (4 tuyos + 3 detectados en catálogo)
+const ZENMUX_FALLBACK: ModelOption[] = [
+  { value: 'stepfun/step-3.7-flash-free', label: 'Step 3.7 Flash', free: true, recommended: true },
+  { value: 'x-ai/grok-4.5-free', label: 'Grok 4.5 (500K ctx)', free: true },
+  { value: 'z-ai/glm-4.7-flash-free', label: 'GLM 4.7 Flash', free: true },
+  { value: 'z-ai/glm-4.6v-flash-free', label: 'GLM 4.6V Flash', free: true },
+  { value: 'inclusionai/ling-2.6-flash', label: 'Ling 2.6 Flash', free: true },
+  { value: 'minimax/minimax-m2.5-lightning', label: 'MiniMax M2.5 Lightning', free: true },
+  { value: 'qwen/qwen3-asr-flash', label: 'Qwen3 ASR Flash', free: true },
 ];
 
 export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
@@ -177,6 +218,42 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     note: 'provider.openrouter.note',
     extraHeaders: { 'X-Title': 'GitHub AI Assistant' },
   },
+  nvidia: {
+    id: 'nvidia',
+    name: 'NVIDIA Build (NIM)',
+    shortName: 'NIM',
+    emoji: '🟢',
+    cardDesc: 'provider.nvidia.cardDesc',
+    transport: 'openai-compatible',
+    chatEndpoint: 'https://integrate.api.nvidia.com/v1/chat/completions',
+    modelsEndpoint: 'https://integrate.api.nvidia.com/v1/models',
+    modelsNeedKey: true,
+    staticModels: NIM_FALLBACK,
+    defaultModel: NIM_FALLBACK[0].value,
+    keyPlaceholder: 'nvapi-...',
+    keyPrefix: 'nvapi-',
+    signupUrl: 'https://build.nvidia.com/explore/discover',
+    signupLabel: 'provider.nvidia.signupLabel',
+    note: 'provider.nvidia.note',
+  },
+  zenmux: {
+    id: 'zenmux',
+    name: 'Zenmux',
+    shortName: 'Zenmux',
+    emoji: '🧘',
+    cardDesc: 'provider.zenmux.cardDesc',
+    transport: 'openai-compatible',
+    chatEndpoint: 'https://zenmux.ai/api/v1/chat/completions',
+    modelsEndpoint: 'https://zenmux.ai/api/v1/models',
+    modelsNeedKey: true,
+    staticModels: ZENMUX_FALLBACK,
+    defaultModel: ZENMUX_FALLBACK[0].value,
+    keyPlaceholder: 'sk-ai-v1-...',
+    keyPrefix: 'sk-ai-v1-',
+    signupUrl: 'https://zenmux.ai',
+    signupLabel: 'provider.zenmux.signupLabel',
+    note: 'provider.zenmux.note',
+  },
 };
 
 export function getProvider(id: AIProviderType): ProviderDef {
@@ -235,12 +312,28 @@ interface OpenRouterModel {
   pricing?: { prompt?: string; completion?: string };
 }
 
+interface OpenRouterModelNew {
+  id: string;
+  name?: string;
+  pricing?: { prompt?: Array<{ value: number | string }>; completion?: Array<{ value: number | string }> };
+}
+
 /** Indica si un modelo de OpenRouter es gratuito (por sufijo o por pricing a 0). */
-function isFreeOpenRouterModel(m: OpenRouterModel): boolean {
+function isFreeOpenRouterModel(m: OpenRouterModel | OpenRouterModelNew): boolean {
   if (m.id.endsWith(':free')) return true;
   const p = m.pricing;
   if (!p) return false;
-  return (p.prompt === '0' || p.prompt === '0.0') && (p.completion === '0' || p.completion === '0.0');
+  // Old format: strings
+  if (typeof p.prompt === 'string') {
+    return (p.prompt === '0' || p.prompt === '0.0') && (p.completion === '0' || p.completion === '0.0');
+  }
+  // New format: arrays of { value: number | string }
+  const promptPrice = p.prompt as Array<{ value: number | string }> | undefined;
+  const completionPrice = p.completion as Array<{ value: number | string }> | undefined;
+  if (!promptPrice && !completionPrice) return true;
+  const allZero = [...(promptPrice || []), ...(completionPrice || [])]
+    .every(v => Number(v.value) === 0);
+  return allZero;
 }
 
 const MODELS_CACHE_TTL = 3_600_000; // 1 hora
@@ -266,36 +359,104 @@ export async function fetchModels(
     } catch { /* cache corrupta — ignorar */ }
   }
 
-  const headers: Record<string, string> = {};
+const headers: Record<string, string> = {};
   if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
 
   const res = await fetch(def.modelsEndpoint, { headers });
   if (!res.ok) throw new Error(`models endpoint error ${res.status}`);
-  const data = await res.json() as { data: Array<{ id: string; name?: string; pricing?: { prompt?: string; completion?: string } }> };
+  // Type varies by provider; we'll cast per-branch
+  const data = await res.json() as {
+    data: Array<{
+      id: string;
+      name?: string;
+      display_name?: string;
+      pricing?: {
+        prompt?: Array<{ value: number | string }>;
+        completion?: Array<{ value: number | string }>;
+      };
+    }>
+  };
 
   let models: ModelOption[];
   if (def.id === 'openrouter') {
     models = data.data
-      .map(m => ({
+      .map((m: { id: string; name?: string; pricing?: { prompt?: Array<{ value: number | string }>; completion?: Array<{ value: number | string }> } }) => ({
         value: m.id,
         label: m.name || m.id,
         free: isFreeOpenRouterModel(m),
       }))
       // gratis primero, luego alfabético por etiqueta
-      .sort((a, b) => (Number(b.free) - Number(a.free)) || a.label.localeCompare(b.label));
+      .sort((a: ModelOption, b: ModelOption) => (Number(b.free) - Number(a.free)) || a.label.localeCompare(b.label));
   } else if (def.id === 'gemini') {
     // #58 (v3.23.0): catálogo dinámico de Gemini vía proxy. El backend ya filtra
     // los no-generativos, pero repetimos el filtro aquí (defensa en profundidad).
     models = data.data
-      .filter(m => !GEMINI_EXCLUDED.some(p => m.id.includes(p)))
-      .sort((a, b) => a.id.localeCompare(b.id))
-      .map(m => ({ value: m.id, label: m.name || m.id }));
+      .filter((m: { id: string; name?: string }) => !GEMINI_EXCLUDED.some(p => m.id.includes(p)))
+      .sort((a: { id: string }, b: { id: string }) => a.id.localeCompare(b.id))
+      .map((m: { id: string; name?: string }) => ({ value: m.id, label: m.name || m.id }));
+  } else if (def.id === 'nvidia') {
+    // NIM: catálogo ruidoso (chat + embeddings + rerank + vision + safety...)
+    // 1) Filtrar no-chat usando NIM_EXCLUDED
+    // 2) Enriquecer con featured-models.json (NGC) para priorizar activos
+    // 3) Sin flag free (NIM no distingue gratis/pago en la API)
+    let nimModels = data.data
+      .filter((m: { id: string; name?: string }) => !NIM_EXCLUDED.some(p => m.id.toLowerCase().includes(p)))
+      .sort((a: { id: string }, b: { id: string }) => a.id.localeCompare(b.id))
+      .map((m: { id: string; name?: string }) => ({ value: m.id, label: m.name || m.id }));
+
+    // Intentar enriquecer con featured models (best-effort, no bloquear si falla)
+    try {
+      const featuredRes = await fetch(NIM_FEATURED_URL, { headers: { Accept: 'application/json' } });
+      if (featuredRes.ok) {
+        const featuredData = await featuredRes.json() as { 'featured-models': Array<{ model: string }> };
+        const featuredIds = new Set(featuredData['featured-models'].map(f => f.model));
+        // Reordenar: featured primero, luego el resto alfabético
+        nimModels = nimModels.sort((a: ModelOption, b: ModelOption) => {
+          const aFeatured = featuredIds.has(a.value) ? 0 : 1;
+          const bFeatured = featuredIds.has(b.value) ? 0 : 1;
+          if (aFeatured !== bFeatured) return aFeatured - bFeatured;
+          return a.label.localeCompare(b.label);
+        });
+      }
+    } catch { /* featured fetch falló — usar orden alfabético */ }
+
+    models = nimModels;
+  } else if (def.id === 'zenmux') {
+    // Zenmux: catálogo con pricing → marcar free donde pricing sea 0 o ausente
+    // (patrón OpenRouter). Filtrar modelos obviamente no-chat (embedding, whisper, etc.)
+    const ZENMUX_EXCLUDED = ['embed', 'whisper', 'tts', 'asr', 'rerank', 'vision', 'clip', 'audio'];
+    models = data.data
+      .filter((m: { id: string; display_name?: string; name?: string; pricing?: { prompt?: Array<{ value: number | string }>; completion?: Array<{ value: number | string }> } }) => !ZENMUX_EXCLUDED.some(p => m.id.toLowerCase().includes(p)))
+      .map((m: { id: string; display_name?: string; name?: string; pricing?: { prompt?: Array<{ value: number | string }>; completion?: Array<{ value: number | string }> } }) => {
+        const pricing = m.pricing;
+        let free = false;
+        if (!pricing) {
+          free = true;
+        } else {
+          const promptPrice = pricing.prompt;
+          const completionPrice = pricing.completion;
+          if (!promptPrice && !completionPrice) {
+            free = true;
+          } else {
+            const allZero = [...(promptPrice || []), ...(completionPrice || [])]
+              .every(p => Number(p.value) === 0);
+            free = allZero;
+          }
+        }
+        return {
+          value: m.id,
+          label: m.display_name || m.name || m.id,
+          free,
+        };
+      })
+      // free primero, luego alfabético
+      .sort((a: ModelOption, b: ModelOption) => (Number(b.free) - Number(a.free)) || a.label.localeCompare(b.label));
   } else {
     // Groq (y cualquier OpenAI-compatible genérico): filtra no-chat
     models = data.data
-      .filter(m => !GROQ_EXCLUDED.some(p => m.id.startsWith(p)))
-      .sort((a, b) => a.id.localeCompare(b.id))
-      .map(m => ({ value: m.id, label: m.id }));
+      .filter((m: { id: string }) => !GROQ_EXCLUDED.some(p => m.id.startsWith(p)))
+      .sort((a: { id: string }, b: { id: string }) => a.id.localeCompare(b.id))
+      .map((m: { id: string }) => ({ value: m.id, label: m.id }));
   }
 
   if (models.length === 0) throw new Error('empty catalog');
