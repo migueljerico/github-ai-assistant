@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.32.2] — 2026-07-12
+
+### Fixed
+- **Selector de NVIDIA (NIM): se mostraba el catálogo dinámico ruidoso de NIM en vez de la lista curada.** Al pegar una API key `nvapi-…`, `AIProviderPanel` cargaba `/api/nim/models` (cientos de modelos: chat + embeddings + rerank + vision + safety…) y sobrescribía los 12 modelos configurados en `NIM_FALLBACK`. Ahora el proveedor `nvidia` no define `modelsEndpoint`/`modelsNeedKey`, así que el selector usa directamente `staticModels` (NIM_FALLBACK), igual que Gemini. El chat sigue por el proxy backend `/api/nim` (fix CORS de v3.32.1 intacto). Zero-Storage mantenido.
+
+### Added
+- **Gemini: modelo `gemini-3-flash-preview`** añadido a `GEMINI_MODELS`, con claves i18n ES/EN (`provider.gemini.model.flashPreview` / `…Desc`), manteniendo la misma lógica de `label`/`description` que los modelos existentes. Gemini pasa de 6 a 7 modelos fijos.
+
+### Notes
+- Cambio de código por ZCode. 531/531 tests de cliente + 5/5 de servidor verdes, build limpio, lint 0 errores. `server/index.js` no se tocó; la ruta `/api/nim/models` queda como proxy reutilizable no usado por el frontend.
+
 ## [3.32.1] — 2026-07-11
 
 ### Fixed
