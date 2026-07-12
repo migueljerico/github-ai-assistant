@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v3.32.4 · Julio 2026
+**Actualizado a:** v3.33.1 · Julio 2026
 
 ---
 
@@ -500,6 +500,14 @@ El usuario los encuentra confusos: no sabe cuándo usar cuál, y con un repo car
 > Imágenes/visión: descartada.
 
 > **Nota de numeración:** los huecos en #16, #29, #30, #31, #43 y #47 son intencionados — esos ítems se fusionaron o descartaron en revisiones del roadmap y sus números no se reutilizan (convención del documento). #16 se fusionó en #42; #29 en #40.
+
+---
+
+## ✅ Resueltos
+
+| # | Punto | Archivo | Versión |
+|---|---|---|---|
+| 54 | Fix: OpenCode Zen y Cloudflare Workers AI — "Failed to fetch" y modelos incorrectos | `providers.ts`, `gemini.ts`, `AIProviderContext.tsx`, `AIProviderPanel.tsx`, i18n es/en, tests | v3.33.1 |
 
 ---
 

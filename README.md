@@ -8,9 +8,13 @@
 ![Groq](https://img.shields.io/badge/Groq_Cloud-F55036?style=for-the-badge&logo=groq&logoColor=white)
 ![Gemini](https://img.shields.io/badge/Google_Gemini-4285F4?style=for-the-badge&logo=google&logoColor=white)
 ![OpenRouter](https://img.shields.io/badge/OpenRouter-6566F1?style=for-the-badge&logo=openai&logoColor=white)
+![NVIDIA NIM](https://img.shields.io/badge/NVIDIA_NIM-76B900?style=for-the-badge&logo=nvidia&logoColor=white)
+![Zenmux](https://img.shields.io/badge/Zenmux-6C5CE7?style=for-the-badge&logo=brave&logoColor=white)
+![OpenCode Zen](https://img.shields.io/badge/OpenCode_Zen-9C27B0?style=for-the-badge&logo=opencode&logoColor=white)
+![Cloudflare Workers AI](https://img.shields.io/badge/Cloudflare_Workers_AI-F38020?style=for-the-badge&logo=cloudflare&logoColor=white)
 ![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
 ![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
-![Versión](https://img.shields.io/badge/Versión-v3.32.4-blue?style=for-the-badge)
+![Versión](https://img.shields.io/badge/Versión-v3.33.1-blue?style=for-the-badge)
 ![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)
 [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
 
@@ -55,11 +59,11 @@ Todo bajo el principio:
 | Aspecto | Detalle |
 |---|---|
 | ⏱️ Tiempo de desarrollo | 30 días desde cero |
-| 🤖 Proveedores soportados | Groq · Google Gemini · OpenRouter · NVIDIA NIM · Zenmux |
-| 🧠 Modelos disponibles | Gemini, Llama, Nemotron, GLM, Grok, DeepSeek, Qwen y más vía OpenRouter/NIM/Zenmux |
+| 🤖 Proveedores soportados | Groq · Google Gemini · OpenRouter · NVIDIA NIM · Zenmux · OpenCode Zen · Cloudflare Workers AI |
+| 🧠 Modelos disponibles | Gemini, Llama, Nemotron, GLM, Grok, DeepSeek, Qwen y más vía OpenRouter/NIM/Zenmux/OpenCode/Cloudflare |
 | ⚡ Latencia observada | ~400ms Groq / ~1.2s Gemini, variable según modelo y contexto |
 | 🛡️ Seguridad | Zero-Storage: credenciales solo en memoria React |
-| 🧪 Tests | 530 tests automatizados |
+| 🧪 Tests | 536 tests automatizados |
 | 🌍 Deploy | Google Cloud Run |
 | 📦 Stack | React + TypeScript + Express + Vite |
 
@@ -79,7 +83,7 @@ Todo bajo el principio:
 | 📋 Changelog | Generar changelog desde commits recientes o desde el último release |
 | 📊 Salud del código | Dashboard con lenguajes, commits y deuda técnica |
 | 🌐 i18n | Interfaz bilingüe ES/EN |
-| 🔑 Multi-proveedor IA | Groq, Gemini, OpenRouter, NVIDIA NIM y Zenmux con clave del usuario |
+| 🔑 Multi-proveedor IA | Groq, Gemini, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen y Cloudflare Workers AI con clave del usuario |
 
 Más detalle en ./docs/FUNCIONALIDADES.md.
 
@@ -118,7 +122,7 @@ Backend Express thin
   └── Health check
 ```
 
-El backend es intencionalmente mínimo: gestiona OAuth, sirve el frontend en producción y actúa como proxy para Gemini por las restricciones regionales de la API en navegadores de la UE/EEA.
+El backend es intencionalmente mínimo: gestiona OAuth, sirve el frontend en producción y actúa como proxy para **Gemini y NVIDIA NIM** por las restricciones regionales/CORS de sus APIs en navegadores.
 
 Ver arquitectura completa en ./docs/ARQUITECTURA.md.
 
@@ -188,7 +192,7 @@ Ver detalle en ./docs/SEGURIDAD.md.
 
 El proyecto usa **Vitest**, **React Testing Library**, **GitHub Actions** y **Codecov**.
 
-- **530 tests automatizados**
+- **536 tests automatizados**
 - Tests unitarios, integración y componentes
 - Tests del servidor
 - CI con lint + tests + cobertura
@@ -211,6 +215,8 @@ Ver detalle en ./docs/TESTING_CALIDAD.md.
 | OpenRouter | Pasarela a múltiples modelos |
 | NVIDIA NIM | Modelos optimizados vía proxy (CORS) |
 | Zenmux | Pasarela con modelos gratuitos |
+| OpenCode Zen | Modelos gratis con API key opencode.ai |
+| Cloudflare Workers AI | Modelos serverless (@cf/…) |
 | Recharts | Dashboard de salud del código |
 | Vitest | Testing |
 | Codecov | Cobertura |

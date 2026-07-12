@@ -111,12 +111,12 @@ export const en = {
   'provider.zenmux.cardDesc': 'Unified gateway to OpenAI, Anthropic, Google, Meta… one key for all',
   'provider.zenmux.signupLabel': 'Get API key at zenmux.ai →',
   'provider.zenmux.note': '🆓 Marked models are free. A single sk-ai-v1- key gives access to GPT-4o-mini, Gemini Flash, Llama, Claude Haiku and more. The "Auto" model picks the best free available.',
-  'provider.openzen.cardDesc': 'Unified gateway with keyless free models (token "public")',
+  'provider.openzen.cardDesc': 'OpenCode Zen: models with opencode.ai API key',
   'provider.openzen.signupLabel': 'Get API key at opencode.ai →',
-  'provider.openzen.note': '🆓 Dynamic catalog of FREE models (suffix "-free"). The free models work with the keyless token "public" — just type "public" in the key field. A real key from opencode.ai also unlocks paid models.',
-  'provider.cloudflare.cardDesc': 'Cloudflare Workers AI · serverless models (@cf/…)',
+  'provider.openzen.note': '🆓 Models available with your opencode.ai API key. Free models (suffix "-free") work with the free key; a paid key unlocks premium models.',
+  'provider.cloudflare.cardDesc': 'Cloudflare Workers AI · serverless models (@cf/…) configured in ZCode',
   'provider.cloudflare.signupLabel': 'Create API token at dash.cloudflare.com →',
-  'provider.cloudflare.note': 'Requires your Account ID (from the Cloudflare dashboard sidebar) and an API token with Workers AI permissions. The model list loads dynamically (full catalog) once both are filled in.',
+  'provider.cloudflare.note': 'Requires your Account ID (from the Cloudflare dashboard sidebar) and an API token with Workers AI permissions. Uses models configured in ZCode (static catalog) to avoid dynamic fetch failures.',
 
   // ────── PHASE 2: Modals ──────
   'modal.doc.title': 'Documentation generated for {repoName}',

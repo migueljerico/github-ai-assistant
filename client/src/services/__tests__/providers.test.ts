@@ -221,33 +221,30 @@ describe('providers — fetchModels', () => {
     expect(list!.every(m => m.free)).toBe(true);
   });
 
-  it('cloudflare: devuelve null sin accountId (endpoint con {account_id})', async () => {
+  it('cloudflare: devuelve null sin accountId (sin modelsEndpoint usa catálogo estático)', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
+    // Sin modelsEndpoint, fetchModels devuelve null (usa staticModels)
     expect(await fetchModels(PROVIDERS.cloudflare, 'token_test')).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('cloudflare: catálogo COMPLETO desde { result: [...] }, sustituye {account_id}', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        success: true,
-        result: [
-          { name: '@cf/meta/llama-3.3-70b-instruct', description: 'Llama 3.3' },
-          { name: '@cf/mistral/mistral-7b-instruct-v0.1', description: 'Mistral 7B' },
-        ],
-      }),
-    });
+  it('cloudflare: usa catálogo estático (CLOUDFLARE_FALLBACK) sin fetch dinámico', async () => {
+    const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
 
     const list = await fetchModels(PROVIDERS.cloudflare, 'token_test', 'MY_ACCOUNT');
-    expect(list).not.toBeNull();
-    const ids = list!.map(m => m.value);
-    expect(ids).toEqual(['@cf/meta/llama-3.3-70b-instruct', '@cf/mistral/mistral-7b-instruct-v0.1']);
-    // El account_id se sustituyó en la URL del fetch
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock.mock.calls[0][0]).toContain('/accounts/MY_ACCOUNT/ai/models/search');
+    expect(list).toBeNull(); // Sin modelsEndpoint, devuelve null
+    expect(fetchMock).not.toHaveBeenCalled();
+    // El catálogo estático son los modelos de CLOUDFLARE_FALLBACK
+    const values = PROVIDERS.cloudflare.staticModels.map(m => m.value);
+    expect(values).toEqual([
+      '@cf/meta/llama-3.3-70b-instruct',
+      '@cf/meta/llama-3.1-8b-instruct',
+      '@cf/mistral/mistral-7b-instruct-v0.1',
+      '@cf/qwen/qwen1.5-7b-chat',
+      '@cf/google/gemma-2-9b-it',
+    ]);
   });
 });
 

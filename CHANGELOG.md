@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.33.1] — 2026-07-12
+
+### Fixed
+- **OpenCode Zen (`openzen`):** eliminada la referencia al token keyless `"public"` en la UI (i18n `provider.openzen.note`, `cardDesc`, `signupLabel` y `keyPlaceholder`). Ahora indica usar la **API key real de opencode.ai** (gratuita o de pago). Los modelos con sufijo `-free` siguen funcionando con la key gratuita; una key de pago desbloquea modelos premium.
+- **Cloudflare Workers AI (`cloudflare`):** cambiado a **catálogo estático** (`CLOUDFLARE_FALLBACK`, 5 modelos configurados en ZCode) en lugar del catálogo dinámico que fallaba con "Failed to fetch". Eliminado `modelsEndpoint`; el panel ya no intenta fetch dinámico. i18n actualizado (`provider.cloudflare.note`, `cardDesc`) para reflejar que se usan los modelos configurados en ZCode.
+- Tests actualizados: `fetchModels` para `cloudflare` ahora verifica catálogo estático sin llamada de red.
+
+### Changed
+- `client/src/services/providers.ts`: `openzen.keyPlaceholder` → `'API key de opencode.ai'`; `cloudflare` sin `modelsEndpoint`, usa `staticModels: CLOUDFLARE_FALLBACK`.
+- `client/src/i18n/es.ts` y `en.ts`: claves `provider.openzen.*` y `provider.cloudflare.*` actualizadas.
+- `client/src/services/__tests__/providers.test.ts`: test de Cloudflare adaptado a catálogo estático.
+
+### Notes
+- Investigación y fix: asistente ZCode (modelo nemotron-3-ultra / NVIDIA NIM). Cierre e implementación: asistente ZCode (modelo nemotron-3-ultra / NVIDIA NIM). Tests 536/536 (client) + 5/5 (server), build limpio, lint 0 errores.
+
 ## [3.33.0] — 2026-07-12
 
 ### Added

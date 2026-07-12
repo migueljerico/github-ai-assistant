@@ -299,7 +299,7 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     modelsNeedKey: false, // el catálogo de OpenCode Zen es público (sin auth)
     staticModels: OPENZEN_FALLBACK,
     defaultModel: OPENZEN_FALLBACK[0].value,
-    keyPlaceholder: 'public (gratis) o key de opencode.ai',
+    keyPlaceholder: 'API key de opencode.ai',
     signupUrl: 'https://opencode.ai',
     signupLabel: 'provider.openzen.signupLabel',
     note: 'provider.openzen.note',
@@ -308,6 +308,8 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
   // Exige account_id en la ruta URL + token por cuenta; por eso el panel muestra
   // un campo extra de Account ID y el endpoint usa el marcador {account_id}, que se
   // sustituye en tiempo de ejecución con resolveEndpoint().
+  // Catálogo ESTÁTICO (CLOUDFLARE_FALLBACK) - se usa la lista configurada en ZCode
+  // en lugar del catálogo dinámico que falla con "Failed to fetch".
   cloudflare: {
     id: 'cloudflare',
     name: 'Cloudflare Workers AI',
@@ -316,7 +318,7 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     cardDesc: 'provider.cloudflare.cardDesc',
     transport: 'openai-compatible',
     chatEndpoint: 'https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1/chat/completions',
-    modelsEndpoint: 'https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/models/search',
+    // Sin modelsEndpoint: usa catálogo estático (CLOUDFLARE_FALLBACK) para evitar fallos de fetch dinámico
     modelsNeedKey: true, // requiere el API token (Bearer) y el account_id
     staticModels: CLOUDFLARE_FALLBACK,
     defaultModel: CLOUDFLARE_FALLBACK[0].value,
