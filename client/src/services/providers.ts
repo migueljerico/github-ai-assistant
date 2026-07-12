@@ -230,18 +230,13 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     emoji: '🟢',
     cardDesc: 'provider.nvidia.cardDesc',
     transport: 'openai-compatible',
-    // v3.32.1: NIM NO envía cabeceras CORS → el navegador bloquea las llamadas
-    // directas ("Failed to fetch"). El CHAT se enruta por el proxy backend
-    // (/api/nim), mismo patrón que Gemini: copia el body OpenAI y el header
-    // Authorization sin tocarlos. El proxy es transparente y reutilizable.
+    // Acceso directo a NVIDIA NIM (sin proxy). El endpoint de chat es
+    // https://integrate.api.nvidia.com/v1/chat/completions — mismo patrón que
+    // ZenMux y otros proveedores OpenAI-compatible.
     // El CATÁLOGO de modelos es ESTÁTICO (NIM_FALLBACK): el catálogo dinámico de
     // NIM es enorme y ruidoso (chat + embeddings + rerank + vision + safety…),
-    // así que —igual que Gemini— mostramos solo la lista curada que configuramos
-    // aquí, en vez de los cientos de modelos "raros" que devuelve la API. Por eso
-    // NO se define modelsEndpoint (fetchModels devuelve null y el UI usa
-    // staticModels tal cual).
-    // Zero-Storage: la key viaja HTTPS cliente→backend y se descarta al terminar.
-    chatEndpoint: '/api/nim',
+    // así que mostramos solo la lista curada de 12 modelos que configuramos aquí.
+    chatEndpoint: 'https://integrate.api.nvidia.com/v1/chat/completions',
     staticModels: NIM_FALLBACK,
     defaultModel: NIM_FALLBACK[0].value,
     keyPlaceholder: 'nvapi-...',

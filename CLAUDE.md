@@ -254,11 +254,7 @@ Ejecutar **un solo test**: `cd client && npm run test:run -- src/services/github
   `server/index.js`) se justifican **únicamente por bloqueos del navegador**, no por
   seguridad:
   - `POST /api/gemini` → Gemini bloquea peticiones desde EEA (bloqueo geográfico).
-  - `POST /api/nim` + `GET /api/nim/models` → NVIDIA NIM **no envía cabeceras CORS**
-    (`Access-Control-Allow-Origin` ausente), así que el navegador bloquea las
-    llamadas directas ("Failed to fetch"). El proxy es transparente: copia el body
-    OpenAI-format y el header `Authorization` sin tocarlos, y el stream SSE se
-    reenvía sin bufferizar.
+  - `POST /api/nim` + `GET /api/nim/models` → NVIDIA NIM originalmente no envía cabeceras CORS; el proxy se mantiene como fallback, pero el frontend ahora llama directo a `integrate.api.nvidia.com` (v3.32.3).
   La key viaja en HTTPS (cliente→backend) y nunca se persistite ni loguea.
   **No añadas proxies backend ni `process.env.*API_KEY` para nuevos proveedores
   sin aprobación explícita del autor.** Para añadir un proveedor, basta una entrada
