@@ -244,6 +244,11 @@ describe('providers — fetchModels', () => {
       '@cf/moonshotai/kimi-k2.7-code',
       '@cf/zai-org/glm-5.2',
       '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b',
+      '@cf/meta/llama-3.1-8b-instruct',
+      '@cf/meta/llama-3.3-70b-instruct',
+      '@cf/mistral/mistral-7b-instruct-v0.1',
+      '@cf/qwen/qwen2.5-7b-instruct',
+      '@cf/google/gemma-2-9b-it',
     ]);
   });
 });

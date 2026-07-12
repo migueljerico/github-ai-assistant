@@ -79,7 +79,7 @@ const nimLimiter = rateLimit({
 // directas con "Failed to fetch". Mismo patrón que Gemini y NIM: proxy backend.
 const openzenLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 40,
+  max: 100,
   message: {
     error: 'Demasiadas peticiones a OpenCode Zen. Por favor espera un minuto.',
   },
@@ -91,7 +91,7 @@ const openzenLimiter = rateLimit({
 // Cloudflare Workers AI tampoco envía cabeceras CORS → mismo patrón de proxy.
 const cloudflareLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 40,
+  max: 100,
   message: {
     error: 'Demasiadas peticiones a Cloudflare Workers AI. Por favor espera un minuto.',
   },
@@ -398,15 +398,21 @@ app.post('/api/openzen', openzenLimiter, async (req, res) => {
 // igual que el de Gemini, NIM y OpenCode Zen. Reenvía el body OpenAI-format y el
 // header Authorization sin tocarlos, y devuelve la respuesta (JSON o stream SSE).
 //
-// Requiere account_id que se recibe del body de la petición (lo construye el frontend
-// con el valor del campo Account ID del panel). La API key viaja en Authorization.
+// Requiere account_id que se recibe del header X-Account-Id enviado por el frontend.
+// La API key viaja en Authorization.
+//
+// IMPORTANTE: Cloudflare a veces devuelve cabeceras con valores que contienen
+// caracteres fuera de ISO-8859-1 (p. ej. emojis en Server, CF-Ray, etc.).
+// El navegador no puede parsear esos headers y lanza:
+//   "Failed to read the 'headers' property from 'RequestInit':
+//    String contains non ISO-8859-1 code point"
+// Por eso saneamos los headers del upstream antes de reenviarlos al cliente.
 app.post('/api/cloudflare', cloudflareLimiter, async (req, res) => {
   const auth = req.headers.authorization || '';
   if (!auth.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Falta la API key de Cloudflare (header Authorization: Bearer ...)' });
   }
-  // Cloudflare requiere account_id en la URL; llega como header X-Account-Id
-  // desde el frontend (gemini.ts: callOpenAICompatible lo añade cuando provider=cloudflare).
+  // Cloudflare requiere account_id en la URL; llega como header X-Account-Id.
   const accountId = req.headers['x-account-id'];
   if (!accountId) {
     return res.status(400).json({ error: 'Falta accountId (header X-Account-Id). Rellena el campo Account ID en el panel.' });
@@ -423,9 +429,22 @@ app.post('/api/cloudflare', cloudflareLimiter, async (req, res) => {
       body: JSON.stringify(req.body),
     });
     console.log(`[Cloudflare] status=${upstream.status} ct=${upstream.headers.get('content-type') || '-'}`);
+
+    // Saneamos los headers del upstream: eliminamos valores con caracteres
+    // fuera de ISO-8859-1 para evitar el error del navegador al parsearlos.
+    const safeHeaders: Record<string, string> = {};
+    for (const [key, value] of upstream.headers.entries()) {
+      // Solo mantenemos headers que sean ASCII puro (ISO-8859-1 subset)
+      // Los valores con emojis o caracteres especiales se descartan.
+      if (typeof value === 'string' && /^[\x00-\x7F]*$/.test(value)) {
+        safeHeaders[key] = value;
+      }
+    }
+
     res.status(upstream.status);
-    const ct = upstream.headers.get('content-type');
-    if (ct) res.setHeader('Content-Type', ct);
+    for (const [key, value] of Object.entries(safeHeaders)) {
+      res.setHeader(key, value);
+    }
     await pipeUpstream(upstream, res);
   } catch (err) {
     console.error('Cloudflare proxy error:', err);

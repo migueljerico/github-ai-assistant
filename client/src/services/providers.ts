@@ -175,14 +175,19 @@ const OPENZEN_FALLBACK: ModelOption[] = [
   { value: 'north-mini-code-free', label: 'North Mini Code (free)', free: true },
 ];
 
-// Fallback de Cloudflare Workers AI — modelos configurados en ZCode por el usuario.
+// Fallback de Cloudflare Workers AI — modelos estables y útiles configurados en ZCode.
 // Catálogo ESTÁTICO (sin fetch dinámico que falla por CORS). El proxy /api/cloudflare
-// elude el bloqueo del navegador, pero la lista de modelos es fija: la que el usuario
-// tiene configurada aquí.
+// elude el bloqueo del navegador, pero la lista de modelos es fija: los que el usuario
+// tiene configurados aquí.
 const CLOUDFLARE_FALLBACK: ModelOption[] = [
-  { value: '@cf/moonshotai/kimi-k2.7-code', label: 'Kimi K2.7 Code (262.1K ctx)', recommended: true },
-  { value: '@cf/zai-org/glm-5.2', label: 'GLM 5.2 (262.1K ctx)' },
-  { value: '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b', label: 'DeepSeek R1 Distill Qwen 32B (80K ctx)' },
+  { value: '@cf/moonshotai/kimi-k2.7-code', label: 'Kimi K2.7 Code', recommended: true },
+  { value: '@cf/zai-org/glm-5.2', label: 'GLM 5.2' },
+  { value: '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b', label: 'DeepSeek R1 Distill Qwen 32B' },
+  { value: '@cf/meta/llama-3.1-8b-instruct', label: 'Llama 3.1 8B' },
+  { value: '@cf/meta/llama-3.3-70b-instruct', label: 'Llama 3.3 70B' },
+  { value: '@cf/mistral/mistral-7b-instruct-v0.1', label: 'Mistral 7B' },
+  { value: '@cf/qwen/qwen2.5-7b-instruct', label: 'Qwen 2.5 7B' },
+  { value: '@cf/google/gemma-2-9b-it', label: 'Gemma 2 9B' },
 ];
 
 export const PROVIDERS: Record<AIProviderType, ProviderDef> = {

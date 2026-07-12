@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v3.33.5 · Julio 2026
+**Actualizado a:** v3.33.7 · Julio 2026
 
 ---
 
@@ -58,6 +58,7 @@ Estado del código, mejoras pendientes y roadmap del proyecto.
 | — | **OpenCode Zen y Cloudflare Workers AI: fix CORS + catálogo estático** | providers.ts (openzen/cloudflare: proxy /api/openzen y /api/cloudflare, catálogos estáticos), server/index.js (proxies + rate limiters), gemini.ts (accountId header), i18n/es/en.ts, providers.test.ts | v3.33.2 |
 | — | **Cloudflare 400 fix: proxy lee X-Account-Id del header** | server/index.js (proxy /api/cloudflare: accountId desde header, no body) | v3.33.3 |
 | — | **Cloud Run startup fix: eliminar type assertion TS en server/index.js** | server/index.js (eliminado `as string | undefined` en lectura de header) | v3.33.5 |
+| — | **Cloudflare: saneo de headers + rate limit + modelos ampliados** | server/index.js (proxy /api/cloudflare: headers saneados, rate limit 100/min), providers.ts (CLOUDFLARE_FALLBACK: 8 modelos), i18n | v3.33.7 |
 
 ---
 
