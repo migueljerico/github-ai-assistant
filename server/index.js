@@ -74,6 +74,31 @@ const nimLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// ─── Rate Limiting para OpenCode Zen Proxy (v3.33.1) ──────────────────────────
+// OpenCode Zen tampoco envía cabeceras CORS → el navegador bloquea las llamadas
+// directas con "Failed to fetch". Mismo patrón que Gemini y NIM: proxy backend.
+const openzenLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 40,
+  message: {
+    error: 'Demasiadas peticiones a OpenCode Zen. Por favor espera un minuto.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// ─── Rate Limiting para Cloudflare Workers AI Proxy (v3.33.1) ──────────────────
+// Cloudflare Workers AI tampoco envía cabeceras CORS → mismo patrón de proxy.
+const cloudflareLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 40,
+  message: {
+    error: 'Demasiadas peticiones a Cloudflare Workers AI. Por favor espera un minuto.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // URL base de la API de NVIDIA NIM (el proxy reenvía a ella).
 // NIM NO envía cabeceras CORS → el navegador bloquea las llamadas directas con
 // "Failed to fetch". Este proxy elude el bloqueo igual que el de Gemini (#58).
@@ -332,6 +357,82 @@ app.get('/api/nim/models', nimLimiter, async (req, res) => {
   }
 });
 
+// ─── OpenCode Zen Proxy (v3.33.1) ─────────────────────────────────────────────
+// OpenCode Zen (opencode.ai) NO envía cabeceras CORS → el navegador bloquea las
+// llamadas directas con "Failed to fetch". Este proxy elude el bloqueo igual que
+// el de Gemini y NIM. Reenvía el body OpenAI-format y el header Authorization
+// sin tocarlos, y devuelve la respuesta (JSON o stream SSE) tal cual llega.
+//
+// La API key del usuario viaja en el header Authorization (HTTPS cliente→backend)
+// y se descarta al terminar la petición — nunca se persiste ni loguea.
+app.post('/api/openzen', openzenLimiter, async (req, res) => {
+  const auth = req.headers.authorization || '';
+  if (!auth.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Falta la API key (header Authorization: Bearer ...)' });
+  }
+  try {
+    const upstream = await fetch('https://opencode.ai/zen/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': auth,
+        'Content-Type': 'application/json',
+        ...(req.headers['accept'] ? { 'Accept': req.headers['accept'] } : {}),
+      },
+      body: JSON.stringify(req.body),
+    });
+    console.log(`[OpenZen] upstream status=${upstream.status} ct=${upstream.headers.get('content-type') || '-'}`);
+    res.status(upstream.status);
+    const ct = upstream.headers.get('content-type');
+    if (ct) res.setHeader('Content-Type', ct);
+    await pipeUpstream(upstream, res);
+  } catch (err) {
+    console.error('OpenCode Zen proxy error:', err);
+    if (!res.headersSent) res.status(502).json({ error: 'Error al contactar con OpenCode Zen', detail: err?.message || String(err) });
+    else { try { res.end(); } catch { /* noop */ } }
+  }
+});
+
+// ─── Cloudflare Workers AI Proxy (v3.33.1) ─────────────────────────────────────
+// Cloudflare Workers AI (api.cloudflare.com) NO envía cabeceras CORS → el navegador
+// bloquea las llamadas directas con "Failed to fetch". Este proxy elude el bloqueo
+// igual que el de Gemini, NIM y OpenCode Zen. Reenvía el body OpenAI-format y el
+// header Authorization sin tocarlos, y devuelve la respuesta (JSON o stream SSE).
+//
+// Requiere account_id que se recibe del body de la petición (lo construye el frontend
+// con el valor del campo Account ID del panel). La API key viaja en Authorization.
+app.post('/api/cloudflare', cloudflareLimiter, async (req, res) => {
+  const auth = req.headers.authorization || '';
+  if (!auth.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Falta la API key de Cloudflare (header Authorization: Bearer ...)' });
+  }
+  // Cloudflare requiere account_id en la URL; el frontend lo envía en el body.
+  const accountId = req.body?.accountId;
+  if (!accountId) {
+    return res.status(400).json({ error: 'Falta accountId (campo accountId en el body)' });
+  }
+  const upstreamUrl = `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(accountId)}/ai/v1/chat/completions`;
+  try {
+    const upstream = await fetch(upstreamUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': auth,
+        'Content-Type': 'application/json',
+        ...(req.headers['accept'] ? { 'Accept': req.headers['accept'] } : {}),
+      },
+      body: JSON.stringify(req.body),
+    });
+    console.log(`[Cloudflare] status=${upstream.status} ct=${upstream.headers.get('content-type') || '-'}`);
+    res.status(upstream.status);
+    const ct = upstream.headers.get('content-type');
+    if (ct) res.setHeader('Content-Type', ct);
+    await pipeUpstream(upstream, res);
+  } catch (err) {
+    console.error('Cloudflare proxy error:', err);
+    if (!res.headersSent) res.status(502).json({ error: 'Error al contactar con Cloudflare Workers AI', detail: err?.message || String(err) });
+    else { try { res.end(); } catch { /* noop */ } }
+  }
+});
+
 // ─── GitHub OAuth ─────────────────────────────────────────────────────────────
 app.get('/auth/github', (req, res) => {
   if (!GITHUB_CLIENT_ID) {
@@ -429,8 +530,10 @@ app.listen(PORT, () => {
   console.log(`   OAuth:   http://localhost:${PORT}/auth/github`);
   console.log(`   Proxy Gemini: POST http://localhost:${PORT}/api/gemini`);
   console.log(`   Proxy NIM:    POST http://localhost:${PORT}/api/nim · GET /api/nim/models`);
-  console.log(`   🛡️  Rate Limit: 40 req/min en /api/gemini y /api/nim`);
-  console.log(`\n   ℹ️  Groq / OpenRouter / Zenmux → llamadas directas desde el navegador`);
+  console.log(`   Proxy OpenZen: POST http://localhost:${PORT}/api/openzen`);
+  console.log(`   Proxy CF:     POST http://localhost:${PORT}/api/cloudflare`);
+  console.log(`   🛡️  Rate Limit: 40 req/min en /api/gemini, /api/nim, /api/openzen y /api/cloudflare`);
+  console.log(`\n   ℹ️  OpenRouter / Zenmux → llamadas directas desde el navegador`);
   console.log(`   ℹ️  Gemini → proxiado via /api/gemini (elude bloqueo EU)`);
-  console.log(`   ℹ️  NIM    → proxiado via /api/nim (elude bloqueo CORS)\n`);
+  console.log(`   ℹ️  NIM / OpenCode Zen / Cloudflare → proxiados (eluden bloqueo CORS)\n`);
 });

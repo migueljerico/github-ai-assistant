@@ -175,15 +175,14 @@ const OPENZEN_FALLBACK: ModelOption[] = [
   { value: 'north-mini-code-free', label: 'North Mini Code (free)', free: true },
 ];
 
-// Fallback de Cloudflare Workers AI mientras carga el catálogo dinámico o si falla.
-// El catálogo real (autenticado, por cuenta) es la lista COMPLETA de modelos
-// @cf/…; aquí dejamos los más usados como red de seguridad. Requiere account_id.
+// Fallback de Cloudflare Workers AI — modelos configurados en ZCode por el usuario.
+// Catálogo ESTÁTICO (sin fetch dinámico que falla por CORS). El proxy /api/cloudflare
+// elude el bloqueo del navegador, pero la lista de modelos es fija: la que el usuario
+// tiene configurada aquí.
 const CLOUDFLARE_FALLBACK: ModelOption[] = [
-  { value: '@cf/meta/llama-3.3-70b-instruct', label: '@cf/meta/llama-3.3-70b-instruct' },
-  { value: '@cf/meta/llama-3.1-8b-instruct', label: '@cf/meta/llama-3.1-8b-instruct', recommended: true },
-  { value: '@cf/mistral/mistral-7b-instruct-v0.1', label: '@cf/mistral/mistral-7b-instruct-v0.1' },
-  { value: '@cf/qwen/qwen1.5-7b-chat', label: '@cf/qwen/qwen1.5-7b-chat' },
-  { value: '@cf/google/gemma-2-9b-it', label: '@cf/google/gemma-2-9b-it' },
+  { value: '@cf/moonshotai/kimi-k2.7-code', label: 'Kimi K2.7 Code (262.1K ctx)', recommended: true },
+  { value: '@cf/zai-org/glm-5.2', label: 'GLM 5.2 (262.1K ctx)' },
+  { value: '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b', label: 'DeepSeek R1 Distill Qwen 32B (80K ctx)' },
 ];
 
 export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
@@ -294,9 +293,12 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     emoji: '☯️',
     cardDesc: 'provider.openzen.cardDesc',
     transport: 'openai-compatible',
-    chatEndpoint: 'https://opencode.ai/zen/v1/chat/completions',
-    modelsEndpoint: 'https://opencode.ai/zen/v1/models',
-    modelsNeedKey: false, // el catálogo de OpenCode Zen es público (sin auth)
+    // Proxy backend /api/openzen (elude bloqueo CORS de opencode.ai).
+    // El catálogo es ESTÁTICO (OPENZEN_FALLBACK): el endpoint de modelos opencode.ai
+    // no envía Access-Control-Allow-Origin y el navegador lo bloquea. Usamos la lista
+    // curada de 5 modelos conocidos.
+    chatEndpoint: '/api/openzen',
+    modelsNeedKey: false, // OpenCode Zen NO requiere API key (catálogo público)
     staticModels: OPENZEN_FALLBACK,
     defaultModel: OPENZEN_FALLBACK[0].value,
     keyPlaceholder: 'API key de opencode.ai',
@@ -305,11 +307,9 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     note: 'provider.openzen.note',
   },
   // Cloudflare Workers AI: VA AL FINAL del listado (decisión del usuario).
-  // Exige account_id en la ruta URL + token por cuenta; por eso el panel muestra
-  // un campo extra de Account ID y el endpoint usa el marcador {account_id}, que se
-  // sustituye en tiempo de ejecución con resolveEndpoint().
-  // Catálogo ESTÁTICO (CLOUDFLARE_FALLBACK) - se usa la lista configurada en ZCode
-  // en lugar del catálogo dinámico que falla con "Failed to fetch".
+  // Exige account_id en la ruta URL + token por cuenta; el proxy recibe el
+  // account_id por header X-Account-Id y construye la URL del upstream.
+  // Catálogo ESTÁTICO (CLOUDFLARE_FALLBACK): los modelos que usa el usuario en ZCode.
   cloudflare: {
     id: 'cloudflare',
     name: 'Cloudflare Workers AI',
@@ -317,8 +317,8 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     emoji: '🟠',
     cardDesc: 'provider.cloudflare.cardDesc',
     transport: 'openai-compatible',
-    chatEndpoint: 'https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1/chat/completions',
-    // Sin modelsEndpoint: usa catálogo estático (CLOUDFLARE_FALLBACK) para evitar fallos de fetch dinámico
+    // Proxy backend /api/cloudflare (elude bloqueo CORS de Cloudflare).
+    chatEndpoint: '/api/cloudflare',
     modelsNeedKey: true, // requiere el API token (Bearer) y el account_id
     staticModels: CLOUDFLARE_FALLBACK,
     defaultModel: CLOUDFLARE_FALLBACK[0].value,

@@ -114,9 +114,9 @@ export const en = {
   'provider.openzen.cardDesc': 'OpenCode Zen: models with opencode.ai API key',
   'provider.openzen.signupLabel': 'Get API key at opencode.ai →',
   'provider.openzen.note': '🆓 Models available with your opencode.ai API key. Free models (suffix "-free") work with the free key; a paid key unlocks premium models.',
-  'provider.cloudflare.cardDesc': 'Cloudflare Workers AI · serverless models (@cf/…) configured in ZCode',
+  'provider.cloudflare.cardDesc': 'Cloudflare Workers AI · server proxy (ZCode static catalog)',
   'provider.cloudflare.signupLabel': 'Create API token at dash.cloudflare.com →',
-  'provider.cloudflare.note': 'Requires your Account ID (from the Cloudflare dashboard sidebar) and an API token with Workers AI permissions. Uses models configured in ZCode (static catalog) to avoid dynamic fetch failures.',
+  'provider.cloudflare.note': 'Requires your Account ID and an API token with Workers AI permissions. Uses models configured in ZCode (static catalog: Kimi K2.7 Code, GLM 5.2, DeepSeek R1 Distill Qwen 32B). No dynamic fetch.',
 
   // ────── PHASE 2: Modals ──────
   'modal.doc.title': 'Documentation generated for {repoName}',

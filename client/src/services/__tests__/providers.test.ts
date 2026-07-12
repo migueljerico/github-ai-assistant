@@ -10,24 +10,31 @@ describe('providers — registro', () => {
     });
   });
 
-  it('gemini usa proxy; groq, openrouter, nvidia y zenmux son openai-compatible con endpoint', () => {
+  it('gemini usa proxy; groq, openrouter y zenmux son openai-compatible con endpoint directo; nvidia, openzen y cloudflare usan proxy backend por CORS', () => {
     expect(PROVIDERS.gemini.transport).toBe('gemini-proxy');
     expect(PROVIDERS.groq.transport).toBe('openai-compatible');
     expect(PROVIDERS.groq.chatEndpoint).toContain('groq.com');
     expect(PROVIDERS.openrouter.transport).toBe('openai-compatible');
     expect(PROVIDERS.openrouter.chatEndpoint).toContain('openrouter.ai');
-    expect(PROVIDERS.nvidia.transport).toBe('openai-compatible');
-    // NVIDIA NIM: proxy backend /api/nim porque el upstream no envía CORS.
-    expect(PROVIDERS.nvidia.chatEndpoint).toBe('/api/nim');
-    // Catálogo ESTÁTICO (NIM_FALLBACK), igual que Gemini: sin catálogo dinámico
-    expect(PROVIDERS.nvidia.modelsEndpoint).toBeUndefined();
-    expect(PROVIDERS.nvidia.modelsNeedKey).toBeUndefined();
-    expect(PROVIDERS.zenmux.transport).toBe('openai-compatible');
-    expect(PROVIDERS.zenmux.chatEndpoint).toContain('zenmux.ai');
     // El catálogo de OpenRouter es público (no necesita key)
     expect(PROVIDERS.openrouter.modelsNeedKey).toBe(false);
     expect(PROVIDERS.groq.modelsNeedKey).toBe(true);
+    expect(PROVIDERS.zenmux.transport).toBe('openai-compatible');
+    expect(PROVIDERS.zenmux.chatEndpoint).toContain('zenmux.ai');
     expect(PROVIDERS.zenmux.modelsNeedKey).toBe(true);
+    // NVIDIA NIM: proxy backend /api/nim (CORS de NIM)
+    expect(PROVIDERS.nvidia.transport).toBe('openai-compatible');
+    expect(PROVIDERS.nvidia.chatEndpoint).toBe('/api/nim');
+    expect(PROVIDERS.nvidia.modelsEndpoint).toBeUndefined();
+    // OpenCode Zen: proxy /api/openzen (CORS de opencode.ai), catálogo estático
+    expect(PROVIDERS.openzen.transport).toBe('openai-compatible');
+    expect(PROVIDERS.openzen.chatEndpoint).toBe('/api/openzen');
+    expect(PROVIDERS.openzen.modelsEndpoint).toBeUndefined();
+    // Cloudflare: proxy /api/cloudflare (CORS de Cloudflare), catálogo estático
+    expect(PROVIDERS.cloudflare.transport).toBe('openai-compatible');
+    expect(PROVIDERS.cloudflare.chatEndpoint).toBe('/api/cloudflare');
+    expect(PROVIDERS.cloudflare.modelsEndpoint).toBeUndefined();
+    expect(PROVIDERS.cloudflare.modelsNeedKey).toBe(true);
   });
 
   it('gemini incluye gemini-3-flash-preview en staticModels', () => {
@@ -195,30 +202,25 @@ describe('providers — fetchModels', () => {
     expect(list!.find(m => m.value === 'paid/model')!.free).toBe(false);
   });
 
-  it('openzen: catálogo público, filtra SOLO modelos free (sufijo -free), todos marcados free', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        object: 'list',
-        data: [
-          { id: 'hy3-free', object: 'model', created: 1, owned_by: 'opencode' },
-          { id: 'deepseek-v4-flash-free', object: 'model', created: 1, owned_by: 'opencode' },
-          { id: 'some-paid-model', object: 'model', created: 1, owned_by: 'opencode' },
-        ],
-      }),
-    });
+  it('openzen: usa catálogo estático (OPENZEN_FALLBACK) sin fetch dinámico (CORS)', async () => {
+    const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
 
-    // Sin key (el catálogo de OpenCode Zen es público)
+    // Sin modelsEndpoint, fetchModels devuelve null (usa staticModels)
     const list = await fetchModels(PROVIDERS.openzen);
-    expect(list).not.toBeNull();
-    const ids = list!.map(m => m.value);
-    // Solo los free
-    expect(ids).toContain('hy3-free');
-    expect(ids).toContain('deepseek-v4-flash-free');
-    expect(ids).not.toContain('some-paid-model');
-    // Todos los listados son free
-    expect(list!.every(m => m.free)).toBe(true);
+    expect(list).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+    // El catálogo estático son los 5 modelos conocidos de OPENZEN_FALLBACK
+    const values = PROVIDERS.openzen.staticModels.map(m => m.value);
+    expect(values).toEqual([
+      'hy3-free',
+      'deepseek-v4-flash-free',
+      'mimo-v2.5-free',
+      'nemotron-3-ultra-free',
+      'north-mini-code-free',
+    ]);
+    // Todos son free
+    expect(PROVIDERS.openzen.staticModels.every(m => m.free)).toBe(true);
   });
 
   it('cloudflare: devuelve null sin accountId (sin modelsEndpoint usa catálogo estático)', async () => {
@@ -236,14 +238,12 @@ describe('providers — fetchModels', () => {
     const list = await fetchModels(PROVIDERS.cloudflare, 'token_test', 'MY_ACCOUNT');
     expect(list).toBeNull(); // Sin modelsEndpoint, devuelve null
     expect(fetchMock).not.toHaveBeenCalled();
-    // El catálogo estático son los modelos de CLOUDFLARE_FALLBACK
+    // El catálogo estático son los modelos de CLOUDFLARE_FALLBACK (configurados en ZCode)
     const values = PROVIDERS.cloudflare.staticModels.map(m => m.value);
     expect(values).toEqual([
-      '@cf/meta/llama-3.3-70b-instruct',
-      '@cf/meta/llama-3.1-8b-instruct',
-      '@cf/mistral/mistral-7b-instruct-v0.1',
-      '@cf/qwen/qwen1.5-7b-chat',
-      '@cf/google/gemma-2-9b-it',
+      '@cf/moonshotai/kimi-k2.7-code',
+      '@cf/zai-org/glm-5.2',
+      '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b',
     ]);
   });
 });

@@ -208,6 +208,7 @@ async function callOpenAICompatible(
   onToken?: (textSoFar: string) => void,  // ← #38: streaming opcional
   signal?: AbortSignal,  // ← #40: permite cancelar la petición (botón Detener)
   maxTokens?: number,  // ← v3.31.0: límite de salida (4096 por defecto; docs usa 8192)
+  accountId?: string | null,  // ← v3.33.1: Cloudflare — se envía como header X-Account-Id al proxy
 ): Promise<string> {
   // Modo chat necesita más creatividad (0.7); modo acción debe ser determinista
   // para producir JSON estable (0.1). Por defecto se mantiene el comportamiento
@@ -235,6 +236,7 @@ async function callOpenAICompatible(
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
       ...extraHeaders,
+      ...(accountId ? { 'X-Account-Id': accountId } : {}),
     },
     body: JSON.stringify(body),
     signal,
@@ -364,7 +366,7 @@ export async function callAI(
   return withTransientRetry(() =>
     def.transport === 'gemini-proxy'
       ? callGeminiDirect(apiKey, model, messages, systemPrompt, mode, onToken, signal, maxTokens)
-      : callOpenAICompatible(chatEndpoint, apiKey, model, messages, systemPrompt, mode, def.extraHeaders, onToken, signal, maxTokens),
+      : callOpenAICompatible(chatEndpoint, apiKey, model, messages, systemPrompt, mode, def.extraHeaders, onToken, signal, maxTokens, accountId),
   );
 }
 
@@ -384,7 +386,19 @@ export async function validateProviderKey(
       await callGeminiDirect(apiKey, model, [{ role: 'user', content: 'Hi' }], 'Reply with one word.');
     } else {
       const chatEndpoint = resolveEndpoint(def.chatEndpoint!, accountId);
-      await callOpenAICompatible(chatEndpoint, apiKey, model, [{ role: 'user', content: 'Hi' }], 'Reply with one word.', undefined, def.extraHeaders);
+      await callOpenAICompatible(
+        chatEndpoint,
+        apiKey,
+        model,
+        [{ role: 'user', content: 'Hi' }],
+        'Reply with one word.',
+        undefined,
+        def.extraHeaders,
+        undefined,
+        undefined,
+        undefined,
+        accountId,
+      );
     }
     return { valid: true };
   } catch (err) {
