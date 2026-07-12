@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.32.4] — 2026-07-12
+
+### Fixed
+- **NVIDIA NIM: vuelta al proxy backend `/api/nim` por CORS.** El acceso directo a `https://integrate.api.nvidia.com/v1/chat/completions` (v3.32.3) falla en producción porque NVIDIA NIM no envía la cabecera `Access-Control-Allow-Origin` y el navegador bloquea la petición con "Failed to fetch". Se revierte `nvidia.chatEndpoint` a `/api/nim`, reactivando el proxy transparente de `server/index.js` que reenvía la llamada de servidor a servidor. El catálogo de modelos sigue siendo estático (`NIM_FALLBACK`, 12 modelos). Zero-Storage mantenido: la key viaja en HTTPS del cliente al backend y se descarta tras la petición.
+
+### Changed
+- `client/src/services/providers.ts`: `nvidia.chatEndpoint` vuelve a `/api/nim`.
+- `client/src/services/__tests__/providers.test.ts`: test actualizado para el endpoint de proxy.
+- `CLAUDE.md`, `METODOLOGIA_IA.md`, `README.md`, `MEJORAS_FUTURAS.md`: actualizada la sección de proxies y añadida fila de trazabilidad.
+
+### Notes
+- Cambio de código por Kimi (Kimi-K2.7-code) vía ZCode. Tests/build/lint verificados.
+
 ## [3.32.3] — 2026-07-12
 
 ### Changed

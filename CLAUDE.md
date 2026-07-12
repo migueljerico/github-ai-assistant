@@ -31,7 +31,7 @@ reemplazan. Saltarse este paso es la causa nº1 de trabajar en bucle.
 
 ## 1. Visión general
 
-**GitHub AI Assistant** (v3.32.1) es una app web que permite operar la **GitHub
+**GitHub AI Assistant** (v3.32.4) es una app web que permite operar la **GitHub
 REST API en lenguaje natural** a través de un proveedor de IA (Google Gemini,
 Groq Cloud, OpenRouter, NVIDIA NIM o Zenmux). El usuario escribe una instrucción,
 la IA propone una acción, y
@@ -254,7 +254,7 @@ Ejecutar **un solo test**: `cd client && npm run test:run -- src/services/github
   `server/index.js`) se justifican **únicamente por bloqueos del navegador**, no por
   seguridad:
   - `POST /api/gemini` → Gemini bloquea peticiones desde EEA (bloqueo geográfico).
-  - `POST /api/nim` + `GET /api/nim/models` → NVIDIA NIM originalmente no envía cabeceras CORS; el proxy se mantiene como fallback, pero el frontend ahora llama directo a `integrate.api.nvidia.com` (v3.32.3).
+  - `POST /api/nim` + `GET /api/nim/models` → NVIDIA NIM no envía cabeceras CORS; el frontend llama al proxy backend `/api/nim` y el servidor reenvía la petición a `integrate.api.nvidia.com` (servidor a servidor, sin CORS). Mismo patrón que el proxy de Gemini.
   La key viaja en HTTPS (cliente→backend) y nunca se persistite ni loguea.
   **No añadas proxies backend ni `process.env.*API_KEY` para nuevos proveedores
   sin aprobación explícita del autor.** Para añadir un proveedor, basta una entrada

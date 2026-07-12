@@ -17,8 +17,8 @@ describe('providers — registro', () => {
     expect(PROVIDERS.openrouter.transport).toBe('openai-compatible');
     expect(PROVIDERS.openrouter.chatEndpoint).toContain('openrouter.ai');
     expect(PROVIDERS.nvidia.transport).toBe('openai-compatible');
-    // NVIDIA NIM: acceso directo a integrate.api.nvidia.com (sin proxy)
-    expect(PROVIDERS.nvidia.chatEndpoint).toBe('https://integrate.api.nvidia.com/v1/chat/completions');
+    // NVIDIA NIM: proxy backend /api/nim porque el upstream no envía CORS.
+    expect(PROVIDERS.nvidia.chatEndpoint).toBe('/api/nim');
     // Catálogo ESTÁTICO (NIM_FALLBACK), igual que Gemini: sin catálogo dinámico
     expect(PROVIDERS.nvidia.modelsEndpoint).toBeUndefined();
     expect(PROVIDERS.nvidia.modelsNeedKey).toBeUndefined();
