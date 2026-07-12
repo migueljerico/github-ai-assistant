@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `server/index.js`: helper `pipeUpstream()` + log de status/content-type upstream en `POST /api/nim` (solo status, zero-PII) para que futuros errores 401/403/404/429 de NVIDIA sean visibles en los logs de Cloud Run.
 
 ### Notes
-- Revisión del bug y fix por Grok (grok-4.5) vía ZCode. Root cause confirmado con repro local: `upstream.body.constructor.name === 'ReadableStream'` y `typeof body.pipe === 'undefined'`.
+- Revisión del bug y fix por Gemma 4 (gemma-4-31b-it) vía ZCode. Root cause confirmado con repro local: `upstream.body.constructor.name === 'ReadableStream'` y `typeof body.pipe === 'undefined'`.
 
 ## [3.32.4] — 2026-07-12
 
