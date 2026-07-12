@@ -5,17 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.33.3] — 2026-07-12
+## [3.33.4] — 2026-07-12
 
 ### Fixed
-- **Cloudflare Workers AI: 400 Bad Request en `/api/cloudflare`.** El proxy leía `accountId` de `req.body`, pero el body solo trae el payload de chat (model, messages...). El `accountId` viaja en el header `X-Account-Id`. Corregido: el proxy ahora lee `req.headers['x-account-id']` y devuelve un mensaje claro si falta.
+- **Cloud Run: contenedor no arrancaba (HealthCheckContainerError).** El `Dockerfile` establecía `ENV PORT=8080`, sobrescribiendo el puerto dinámico que asigna Cloud Run. El servidor Express escucha en `process.env.PORT`, pero el health check de Cloud Run apuntaba al puerto dinámico mientras el contenedor escuchaba en 8080 fijo. Corregido: eliminado `ENV PORT=8080` del Dockerfile; ahora el servidor respeta el `$PORT` que provee Cloud Run en runtime.
 
 ### Changed
-- `server/index.js`: proxy `/api/cloudflare` lee `accountId` del header `X-Account-Id` en vez de `req.body`.
-- `client/src/services/gemini.ts`: `callOpenAICompatible` ya enviaba `X-Account-Id` correctamente; sin cambios.
+- `Dockerfile`: eliminada línea `ENV PORT=8080`; el servidor ya respeta `process.env.PORT`.
 
 ### Notes
 - Tests: 536/536 (client) + 5/5 (server), build limpio, lint 0 errores.
+- Cambio de código por ZCode (nemotron-3-ultra / NVIDIA NIM).
+
+## [3.33.3] — 2026-07-12
+
+### Fixed
+- **Cloudflare Workers AI: 400 Bad Request en `/api/cloudflare`.** El proxy leía `accountId` de `req.body`, pero el body solo trae el payload de chat (model, messages...). Corregido: lee el header `X-Account-Id` que el frontend envía correctamente.
+
+### Changed
+- `server/index.js`: proxy `/api/cloudflare` obtiene `accountId` de `req.headers['x-account-id']`.
+- Versiones bump a 3.33.3 + docs sincronizadas.
+
+### Notes
 - Cambio de código por ZCode (nemotron-3-ultra / NVIDIA NIM).
 
 ## [3.33.2] — 2026-07-12
