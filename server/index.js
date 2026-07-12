@@ -407,7 +407,7 @@ app.post('/api/cloudflare', cloudflareLimiter, async (req, res) => {
   }
   // Cloudflare requiere account_id en la URL; llega como header X-Account-Id
   // desde el frontend (gemini.ts: callOpenAICompatible lo añade cuando provider=cloudflare).
-  const accountId = req.headers['x-account-id'] as string | undefined;
+  const accountId = req.headers['x-account-id'];
   if (!accountId) {
     return res.status(400).json({ error: 'Falta accountId (header X-Account-Id). Rellena el campo Account ID en el panel.' });
   }
