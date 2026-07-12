@@ -405,10 +405,11 @@ app.post('/api/cloudflare', cloudflareLimiter, async (req, res) => {
   if (!auth.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Falta la API key de Cloudflare (header Authorization: Bearer ...)' });
   }
-  // Cloudflare requiere account_id en la URL; el frontend lo envía en el body.
-  const accountId = req.body?.accountId;
+  // Cloudflare requiere account_id en la URL; llega como header X-Account-Id
+  // desde el frontend (gemini.ts: callOpenAICompatible lo añade cuando provider=cloudflare).
+  const accountId = req.headers['x-account-id'] as string | undefined;
   if (!accountId) {
-    return res.status(400).json({ error: 'Falta accountId (campo accountId en el body)' });
+    return res.status(400).json({ error: 'Falta accountId (header X-Account-Id). Rellena el campo Account ID en el panel.' });
   }
   const upstreamUrl = `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(accountId)}/ai/v1/chat/completions`;
   try {
