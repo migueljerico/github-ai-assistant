@@ -181,6 +181,11 @@ export async function summarizeThread(
     config.provider,
     config.apiKey,
     config.model,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    config.accountId,
   );
 
   return raw

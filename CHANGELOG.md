@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.33.0] — 2026-07-12
+
+### Added
+- **Nuevos proveedores de IA: OpenCode Zen y Cloudflare Workers AI.** Se añaden al registro único `PROVIDERS` (`client/src/services/providers.ts`) siguiendo el patrón openai-compatible de Zenmux/OpenRouter, **sin tocar la lógica ni los proveedores existentes**.
+  - **OpenCode Zen (`openzen`):** catálogo dinámico **público** que se filtra en tiempo real a los modelos **gratis** (sufijo `-free`); el usuario elige entre ellos. Los gratis funcionan con el token keyless `public` (sin registro); una key real de opencode.ai desbloquea los de pago.
+  - **Cloudflare Workers AI (`cloudflare`, última tarjeta del listado):** catálogo dinámico **completo** para que el usuario elija. Como Workers AI exige `account_id` en la ruta URL + token por cuenta, el panel muestra un campo extra de **Account ID** y el endpoint usa el marcador `{account_id}`, que se sustituye en runtime con `resolveEndpoint()`.
+- `client/src/services/providers.ts`: helper `resolveEndpoint()` (sustituye `{account_id}`), ramas `openzen`/`cloudflare` en `fetchModels`, y `accountId?` en `AIProviderConfig`.
+- `client/src/context/AIProviderContext.tsx`: `accountId` en el estado (Zero-Storage, igual que la key).
+- `client/src/components/ai-provider/AIProviderPanel.tsx`: campo Account ID solo para Cloudflare; se propaga a `validateProviderKey`/`connect`/`fetchModels`.
+- `client/src/services/gemini.ts`: `accountId?` en `callAI`/`validateProviderKey` para resolver el endpoint de Cloudflare.
+- i18n (en/es): claves `provider.openzen.*`, `provider.cloudflare.*` y `aipanel.accountId`.
+- Tests: cobertura de `fetchModels` para `openzen` (solo free) y `cloudflare` (catálogo completo + `{account_id}`), y de `resolveEndpoint`.
+
+### Notes
+- Endpoints de OpenCode Zen (`https://opencode.ai/zen/v1/...`) y Cloudflare Workers AI verificados vía investigación. La lógica de parsing/sustitución está cubierta por tests unitarios; el comportamiento en vivo depende de las keys/cuenta del usuario. No se modificó el servidor.
+- Investigación de endpoints: subagente de investigación (general-purpose). Cierre e implementación: asistente ZCode (modelo hy3-free / openrouter-free).
+
 ## [3.32.5] — 2026-07-12
 
 ### Fixed

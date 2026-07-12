@@ -29,7 +29,7 @@ export default function App() {
   const { token, user, isAuthenticated } = useAuth();
   const { addEntry, updateEntry } = useHistory();
   // 🔥 ZERO-STORAGE: Extraemos provider, apiKey Y model del contexto (no de sessionStorage)
-  const { provider, apiKey, model } = useAIProvider();
+  const { provider, apiKey, model, accountId } = useAIProvider();
   const providerName = provider ? getProvider(provider).name : 'IA';
   const { t, lang } = useLanguage();
 
@@ -176,10 +176,10 @@ export default function App() {
     if (!token || !user || !provider || !apiKey || !model) return null;
     return runDocumentRepo(
       { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
-      { provider, apiKey, model },
+      { provider, apiKey, model, accountId },
       repoInput,
     );
-  }, [token, user, provider, apiKey, model, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [token, user, provider, apiKey, model, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, accountId]);
 
   const flowGenerateFile = useCallback(async (): Promise<string | null> => {
     // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto
@@ -189,11 +189,11 @@ export default function App() {
     if (!primary || !token || !user || !provider || !apiKey || !model) return null;
     return runGenerateFileDoc(
       { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
-      { provider, apiKey, model },
+      { provider, apiKey, model, accountId },
       primary,
       buildConversationText(),
     );
-  }, [fileContext, token, user, provider, apiKey, model, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, buildConversationText]);
+  }, [fileContext, token, user, provider, apiKey, model, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, buildConversationText, accountId]);
 
   // Publicación de la doc de repo (destino fijo = repo analizado).
   const flowCommitRepo = useCallback(async (analysis: RepoAnalysis): Promise<void> => {
@@ -230,11 +230,11 @@ export default function App() {
     if (!token || !user || !provider || !apiKey || !model) return null;
     return runCreateRepoAndDocument(
       { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
-      { provider, apiKey, model },
+      { provider, apiKey, model, accountId },
       repoInput,
       files,
     );
-  }, [token, user, provider, apiKey, model, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading]);
+  }, [token, user, provider, apiKey, model, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading, accountId]);
 
   // Publicación de la doc del archivo (destino elegido; maneja repo inexistente).
   const flowPublishFile = useCallback(async (target: PublishTarget): Promise<StartPublishResult> => {
@@ -270,10 +270,10 @@ export default function App() {
 
     await runSend(
       { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading, setConversationHistory, setPendingAction },
-      { provider, apiKey, model },
+      { provider, apiKey, model, accountId },
       { userText, conversationHistory, modeOverride, repoContext, fileContext, multiRepoEnabled, selectedRepos, signal: controller.signal },
     );
-  }, [inputValue, token, user, provider, apiKey, model, providerName, model, provider, t, lang, conversationHistory, multiRepoEnabled, selectedRepos, modeOverride, repoContext, fileContext, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [inputValue, token, user, provider, apiKey, model, providerName, model, provider, t, lang, conversationHistory, multiRepoEnabled, selectedRepos, modeOverride, repoContext, fileContext, addMessage, updateMessage, addEntry, updateEntry, accountId]);
 
   // #40: cancela la petición en vuelo; runSend mostrará "⏹️ detenido".
   const handleStop = useCallback(() => abortRef.current?.abort(), []);
@@ -284,21 +284,21 @@ export default function App() {
     if (!token || !user || !provider || !apiKey || !model) return;
     await runSummarizeThread(
       { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
-      { provider, apiKey, model },
+      { provider, apiKey, model, accountId },
       input,
       repoContext?.repoName ?? null,
     );
-  }, [token, user, provider, apiKey, model, providerName, model, provider, t, lang, repoContext, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [token, user, provider, apiKey, model, providerName, model, provider, t, lang, repoContext, addMessage, updateMessage, addEntry, updateEntry, accountId]);
 
   // ── Generar changelog del repo (#34) ─────────────────────────────────────────
   const handleGenerateChangelog = useCallback(async (input: string) => {
     if (!token || !user || !provider || !apiKey || !model) return;
     await runGenerateChangelog(
       { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
-      { provider, apiKey, model },
+      { provider, apiKey, model, accountId },
       input,
     );
-  }, [token, user, provider, apiKey, model, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [token, user, provider, apiKey, model, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, accountId]);
 
   // ── Salud del código — dashboard (#44) ───────────────────────────────────────
   const handleCodeHealth = useCallback(async (input: string) => {

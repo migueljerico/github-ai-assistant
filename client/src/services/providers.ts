@@ -12,7 +12,7 @@
 // sessionStorage es la LISTA de modelos (catálogo), nunca la clave.
 // ────────────────────────────────────────────────────────────────────────────
 
-export type AIProviderType = 'gemini' | 'groq' | 'openrouter' | 'nvidia' | 'zenmux';
+export type AIProviderType = 'gemini' | 'groq' | 'openrouter' | 'nvidia' | 'zenmux' | 'openzen' | 'cloudflare';
 export type ProviderTransport = 'gemini-proxy' | 'openai-compatible';
 
 export interface ModelOption {
@@ -164,6 +164,28 @@ const ZENMUX_FALLBACK: ModelOption[] = [
   { value: 'qwen/qwen3-asr-flash', label: 'Qwen3 ASR Flash', free: true },
 ];
 
+// Fallback de OpenCode Zen mientras carga el catálogo dinámico o si la API falla.
+// El catálogo real es PÚBLICO y se filtra a los modelos gratuitos (sufijo "-free"),
+// pero dejamos unos cuantos conocidos como red de seguridad. Token keyless `public`.
+const OPENZEN_FALLBACK: ModelOption[] = [
+  { value: 'hy3-free', label: 'Hy3 Flash (free)', free: true, recommended: true },
+  { value: 'deepseek-v4-flash-free', label: 'DeepSeek V4 Flash (free)', free: true },
+  { value: 'mimo-v2.5-free', label: 'Mimo 2.5 (free)', free: true },
+  { value: 'nemotron-3-ultra-free', label: 'Nemotron 3 Ultra (free)', free: true },
+  { value: 'north-mini-code-free', label: 'North Mini Code (free)', free: true },
+];
+
+// Fallback de Cloudflare Workers AI mientras carga el catálogo dinámico o si falla.
+// El catálogo real (autenticado, por cuenta) es la lista COMPLETA de modelos
+// @cf/…; aquí dejamos los más usados como red de seguridad. Requiere account_id.
+const CLOUDFLARE_FALLBACK: ModelOption[] = [
+  { value: '@cf/meta/llama-3.3-70b-instruct', label: '@cf/meta/llama-3.3-70b-instruct' },
+  { value: '@cf/meta/llama-3.1-8b-instruct', label: '@cf/meta/llama-3.1-8b-instruct', recommended: true },
+  { value: '@cf/mistral/mistral-7b-instruct-v0.1', label: '@cf/mistral/mistral-7b-instruct-v0.1' },
+  { value: '@cf/qwen/qwen1.5-7b-chat', label: '@cf/qwen/qwen1.5-7b-chat' },
+  { value: '@cf/google/gemma-2-9b-it', label: '@cf/google/gemma-2-9b-it' },
+];
+
 export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
   gemini: {
     id: 'gemini',
@@ -265,10 +287,59 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     signupLabel: 'provider.zenmux.signupLabel',
     note: 'provider.zenmux.note',
   },
+  openzen: {
+    id: 'openzen',
+    name: 'OpenCode Zen',
+    shortName: 'OpenCode',
+    emoji: '☯️',
+    cardDesc: 'provider.openzen.cardDesc',
+    transport: 'openai-compatible',
+    chatEndpoint: 'https://opencode.ai/zen/v1/chat/completions',
+    modelsEndpoint: 'https://opencode.ai/zen/v1/models',
+    modelsNeedKey: false, // el catálogo de OpenCode Zen es público (sin auth)
+    staticModels: OPENZEN_FALLBACK,
+    defaultModel: OPENZEN_FALLBACK[0].value,
+    keyPlaceholder: 'public (gratis) o key de opencode.ai',
+    signupUrl: 'https://opencode.ai',
+    signupLabel: 'provider.openzen.signupLabel',
+    note: 'provider.openzen.note',
+  },
+  // Cloudflare Workers AI: VA AL FINAL del listado (decisión del usuario).
+  // Exige account_id en la ruta URL + token por cuenta; por eso el panel muestra
+  // un campo extra de Account ID y el endpoint usa el marcador {account_id}, que se
+  // sustituye en tiempo de ejecución con resolveEndpoint().
+  cloudflare: {
+    id: 'cloudflare',
+    name: 'Cloudflare Workers AI',
+    shortName: 'Workers AI',
+    emoji: '🟠',
+    cardDesc: 'provider.cloudflare.cardDesc',
+    transport: 'openai-compatible',
+    chatEndpoint: 'https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1/chat/completions',
+    modelsEndpoint: 'https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/models/search',
+    modelsNeedKey: true, // requiere el API token (Bearer) y el account_id
+    staticModels: CLOUDFLARE_FALLBACK,
+    defaultModel: CLOUDFLARE_FALLBACK[0].value,
+    keyPlaceholder: 'API Token de Cloudflare',
+    signupUrl: 'https://dash.cloudflare.com/profile/api-tokens',
+    signupLabel: 'provider.cloudflare.signupLabel',
+    note: 'provider.cloudflare.note',
+  },
 };
 
 export function getProvider(id: AIProviderType): ProviderDef {
   return PROVIDERS[id];
+}
+
+/**
+ * Sustituye el marcador `{account_id}` en un endpoint por el accountId real del
+ * usuario (p. ej. Cloudflare Workers AI, que lo exige en la ruta URL). Si no hay
+ * accountId o el endpoint no tiene el marcador, devuelve la URL sin cambios.
+ * Función pura (testeable).
+ */
+export function resolveEndpoint(endpoint: string, accountId?: string | null): string {
+  if (!accountId) return endpoint;
+  return endpoint.replace(/\{account_id\}/g, encodeURIComponent(accountId));
 }
 
 /**
@@ -357,11 +428,14 @@ const MODELS_CACHE_TTL = 3_600_000; // 1 hora
 export async function fetchModels(
   def: ProviderDef,
   apiKey?: string,
+  accountId?: string | null,
 ): Promise<ModelOption[] | null> {
   if (!def.modelsEndpoint) return null;
   if (def.modelsNeedKey && !apiKey) return null;
+  // Cloudflare (y cualquier endpoint con {account_id}) también necesita el accountId.
+  if (def.modelsEndpoint.includes('{account_id}') && !accountId) return null;
 
-  const cacheKey = `${def.id}_models_cache`;
+  const cacheKey = `${def.id}_models_cache${accountId ? '_' + accountId : ''}`;
   const cached = sessionStorage.getItem(cacheKey);
   if (cached) {
     try {
@@ -370,10 +444,10 @@ export async function fetchModels(
     } catch { /* cache corrupta — ignorar */ }
   }
 
-const headers: Record<string, string> = {};
+  const headers: Record<string, string> = {};
   if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
 
-  const res = await fetch(def.modelsEndpoint, { headers });
+  const res = await fetch(resolveEndpoint(def.modelsEndpoint, accountId), { headers });
   if (!res.ok) throw new Error(`models endpoint error ${res.status}`);
   // Type varies by provider; we'll cast per-branch
   const data = await res.json() as {
@@ -462,6 +536,26 @@ const headers: Record<string, string> = {};
       })
       // free primero, luego alfabético
       .sort((a: ModelOption, b: ModelOption) => (Number(b.free) - Number(a.free)) || a.label.localeCompare(b.label));
+  } else if (def.id === 'openzen') {
+    // OpenCode Zen: catálogo PÚBLICO (no requiere key). La API no expone pricing
+    // ni display_name: solo { id, object, created, owned_by }. Los modelos gratuitos
+    // se identifican por el sufijo "-free". Búsqueda dinámica de SOLO los modelos
+    // free (decisión del usuario). Todos los listados se marcan como free.
+    models = data.data
+      .filter((m: { id: string }) => m.id.toLowerCase().endsWith('-free'))
+      .sort((a: { id: string }, b: { id: string }) => a.id.localeCompare(b.id))
+      .map((m: { id: string }) => ({ value: m.id, label: m.id, free: true }));
+  } else if (def.id === 'cloudflare') {
+    // Cloudflare Workers AI: catálogo COMPLETO (sin filtro free) para que el usuario
+    // elija. Respuesta envoltorio { result: [...] }; cada item trae `name`
+    // (p.ej. "@cf/meta/llama-3.1-8b-instruct"), `description` y `task`. El account_id
+    // ya viene sustituido en modelsEndpoint vía resolveEndpoint().
+    const cfSource = (data as { result?: Array<{ name?: string; description?: string }> }).result
+      ?? (data.data as Array<{ name?: string; description?: string }>);
+    models = cfSource
+      .filter((m): m is { name: string; description?: string } => !!m.name)
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((m) => ({ value: m.name, label: m.name }));
   } else {
     // Groq (y cualquier OpenAI-compatible genérico): filtra no-chat
     models = data.data

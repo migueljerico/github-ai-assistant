@@ -68,6 +68,8 @@ export const es = {
   'aipanel.model': 'Modelo',
   'aipanel.available': 'disponibles',
   'aipanel.loadingModels': 'Cargando modelos...',
+  'aipanel.accountId': 'Account ID (Cloudflare)',
+  'aipanel.accountIdPlaceholder': 'Cloudflare Account ID',
   'aipanel.loadingCatalog': '⏳ Cargando catálogo actualizado...',
   'aipanel.catalogLoaded': '✅ Catálogo cargado en tiempo real',
   'aipanel.toggleKeyVisibility': 'Mostrar/ocultar clave',
@@ -109,6 +111,12 @@ export const es = {
   'provider.zenmux.cardDesc': 'Pasarela unificada a OpenAI, Anthropic, Google, Meta… una sola clave para todos',
   'provider.zenmux.signupLabel': 'Obtener clave en zenmux.ai →',
   'provider.zenmux.note': '🆓 Modelos marcados son gratuitos. Una sola key sk-ai-v1- da acceso a GPT-4o-mini, Gemini Flash, Llama, Claude Haiku y más. El modelo "Auto" selecciona el mejor gratis disponible.',
+  'provider.openzen.cardDesc': 'OpenCode Zen: modelos gratuitos sin clave (token "public")',
+  'provider.openzen.signupLabel': 'Obtén tu key en opencode.ai →',
+  'provider.openzen.note': '🆓 Catálogo dinámico de modelos GRATIS (sufijo "-free"). Los gratis funcionan con el token sin clave "public" — solo escribe "public" en el campo de clave. Una key real de opencode.ai también da acceso a modelos de pago.',
+  'provider.cloudflare.cardDesc': 'Cloudflare Workers AI · modelos serverless (@cf/…)',
+  'provider.cloudflare.signupLabel': 'Crea un token API en dash.cloudflare.com →',
+  'provider.cloudflare.note': 'Requiere tu Account ID (del lateral del panel de Cloudflare) y un token API con permisos de Workers AI. La lista de modelos se carga dinámicamente (catálogo completo) al rellenar ambos campos.',
 
   // ────── FASE 2: Modales ──────
   'modal.doc.title': 'Documentación generada para {repoName}',

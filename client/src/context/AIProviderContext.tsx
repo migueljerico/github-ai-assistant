@@ -8,9 +8,11 @@ export interface AIProviderState {
   provider: AIProviderType | null;
   apiKey: string | null;
   model: string | null;
+  /** Solo Cloudflare Workers AI: account_id necesario en la ruta URL del endpoint. */
+  accountId: string | null;
   isConnected: boolean;
   connectedAt: number | null;
-  connect: (provider: AIProviderType, apiKey: string, model: string) => void;
+  connect: (provider: AIProviderType, apiKey: string, model: string, accountId?: string | null) => void;
   disconnect: () => void;
 }
 
@@ -29,13 +31,15 @@ export function AIProviderContextProvider({ children }: { children: ReactNode })
   const [provider, setProvider] = useState<AIProviderType | null>(null);
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [model, setModel] = useState<string | null>(null);
+  const [accountId, setAccountId] = useState<string | null>(null);
   const [connectedAt, setConnectedAt] = useState<number | null>(null);
 
-  const connect = (p: AIProviderType, k: string, m: string) => {
+  const connect = (p: AIProviderType, k: string, m: string, acc?: string | null) => {
     // ZERO-STORAGE: API key lives ONLY in React state, never in browser storage
     setProvider(p);
     setApiKey(k);
     setModel(m);
+    setAccountId(acc ?? null);
     setConnectedAt(Date.now());
     // #40: recuerda SOLO proveedor + modelo (no la key) para no re-seleccionarlos al recargar
     saveProviderPref(p, m);
@@ -46,6 +50,7 @@ export function AIProviderContextProvider({ children }: { children: ReactNode })
     setProvider(null);
     setApiKey(null);
     setModel(null);
+    setAccountId(null);
     setConnectedAt(null);
     clearProviderPref(); // #40: olvida la preferencia al desconectar
   };
@@ -55,6 +60,7 @@ export function AIProviderContextProvider({ children }: { children: ReactNode })
       provider,
       apiKey,
       model,
+      accountId,
       isConnected: apiKey !== null,
       connectedAt,
       connect,

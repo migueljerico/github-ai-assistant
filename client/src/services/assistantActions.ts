@@ -579,7 +579,7 @@ export async function runSend(deps: SendDeps, config: AIProviderConfig, params: 
       // #24 Fase 3: la directiva de idioma SOLO aplica al modo chat (texto Markdown).
       const systemPrompt = finalMode === 'chat' ? withLangDirective(basePrompt, deps.lang) : basePrompt;
       try {
-        const rawResponse = await callAI(newHistory, systemPrompt, config.provider, config.apiKey, config.model, finalMode, onToken, params.signal);
+        const rawResponse = await callAI(newHistory, systemPrompt, config.provider, config.apiKey, config.model, finalMode, onToken, params.signal, undefined, config.accountId);
         return { rawResponse, consultedPaths };
       } catch (err) {
         // #50: si el contexto es demasiado grande, reintentar con menos archivos (una sola vez).

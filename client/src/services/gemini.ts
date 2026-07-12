@@ -27,7 +27,7 @@
 
 import type { GeminiAction } from '../types';
 import type { Language } from '../context/LanguageContext';
-import { getProvider, modelLabel, type AIProviderType } from './providers';
+import { getProvider, modelLabel, resolveEndpoint, type AIProviderType } from './providers';
 import { withTransientRetry, isAbortError, isTransientError } from '../utils/retry';
 // #23: los system prompts viven en archivos `.md` (mantenibilidad + base para i18n).
 // Se cargan como texto crudo con el import `?raw` de Vite. `.trimEnd()` evita que un
@@ -156,6 +156,8 @@ export interface AIProviderConfig {
   provider: AIProviderType;
   apiKey: string;
   model: string;
+  /** Solo Cloudflare Workers AI: account_id necesario en la ruta URL del endpoint. */
+  accountId?: string | null;
 }
 
 // ── Streaming (SSE) — helper compartido (#38) ─────────────────────────────────
@@ -350,6 +352,7 @@ export async function callAI(
   onToken?: (textSoFar: string) => void,  // ← #38: si se pasa, la respuesta llega en streaming
   signal?: AbortSignal,  // ← #40: cancelación de la petición (botón Detener)
   maxTokens?: number,  // ← v3.31.0: límite de salida (docs usa 8192 para no truncar el JSON)
+  accountId?: string | null,  // ← Cloudflare: sustituye {account_id} en el endpoint
 ): Promise<string> {
   const def = getProvider(provider);
   // Reintento ante errores transitorios del servidor (503 "high demand",
@@ -357,10 +360,11 @@ export async function callAI(
   // internas directamente, así que no se ve afectada por este reintento.
   // Con streaming, `onToken` recibe el texto ACUMULADO (semántica "set"): si hay
   // reintento, el stream reinicia y sobrescribe la burbuja sin duplicar.
+  const chatEndpoint = resolveEndpoint(def.chatEndpoint!, accountId);
   return withTransientRetry(() =>
     def.transport === 'gemini-proxy'
       ? callGeminiDirect(apiKey, model, messages, systemPrompt, mode, onToken, signal, maxTokens)
-      : callOpenAICompatible(def.chatEndpoint!, apiKey, model, messages, systemPrompt, mode, def.extraHeaders, onToken, signal, maxTokens),
+      : callOpenAICompatible(chatEndpoint, apiKey, model, messages, systemPrompt, mode, def.extraHeaders, onToken, signal, maxTokens),
   );
 }
 
@@ -372,13 +376,15 @@ export async function validateProviderKey(
   provider: AIProviderType,
   apiKey: string,
   model: string,
+  accountId?: string | null,
 ): Promise<{ valid: boolean; error?: string }> {
   const def = getProvider(provider);
   try {
     if (def.transport === 'gemini-proxy') {
       await callGeminiDirect(apiKey, model, [{ role: 'user', content: 'Hi' }], 'Reply with one word.');
     } else {
-      await callOpenAICompatible(def.chatEndpoint!, apiKey, model, [{ role: 'user', content: 'Hi' }], 'Reply with one word.', undefined, def.extraHeaders);
+      const chatEndpoint = resolveEndpoint(def.chatEndpoint!, accountId);
+      await callOpenAICompatible(chatEndpoint, apiKey, model, [{ role: 'user', content: 'Hi' }], 'Reply with one word.', undefined, def.extraHeaders);
     }
     return { valid: true };
   } catch (err) {

@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { PROVIDERS, getProvider, fetchModels, pickDefaultModel, modelLabel, type ModelOption } from '../providers';
+import { PROVIDERS, getProvider, fetchModels, pickDefaultModel, modelLabel, resolveEndpoint, type ModelOption } from '../providers';
 
 describe('providers — registro', () => {
-  it('los cinco proveedores tienen su defaultModel dentro de staticModels', () => {
-    (['gemini', 'groq', 'openrouter', 'nvidia', 'zenmux'] as const).forEach(id => {
+  it('los proveedores tienen su defaultModel dentro de staticModels', () => {
+    (['gemini', 'groq', 'openrouter', 'nvidia', 'zenmux', 'openzen', 'cloudflare'] as const).forEach(id => {
       const def = getProvider(id);
       expect(def.id).toBe(id);
       expect(def.staticModels.some(m => m.value === def.defaultModel)).toBe(true);
@@ -193,6 +193,71 @@ describe('providers — fetchModels', () => {
     expect(list!.find(m => m.value === 'x-ai/grok-4.5-free')!.free).toBe(true);
     expect(list!.find(m => m.value === 'stepfun/step-3.7-flash-free')!.free).toBe(true);
     expect(list!.find(m => m.value === 'paid/model')!.free).toBe(false);
+  });
+
+  it('openzen: catálogo público, filtra SOLO modelos free (sufijo -free), todos marcados free', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        object: 'list',
+        data: [
+          { id: 'hy3-free', object: 'model', created: 1, owned_by: 'opencode' },
+          { id: 'deepseek-v4-flash-free', object: 'model', created: 1, owned_by: 'opencode' },
+          { id: 'some-paid-model', object: 'model', created: 1, owned_by: 'opencode' },
+        ],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    // Sin key (el catálogo de OpenCode Zen es público)
+    const list = await fetchModels(PROVIDERS.openzen);
+    expect(list).not.toBeNull();
+    const ids = list!.map(m => m.value);
+    // Solo los free
+    expect(ids).toContain('hy3-free');
+    expect(ids).toContain('deepseek-v4-flash-free');
+    expect(ids).not.toContain('some-paid-model');
+    // Todos los listados son free
+    expect(list!.every(m => m.free)).toBe(true);
+  });
+
+  it('cloudflare: devuelve null sin accountId (endpoint con {account_id})', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    expect(await fetchModels(PROVIDERS.cloudflare, 'token_test')).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('cloudflare: catálogo COMPLETO desde { result: [...] }, sustituye {account_id}', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        result: [
+          { name: '@cf/meta/llama-3.3-70b-instruct', description: 'Llama 3.3' },
+          { name: '@cf/mistral/mistral-7b-instruct-v0.1', description: 'Mistral 7B' },
+        ],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const list = await fetchModels(PROVIDERS.cloudflare, 'token_test', 'MY_ACCOUNT');
+    expect(list).not.toBeNull();
+    const ids = list!.map(m => m.value);
+    expect(ids).toEqual(['@cf/meta/llama-3.3-70b-instruct', '@cf/mistral/mistral-7b-instruct-v0.1']);
+    // El account_id se sustituyó en la URL del fetch
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toContain('/accounts/MY_ACCOUNT/ai/models/search');
+  });
+});
+
+describe('resolveEndpoint', () => {
+  it('sustituye {account_id} por el valor real (encoded)', () => {
+    expect(resolveEndpoint('https://x/{account_id}/y', 'a/b c')).toBe('https://x/a%2Fb%20c/y');
+  });
+  it('deja la URL igual si no hay accountId o no hay marcador', () => {
+    expect(resolveEndpoint('https://x/y', 'acc')).toBe('https://x/y');
+    expect(resolveEndpoint('https://x/{account_id}/y')).toBe('https://x/{account_id}/y');
   });
 });
 

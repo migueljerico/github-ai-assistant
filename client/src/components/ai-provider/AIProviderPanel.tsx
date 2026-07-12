@@ -30,6 +30,8 @@ export default function AIProviderPanel() {
   const [showKey, setShowKey] = useState(false);
   const [status, setStatus] = useState<'idle' | 'validating' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+  // #Cloudflare: account_id aparte de la API key (Workers AI lo exige en la ruta URL).
+  const [accountId, setAccountId] = useState('');
 
   // Catálogo de modelos (dinámico para proveedores con modelsEndpoint)
   const [catalog, setCatalog] = useState<Record<AIProviderType, ModelOption[]>>(initCatalog);
@@ -55,12 +57,15 @@ export default function AIProviderPanel() {
       if (!key || key.length < 20) return;
       if (def.keyPrefix && !key.startsWith(def.keyPrefix)) return;
     }
+    // Cloudflare (y cualquier endpoint con {account_id}) también necesita el accountId.
+    const needsAccountId = def.modelsEndpoint.includes('{account_id}');
+    if (needsAccountId && !accountId.trim()) return;
 
     let cancelled = false;
     const load = async () => {
       setLoadingModels(true);
       try {
-        const list = await fetchModels(def, key || undefined);
+        const list = await fetchModels(def, key || undefined, accountId.trim() || undefined);
         if (cancelled || !list) return;
         setCatalog(prev => ({ ...prev, [selected]: list }));
         setModelsLoaded(prev => ({ ...prev, [selected]: true }));
@@ -82,21 +87,29 @@ export default function AIProviderPanel() {
     };
     void load();
     return () => { cancelled = true; };
-  }, [selected, keys, def]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selected, keys, accountId, def]);
 
   const handleConnect = async () => {
     if (!activeKey.trim()) return;
     setStatus('validating');
     setErrorMsg('');
 
-    const result = await validateProviderKey(selected, activeKey.trim(), activeModel);
+    const result = await validateProviderKey(selected, activeKey.trim(), activeModel, accountId.trim() || undefined);
     if (result.valid) {
       setStatus('success');
-      setTimeout(() => connect(selected, activeKey.trim(), activeModel), 800);
+      setTimeout(() => connect(selected, activeKey.trim(), activeModel, accountId.trim() || null), 800);
     } else {
       setStatus('error');
       setErrorMsg(result.error || 'Error desconocido');
     }
+  };
+
+  // Selecciona un proveedor; limpia el accountId al salir de Cloudflare para no
+  // arrastrar el dato de una cuenta a otra.
+  const selectProvider = (id: AIProviderType) => {
+    setSelected(id);
+    setStatus('idle');
+    if (id !== 'cloudflare') setAccountId('');
   };
 
   /** Texto de la opción: traduce si es clave, formatea si es literal. */
@@ -131,15 +144,14 @@ export default function AIProviderPanel() {
                 key={p.id}
                 id={`select-${p.id}-btn`}
                 className={`provider-card ${isSel ? 'selected' : ''}`}
-                onClick={() => { setSelected(p.id); setStatus('idle'); }}
+                onClick={() => selectProvider(p.id)}
                 role="button"
                 tabIndex={0}
                 aria-pressed={isSel}
                 onKeyDown={e => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    setSelected(p.id);
-                    setStatus('idle');
+                    selectProvider(p.id);
                   }
                 }}
               >
@@ -209,6 +221,31 @@ export default function AIProviderPanel() {
                       <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginBottom: '8px', lineHeight: 1.45 }}>
                         {t(p.note)}
                       </p>
+                    )}
+
+                    {/* Account ID (solo Cloudflare Workers AI: lo exige en la ruta URL) */}
+                    {selected === 'cloudflare' && (
+                      <>
+                        <label
+                          htmlFor="cloudflare-accountid-input"
+                          style={{ display: 'block', fontSize: '0.72rem', color: 'var(--color-text-muted)', margin: '0 0 4px' }}
+                        >
+                          {t('aipanel.accountId')}
+                        </label>
+                        <div className="key-input-row">
+                          <input
+                            id="cloudflare-accountid-input"
+                            type="text"
+                            className="input"
+                            placeholder={t('aipanel.accountIdPlaceholder')}
+                            value={accountId}
+                            onChange={e => { setAccountId(e.target.value); setStatus('idle'); }}
+                            autoComplete="off"
+                            spellCheck={false}
+                            style={{ fontFamily: 'var(--font-mono)', fontSize: '0.82rem' }}
+                          />
+                        </div>
+                      </>
                     )}
 
                     {/* Key input */}

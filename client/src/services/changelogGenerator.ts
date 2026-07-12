@@ -105,6 +105,10 @@ export async function generateChangelog(
     config.apiKey,
     config.model,
     'chat',
+    undefined,
+    undefined,
+    undefined,
+    config.accountId,
   );
   return raw.replace(/^```(?:markdown)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
 }
