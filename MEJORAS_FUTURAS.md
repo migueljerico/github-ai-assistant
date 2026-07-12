@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v3.33.3 · Julio 2026
+**Actualizado a:** v3.33.5 · Julio 2026
 
 ---
 
@@ -57,6 +57,7 @@ Estado del código, mejoras pendientes y roadmap del proyecto.
 | 57 fix tris | Error "La IA no devolvió JSON válido" al documentar (repos creados vacíos): el límite de salida de 4096 tokens truncaba el README+MANUAL a medias. Fix: `maxTokens` param en `callAI` + `generateRepoDocs(8192)` + proxy lee `maxOutputTokens`. Además: firma de documentación con IA real (about + commits + PR + footer README), about automático (`updateRepo` PATCH), botón "Actualizar" siempre visible, banner verde para repos ya documentados | services/gemini.ts, server/index.js, services/assistantActions.ts, services/docPublisher.ts, services/github.ts, services/providers.ts, components/chat/ChatInput.tsx, components/confirm/DocumentFlowModal.tsx, i18n/{es,en}.ts | v3.31.0 |
 | — | **OpenCode Zen y Cloudflare Workers AI: fix CORS + catálogo estático** | providers.ts (openzen/cloudflare: proxy /api/openzen y /api/cloudflare, catálogos estáticos), server/index.js (proxies + rate limiters), gemini.ts (accountId header), i18n/es/en.ts, providers.test.ts | v3.33.2 |
 | — | **Cloudflare 400 fix: proxy lee X-Account-Id del header** | server/index.js (proxy /api/cloudflare: accountId desde header, no body) | v3.33.3 |
+| — | **Cloud Run startup fix: eliminar type assertion TS en server/index.js** | server/index.js (eliminado `as string | undefined` en lectura de header) | v3.33.5 |
 
 ---
 
