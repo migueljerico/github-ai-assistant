@@ -5,12 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.33.8] — 2026-07-12
+
+### Fixed
+- **Cloud Run: contenedor no arrancaba (SyntaxError en `server/index.js`).** El proxy de Cloudflare usaba sintaxis TypeScript (`Record<string, string>`) en un archivo JavaScript puro. Corregido: eliminado el tipo, ahora usa objeto plain `{}`.
+- **Cloud Run: `PORT=8080` hardcodeado en Dockerfile.** Eliminado `ENV PORT=8080`; Cloud Run asigna puerto dinámico. Actualizado `CLAUDE.md` con lección para no repetirlo.
+
+### Changed
+- `server/index.js`: eliminado type annotation TypeScript en `safeHeaders`.
+- `Dockerfile`: comentario actualizado explicando por qué NO se debe hardcodear el puerto.
+- `CLAUDE.md`: añadidas tres trampas documentadas (PORT hardcodeado, JS puro con sintaxis TS, headers ISO-8859-1 en Cloudflare).
+
+### Notes
+- Tests: 536/536 (client) + 5/5 (server), build limpio, lint 0 errores.
+- Cambio de código por ZCode (nemotron-3-ultra / NVIDIA NIM).
+
 ## [3.33.7] — 2026-07-12
 
 ### Fixed
-- **Cloudflare Workers AI: error del navegador al parsear headers.** Cloudflare devuelve cabeceras con caracteres fuera de ISO-8859-1 (emojis en `Server`, `CF-Ray`, etc.), causando `Failed to read the 'headers' property from 'RequestInit': String contains non ISO-8859-1 code point`. El proxy `/api/cloudflare` ahora sanea los headers del upstream antes de reenviarlos al cliente.
+- **Cloudflare Workers AI: error del navegador al parsear headers.** Cloudflare devuelve cabeceras con caracteres fuera de ISO-8859-1 (emojis en `Server`, `CF-Ray`, etc.), causando `Failed to read the 'headers' property from 'RequestInit': String contains non ISO-8859-1 code point`. El proxy `/api/cloudflare` ahora sanea los headers del upstream antes de reenviarlos.
 - **429 saturación en Cloudflare/OpenCode Zen:** aumentado rate limit de 40 a 100 req/min en los proxies `/api/openzen` y `/api/cloudflare`.
-- **Descripción Cloudflare en frontend:** nota simplificada y amigable en i18n (sin detalles técnicos de catálogo/proxy).
 
 ### Changed
 - `server/index.js`: proxy `/api/cloudflare` filtra headers del upstream (solo ASCII puro) para evitar errores en el navegador.
@@ -26,14 +40,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.33.5] — 2026-07-12
 
 ### Fixed
-- **Cloud Run: servidor no arrancaba (SyntaxError en `server/index.js`).** El proxy de Cloudflare usaba sintaxis TypeScript (`as string | undefined`) en un archivo JavaScript puro. Corregido: eliminado el type assertion.
-
-### Changed
-- `server/index.js`: eliminado type assertion TypeScript en lectura de header `x-account-id`.
-- `Dockerfile`: sin `ENV PORT=8080`.
+- **Cloud Run: servidor no arrancaba (SyntaxError en `server/index.js`).** Corregido: eliminado type assertion TypeScript en lectura de header `x-account-id`.
+- **Dockerfile:** sin `ENV PORT=8080`.
 
 ### Notes
-- Ahora el build de Cloud Run completa correctamente y el contenedor arranca.
 - Tests: 536/536 (client) + 5/5 (server), build limpio, lint 0 errores.
 
 ## [3.33.4] — 2026-07-12
@@ -62,7 +72,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **OpenCode Zen y Cloudflare Workers AI: bloqueo CORS en el navegador.** Añadidos proxies backend `/api/openzen` y `/api/cloudflare`.
-- **Cloudflare: catálogo actualizado con los 3 modelos que usa el usuario en ZCode** (Kimi K2.7 Code, GLM 5.2, DeepSeek R1 Distill Qwen 32B).
+- **Cloudflare: catálogo actualizado con los modelos que usa el usuario en ZCode.**
 
 ### Changed
 - `server/index.js`: endpoints proxy con rate limiters y `pipeUpstream()`.
@@ -71,7 +81,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - i18n y tests actualizados.
 
 ### Notes
-- Ahora OpenCode Zen y Cloudflare funcionan desde el navegador sin CORS.
 - Tests: 536/536 (client) + 5/5 (server), build limpio, lint 0 errores.
 
 ## [3.33.1] — 2026-07-12

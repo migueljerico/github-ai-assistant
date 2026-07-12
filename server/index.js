@@ -432,10 +432,8 @@ app.post('/api/cloudflare', cloudflareLimiter, async (req, res) => {
 
     // Saneamos los headers del upstream: eliminamos valores con caracteres
     // fuera de ISO-8859-1 para evitar el error del navegador al parsearlos.
-    const safeHeaders: Record<string, string> = {};
+    const safeHeaders = {};
     for (const [key, value] of upstream.headers.entries()) {
-      // Solo mantenemos headers que sean ASCII puro (ISO-8859-1 subset)
-      // Los valores con emojis o caracteres especiales se descartan.
       if (typeof value === 'string' && /^[\x00-\x7F]*$/.test(value)) {
         safeHeaders[key] = value;
       }

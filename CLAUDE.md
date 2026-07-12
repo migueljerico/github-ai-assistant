@@ -315,6 +315,27 @@ Ejecutar **un solo test**: `cd client && npm run test:run -- src/services/github
   `npm install` (nunca lo edites a mano); el `Dockerfile` usa `npm ci`, que **aborta**
   si `client/package-lock.json` no cuadra con su `package.json`. Valida con
   `cd client && rm -rf node_modules && npm ci` antes de pushear deps o un bump.
+- **⚠️ No hardcodear `PORT=8080` en el Dockerfile (trampa recurrente).** Cloud Run
+  asigna un puerto dinámico mediante la variable de entorno `PORT`. Si el Dockerfile
+  establece `ENV PORT=8080`, sobrescribe el valor dinámico y el health check falla con
+  `HealthCheckContainerError` ("failed to start and listen on the port defined provided
+  by the PORT=8080 environment variable"). Caso real: v3.33.4 y v3.33.5 se rompieron
+  por esto. El servidor Express ya lee `process.env.PORT` correctamente; **no lo
+  sobrescribas en el Dockerfile**. Eliminada línea `ENV PORT=8080`.
+- **⚠️ No usar sintaxis TypeScript en archivos JavaScript puros (trampa recurrente).**
+  `server/index.js` es JS puro (no se transpila con TypeScript). Usar type assertions
+  como `as string | undefined` causa `SyntaxError: Unexpected identifier 'as'` al
+  arrancar, y el contenedor se cierra inmediatamente → `HealthCheckContainerError`
+  en Cloud Run. Caso real: v3.33.5 se rompió por `req.headers['x-account-id'] as
+  string | undefined`. En JS puro, usa comprobaciones normales: `if (!headerValue)`
+  o `const val = headerValue || ''`.
+- **⚠️ Headers de upstream con caracteres no ISO-8859-1 (Cloudflare).** Algunos
+  proveedores devuelven cabeceras con emojis o caracteres especiales (p. ej.
+  `Server: cloudflare`, `CF-Ray` con emojis). El navegador no puede parsear esos
+  headers y lanza: `Failed to read the 'headers' property from 'RequestInit':
+  String contains non ISO-8859-1 code point`. Solución: en los proxies backend,
+  **sanea los headers del upstream antes de reenviarlos** al cliente. Filtra valores
+  que no sean ASCII puro (`/^[\x00-\x7F]*$/`). Aplicado en `/api/cloudflare` v3.33.7.
 
 ---
 

@@ -35,7 +35,7 @@ COPY server/ server/
 # Copy built frontend from Stage 1
 COPY --from=builder /app/client/dist client/dist
 
-# Cloud Run expects the container to listen on $PORT (provided dynamically by the platform)
+# Cloud Run asignates a dynamic $PORT at runtime; do NOT hardcode it here.
 ENV NODE_ENV=production
 
 EXPOSE 8080
