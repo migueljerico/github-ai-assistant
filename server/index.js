@@ -243,6 +243,35 @@ app.get('/api/gemini/models', geminiLimiter, async (req, res) => {
 //
 //   POST /api/nim          → chat/completions (JSON o SSE streaming)
 //   GET  /api/nim/models   → catálogo de modelos ({ data: [...] })
+// Reenvía el cuerpo de la respuesta del upstream al cliente (res) sin bufferizar,
+// vital para el streaming token a token. Soporta los dos tipos de body que puede
+// devolver el fetch nativo de Node (undici):
+//   • ReadableStream web (Node 18+ por defecto) → expone pipeTo(), NO pipe().
+//   • stream de Node (si alguien inyecta un agente custom) → expone pipe().
+// El uso de upstream.body.pipe(res) (v3.32.1) rompía en prod con 502 porque
+// ReadableStream no tiene .pipe() — ver hotfix v3.32.5.
+async function pipeUpstream(upstream, res) {
+  const body = upstream.body;
+  if (!body) { res.end(); return; }
+  // ReadableStream web → se convierte a stream de Node con Readable.fromWeb() y
+  // entonces sí se hace .pipe(res). Esta es la forma estable y portable (Node 18+);
+  // respeta backpressure y error forwarding.
+  if (typeof body.pipeTo === 'function') {
+    const { Readable } = await import('node:stream');
+    Readable.fromWeb(body).pipe(res);
+    return;
+  }
+  // stream de Node clásico → pipe().
+  if (typeof body.pipe === 'function') {
+    body.pipe(res);
+    return;
+  }
+  // Fallback: consumir como ArrayBuffer y escribir (bufferiza; solo si los dos
+  // anteriores no aplican — no debería ocurrir con fetch nativo).
+  const buf = Buffer.from(await upstream.arrayBuffer());
+  res.end(buf);
+}
+
 app.post('/api/nim', nimLimiter, async (req, res) => {
   const auth = req.headers.authorization || '';
   if (!auth.startsWith('Bearer ')) {
@@ -258,20 +287,18 @@ app.post('/api/nim', nimLimiter, async (req, res) => {
       },
       body: JSON.stringify(req.body),
     });
+    // Log de status upstream: los errores de NIM (401/403/404/429/5xx) dejan de ser
+    // opacos. Solo el status (sin body ni auth) — zero-PII.
+    console.log(`[NIM] upstream status=${upstream.status} ct=${upstream.headers.get('content-type') || '-'}`);
     // Pasarela transparente: copiar el status y el content-type del upstream para
     // que JSON (200) y SSE (text/event-stream) lleguen idénticos al cliente.
     res.status(upstream.status);
     const ct = upstream.headers.get('content-type');
     if (ct) res.setHeader('Content-Type', ct);
-    // Pipe del cuerpo sin bufferizar — vital para el streaming token a token.
-    if (upstream.body) {
-      upstream.body.pipe(res);
-    } else {
-      res.end();
-    }
+    await pipeUpstream(upstream, res);
   } catch (err) {
     console.error('NIM proxy error (chat):', err);
-    if (!res.headersSent) res.status(502).json({ error: 'Error al contactar con NVIDIA NIM' });
+    if (!res.headersSent) res.status(502).json({ error: 'Error al contactar con NVIDIA NIM', detail: err?.message || String(err) });
     else { try { res.end(); } catch { /* noop */ } }
   }
 });

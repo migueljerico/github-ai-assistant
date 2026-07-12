@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.32.5] — 2026-07-12
+
+### Fixed
+- **NVIDIA NIM: 502 Bad Gateway en el proxy `/api/nim`.** El hotfix v3.32.4 reactivó el proxy backend para eludir el bloqueo CORS de NVIDIA, pero la implementación usaba `upstream.body.pipe(res)` para reenviar la respuesta. El `fetch` nativo de Node (undici, Node 22 del contenedor) devuelve `upstream.body` como un `ReadableStream` web, que **no expone `.pipe()`** (solo `.pipeTo()`) → `TypeError: upstream.body.pipe is not a function` → caía al `catch` → 502 para **todas** las llamadas NIM en producción. Sustituido por un helper `pipeUpstream()` que convierte el `ReadableStream` web a stream de Node con `Readable.fromWeb(body)` y entonces sí hace `.pipe(res)` (forma estable, respeta backpressure, Node 18+). Cubre también el caso de stream de Node clásico y un fallback por ArrayBuffer. Verificado localmente con fetch real (JSON y streaming SSE). Tests 531/531, build limpio.
+
+### Changed
+- `server/index.js`: helper `pipeUpstream()` + log de status/content-type upstream en `POST /api/nim` (solo status, zero-PII) para que futuros errores 401/403/404/429 de NVIDIA sean visibles en los logs de Cloud Run.
+
+### Notes
+- Revisión del bug y fix por Grok (grok-4.5) vía ZCode. Root cause confirmado con repro local: `upstream.body.constructor.name === 'ReadableStream'` y `typeof body.pipe === 'undefined'`.
+
 ## [3.32.4] — 2026-07-12
 
 ### Fixed
