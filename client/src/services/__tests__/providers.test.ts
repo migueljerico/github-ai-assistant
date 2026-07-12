@@ -17,16 +17,21 @@ describe('providers — registro', () => {
     expect(PROVIDERS.openrouter.transport).toBe('openai-compatible');
     expect(PROVIDERS.openrouter.chatEndpoint).toContain('openrouter.ai');
     expect(PROVIDERS.nvidia.transport).toBe('openai-compatible');
-    // v3.32.1: NIM va por proxy backend (no envía CORS) → rutas relativas
+    // v3.32.1: NIM va por proxy backend (no envía CORS) → ruta relativa para chat
     expect(PROVIDERS.nvidia.chatEndpoint).toBe('/api/nim');
-    expect(PROVIDERS.nvidia.modelsEndpoint).toBe('/api/nim/models');
+    // Catálogo ESTÁTICO (NIM_FALLBACK), igual que Gemini: sin catálogo dinámico
+    expect(PROVIDERS.nvidia.modelsEndpoint).toBeUndefined();
+    expect(PROVIDERS.nvidia.modelsNeedKey).toBeUndefined();
     expect(PROVIDERS.zenmux.transport).toBe('openai-compatible');
     expect(PROVIDERS.zenmux.chatEndpoint).toContain('zenmux.ai');
     // El catálogo de OpenRouter es público (no necesita key)
     expect(PROVIDERS.openrouter.modelsNeedKey).toBe(false);
     expect(PROVIDERS.groq.modelsNeedKey).toBe(true);
-    expect(PROVIDERS.nvidia.modelsNeedKey).toBe(true);
     expect(PROVIDERS.zenmux.modelsNeedKey).toBe(true);
+  });
+
+  it('gemini incluye gemini-3-flash-preview en staticModels', () => {
+    expect(PROVIDERS.gemini.staticModels.some(m => m.value === 'gemini-3-flash-preview')).toBe(true);
   });
 });
 
@@ -111,12 +116,13 @@ describe('providers — fetchModels', () => {
 
     expect(await fetchModels(PROVIDERS.gemini, 'AIzaSy_test')).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
-    // El catálogo fijo tiene los 6 modelos operativos.
+    // El catálogo fijo tiene los 7 modelos operativos.
     const values = PROVIDERS.gemini.staticModels.map(m => m.value);
     expect(values).toEqual([
       'gemini-2.5-flash',
       'gemini-2.5-pro',
       'gemini-3.5-flash',
+      'gemini-3-flash-preview',
       'gemini-3.1-flash-lite',
       'gemini-2.0-flash',
       'gemma-4-31b-it',
@@ -147,46 +153,20 @@ describe('providers — fetchModels', () => {
     expect(cached).not.toContain('sk-or'); // nunca la key
   });
 
-  it('nvidia: filtra no-chat (NIM_EXCLUDED)', async () => {
-    const fetchMock = vi.fn()
-      .mockImplementation(async (input: RequestInfo | URL) => {
-        const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
-        if (url && url.includes('featured-models')) {
-          return {
-            ok: true,
-            json: async () => ({
-              'featured-models': [
-                { model: 'nvidia/nemotron-3-ultra-550b-a55b' },
-                { model: 'z-ai/glm-5.2' },
-              ],
-            }),
-          };
-        }
-        // models endpoint
-        return {
-          ok: true,
-          json: async () => ({
-            data: [
-              { id: 'nvidia/nemotron-3-ultra-550b-a55b', name: 'Nemotron 3 Ultra' },
-              { id: 'nvidia/embed-qa-4', name: 'Embed QA' },
-              { id: 'meta/llama-3.3-70b-instruct', name: 'Llama 3.3 70B' },
-              { id: 'nvidia/llama-3.1-nemoguard-8b-content-safety', name: 'Nemoguard' },
-            ],
-          }),
-        };
-      });
+  it('nvidia: catálogo estático (NIM_FALLBACK) — fetchModels devuelve null sin endpoint dinámico', async () => {
+    // v3.32.1+: NVIDIA usa catálogo estático (NIM_FALLBACK) como Gemini, para
+    // evitar el catálogo dinámico ruidoso de NIM. Sin modelsEndpoint, fetchModels
+    // devuelve null y NO llama a la API.
+    const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
 
-    const list = await fetchModels(PROVIDERS.nvidia, 'nvapi_test');
-    expect(list).not.toBeNull();
-    const ids = list!.map(m => m.value);
-    // Debe filtrar embed-qa-4 y nemoguard
-    expect(ids).not.toContain('nvidia/embed-qa-4');
-    expect(ids).not.toContain('nvidia/llama-3.1-nemoguard-8b-content-safety');
-    // Featured primero (si el fetch funciona)
-    // Nota: en test puede fallar silenciosamente, así que verificamos solo que los filtrados se quiten
-    // Sin flag free (NIM no distingue)
-    expect(list!.every(m => m.free !== true)).toBe(true);
+    expect(await fetchModels(PROVIDERS.nvidia, 'nvapi_test')).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+    // El catálogo estático son los 12 modelos curados de NIM_FALLBACK.
+    const values = PROVIDERS.nvidia.staticModels.map(m => m.value);
+    expect(values).toContain('nvidia/nemotron-3-ultra-550b-a55b');
+    expect(values).toContain('z-ai/glm-5.2');
+    expect(values.length).toBe(12);
   });
 
   it('zenmux: marca free por pricing 0, filtra no-chat, ordena free primero', async () => {

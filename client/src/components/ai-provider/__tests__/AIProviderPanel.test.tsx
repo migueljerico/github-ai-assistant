@@ -141,11 +141,12 @@ describe('AIProviderPanel — catálogo fijo de Gemini (v3.24.0)', () => {
     expect(select).toBeInTheDocument();
 
     const values = Array.from(select.options).map(o => o.value);
-    // Los 6 modelos operativos del catálogo fijo.
+    // Los 7 modelos operativos del catálogo fijo (incl. gemini-3-flash-preview).
     expect(values).toEqual([
       'gemini-2.5-flash',
       'gemini-2.5-pro',
       'gemini-3.5-flash',
+      'gemini-3-flash-preview',
       'gemini-3.1-flash-lite',
       'gemini-2.0-flash',
       'gemma-4-31b-it',

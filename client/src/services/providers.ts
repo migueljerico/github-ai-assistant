@@ -69,6 +69,11 @@ const GEMINI_MODELS: ModelOption[] = [
     description: 'provider.gemini.model.flash35Desc',
   },
   {
+    value: 'gemini-3-flash-preview',
+    label: 'provider.gemini.model.flashPreview',
+    description: 'provider.gemini.model.flashPreviewDesc',
+  },
+  {
     value: 'gemini-3.1-flash-lite',
     label: 'provider.gemini.model.flash31Lite',
     description: 'provider.gemini.model.flash31LiteDesc',
@@ -226,12 +231,17 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     cardDesc: 'provider.nvidia.cardDesc',
     transport: 'openai-compatible',
     // v3.32.1: NIM NO envía cabeceras CORS → el navegador bloquea las llamadas
-    // directas ("Failed to fetch"). Se enrutan por el proxy backend (/api/nim),
-    // mismo patrón que Gemini. El proxy es transparente: copia el body OpenAI y
-    // el header Authorization sin tocarlos. fetchModels recibe aquí el catálogo.
+    // directas ("Failed to fetch"). El CHAT se enruta por el proxy backend
+    // (/api/nim), mismo patrón que Gemini: copia el body OpenAI y el header
+    // Authorization sin tocarlos. El proxy es transparente y reutilizable.
+    // El CATÁLOGO de modelos es ESTÁTICO (NIM_FALLBACK): el catálogo dinámico de
+    // NIM es enorme y ruidoso (chat + embeddings + rerank + vision + safety…),
+    // así que —igual que Gemini— mostramos solo la lista curada que configuramos
+    // aquí, en vez de los cientos de modelos "raros" que devuelve la API. Por eso
+    // NO se define modelsEndpoint (fetchModels devuelve null y el UI usa
+    // staticModels tal cual).
+    // Zero-Storage: la key viaja HTTPS cliente→backend y se descarta al terminar.
     chatEndpoint: '/api/nim',
-    modelsEndpoint: '/api/nim/models',
-    modelsNeedKey: true,
     staticModels: NIM_FALLBACK,
     defaultModel: NIM_FALLBACK[0].value,
     keyPlaceholder: 'nvapi-...',

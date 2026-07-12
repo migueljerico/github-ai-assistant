@@ -88,6 +88,8 @@ export const es = {
   'provider.gemini.model.proDesc': 'Máxima calidad · Más lento y con menos cuota gratuita · Reservado para tareas complejas',
   'provider.gemini.model.flash35': 'Gemini 3.5 Flash',
   'provider.gemini.model.flash35Desc': 'Última generación · Rápido y capaz · Buena opción general',
+  'provider.gemini.model.flashPreview': 'Gemini 3 Flash Preview',
+  'provider.gemini.model.flashPreviewDesc': 'Versión preliminar de Gemini 3 Flash · Rápida y capaz · Sujeta a cambios',
   'provider.gemini.model.flash31Lite': 'Gemini 3.1 Flash Lite',
   'provider.gemini.model.flash31LiteDesc': 'Ligero y veloz · Más cuota gratuita · Adecuado para instrucciones simples',
   'provider.gemini.model.flash20': 'Gemini 2.0 Flash',
