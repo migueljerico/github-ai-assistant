@@ -254,8 +254,8 @@ export default function App() {
 
   // ── Send message to AI (Opción D - con detección de modo) ──────────────────
   // Con un archivo adjunto, resolveMode (en runSend) fuerza SIEMPRE chat: el archivo
-  // se conversa/analiza. Documentar/publicar es EXPLÍCITO (botón "📤 Documentar y
-  // publicar"), no se adivina por palabras clave (se quitó esa heurística frágil).
+  // se conversa/analiza. Documentar/publicar es EXPLÍCITO (botón "📄 Documentar repo",
+  // DocumentFlowModal), no se adivina por palabras clave (se quitó esa heurística frágil).
   // #40: controlador para cancelar la generación en curso (botón Detener).
   const abortRef = useRef<AbortController | null>(null);
 
