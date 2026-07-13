@@ -31,9 +31,10 @@ reemplazan. Saltarse este paso es la causa nº1 de trabajar en bucle.
 
 ## 1. Visión general
 
-**GitHub AI Assistant** (v3.32.4) es una app web que permite operar la **GitHub
+**GitHub AI Assistant** (v3.34.1) es una app web que permite operar la **GitHub
 REST API en lenguaje natural** a través de un proveedor de IA (Google Gemini,
-Groq Cloud, OpenRouter, NVIDIA NIM o Zenmux). El usuario escribe una instrucción,
+Groq Cloud, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI
+u Ollama Cloud). El usuario escribe una instrucción,
 la IA propone una acción, y
 **cada operación de escritura se confirma manualmente** antes de ejecutarse.
 
@@ -250,11 +251,13 @@ Ejecutar **un solo test**: `cd client && npm run test:run -- src/services/github
 - **Proxies de proveedores de IA — patrón cliente por defecto (rector):** los
   proveedores OpenAI-compatible se llaman **directo desde el navegador** con la
   key del usuario en memoria (Zero-Storage), vía `callOpenAICompatible`. Es el
-  caso de Groq, OpenRouter y Zenmux. **Excepciones** (proxies backend en
-  `server/index.js`) se justifican **únicamente por bloqueos del navegador**, no por
-  seguridad:
-  - `POST /api/gemini` → Gemini bloquea peticiones desde EEA (bloqueo geográfico).
-  - `POST /api/nim` + `GET /api/nim/models` → NVIDIA NIM no envía cabeceras CORS; el frontend llama al proxy backend `/api/nim` y el servidor reenvía la petición a `integrate.api.nvidia.com` (servidor a servidor, sin CORS). Mismo patrón que el proxy de Gemini.
+  caso de Groq, OpenRouter y Zenmux. OpenAI-compatible directo también funciona para
+  OpenCode Zen, Cloudflare Workers AI y Ollama Cloud; sin embargo, estos tres
+  requieren proxy backend (`/api/openzen`, `/api/cloudflare`, `/api/ollama`) porque
+  **no envían cabeceras CORS** y el navegador bloquea la llamada con "Failed to fetch".
+  La única excepción verdaderamente "por bloqueo geográfico" sigue siendo
+  `POST /api/gemini` (Gemini bloquea EEA desde el navegador). NVIDIA NIM tampoco
+  envía CORS → `/api/nim`.
   La key viaja en HTTPS (cliente→backend) y nunca se persistite ni loguea.
   **No añadas proxies backend ni `process.env.*API_KEY` para nuevos proveedores
   sin aprobación explícita del autor.** Para añadir un proveedor, basta una entrada
@@ -302,6 +305,22 @@ Ejecutar **un solo test**: `cd client && npm run test:run -- src/services/github
   sin cablearlas a un consumidor real = código muerto; antes de añadir claves, verifica que el
   consumidor pueda importar `t()`. Los mensajes que **no** son UI (commit messages/PR bodies hacia
   GitHub, log interno del historial, contexto que va al LLM) se dejan en español a propósito.
+- **Proveedores de IA — registro central (#15):** todos los proveedores viven en
+  `services/providers.ts` como entradas del registro `PROVIDERS`. Añadir uno nuevo = una
+  entrada más, sin tocar más ficheros. Los proveedores actuales y su transporte:
+  - `transport: 'openai-compatible'` (fetch directo desde navegador): Groq Cloud,
+    OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI, Ollama Cloud.
+  - `transport: 'gemini-proxy'` (proxy backend): Google Gemini (bloqueo EEA),
+    NVIDIA NIM (sin CORS), OpenCode Zen (sin CORS), Cloudflare Workers AI (sin CORS),
+    Ollama Cloud (sin CORS).
+  Ver `server/index.js` para los endpoints proxy: `/api/gemini`, `/api/nim`,
+  `/api/openzen`, `/api/cloudflare`, `/api/ollama`.
+- **⚠️ No crear archivos de handoff / notas de sesión en el repo.** El handoff se entrega
+  como mensaje en el chat (formato `METODOLOGIA_IA.md §2.7`). No se crean ni se dejan
+  archivos `HANDOFF_*.md`, `SESSION_*.md` ni notas personales de sesión en el repo a
+  menos que el usuario lo pida explícitamente. Caso real (v3.34.1): un asistente creó
+  `HANDOFF_2026-07-13.md` sin que se lo pidieran; se borró y se registra aquí para no
+  repetirlo.
 - **Versión de Node del Dockerfile = la de CI/local (o rompe el deploy):** el build
   de Cloud Run corre dentro del `Dockerfile` con `node:22-alpine`. Debe **satisfacer
   el `engines` de todas las dependencias**. Caso real (v3.0.0–v3.1.1 no desplegaban):

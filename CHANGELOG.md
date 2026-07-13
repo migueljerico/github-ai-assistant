@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.34.1] — 2026-07-13
+
+### Changed
+- Sincronización documental completa a v3.34.1: badges, versiones en cabeceras,
+  listas de proveedores (OpenCode Zen, Cloudflare Workers AI, Ollama Cloud),
+  recuento de tests (536) y enlaces a `/docs/*` en README.
+- Borrado de `HANDOFF_2026-07-13.md` (nota personal de sesión no pedida; ver regla
+  anti-HANDOFF en `CLAUDE.md` §5 y `METODOLOGIA_IA.md` §2).
+- Eliminado `## ✅ Resueltos` duplicado en `MEJORAS_FUTURAS.md`; añadido bloque
+  "Enfoque actual" y nueva mejora futura #58 (documentación flexible de archivos).
+
+### Notes
+- Tests: 536/536 (client) + 5/5 (server), build limpio.
+- Cambio de código por ZCode (step-3.7-flash-free).
+
+---
+
 ## [3.34.0] — 2026-07-13
 
 ### Added

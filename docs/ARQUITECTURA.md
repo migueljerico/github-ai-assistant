@@ -38,6 +38,9 @@ APIs externas
   ├── OpenRouter
   ├── NVIDIA NIM
   └── Zenmux
+  ├── OpenCode Zen
+  ├── Cloudflare Workers AI
+  └── Ollama Cloud
 ```
 
 ---
@@ -84,16 +87,18 @@ APIs externas
 │ ├── GitHub REST API v3         │   │ ├── /auth/github               │
 │ ├── Groq Cloud                 │   │ ├── /auth/callback             │
 │ ├── OpenRouter                 │   │ ├── /api/gemini                │
-│ └── Zenmux                     │   │ ├── /api/nim                   │
-│                                │   │ ├── /health                    │
+│ ├── NVIDIA NIM                 │   │ ├── /api/nim                   │
+│ ├── Zenmux                     │   │ ├── /api/openzen               │
+│ ├── OpenCode Zen               │   │ ├── /api/cloudflare            │
+│ ├── Cloudflare Workers AI      │   │ ├── /api/ollama                │
+│ └── Ollama Cloud               │   │ ├── /health                    │
 │                                │   │ └── static files               │
 └───────────────────────────────┘   └───────────────┬───────────────┘
                                                     │
                                                     ▼
                                       ┌───────────────────────────────┐
-                                      │ Gemini + NVIDIA NIM APIs       │
-                                      │ vía proxy (bloqueo CORS/EEA    │
-                                      │ del navegador)                 │
+                                      │ Gemini + NVIDIA NIM + OpenCode Zen + Cloudflare + Ollama APIs │
+                                      │ vía proxy (bloqueo CORS/EEA del navegador)                    │
                                       └───────────────────────────────┘
 ```
 
@@ -123,6 +128,9 @@ Esto aplica a:
 - Claves de OpenRouter.
 - Claves de NVIDIA NIM.
 - Claves de Zenmux.
+- Claves de OpenCode Zen.
+- Claves de Cloudflare Workers AI.
+- Claves de Ollama Cloud.
 
 ---
 
@@ -137,8 +145,8 @@ Responsabilidades principales:
 - Intercambiar el `code` por un token.
 - Servir el frontend en producción.
 - Exponer `/health`.
-- Actuar como proxy para Gemini.
-- Aplicar rate limiting al proxy Gemini.
+- Actuar como proxy para Gemini, NVIDIA NIM, OpenCode Zen, Cloudflare Workers AI y Ollama Cloud (bloqueo CORS/geográfico).
+- Aplicar rate limiting a cada proxy.
 
 Responsabilidades que **no** asume:
 

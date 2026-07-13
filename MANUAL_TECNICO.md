@@ -1,6 +1,6 @@
 # 📖 Manual Técnico — GitHub AI Assistant
 
-**Versión:** v3.19.0 · Junio 2026
+**Versión:** v3.34.1 · Julio 2026
 
 ---
 
@@ -24,12 +24,12 @@ La aplicación sigue una arquitectura de **backend thin** deliberada: el servido
 │  │  App.tsx (wrappers finos) → services/assistantActions   │   │
 │  │  runSend → callAI → parseAction → ConfirmModal          │   │
 │  │  runConfirmAction → executeAction → HistoryContext      │   │
-│  │  runDocumentRepo → fetchRepoTreeRecursive → DocModal    │   │
-│  │  runAttachFile (PDF/Excel/PowerBI) → FilePublishModal   │   │
+│  │  runDocumentRepo → fetchRepoTreeRecursive               │   │
+│  │    → DocumentFlowModal (stepper 4 pasos)                │   │
 │  └────────────────────────────────────────────────────────┘   │
-└──────────────┬────────────────────────────────────┬───────────┘
+┌──────────────┬────────────────────────────────────┬───────────┘
                │ /auth/github · /auth/callback      │ fetch()
-               │ /api/gemini (proxy + rate limit)   │
+               │ /api/gemini · /api/nim · /api/openzen · /api/cloudflare · /api/ollama
                ▼                                    ▼
 ┌──────────────────────────┐  ┌────────────────────────────────┐
 │  Backend Express.js      │  │  APIs Externas                 │
@@ -38,11 +38,22 @@ La aplicación sigue una arquitectura de **backend thin** deliberada: el servido
 │  ├── GET /auth/github    │  │  api.github.com                │
 │  ├── GET /auth/callback  │  │                                │
 │  ├── POST /api/gemini    │  │  Groq Cloud                    │
-│  │   (rate limited)     │  │  api.groq.com/openai/v1        │
-│  └── Static (prod)       │  │                                │
-│                          │  │  Google Gemini                 │
-│  Solo en memoria:        │  │  generativelanguage.googleapis │
-│  GITHUB_CLIENT_SECRET    │  │  (via proxy en el servidor)    │
+│  ├── POST /api/nim       │  │  api.groq.com/openai/v1        │
+│  ├── POST /api/openzen   │  │                                │
+│  ├── POST /api/cloudflare│  │  Google Gemini                 │
+│  ├── POST /api/ollama    │  │  generativelanguage.googleapis │
+│  └── Static (prod)       │  │  (via proxy en el servidor)    │
+│                          │  │                                │
+│  Solo en memoria:        │  │  NVIDIA NIM                    │
+│  GITHUB_CLIENT_SECRET    │  │  integrate.api.nvidia.com      │
+│                          │  │                                │
+│  Rate limiters por       │  │  OpenCode Zen (opencode.ai)    │
+│  proveedor (40-100       │  │                                │
+│  req/min por IP)          │  │  Cloudflare Workers AI         │
+│                          │  │  api.cloudflare.com            │
+│                          │  │                                │
+│                          │  │  Ollama Cloud                  │
+│                          │  │  ollama.com/v1                 │
 └──────────────────────────┘  └────────────────────────────────┘
 ```
 
@@ -59,8 +70,8 @@ github-ai-assistant/
 │       │   ├── auth/        # OAuth / PAT / UserBadge
 │       │   ├── chat/        # ChatArea, ChatInput, ChatMessage, DocumentRepoButton,
 │       │   │                #   ThreadSummaryButton, FileAttachButton, RepoContextButton
-│       │   ├── confirm/     # ConfirmModal, DocModal (repo), FilePublishModal (archivo),
-│       │   │                #   PublishActions (barra commit/Draft PR/Release compartida)
+│       │   ├── confirm/     # DocumentFlowModal (stepper 4 pasos),
+│       │   │                #   ConfirmModal, PublishActions (commit/Draft PR/Release)
 │       │   ├── layout/      # Header, HistoryPanel, AIProviderBadge
 │       │   ├── multi-repo/  # RepoSelector
 │       │   └── templates/   # TemplatePanel + templateData.ts
@@ -142,22 +153,29 @@ Resultado → HistoryContext.addEntry()
 Mensaje de éxito/error en el chat
 ```
 
-### Flujo de documentar y publicar
+### Flujo de documentar y publicar (v3.27.0 — unificado)
 
-Hay **dos flujos de documentación** (que la ronda v3.10.0 unifica en sus controles):
+La UI de documentación es un único flujo stepper de 4 pasos (`DocumentFlowModal`)
+que unifica los dos flujos divergentes previos ("Documentar repo" → DocModal y
+"📤 Documentar y publicar archivo" → FilePublishModal):
 
 ```
-A) "Documentar repo" (DocModal)
-   runDocumentRepo → fetchRepoTreeRecursive + generateRepoDocs (README + MANUAL)
-   → DocModal → commit directo (writeDocFiles) | Draft PR (createDocsDraftPr)
-                | Release (runCreateRepoRelease, body = README)
-
-B) "📤 Documentar y publicar archivo" (FilePublishModal)
-   runAttachFile (PDF/Excel/Power BI) → fileContext (solo en memoria)
-   → 📤 botón → generateFileDoc (incorpora la conversación)
-   → FilePublishModal → commit | Draft PR (publishFileDoc) | Release (runCreateFileRelease)
-     + sube el archivo fuente y extras (imágenes→screenshots/, datos→data/)
+Paso 1 — Alcance: elegir "repo" o "archivo adjunto"
+Paso 2 — Generar: analizar repo o generar doc del archivo
+Paso 3 — Revisar: preview de README.md / MANUAL_TECNICO.md (scope repo)
+              o del documento generado (scope archivo)
+Paso 4 — Destino + método: commit directo / Draft PR / Release
+           + opción de subir archivo fuente y extras (imágenes→screenshots/,
+             datos→data/)
 ```
+
+**Componentes implicados:**
+- `DocumentFlowModal.tsx` — stepper de 4 pasos, estado compartido.
+- `PublishActions.tsx` — barra de acciones (commit / Draft PR / Release + versión).
+- `docPublisher.ts` — escritura de `README.md` + `MANUAL_TECNICO.md` (commit/Draft PR)
+  + `publishFileDoc` para scope archivo (`docs/{basename}.md`).
+- `assistantActions.ts` — orquestación (`runCommitDocs`, `runCreateDraftPr`,
+  `runCreateRepoRelease`, `runPublishFileDoc`, `runCreateFileRelease`).
 
 ---
 
@@ -207,30 +225,34 @@ directamente, por lo que no se ve afectada por este reintento.
 
 ### Diferencias de implementación por transporte
 
-| Aspecto | OpenAI-compatible (Groq, OpenRouter) | Gemini |
+| Proveedor | Transporte | Proxy backend | Razón del proxy |
+|---|---|---|---|
+| Groq Cloud | OpenAI-compatible | No (fetch directo) | Sin bloqueo CORS ni geográfico |
+| OpenRouter | OpenAI-compatible | No (fetch directo) | Sin bloqueo CORS ni geográfico |
+| Zenmux | OpenAI-compatible | No (fetch directo) | Sin bloqueo CORS ni geográfico |
+| NVIDIA NIM | OpenAI-compatible | Sí (`/api/nim`) | Sin CORS → el navegador bloquea "Failed to fetch" |
+| OpenCode Zen | OpenAI-compatible | Sí (`/api/openzen`) | Sin CORS → el navegador bloquea "Failed to fetch" |
+| Cloudflare Workers AI | OpenAI-compatible | Sí (`/api/cloudflare`) | Sin CORS → el navegador bloquea "Failed to fetch" |
+| Ollama Cloud | OpenAI-compatible | Sí (`/api/ollama`) | Sin CORS → el navegador bloquea "Failed to fetch" |
+| Google Gemini | `gemini-proxy` (SDK) | Sí (`/api/gemini`) | Bloqueo geográfico en EEA |
+
+### Proxies backend (rate limiters por proveedor)
+
+Cada proxy backend tiene su propio rate limiter (`express-rate-limit`) para que el
+abuso de un proveedor no agote la cuota del otro:
+
+| Proxy | Rate limit | Endpoints |
 |---|---|---|
-| SDK | `fetch()` directo (sin proxy) | `@google/generative-ai` (via proxy) |
-| Formato mensajes | OpenAI-compatible (`system` + `messages`) | `startChat({ history })` + `sendMessage()` |
-| System prompt | Mensaje con `role: 'system'` | `systemInstruction` en el modelo |
-| Catálogo de modelos | `GET /models` dinámico (OpenRouter etiqueta 🆓) | Lista curada estática |
-| Temperatura | 0.7 chat / 0.1 acción | Por defecto del SDK |
-| Max tokens | 4096 | 1024 (SDK default) |
-| Restricciones geográficas | Ninguna | Bloqueado en UE/EEA (requiere proxy) |
+| `POST /api/gemini` | 40 req/min por IP | `generativelanguage.googleapis` |
+| `POST /api/nim` + `GET /api/nim/models` | 40 req/min por IP | `integrate.api.nvidia.com/v1` |
+| `POST /api/openzen` | 100 req/min por IP | `opencode.ai/zen/v1` |
+| `POST /api/cloudflare` | 100 req/min por IP | `api.cloudflare.com/client/v4/accounts/{id}/ai/v1` |
+| `POST /api/ollama` + `GET /api/ollama/models` | 100 req/min por IP | `ollama.com/v1` |
 
-### Proxy de Gemini con Rate Limiting
-
-La API de Gemini bloquea las peticiones directas desde navegadores en la región europea (EEA). Para solucionar esto, el servidor Express actúa como proxy:
-
-```
-Frontend → POST /api/gemini
-Body: { apiKey, model, messages, systemPrompt }
-  ↓
-Server → Rate limiter (40 req/min por IP) → SDK de Gemini (desde us-central1)
-  ↓
-Server → { text } → Frontend
-```
-
-> La API key viaja en el body HTTPS y no se almacena en el servidor. El rate limiter (`express-rate-limit`) protege contra abuso con un límite de 40 peticiones por minuto por IP.
+Todos los proxies reenvían el body y el header `Authorization` sin tocarlos,
+respeta streaming SSE (`pipeUpstream`), y sanean headers del upstream para
+evitar caracteres no ISO-8859-1. La API key del usuario viaja en HTTPS y nunca
+se persiste, loguea ni cachea.
 
 ---
 
@@ -294,7 +316,10 @@ El token de acceso de GitHub vive exclusivamente en el estado de React (memoria 
 
 **Claves de IA — Memoria React:**
 
-Las claves de API de IA (Groq/Gemini) también viven exclusivamente en la memoria de React, dentro del `AIProviderContext`. No se almacenan en ningún sitio.
+Las claves de API de IA (Groq, Gemini, OpenRouter, NVIDIA NIM, Zenmux,
+OpenCode Zen, Cloudflare Workers AI, Ollama Cloud) también viven exclusivamente
+en la memoria de React, dentro del `AIProviderContext`. No se almacenan en
+ningún sitio.
 
 **Justificación de seguridad:** La aplicación requiere el scope `repo` de GitHub, que otorga acceso completo de lectura/escritura a todos los repositorios del usuario (públicos y privados). El vector de ataque más común en aplicaciones web es XSS (Cross-Site Scripting), que permite a un atacante ejecutar JavaScript arbitrario en el contexto de la página. Si las credenciales estuvieran en sessionStorage o localStorage, un script XSS podría leerlas y exfiltrarlas. Al mantener todo solo en memoria de React, un script XSS no puede acceder directamente a las variables de estado de React, eliminando este vector de ataque.
 
@@ -472,7 +497,7 @@ gcloud run deploy github-ai-assistant \
 - **CI:** GitHub Actions (`.github/workflows/ci.yml`) ejecuta en cada push/PR a `main`
   el lint, los tests del cliente con cobertura y los tests del servidor
   (job `server-test`). Ver "Pipeline CI/CD" en la sección de despliegue.
-- **Cobertura actual:** ~60% (ver Codecov para el valor exacto) · 436 tests en el cliente
+- **Cobertura actual:** ~60% (ver Codecov para el valor exacto) · 536 tests en el cliente
 
 ### Módulos testeados
 
@@ -486,9 +511,9 @@ gcloud run deploy github-ai-assistant \
 | `gemini.ts` | parseGeminiAction, detectPrimaryLanguage, temperatura por modo, contexto de repo (#41), `generateFileDoc` (incorpora conversación), enrutado OpenRouter, reintento transitorio (`withTransientRetry`) | ✅ |
 | `docPublisher.ts` | Commit directo / Draft PR (#45); `publishFileDoc` + binarios/extras (`uploadPathFor`) (#28) | ✅ |
 | `threadSummary.ts` | Resumen de hilos issue/PR (#32): parseo, issue vs PR, hilo vacío | ✅ |
-| `assistantActions.ts` | Orquestación del chat (#42): `runSend`, `runConfirmAction`, `runCancelAction`; documentar/publicar archivo (`runPublishFileDoc`/`runCreateFileRelease`/`runCreateRepoRelease`) y `runAttachFile` (~98%). Recibe `t()` inyectada vía `ChatDeps` para traducir los mensajes visibles del chat (#24 Fase 2, v3.21.0) | ✅ |
+| `assistantActions.ts` | Orquestación del chat (#42): `runSend`, `runConfirmAction`, `runCancelAction`; documentar repo (`runCommitDocs`/`runCreateDraftPr`/`runCreateRepoRelease`); documentar/publicar archivo (`runPublishFileDoc`/`runCreateFileRelease`) y `runAttachFile` (~98%) | ✅ |
 | `repoRef.ts` | `resolveRepoRef` (owner/repo vs repo) | ✅ |
-| `DocModal.tsx` / `FilePublishModal.tsx` / `PublishActions.tsx` | Pestañas/preview, callbacks, versión, extras, oferta de crear repo, estado busy; barra de acciones compartida (v3.10.0) | ✅ |
+| `DocumentFlowModal.tsx` / `PublishActions.tsx` | Stepper 4 pasos (alcance → generar → revisar → destino + método); barra de acciones compartida (v3.10.0); tabs README/MANUAL; offer crear repo; extras a subir | ✅ |
 | `modeDetection.ts` | Chat vs action; sesgo a chat con contexto de repo/archivo | ✅ |
 | `formatResult.ts` | Arrays, objetos, strings, JSON | ✅ |
 | `releaseGenerator.ts` / `releaseAssets.ts` | createGitHubRelease, notas, suggestNextVersion; subida/validación de assets | ✅ |

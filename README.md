@@ -15,8 +15,8 @@
 ![Ollama Cloud](https://img.shields.io/badge/Ollama_Cloud-000000?style=for-the-badge&logo=ollama&logoColor=white)
 ![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
 ![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
-![Versión](https://img.shields.io/badge/Versión-v3.34.0-blue?style=for-the-badge)
-![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)
+![Versión](https://img.shields.io/badge/Versión-v3.34.1-blue?style=for-the-badge)
+[![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)](./LICENSE)
 [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
 
 
@@ -60,8 +60,8 @@ Todo bajo el principio:
 | Aspecto | Detalle |
 |---|---|
 | ⏱️ Tiempo de desarrollo | 30 días desde cero |
-| 🤖 Proveedores soportados | Groq · Google Gemini · OpenRouter · NVIDIA NIM · Zenmux · OpenCode Zen · Cloudflare Workers AI |
-| 🧠 Modelos disponibles | Gemini, Llama, Nemotron, GLM, Grok, DeepSeek, Qwen y más vía OpenRouter/NIM/Zenmux/OpenCode/Cloudflare |
+| 🤖 Proveedores soportados | Groq · Google Gemini · OpenRouter · NVIDIA NIM · Zenmux · OpenCode Zen · Cloudflare Workers AI · Ollama Cloud |
+| 🧠 Modelos disponibles | Gemini, Llama, Nemotron, GLM, Grok, DeepSeek, Qwen, MiniMax y más vía OpenRouter/NIM/Zenmux/OpenCode/Cloudflare/Ollama |
 | ⚡ Latencia observada | ~400ms Groq / ~1.2s Gemini, variable según modelo y contexto |
 | 🛡️ Seguridad | Zero-Storage: credenciales solo en memoria React |
 | 🧪 Tests | 536 tests automatizados |
@@ -84,9 +84,25 @@ Todo bajo el principio:
 | 📋 Changelog | Generar changelog desde commits recientes o desde el último release |
 | 📊 Salud del código | Dashboard con lenguajes, commits y deuda técnica |
 | 🌐 i18n | Interfaz bilingüe ES/EN |
-| 🔑 Multi-proveedor IA | Groq, Gemini, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen y Cloudflare Workers AI con clave del usuario |
+| 🔑 Multi-proveedor IA | Groq, Gemini, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI y Ollama Cloud con clave del usuario |
 
 Más detalle en ./docs/FUNCIONALIDADES.md.
+
+## 📚 Documentación adicional
+
+| Documento | Qué cubre |
+|---|---|
+| [`docs/ARQUITECTURA.md`](./docs/ARQUITECTURA.md) | Diagrama de arquitectura, flujos y principios de diseño |
+| [`docs/FUNCIONALIDADES.md`](./docs/FUNCIONALIDADES.md) | Catálogo completo de funcionalidades |
+| [`docs/INSTALACION.md`](./docs/INSTALACION.md) | Guía de instalación local, proveedores y variables de entorno |
+| [`docs/SEGURIDAD.md`](./docs/SEGURIDAD.md) | Arquitectura Zero-Storage, OAuth, retries y mitigaciones |
+| [`docs/TESTING_CALIDAD.md`](./docs/TESTING_CALIDAD.md) | Estrategia de testing, cobertura y CI/CD |
+| [`docs/DESARROLLO_IA.md`](./docs/DESARROLLO_IA.md) | Flujo humano↔IA, dogfooding y lecciones aprendidas |
+| [`docs/COMPARATIVA_COPILOT.md`](./docs/COMPARATIVA_COPILOT.md) | Diferencias frente a GitHub Copilot |
+| [`MANUAL_TECNICO.md`](./MANUAL_TECNICO.md) | Referencia técnica manual (estructura, flujos, servidor) |
+| [`CHANGELOG.md`](./CHANGELOG.md) | Historial de versiones |
+| [`MEJORAS_FUTURAS.md`](./MEJORAS_FUTURAS.md) | Roadmap y mejoras pendientes |
+| [`LICENSE`](./LICENSE) | Licencia MIT |
 
 ---
 
@@ -218,6 +234,7 @@ Ver detalle en ./docs/TESTING_CALIDAD.md.
 | Zenmux | Pasarela con modelos gratuitos |
 | OpenCode Zen | Modelos gratis con API key opencode.ai |
 | Cloudflare Workers AI | Modelos serverless (@cf/…) |
+| Ollama Cloud | OpenAI-compatible (proxy backend, sin CORS) |
 | Recharts | Dashboard de salud del código |
 | Vitest | Testing |
 | Codecov | Cobertura |

@@ -5,8 +5,8 @@ Esta guía explica cómo ejecutar **GitHub AI Assistant** en local para desarrol
 La aplicación está dividida en:
 
 - **Frontend:** React + TypeScript + Vite.
-- **Backend:** Express.js para OAuth, proxy Gemini y health check.
-- **APIs externas:** GitHub REST API, Groq Cloud, Google Gemini, OpenRouter, NVIDIA NIM y Zenmux.
+- **Backend:** Express.js para OAuth, proxies de IA y health check.
+- **APIs externas:** GitHub REST API, Groq Cloud, Google Gemini, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI, Ollama Cloud.
 
 ---
 
@@ -20,7 +20,7 @@ Antes de empezar necesitas:
 | npm | Incluido con Node.js |
 | Git | Requerido para clonar y trabajar con el repo |
 | GitHub OAuth App | Necesaria para login con GitHub |
-| API key de IA | Groq, Gemini, OpenRouter, NVIDIA NIM u Zenmux |
+| API key de IA | Groq, Gemini, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI u Ollama Cloud |
 
 ---
 
@@ -73,6 +73,9 @@ Necesitarás al menos una clave de:
 | OpenRouter | `https://openrouter.ai/keys` |
 | NVIDIA NIM | `https://build.nvidia.com/explore/discover` |
 | Zenmux | `https://zenmux.ai` |
+| OpenCode Zen | `https://opencode.ai` |
+| Cloudflare Workers AI | `https://dash.cloudflare.com` |
+| Ollama Cloud | `https://ollama.com` |
 
 > La clave de IA **no** se configura en `.env`.  
 > Cada usuario la introduce directamente en la aplicación y vive solo en memoria durante la sesión.
@@ -162,7 +165,7 @@ http://localhost:5173
 2. Pulsa conectar con GitHub.
 3. Autoriza la OAuth App.
 4. Elige proveedor de IA.
-5. Pega tu clave de Groq, Gemini, OpenRouter, NVIDIA NIM u Zenmux.
+5. Pega tu clave de Groq, Gemini, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI u Ollama Cloud.
 6. Empieza a trabajar con tus repositorios.
 
 ---

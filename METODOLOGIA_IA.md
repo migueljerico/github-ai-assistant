@@ -169,6 +169,12 @@ El asistente lo entrega como último mensaje de la sesión, en un bloque de
 código para copiar fácil. Si queda trabajo a medias (contra la regla de §2), el
 handoff lo declara sin inflar lo conseguido.
 
+> **Regla anti-HANDOFF (v3.34.1):** el handoff es un mensaje en el chat, no un
+> archivo en el repo. No se crean, ni se dejan, archivos `HANDOFF_*.md`,
+> `SESSION_*.md` ni notas personales de sesión en el repo a menos que el usuario
+> lo pida explícitamente. Caso real: un asistente creó `HANDOFF_2026-07-13.md`
+> sin que se lo pidieran → se borró y se registra la regla aquí para no repetirlo.
+
 ---
 
 ## 3. Convenciones de los asistentes

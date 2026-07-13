@@ -20,7 +20,7 @@ El objetivo no es solo comprobar que la aplicación funciona, sino reducir regre
 
 | Métrica | Estado |
 |---|---|
-| Tests cliente | 476 |
+| Tests cliente | 536 |
 | Archivos de test | 48 archivos `.test.ts(x)` |
 | Framework principal | Vitest |
 | Testing de componentes | React Testing Library |
@@ -571,7 +571,7 @@ Evolución general:
 | Adjuntos locales | Tests para PDF, Excel, Power BI y DOCX |
 | Seguridad | Validación de acciones, endpoints y rate limiting |
 | UX avanzada | Streaming, cancelación, modales e i18n |
-| Estado actual | 476 tests cliente |
+| Estado actual | 536 tests cliente |
 
 ---
 

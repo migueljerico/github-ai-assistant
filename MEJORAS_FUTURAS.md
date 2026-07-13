@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v3.34.0 · Julio 2026
+**Actualizado a:** v3.34.1 · Julio 2026
 
 ---
 
@@ -486,15 +486,58 @@ El usuario los encuentra confusos: no sabe cuándo usar cuál, y con un repo car
 
 ---
 
+#### #58 — Publicación flexible de documentación (sin paths hardcodeados)
+**Esfuerzo:** 1–2 días
+**Origen:** propuesta MiniMax M3 (vía ZCode, 2026-07-13); análisis del código real de `docPublisher.ts` y `assistantActions.ts`.
+
+**Problema actual:** la publicación de documentos está hardcodeada a paths fijos:
+- Scope **repo**: solo escribe `README.md` y `MANUAL_TECNICO.md` (`docPublisher.ts:18-19`, `writeDocFiles:63-79`).
+- Scope **archivo**: siempre escribe `docs/{basename}.md` (`assistantActions.ts:910-913`).
+No existe forma de publicar otros archivos del repo (p. ej. `MEJORAS_FUTURAS.md`, `CLAUDE.md`, `/docs/*.md`) sin cambios de código.
+
+**Solución propuesta:** generalizar el flujo de publicación para aceptar un target de
+documentación configurable por documento:
+1. Añadir un selector de "tipo de documentación" al `DocumentFlowModal`:
+   - **Repo completo** (actual): escribe en `README.md` + `MANUAL_TECNICO.md`.
+   - **Archivo único** (actual): escribe en `docs/{basename}.md`.
+   - **Documento específico del repo** (nuevo): el usuario elige el path destino
+     desde una lista de archivos editoriales del repo (`MEJORAS_FUTURAS.md`,
+     `CHANGELOG.md`, `docs/*.md`, etc.) o escribe uno custom.
+2. `docPublisher.ts` pasa de 2 paths hardcodeados a un array de targets
+   `{ path, content, message }`; `writeDocFiles` acepta `Array<DocTarget>`.
+3. `publishFileDoc` generaliza a `publishDocAt(path, content)` — ya acepta `path`
+   como string, pero la UI no lo expone.
+4. Validar que el usuario tiene permisos de escritura sobre el path antes de
+   confirmar (HEAD `/repos/{owner}/{repo}/contents/{path}` para detectar 404
+   "no existe" vs 200 "existe, traeré el SHA").
+5. El selector de tipo no rompe los flujos existentes: "repo" y "archivo" siguen
+   funcionando igual; "documento específico" es una tercera opción nueva.
+
+**Dependencia:** la IA debe generar el contenido adecuado para el documento destino
+(p. ej. generar un roadmap a partir de `MEJORAS_FUTURAS.md` requiere un prompt
+diferente al de `generateRepoDocs`). El `DocumentFlowModal` debe pasar el tipo al
+orquestador, que elige el prompt/generador correspondiente.
+
+**Fuera de alcance (dejar para sub-fases):** publicación bulk de varios archivos,
+edición incremental (diff contra doc existente en vez de reescribir), y modo
+"revisión de doc existente" (la IA sugiere cambios, el usuario los confirma uno
+por uno).
+
+**Beneficio:** la app deja de ser "solo README/MANUAL" y se convierte en un editor
+de documentación de repo completo. Cierra una limitación recurrente de portafolio:
+no poder mantener `MEJORAS_FUTURAS.md`, `CHANGELOG.md` o `/docs/*.md` desde la UI.
+
+---
+
 ## 📊 Resumen
 
 | Prioridad | Total | ✅ Resueltos | ⏳ Pendientes |
 |---|---|---|---|
 | 🔴 Alta | 8 | 8 (#1, #2, #13, #14, #27, #45, #15, #28) | 0 |
 | 🟡 Media | 17 | 16 (#12, #17, #18, #19, #21, #37, #41, #32, #42, #38, #20, #49, #39, #44, #50, #51) | 1 (#26) |
-| 🟢 Baja | 18 | 10 (#23, #24, #34, #40, #46, #58, #55, #56, #57, #54) | 6 (#22, #25, #36, #48, #52, #53) |
+| 🟢 Baja | 18 | 9 (#23, #24, #34, #40, #46, #55, #56, #57, #54) | 7 (#22, #25, #36, #48, #52, #53, #58) |
 | **🗑️ Descartados** | — | — | 2 (#33, #35) descartados en v3.22.3 |
-| **TOTAL** | **43** | **34** | **7** |
+| **TOTAL** | **43** | **33** + 2 descartados | **8** |
 
 > **#28** cubierto en su **norte** por las Fases 1 (v3.0.0, adjuntar como contexto) y
 > 2 (v3.1.0, documentar→publicar). **Más formatos:** Fase 3a (v3.2.0, Excel/CSV) y
@@ -508,11 +551,13 @@ El usuario los encuentra confusos: no sabe cuándo usar cuál, y con un repo car
 
 ---
 
-## ✅ Resueltos
+## 🎯 Enfoque actual (v3.34.1)
 
-| # | Punto | Archivo | Versión |
-|---|---|---|---|
-| 54 | Fix: OpenCode Zen y Cloudflare Workers AI — "Failed to fetch" y modelos incorrectos | `providers.ts`, `gemini.ts`, `AIProviderContext.tsx`, `AIProviderPanel.tsx`, i18n es/en, tests | v3.33.1 |
+1. Verificación de Ollama Cloud en producción (MiniMax M3) y cuota Cloudflare
+   reiniciada (Kimi K2.7 Code / Llama 3.1 8B).
+2. Sincronización documental completa a v3.34.1 (esta versión).
+3. Flexibilidad de publicación de documentación (#58) — dejar de hardcodear
+   `README.md` + `MANUAL_TECNICO.md` y `docs/{basename}.md` en la UI.
 
 ---
 
