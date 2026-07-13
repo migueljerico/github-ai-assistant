@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.34.0] — 2026-07-13
+
+### Added
+- **Nuevo proveedor: Ollama Cloud (🦙).** 11 modelos verificados en free tier:
+  - 6 modelos ilimitados: MiniMax M3 (default, 1M ctx), Nemotron 3 Super, Qwen3 Coder Next, Gemma 4 31B, GPT-OSS 20B, Ministral 3 14B
+  - 5 modelos con límite de sesión bajo: Nemotron 3 Ultra, Devstral Small 2 24B, GPT-OSS 120B, Qwen3 Coder 480B, Devstral 2 123B
+  - Endpoint OpenAI-compatible en `https://ollama.com/v1` con API key `sk-ollama-...`
+  - Catálogo dinámico vía `modelsEndpoint` + fallback estático
+- i18n ES/EN para el nuevo proveedor (`provider.ollama.*`)
+
+### Fixed
+- **Retry transitorio (retry.ts):** añadido status 429 y patrón `rate limit|429` a `TRANSIENT_PATTERN` para reintentar en saturación de proveedores de IA (Cloudflare, OpenRouter free, etc.). Excluye `GitHubAPIError` (manejo propio con headers de rate-limit).
+- **Proxy Cloudflare (`server/index.js`):** `res.removeHeader('content-encoding')` y `removeHeader('transfer-encoding')` antes de `pipeUpstream` para evitar `ERR_CONTENT_DECODING_FAILED` en el navegador.
+- **Mensaje accionable Cloudflare 403/429 (`gemini.ts`):** si el proxy `/api/cloudflare` devuelve 403 o 429, el error sugiere: *"Modelo no disponible en tu cuenta Cloudflare (cuota agotada). Prueba con Kimi K2.7 Code o Llama 3.1 8B en el selector."*
+
+### Changed
+- `client/src/utils/retry.ts`: `TRANSIENT_PATTERN` ampliado; `isTransientError` ignora `GitHubAPIError` (manejo propio).
+- `server/index.js`: proxy `/api/cloudflare` limpia headers `content-encoding` y `transfer-encoding`.
+- `client/src/services/gemini.ts`: error accionable para Cloudflare 403/429.
+- `client/src/services/__tests__/providers.test.ts`: test de `defaultModel` incluye ahora `ollama`.
+
+### Notes
+- Tests: 536/536 (client) + 5/5 (server), build limpio, lint 0 errores.
+- Cambio de código por Nemotron 3 Ultra (ZCode).
+
 ## [3.33.8] — 2026-07-12
 
 ### Fixed

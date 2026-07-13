@@ -443,6 +443,11 @@ app.post('/api/cloudflare', cloudflareLimiter, async (req, res) => {
     for (const [key, value] of Object.entries(safeHeaders)) {
       res.setHeader(key, value);
     }
+    // Strip content-encoding del upstream para evitar ERR_CONTENT_DECODING_FAILED
+    // (a veces Cloudflare envía transfer-encoding: chunked o content-encoding: gzip
+    //  y el navegador falla al decodificar si reenviamos como está).
+    res.removeHeader('content-encoding');
+    res.removeHeader('transfer-encoding');
     await pipeUpstream(upstream, res);
   } catch (err) {
     console.error('Cloudflare proxy error:', err);

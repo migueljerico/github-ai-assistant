@@ -254,6 +254,11 @@ async function callOpenAICompatible(
     if (isTooLarge || res.status === 413) {
       throw Object.assign(new Error(base), { status: res.status, contextTooLarge: true });
     }
+    // Cloudflare 403/429: mensaje accionable con modelos baratos que sí funcionan
+    if ((res.status === 403 || res.status === 429) && endpoint.includes('/api/cloudflare')) {
+      const hint = ' — Modelo no disponible en tu cuenta Cloudflare (cuota agotada). Prueba con Kimi K2.7 Code o Llama 3.1 8B en el selector.';
+      throw Object.assign(new Error(base + hint), { status: res.status });
+    }
     const hint = ' — el modelo no está disponible ahora mismo (saturación del tier gratuito). Prueba otro modelo (p. ej. Gemma) o cambia a Gemini/Groq.';
     throw Object.assign(new Error(base + hint), { status: res.status });
   }

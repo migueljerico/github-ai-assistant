@@ -3,7 +3,7 @@ import { PROVIDERS, getProvider, fetchModels, pickDefaultModel, modelLabel, reso
 
 describe('providers — registro', () => {
   it('los proveedores tienen su defaultModel dentro de staticModels', () => {
-    (['gemini', 'groq', 'openrouter', 'nvidia', 'zenmux', 'openzen', 'cloudflare'] as const).forEach(id => {
+    (['gemini', 'groq', 'openrouter', 'nvidia', 'zenmux', 'openzen', 'cloudflare', 'ollama'] as const).forEach(id => {
       const def = getProvider(id);
       expect(def.id).toBe(id);
       expect(def.staticModels.some(m => m.value === def.defaultModel)).toBe(true);

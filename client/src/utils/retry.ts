@@ -8,7 +8,7 @@
 
 const TRANSIENT_STATUS = new Set([500, 502, 503, 504]);
 const TRANSIENT_PATTERN =
-  /overloaded|high demand|currently experiencing|service unavailable|provider returned error|temporarily|try again|failed to fetch|network|timeout|econnreset/i;
+  /overloaded|high demand|currently experiencing|service unavailable|provider returned error|temporarily|try again|failed to fetch|network|timeout|econnreset|rate limit|429/i;
 
 /** ¿El error viene de cancelar la petición (AbortController)? Nunca se reintenta. */
 export function isAbortError(err: unknown): boolean {
@@ -17,8 +17,10 @@ export function isAbortError(err: unknown): boolean {
 
 /** ¿El error es transitorio y merece la pena reintentar (5xx, red, patrones conocidos)? */
 export function isTransientError(err: unknown): boolean {
-  const e = err as { status?: number; transient?: boolean; message?: string };
+  const e = err as { status?: number; transient?: boolean; message?: string; name?: string };
   if (e?.transient) return true;
+  // 429 de GitHub se maneja en ghFetch con headers de rate-limit; no reintentar aquí.
+  if (typeof e?.status === 'number' && e.status === 429 && e.name === 'GitHubAPIError') return false;
   if (typeof e?.status === 'number' && TRANSIENT_STATUS.has(e.status)) return true;
   return TRANSIENT_PATTERN.test(e?.message ?? '');
 }

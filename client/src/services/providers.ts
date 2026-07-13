@@ -12,7 +12,7 @@
 // sessionStorage es la LISTA de modelos (catálogo), nunca la clave.
 // ────────────────────────────────────────────────────────────────────────────
 
-export type AIProviderType = 'gemini' | 'groq' | 'openrouter' | 'nvidia' | 'zenmux' | 'openzen' | 'cloudflare';
+export type AIProviderType = 'gemini' | 'groq' | 'openrouter' | 'nvidia' | 'zenmux' | 'openzen' | 'cloudflare' | 'ollama';
 export type ProviderTransport = 'gemini-proxy' | 'openai-compatible';
 
 export interface ModelOption {
@@ -190,6 +190,23 @@ const CLOUDFLARE_FALLBACK: ModelOption[] = [
   { value: '@cf/google/gemma-2-9b-it', label: 'Gemma 2 9B' },
 ];
 
+// Fallback curado con los 11 modelos verificados hoy en Ollama Cloud (free tier)
+const OLLAMA_FALLBACK: ModelOption[] = [
+  // Free tier ilimitado (relativamente)
+  { value: 'minimax-m3', label: 'MiniMax M3', free: true, recommended: true },
+  { value: 'nemotron-3-super', label: 'Nemotron 3 Super', free: true },
+  { value: 'qwen3-coder-next', label: 'Qwen3 Coder Next', free: true },
+  { value: 'gemma4:31b', label: 'Gemma 4 31B', free: true },
+  { value: 'gpt-oss:20b', label: 'GPT-OSS 20B', free: true },
+  { value: 'ministral-3:14b', label: 'Ministral 3 14B', free: true },
+  // Free pero con límite de sesión bajo
+  { value: 'nemotron-3-ultra', label: 'Nemotron 3 Ultra', free: true },
+  { value: 'devstral-small-2:24b', label: 'Devstral Small 2 24B', free: true },
+  { value: 'gpt-oss:120b', label: 'GPT-OSS 120B', free: true },
+  { value: 'qwen3-coder:480b', label: 'Qwen3 Coder 480B', free: true },
+  { value: 'devstral-2:123b', label: 'Devstral 2 123B', free: true },
+];
+
 export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
   gemini: {
     id: 'gemini',
@@ -331,6 +348,27 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     signupUrl: 'https://dash.cloudflare.com/profile/api-tokens',
     signupLabel: 'provider.cloudflare.signupLabel',
     note: 'provider.cloudflare.note',
+  },
+  // Ollama Cloud: VA AL FINAL (antes de cloudflare según handoff: "justo delante de CloudFlare y después de OpenCode Zen").
+  // API OpenAI-compatible en https://ollama.com/v1. Requiere API key sk-ollama-...
+  // Catálogo dinámico vía modelsEndpoint; fallback estático con 11 modelos verificados.
+  ollama: {
+    id: 'ollama',
+    name: 'Ollama Cloud',
+    shortName: 'Ollama',
+    emoji: '🦙',
+    cardDesc: 'provider.ollama.cardDesc',
+    transport: 'openai-compatible',
+    chatEndpoint: 'https://ollama.com/v1/chat/completions',
+    modelsEndpoint: 'https://ollama.com/v1/models',
+    modelsNeedKey: true,
+    staticModels: OLLAMA_FALLBACK,
+    defaultModel: OLLAMA_FALLBACK[0].value, // 'minimax-m3'
+    keyPlaceholder: 'sk-ollama-...',
+    keyPrefix: 'sk-ollama-',
+    signupUrl: 'https://ollama.com',
+    signupLabel: 'provider.ollama.signupLabel',
+    note: 'provider.ollama.note',
   },
 };
 

@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v3.33.7 · Julio 2026
+**Actualizado a:** v3.34.0 · Julio 2026
 
 ---
 
@@ -59,6 +59,7 @@ Estado del código, mejoras pendientes y roadmap del proyecto.
 | — | **Cloudflare 400 fix: proxy lee X-Account-Id del header** | server/index.js (proxy /api/cloudflare: accountId desde header, no body) | v3.33.3 |
 | — | **Cloud Run startup fix: eliminar type assertion TS en server/index.js** | server/index.js (eliminado `as string | undefined` en lectura de header) | v3.33.5 |
 | — | **Cloudflare: saneo de headers + rate limit + modelos ampliados** | server/index.js (proxy /api/cloudflare: headers saneados, rate limit 100/min), providers.ts (CLOUDFLARE_FALLBACK: 8 modelos), i18n | v3.33.7 |
+| — | **Ollama Cloud (nuevo proveedor) + 11 modelos free verificados + retry 429 + Cloudflare fix headers + error accionable 403/429** | providers.ts (OLLAMA_FALLBACK 11 modelos), retry.ts (429 + pattern), server/index.js (strip content-encoding), gemini.ts (error Cloudflare), i18n ES/EN | v3.34.0 |
 
 ---
 

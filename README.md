@@ -12,9 +12,10 @@
 ![Zenmux](https://img.shields.io/badge/Zenmux-6C5CE7?style=for-the-badge&logo=brave&logoColor=white)
 ![OpenCode Zen](https://img.shields.io/badge/OpenCode_Zen-9C27B0?style=for-the-badge&logo=opencode&logoColor=white)
 ![Cloudflare Workers AI](https://img.shields.io/badge/Cloudflare_Workers_AI-F38020?style=for-the-badge&logo=cloudflare&logoColor=white)
+![Ollama Cloud](https://img.shields.io/badge/Ollama_Cloud-000000?style=for-the-badge&logo=ollama&logoColor=white)
 ![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
 ![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
-![Versión](https://img.shields.io/badge/Versión-v3.33.8-blue?style=for-the-badge)
+![Versión](https://img.shields.io/badge/Versión-v3.34.0-blue?style=for-the-badge)
 ![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)
 [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
 

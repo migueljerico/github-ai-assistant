@@ -118,6 +118,10 @@ export const en = {
   'provider.cloudflare.signupLabel': 'Create API token at dash.cloudflare.com →',
   'provider.cloudflare.note': 'Requires your Account ID and an API token with Workers AI permissions. Choose the model you want to use from the list.',
 
+  'provider.ollama.cardDesc': 'Open models hosted on Ollama Cloud. Requires free account at ollama.com.',
+  'provider.ollama.signupLabel': 'Create account at Ollama',
+  'provider.ollama.note': 'Only verified free models. Some have low session limits (few requests/hour).',
+
   // ────── PHASE 2: Modals ──────
   'modal.doc.title': 'Documentation generated for {repoName}',
   'modal.doc.subtitle': 'I analyzed {filesAnalyzed} file',
