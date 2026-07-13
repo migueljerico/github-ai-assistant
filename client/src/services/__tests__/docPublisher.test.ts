@@ -20,7 +20,7 @@ import {
   createBranch,
   createPullRequest,
 } from '../github';
-import { writeDocFiles, buildDocsPrBody, createDocsDraftPr, publishFileDoc, uploadPathFor } from '../docPublisher';
+import { writeDocFiles, buildDocsPrBody, createDocsDraftPr, publishFileDoc, uploadPathFor, writeDocTargets } from '../docPublisher';
 
 const TOKEN = 'tok';
 const OWNER = 'owner';
@@ -36,7 +36,7 @@ describe('docPublisher', () => {
       vi.mocked(getFileContents)
         .mockResolvedValueOnce({ sha: 'readme-sha' } as any)
         .mockResolvedValueOnce({ sha: 'manual-sha' } as any);
-      vi.mocked(createOrUpdateFile).mockResolvedValue({ commit: { sha: 'c' } } as any);
+      vi.mocked(createOrUpdateFile).mockResolvedValue({ commit: { sha: 'c' }, content: { sha: 'c', name: 'x', path: 'x', type: 'file' } as any });
 
       await writeDocFiles(TOKEN, OWNER, REPO, '# Readme', '# Manual', 'docs/auto-1');
 
@@ -51,7 +51,7 @@ describe('docPublisher', () => {
 
     it('usa SHA undefined cuando el fichero no existe (getFileContents lanza 404)', async () => {
       vi.mocked(getFileContents).mockRejectedValue(new Error('404'));
-      vi.mocked(createOrUpdateFile).mockResolvedValue({ commit: { sha: 'c' } } as any);
+      vi.mocked(createOrUpdateFile).mockResolvedValue({ commit: { sha: 'c' }, content: { sha: 'c', name: 'x', path: 'x', type: 'file' } as any });
 
       await writeDocFiles(TOKEN, OWNER, REPO, 'R', 'M');
 
@@ -61,6 +61,65 @@ describe('docPublisher', () => {
       );
       expect(createOrUpdateFile).toHaveBeenNthCalledWith(
         2, TOKEN, OWNER, REPO, 'MANUAL_TECNICO.md', 'M', expect.any(String), undefined, undefined
+      );
+    });
+  });
+
+  describe('writeDocTargets (#58)', () => {
+    it('escribe un solo target con SHA y rama', async () => {
+      vi.mocked(getFileContents).mockResolvedValue({ sha: 's' } as any);
+      vi.mocked(createOrUpdateFile).mockResolvedValue({ commit: { sha: 'c' }, content: { sha: 'c', name: 'x', path: 'x', type: 'file' } as any });
+
+      await writeDocTargets(TOKEN, OWNER, REPO, [{ path: 'MEJORAS_FUTURAS.md', content: '# Roadmap' }], 'branch-x');
+
+      expect(createOrUpdateFile).toHaveBeenCalledTimes(1);
+      expect(createOrUpdateFile).toHaveBeenCalledWith(
+        TOKEN, OWNER, REPO, 'MEJORAS_FUTURAS.md', '# Roadmap', expect.any(String), 's', 'branch-x'
+      );
+    });
+
+    it('escribe varios targets en un solo publish', async () => {
+      vi.mocked(getFileContents).mockResolvedValue({ sha: 's' } as any);
+      vi.mocked(createOrUpdateFile).mockResolvedValue({ commit: { sha: 'c' }, content: { sha: 'c', name: 'x', path: 'x', type: 'file' } as any });
+
+      await writeDocTargets(TOKEN, OWNER, REPO, [
+        { path: 'README.md', content: '# R' },
+        { path: 'CHANGELOG.md', content: '# C' },
+        { path: 'docs/ARQUITECTURA.md', content: '# A' },
+      ]);
+
+      expect(createOrUpdateFile).toHaveBeenCalledTimes(3);
+      expect(vi.mocked(createOrUpdateFile).mock.calls[0][3]).toBe('README.md');
+      expect(vi.mocked(createOrUpdateFile).mock.calls[1][3]).toBe('CHANGELOG.md');
+      expect(vi.mocked(createOrUpdateFile).mock.calls[2][3]).toBe('docs/ARQUITECTURA.md');
+    });
+
+    it('usa message custom si se provee, sino deriva del path', async () => {
+      vi.mocked(getFileContents).mockResolvedValue({ sha: 's' } as any);
+      vi.mocked(createOrUpdateFile).mockResolvedValue({ commit: { sha: 'c' }, content: { sha: 'c', name: 'x', path: 'x', type: 'file' } as any });
+      const SIG = 'Creado por MiniMax M3';
+
+      await writeDocTargets(TOKEN, OWNER, REPO, [
+        { path: 'CHANGELOG.md', content: '# C', message: 'docs: changelog custom' },
+        { path: 'MEJORAS_FUTURAS.md', content: '# M' },
+      ], undefined, SIG);
+
+      const messages = vi.mocked(createOrUpdateFile).mock.calls.map(c => c[5]);
+      expect(messages[0]).toBe('docs: changelog custom');
+      expect(messages[1]).toContain('MEJORAS_FUTURAS.md');
+      expect(messages[1]).toContain(SIG);
+    });
+
+    it('update mode: usa SHA existente (no crea de nuevo)', async () => {
+      vi.mocked(getFileContents).mockResolvedValue({ sha: 'existing-sha' } as any);
+      vi.mocked(createOrUpdateFile).mockResolvedValue({ commit: { sha: 'c' }, content: { sha: 'c', name: 'x', path: 'x', type: 'file' } as any });
+
+      await writeDocTargets(TOKEN, OWNER, REPO, [
+        { path: 'README.md', content: '# Actualizado' },
+      ]);
+
+      expect(createOrUpdateFile).toHaveBeenCalledWith(
+        TOKEN, OWNER, REPO, 'README.md', '# Actualizado', expect.any(String), 'existing-sha', undefined
       );
     });
   });
@@ -79,6 +138,14 @@ describe('docPublisher', () => {
       const body = buildDocsPrBody('owner/repo', 42);
       expect(body).toContain('42 archivos analizados');
     });
+
+    it('usa paths custom cuando se proveen (#58)', () => {
+      const body = buildDocsPrBody('owner/repo', 3, undefined, ['README.md', 'CHANGELOG.md', 'docs/ARQUITECTURA.md']);
+      expect(body).toContain('`README.md`');
+      expect(body).toContain('`CHANGELOG.md`');
+      expect(body).toContain('`docs/ARQUITECTURA.md`');
+      expect(body).not.toContain('`MANUAL_TECNICO.md`');
+    });
   });
 
   describe('createDocsDraftPr', () => {
@@ -87,7 +154,7 @@ describe('docPublisher', () => {
       vi.mocked(getBranchSha).mockResolvedValue('base-sha');
       vi.mocked(createBranch).mockResolvedValue({} as any);
       vi.mocked(getFileContents).mockResolvedValue({ sha: 's' } as any);
-      vi.mocked(createOrUpdateFile).mockResolvedValue({ commit: { sha: 'c' } } as any);
+      vi.mocked(createOrUpdateFile).mockResolvedValue({ commit: { sha: 'c' }, content: { sha: 'c', name: 'x', path: 'x', type: 'file' } as any });
       vi.mocked(createPullRequest).mockResolvedValue({ number: 7, html_url: 'http://pr/7' } as any);
 
       const result = await createDocsDraftPr(
@@ -113,7 +180,7 @@ describe('docPublisher', () => {
   describe('publishFileDoc (#28 Fase 2)', () => {
     it('commit directo: escribe UN fichero en la rama por defecto, sin PR', async () => {
       vi.mocked(getFileContents).mockResolvedValue({ sha: 'existing' } as any);
-      vi.mocked(createOrUpdateFile).mockResolvedValue({ commit: { sha: 'c' } } as any);
+      vi.mocked(createOrUpdateFile).mockResolvedValue({ commit: { sha: 'c' }, content: { sha: 'c', name: 'x', path: 'x', type: 'file' } as any });
 
       const result = await publishFileDoc(TOKEN, OWNER, REPO, 'docs/notas.md', '# Doc', {});
 
@@ -132,7 +199,7 @@ describe('docPublisher', () => {
       vi.mocked(getBranchSha).mockResolvedValue('base-sha');
       vi.mocked(createBranch).mockResolvedValue({} as any);
       vi.mocked(getFileContents).mockRejectedValue(new Error('404')); // fichero nuevo
-      vi.mocked(createOrUpdateFile).mockResolvedValue({ commit: { sha: 'c' } } as any);
+      vi.mocked(createOrUpdateFile).mockResolvedValue({ commit: { sha: 'c' }, content: { sha: 'c', name: 'x', path: 'x', type: 'file' } as any });
       vi.mocked(createPullRequest).mockResolvedValue({ number: 9, html_url: 'http://pr/9' } as any);
 
       const result = await publishFileDoc(TOKEN, OWNER, REPO, 'docs/notas.md', '# Doc', { draft: true }, 456);
@@ -151,7 +218,7 @@ describe('docPublisher', () => {
 
     it('con sourceFile commitea también el binario (doc + archivo fuente) — #28 4a', async () => {
       vi.mocked(getFileContents).mockResolvedValue({ sha: 'existing' } as any);
-      vi.mocked(createOrUpdateFile).mockResolvedValue({ commit: { sha: 'c' } } as any);
+      vi.mocked(createOrUpdateFile).mockResolvedValue({ commit: { sha: 'c' }, content: { sha: 'c', name: 'x', path: 'x', type: 'file' } as any });
       vi.mocked(createOrUpdateBinaryFile).mockResolvedValue({ commit: { sha: 'b' } } as any);
       const sourceFile = {
         name: 'informe miguel.pbit',
@@ -170,7 +237,7 @@ describe('docPublisher', () => {
 
     it('con extraFiles commitea cada uno a su ruta por tipo — #28 4b', async () => {
       vi.mocked(getFileContents).mockResolvedValue({ sha: 'x' } as any);
-      vi.mocked(createOrUpdateFile).mockResolvedValue({ commit: { sha: 'c' } } as any);
+      vi.mocked(createOrUpdateFile).mockResolvedValue({ commit: { sha: 'c' }, content: { sha: 'c', name: 'x', path: 'x', type: 'file' } as any });
       vi.mocked(createOrUpdateBinaryFile).mockResolvedValue({ commit: { sha: 'b' } } as any);
       const mk = (name: string) => ({ name, arrayBuffer: async () => new Uint8Array([1]).buffer }) as unknown as File;
       const extraFiles = [mk('captura.png'), mk('datos.xlsx'), mk('notas.txt')];
@@ -192,7 +259,7 @@ describe('docPublisher — signature (v3.31.0)', () => {
   describe('writeDocFiles', () => {
     it('con signature, los commit messages la incluyen', async () => {
       vi.mocked(getFileContents).mockResolvedValue({ sha: 's' } as any);
-      vi.mocked(createOrUpdateFile).mockResolvedValue({ commit: { sha: 'c' } } as any);
+      vi.mocked(createOrUpdateFile).mockResolvedValue({ commit: { sha: 'c' }, content: { sha: 'c', name: 'x', path: 'x', type: 'file' } as any });
 
       await writeDocFiles(TOKEN, OWNER, REPO, 'R', 'M', undefined, SIG);
 
@@ -204,7 +271,7 @@ describe('docPublisher — signature (v3.31.0)', () => {
 
     it('sin signature, usa el mensaje histórico (retrocompatible)', async () => {
       vi.mocked(getFileContents).mockResolvedValue({ sha: 's' } as any);
-      vi.mocked(createOrUpdateFile).mockResolvedValue({ commit: { sha: 'c' } } as any);
+      vi.mocked(createOrUpdateFile).mockResolvedValue({ commit: { sha: 'c' }, content: { sha: 'c', name: 'x', path: 'x', type: 'file' } as any });
 
       await writeDocFiles(TOKEN, OWNER, REPO, 'R', 'M');
 

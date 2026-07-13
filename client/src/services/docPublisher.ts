@@ -78,6 +78,23 @@ export async function writeDocFiles(
   await createOrUpdateFile(token, owner, repo, MANUAL_PATH, manualTecnico, manualMessage, manualSha, branch);
 }
 
+/** #58: escribe N documentos en el repo (array genérico de targets). */
+export async function writeDocTargets(
+  token: string,
+  owner: string,
+  repo: string,
+  targets: DocTarget[],
+  branch?: string,
+  signature?: string
+): Promise<void> {
+  for (const target of targets) {
+    const sha = await getExistingSha(token, owner, repo, target.path);
+    const message = target.message
+      || (signature ? `docs: ${target.path} — ${signature}` : `docs: ${target.path} generado por el Asistente de IA`);
+    await createOrUpdateFile(token, owner, repo, target.path, target.content, message, sha, branch);
+  }
+}
+
 /** Sanea el nombre de un fichero para usarlo como ruta de repo (sin espacios raros). */
 function sanitizeRepoPath(name: string): string {
   return name.replace(/[^\w.-]+/g, '_').replace(/_+/g, '_') || 'archivo';
@@ -155,6 +172,13 @@ export interface PublishFileResult {
   branchName: string | null;
 }
 
+/** #58: target individual de documentación para `writeDocTargets`. */
+export interface DocTarget {
+  path: string;       // ruta destino en el repo (p. ej. "MEJORAS_FUTURAS.md")
+  content: string;    // markdown generado
+  message?: string;   // commit message custom (opcional; si falta, se deriva del path)
+}
+
 /**
  * #28 Fase 2: publica UN fichero arbitrario (p. ej. `docs/notas.md`) en un repo,
  * como commit directo (rama por defecto) o como Draft PR. Reutiliza los wrappers
@@ -216,19 +240,21 @@ export async function publishFileDoc(
  * Construye el cuerpo (Markdown) del Draft PR de documentación.
  * @param signature - v3.31.0: firma de documentación para citar al proveedor/modelo.
  */
-export function buildDocsPrBody(repoName: string, filesAnalyzed: number, signature?: string): string {
+export function buildDocsPrBody(repoName: string, filesAnalyzed: number, signature?: string, paths?: string[]): string {
   const plural = filesAnalyzed !== 1;
   const byLine = signature
     ? `, generada por ${signature}`
     : ', generada por el Asistente de IA';
+  const docs = paths && paths.length > 0
+    ? paths.map(p => `- \`${p}\``).join('\n')
+    : '- `README.md`\n- `MANUAL_TECNICO.md`';
   return [
     '## 📄 Documentación generada automáticamente',
     '',
     `Este Draft PR añade/actualiza la documentación de **${repoName}**${byLine} a partir de ${filesAnalyzed} archivo${plural ? 's' : ''} analizado${plural ? 's' : ''}.`,
     '',
     '### Archivos',
-    '- `README.md`',
-    '- `MANUAL_TECNICO.md`',
+    docs,
     '',
     '> Revisa el contenido antes de marcar el PR como *Ready for review* y mergear.',
   ].join('\n');
@@ -266,7 +292,7 @@ export async function createDocsDraftPr(
     signature ? `docs: documentación generada por ${signature}` : 'docs: documentación generada por IA',
     branchName,
     baseBranch,
-    buildDocsPrBody(docs.repoName, docs.filesAnalyzed, signature),
+    buildDocsPrBody(docs.repoName, docs.filesAnalyzed, signature, ['README.md', 'MANUAL_TECNICO.md']),
     true
   );
 
