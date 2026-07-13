@@ -351,7 +351,8 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
   },
   // Ollama Cloud: VA AL FINAL (antes de cloudflare según handoff: "justo delante de CloudFlare y después de OpenCode Zen").
   // API OpenAI-compatible en https://ollama.com/v1. Requiere API key sk-ollama-...
-  // Catálogo dinámico vía modelsEndpoint; fallback estático con 11 modelos verificados.
+  // PROXY BACKEND /api/ollama (elude bloqueo CORS de ollama.com).
+  // Catálogo dinámico vía /api/ollama/models; fallback estático con 11 modelos verificados.
   ollama: {
     id: 'ollama',
     name: 'Ollama Cloud',
@@ -359,8 +360,8 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     emoji: '🦙',
     cardDesc: 'provider.ollama.cardDesc',
     transport: 'openai-compatible',
-    chatEndpoint: 'https://ollama.com/v1/chat/completions',
-    modelsEndpoint: 'https://ollama.com/v1/models',
+    chatEndpoint: '/api/ollama',
+    modelsEndpoint: '/api/ollama/models',
     modelsNeedKey: true,
     staticModels: OLLAMA_FALLBACK,
     defaultModel: OLLAMA_FALLBACK[0].value, // 'minimax-m3'

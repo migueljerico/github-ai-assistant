@@ -456,6 +456,101 @@ app.post('/api/cloudflare', cloudflareLimiter, async (req, res) => {
   }
 });
 
+// ─── Ollama Cloud Proxy (v3.34.0) ──────────────────────────────────────────────
+// Ollama Cloud (ollama.com) NO envía cabeceras CORS → el navegador bloquea las
+// llamadas directas con "Failed to fetch". Este proxy elude el bloqueo igual que
+// el de Gemini, NIM, OpenCode Zen y Cloudflare. Reenvía el body OpenAI-format y
+// el header Authorization sin tocarlos, y devuelve la respuesta (JSON o stream SSE).
+//
+// La API key del usuario viaja en el header Authorization (HTTPS cliente→backend)
+// y se descarta al terminar la petición — nunca se persiste ni loguea.
+const ollamaLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 100,
+  message: {
+    error: 'Demasiadas peticiones a Ollama Cloud. Por favor espera un minuto.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.post('/api/ollama', ollamaLimiter, async (req, res) => {
+  const auth = req.headers.authorization || '';
+  if (!auth.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Falta la API key de Ollama (header Authorization: Bearer sk-ollama-...)' });
+  }
+  try {
+    const upstream = await fetch('https://ollama.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': auth,
+        'Content-Type': 'application/json',
+        ...(req.headers['accept'] ? { 'Accept': req.headers['accept'] } : {}),
+      },
+      body: JSON.stringify(req.body),
+    });
+    console.log(`[Ollama] upstream status=${upstream.status} ct=${upstream.headers.get('content-type') || '-'}`);
+    res.status(upstream.status);
+    const ct = upstream.headers.get('content-type');
+    if (ct) res.setHeader('Content-Type', ct);
+    // Saneamos headers para evitar caracteres no ISO-8859-1
+    const safeHeaders = {};
+    for (const [key, value] of upstream.headers.entries()) {
+      if (typeof value === 'string' && /^[\x00-\x7F]*$/.test(value)) {
+        safeHeaders[key] = value;
+      }
+    }
+    for (const [key, value] of Object.entries(safeHeaders)) {
+      res.setHeader(key, value);
+    }
+    res.removeHeader('content-encoding');
+    res.removeHeader('transfer-encoding');
+    await pipeUpstream(upstream, res);
+  } catch (err) {
+    console.error('Ollama proxy error:', err);
+    if (!res.headersSent) res.status(502).json({ error: 'Error al contactar con Ollama Cloud', detail: err?.message || String(err) });
+    else { try { res.end(); } catch { /* noop */ } }
+  }
+});
+
+// Catálogo de modelos Ollama vía proxy (evita CORS)
+app.get('/api/ollama/models', ollamaLimiter, async (req, res) => {
+  const auth = req.headers.authorization || '';
+  if (!auth.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Falta la API key de Ollama (header Authorization: Bearer sk-ollama-...)' });
+  }
+  try {
+    const upstream = await fetch('https://ollama.com/v1/models', {
+      method: 'GET',
+      headers: {
+        'Authorization': auth,
+        'Accept': 'application/json',
+      },
+    });
+    console.log(`[Ollama Models] upstream status=${upstream.status} ct=${upstream.headers.get('content-type') || '-'}`);
+    res.status(upstream.status);
+    const ct = upstream.headers.get('content-type');
+    if (ct) res.setHeader('Content-Type', ct);
+    // Saneamos headers
+    const safeHeaders = {};
+    for (const [key, value] of upstream.headers.entries()) {
+      if (typeof value === 'string' && /^[\x00-\x7F]*$/.test(value)) {
+        safeHeaders[key] = value;
+      }
+    }
+    for (const [key, value] of Object.entries(safeHeaders)) {
+      res.setHeader(key, value);
+    }
+    res.removeHeader('content-encoding');
+    res.removeHeader('transfer-encoding');
+    await pipeUpstream(upstream, res);
+  } catch (err) {
+    console.error('Ollama models proxy error:', err);
+    if (!res.headersSent) res.status(502).json({ error: 'Error al contactar con Ollama Cloud (models)', detail: err?.message || String(err) });
+    else { try { res.end(); } catch { /* noop */ } }
+  }
+});
+
 // ─── GitHub OAuth ─────────────────────────────────────────────────────────────
 app.get('/auth/github', (req, res) => {
   if (!GITHUB_CLIENT_ID) {
