@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.35.0] — 2026-07-14
+
+### Fixed
+- Build de v3.34.x: `runGenerateSpecificDoc` y `runPublishSpecificDoc` no importados en `client/src/App.tsx` (callbacks Fase 4 del flujo de documento específico).
+- `RepoContext` sin campo `fileTree`: añadido `fileTree?: { path: string }[]` para que el selector de rutas del modal compile.
+- `DocumentFlowModal`: eliminado uso de `scope` como valor fuera del componente (eran líneas de tipo `type Scope` confundidas con variable); movidos `isFile` e `isSpecific` dentro del componente; añadidas las props Fase 2/Fase 3 (`onGenerateSpecific`, `onCommitSpecific`, `onDraftPrSpecific`, `onReleaseSpecific`, `repoFileTree`, `extraInstructions`, `onExtraInstructionsChange`) al destructuring.
+- `DocumentFlowModal.test.tsx`: añadidos mocks de las props Fase 2 y Fase 3 para que los tests tipen correctamente.
+
+### Added
+- **Fase 3 (selectividad):** el campo de texto opcional "Instrucciones adicionales" del flujo de documento específico se propaga hasta el generador. En `App.tsx`, `flowGenerateSpecific` reenvía `extraInstructions` como `conversation` a `runGenerateSpecificDoc`; `generateSpecificDoc` lo incluye como `CONTEXTO ADICIONAL` en el prompt del LLM.
+
+### Changed
+- Ajustada interfaz de callback `onGenerateSpecific` para aceptar `extraInstructions?: string`.
+- Eliminado estado local duplicado de `extraInstructions` en el modal; ahora el componente delega a través de `onExtraInstructionsChange`.
+
+### Notes
+- Tests: 541/541 (client) + 5/5 (server), build limpio.
+- Cambio de código por ZCode (step-3.7-flash-free).
+
+---
+
 ## [3.34.1] — 2026-07-13
 
 ### Changed
