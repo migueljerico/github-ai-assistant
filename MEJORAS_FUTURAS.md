@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v3.35.0 · Julio 2026
+**Actualizado a:** v3.36.0 · Julio 2026
 
 ---
 
@@ -567,3 +567,23 @@ no poder mantener `MEJORAS_FUTURAS.md`, `CHANGELOG.md` o `/docs/*.md` desde la U
 - Issues pendientes ordenados por prioridad dentro de cada bloque 🔴 / 🟡 / 🟢
 - Crear commit: `docs: mark issue #X as resolved in vX.Y`
 - Cada mejora debe incluir tests correspondientes (ver #26)
+
+---
+
+## ⚠️ Vulnerabilidades conocidas (v3.36.0)
+
+### `xlsx` (SheetJS Community Edition) — Prototype Pollution + ReDoS
+- **Dependencia:** `xlsx@^0.18.5` (usado en `spreadsheetReader.ts` para Fase 3a Excel/CSV)
+- **CVEs:** GHSA-xvch-5gv4-9q4h (Prototype Pollution), GHSA-93q8-gq69-qvxp (ReDoS)
+- **Estado:** Sin fix en npm — el paquete está descontinuado. Versión 0.20.2 disponible solo en CDN (https://cdn.sheetjs.com/), no en npm.
+- **Riesgo:** Solo al **leer archivos Excel/CSV maliciosos** adjuntados por el usuario (ataque de archivo). El flujo de escritura/exportación no se ve afectado.
+- **Mitigación actual (v3.36.0):** 
+  - El usuario debe confiar en el archivo que sube (no hay validación previa).
+  - El parseo ocurre en el navegador (cliente), no en servidor.
+- **Plan para v3.36.1:**
+  1. Límite de tamaño de archivo (ej. 10 MB) antes de parsear.
+  2. Validación básica de estructura (cabeceras esperadas) tras parseo.
+  3. Aviso en UI: "Solo sube archivos de fuentes confiables".
+  4. **NO migrar a `exceljs`** — añade ~4 MB al bundle (chunk propio), inaceptable para la arquitectura de chunks lazy actuales.
+  5. Documentar en `docs/SEGURIDAD.md` y `README.md` (sección "Limitaciones conocidas").
+

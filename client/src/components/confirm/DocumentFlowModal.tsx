@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+// #58 Fase 6: hook de persistencia avanzada del selector de documento específico
+import { useDocTargetSelector } from '../../hooks/useDocTargetSelector';
 import type { RepoAnalysis } from '../../types';
 import type { PublishTarget, PublishKind, StartPublishResult, FileContext } from '../../services/assistantActions';
 import { resolveRepoRef } from '../../utils/repoRef';
@@ -149,6 +151,51 @@ const [specificMissing, setSpecificMissing] = useState<{ owner: string; repo: st
       setExtras(nonPrimary);
     }
   }, [step, scope, allAttachedFiles]);
+
+  // #58 Fase 6: hook de persistencia avanzada del selector de documento específico
+  const {
+    state: savedState,
+    setScope: saveScope,
+    setSpecificRepoInput: saveSpecificRepoInput,
+    setSpecificPath: saveSpecificPath,
+    setExtraInstructions: saveExtraInstructions,
+
+  } = useDocTargetSelector();
+
+  // Restaurar estado guardado al montar (solo si no hay initialRepo que sobrescribe)
+  useEffect(() => {
+    if (!initialRepo && savedState?.scope === 'specific') {
+      setScope('specific');
+      setSpecificRepoInput(savedState.specificRepoInput);
+      setSpecificPath(savedState.specificPath);
+      if (savedState.extraInstructions && onExtraInstructionsChange) {
+        onExtraInstructionsChange(savedState.extraInstructions);
+      }
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- solo al montar: savedState estable, onExtraInstructionsChange controlado por padre
+
+  // Persistir cambios de scope
+  useEffect(() => {
+    if (scope) saveScope(scope);
+  }, [scope, saveScope]);
+
+  // Persistir cambios en specificRepoInput
+  useEffect(() => {
+    if (scope === 'specific') saveSpecificRepoInput(specificRepoInput);
+  }, [specificRepoInput, scope, saveSpecificRepoInput]);
+
+  // Persistir cambios en specificPath
+  useEffect(() => {
+    if (scope === 'specific') saveSpecificPath(specificPath);
+  }, [specificPath, scope, saveSpecificPath]);
+
+  // Persistir cambios en extraInstructions (sincronización bidireccional con prop controlled)
+  useEffect(() => {
+    if (scope === 'specific' && extraInstructions !== undefined) {
+      saveExtraInstructions(extraInstructions);
+    }
+  }, [extraInstructions, scope, saveExtraInstructions]);
+
 
   // ── Paso 2: generación ─────────────────────────────────────────────────────────
   const handleGenerateRepo = async () => {
@@ -345,7 +392,7 @@ return (
                   type="button"
                   className="btn btn-secondary"
                   style={{ textAlign: 'left', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '4px' }}
-                  onClick={() => { setScope('repo'); setStep(2); }}
+                  onClick={() => { setScope('repo'); saveScope('repo'); setStep(2); }}
                 >
                   <strong>{t('modal.flow.scopeRepo')}</strong>
                   <small style={{ opacity: 0.8, fontWeight: 400 }}>{t('modal.flow.scopeRepoDesc')}</small>
@@ -356,7 +403,7 @@ return (
                   className="btn btn-secondary"
                   style={{ textAlign: 'left', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '4px' }}
                   disabled={!hasAttachedFile}
-                  onClick={() => { if (hasAttachedFile) { setScope('file'); setStep(2); } }}
+                  onClick={() => { if (hasAttachedFile) { setScope('file'); saveScope('file'); setStep(2); } }}
                 >
                   <strong>{t('modal.flow.scopeFile')}</strong>
                   <small style={{ opacity: 0.8, fontWeight: 400 }}>{t('modal.flow.scopeFileDesc')}</small>
@@ -370,7 +417,7 @@ return (
   type="button"
   className="btn btn-secondary"
   style={{ textAlign: 'left', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '4px' }}
-  onClick={() => { setScope('specific'); setStep(2); }}
+  onClick={() => { setScope('specific'); saveScope('specific'); setStep(2); }}
 >
   <strong>{t('modal.flow.scopeSpecific')}</strong>
   <small style={{ opacity: 0.8, fontWeight: 400 }}>{t('modal.flow.scopeSpecificDesc')}</small>
@@ -428,7 +475,7 @@ return (
         className="input"
         placeholder={t('chat.repoInputPlaceholder')}
         value={specificRepoInput}
-        onChange={e => setSpecificRepoInput(e.target.value)}
+        onChange={e => { setSpecificRepoInput(e.target.value); saveSpecificRepoInput(e.target.value); }}
         style={{ fontSize: '0.85rem', padding: '8px 10px' }}
       />
       <input
@@ -437,7 +484,7 @@ return (
         className="input"
         placeholder={t('modal.flow.specificPathPlaceholder')}
         value={specificPath}
-        onChange={e => setSpecificPath(e.target.value)}
+        onChange={e => { setSpecificPath(e.target.value); saveSpecificPath(e.target.value); }}
         style={{ fontSize: '0.85rem', padding: '8px 10px' }}
       />
       {repoFileTree && repoFileTree.length > 0 && (
@@ -445,7 +492,7 @@ return (
           id="flow-specific-path-select"
           className="input"
           value={specificPath}
-          onChange={e => setSpecificPath(e.target.value)}
+          onChange={e => { setSpecificPath(e.target.value); saveSpecificPath(e.target.value); }}
           style={{ fontSize: '0.85rem', padding: '8px 10px' }}
         >
           <option value="">— {t('modal.flow.specificPathSelectPlaceholder')} —</option>

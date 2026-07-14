@@ -1,3 +1,23 @@
+## [3.36.0] — 2026-07-14
+
+### Added
+- **Fase 6 (persistencia avanzada):** nuevo hook `useDocTargetSelector.ts` que persiste en `localStorage` (clave `doc_target_selector`) el `scope`, `repoInput`, `targetPath` y `extraInstructions` del último flujo "documento específico del repo". Al reabrir el `DocumentFlowModal`, el usuario recupera su contexto previo sin tener que rellenar el repo y la ruta.
+- Integración en `DocumentFlowModal.tsx`: restauración automática al montar (si no hay `initialRepo`), persistencia en cambios de scope/repo/path/instrucciones, y sincronización bidireccional con la prop controlada `extraInstructions`.
+- Tests unitarios del hook (11 tests: hidratación, persistencia, clear, merge defensivo, SSR safety, cuota localStorage, JSON inválido).
+
+### Changed
+- `DocumentFlowModal`: los botones de Paso 1 (scope repo/file/specific) ahora actualizan tanto el estado local como el almacenamiento persistido.
+- `client/src/test/setup.ts`: limpieza de `localStorage` entre tests para evitar contaminación de estado persistido.
+
+### Fixed
+- Lint: escape innecesario en regexp de `setup.ts` (`\{` → `{`).
+
+### Notes
+- Tests: 556/556 (client) + 5/5 (server) — **11 nuevos tests** para `useDocTargetSelector`.
+- Build limpio, lint 0 errores (solo warnings preexistentes).
+- **Pendiente conocido (v3.36.1):** `xlsx` (SheetJS) tiene vulnerabilidades conocidas (prototype pollution, ReDoS) sin fix en npm. **Plan B para v3.36.1:** límite de tamaño de archivo + validación antes de parsear + documentar riesgo; migración a `exceljs` descartada por +4 MB de bundle.
+- Cambio de código por Nemotron 3 Ultra (NVIDIA NIM).
+
 ### CHANGELOG
 
 All notable changes to this project will be documented in this file.
