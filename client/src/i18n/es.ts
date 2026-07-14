@@ -186,6 +186,15 @@ export const es = {
   'modal.flow.createAndDocument': '➕ Crear repo y documentar',
   'modal.flow.alreadyDocumented': '✅ Este repositorio ya tiene documentación. Al continuar se **actualizará** con la nueva versión (no se duplicará).',
   'modal.flow.addExtrasCreate': '➕ Añadir archivos para subir al repo nuevo (imágenes, datos, código…)',
+  // #58 Fase 2: scope "documento específico del repo"
+  'modal.flow.scopeSpecific': 'Documento específico del repo',
+  'modal.flow.scopeSpecificDesc': 'Genera documentación para un archivo concreto del repositorio (no todo el repo).',
+  'modal.flow.specificPathPlaceholder': 'Ruta: src/components/Button.tsx',
+  'modal.flow.specificPathSelectPlaceholder': 'O elige un archivo del árbol del repo…',
+  'modal.flow.generateSpecific': 'Generar doc de este archivo',
+  // #58 Fase 3: selectividad en scopes existentes
+  'modal.flow.extraInstructions': 'Instrucciones adicionales (opcional)',
+  'modal.flow.extraInstructionsPlaceholder': 'Ej: «Solo actualiza la sección de providers», «Enfócate en seguridad»…',
 
   // ────── FASE 2: Visor de diferencias ──────
   'diff.currentVersion': 'Versión actual',

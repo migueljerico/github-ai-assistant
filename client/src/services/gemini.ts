@@ -800,3 +800,81 @@ Reglas: básate ÚNICAMENTE en el contenido aportado (y, si se incluye, en la co
   if (!doc) throw new Error('La IA no devolvió documentación. Prueba con otro modelo o un archivo más pequeño.');
   return doc;
 }
+
+/**
+ * #58 Fase 2: genera documentación para un archivo ESPECÍFICO del repo (no es el
+ * flujo de repo completo ni de archivo adjunto). El prompt se adapta al tipo de
+ * documento según el path. Si `existingContent` viene, se pide actualizar el
+ * documento existente en vez de generarlo desde cero.
+ */
+export async function generateSpecificDoc(
+  targetPath: string,
+  existingContent?: string,
+  repoContext?: string,
+  config?: AIProviderConfig,
+  lang: Language = 'es',
+): Promise<string> {
+  const langInstruction = lang === 'en' ? 'IN ENGLISH' : 'EN ESPAÑOL';
+  const ext = targetPath.split('.').pop()?.toLowerCase() || '';
+  const baseName = targetPath.replace(/\.[^.]+$/, '').replace(/[^\w.-]+/g, '-') || 'archivo';
+
+  // Prompt base adaptado al tipo de documento
+  let typeDirective = '';
+  if (targetPath.toLowerCase() === 'changelog.md' || (ext === 'md' && baseName.toLowerCase() === 'changelog')) {
+    typeDirective = 'TIPO: Changelog. Genera entradas de cambios legibles para un público no técnico, agrupadas por categorías (Added, Fixed, Changed). Básate en el contexto del repo (commits recientes, estructura).';
+  } else if (targetPath.toLowerCase() === 'mejoras_futuras.md' || (ext === 'md' && baseName.toLowerCase() === 'mejoras-futuras')) {
+    typeDirective = 'TIPO: Roadmap de mejoras. Analiza el código actual del repo, detecta límites reales y propone mejoras ordenadas por prioridad (Alta/Media/Baja). Cada mejora debe incluir: problema actual, solución propuesta, esfuerzo estimado y beneficio.';
+  } else if (targetPath.startsWith('docs/') || targetPath.startsWith('doc/')) {
+    typeDirective = 'TIPO: Documentación de proyecto. Genera documentación completa y profesional para el archivo indicado, con secciones descriptivas, ejemplos y tablas.';
+  } else if (targetPath.toLowerCase() === 'readme.md') {
+    typeDirective = 'TIPO: README. Genera un README profesional con: título, badges, descripción, funcionalidades, instalación, uso, estructura del proyecto, tecnologías y footer.';
+  } else if (targetPath.toLowerCase() === 'manual_tecnico.md' || targetPath.toLowerCase() === 'manual-tecnico.md') {
+    typeDirective = 'TIPO: Manual técnico. Genera documentación técnica detallada: arquitectura, diagrama ASCII, estructura del proyecto, flujos, servicios, seguridad y despliegue.';
+  } else {
+    typeDirective = `TIPO: Documento personalizado (${targetPath}). Genera documentación profesional y útil para este archivo según su función en el repo.`;
+  }
+
+  const existingDirective = existingContent
+    ? `\n\nCONTENIDO ACTUAL DEL ARCHIVO (debes actualizarlo, no reemplazarlo ciegamente — mantén la estructura existente y mejora/añade secciones):\n${existingContent}`
+    : '\n\nEl archivo NO existe aún — créalo desde cero con contenido profesional.';
+
+  const contextDirective = repoContext
+    ? `\n\nCONTEXTO ADICIONAL (provisto por el usuario como archivos adjuntos):\n${repoContext}`
+    : '';
+
+  const systemPrompt = `Eres un experto en documentación técnica con registro PROFESIONAL. Tu tarea es generar o actualizar documentación para un archivo del repo. ${langInstruction}.
+
+${typeDirective}${existingDirective}${contextDirective}
+
+Reglas:
+- Básate ÚNICAMENTE en el contexto aportado; no inventes información sobre el repo que no esté en el contexto.
+- Usa Markdown limpio y profesional (emojis en títulos, tablas, bloques de código cuando corresponda).
+- Si hay contenido existente, respeta su estructura y tono; solo actualiza/añade.
+- Responde SOLO con el Markdown del documento, sin texto introductorio ni bloques de código externos que envuelvan todo.`;
+
+  const userMessage = `Documento objetivo: \`${targetPath}\`\n\nGenera la documentación completa para este archivo teniendo en cuenta las reglas y el contexto arriba indicados.`;
+
+  const provider = config?.provider ?? 'groq';
+  const apiKey = config?.apiKey ?? 'test-key';
+  const model = config?.model ?? 'test-model';
+
+  const raw = await callAI(
+    [{ role: 'user', content: userMessage }],
+    withLangDirective(systemPrompt, lang),
+    provider,
+    apiKey,
+    model,
+    undefined,
+    undefined,
+    undefined,
+    8192,
+  );
+
+  const doc = raw
+    .replace(/^```(?:markdown)?\s*/i, '')
+    .replace(/\s*```\s*$/, '')
+    .trim();
+
+  if (!doc) throw new Error('La IA no devolvió documentación. Prueba con otro modelo o un archivo más pequeño.');
+  return doc;
+}

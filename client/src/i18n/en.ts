@@ -186,6 +186,15 @@ export const en = {
   'modal.flow.createAndDocument': '➕ Create repo and document',
   'modal.flow.alreadyDocumented': '✅ This repo already has documentation. Continuing will **update** it with the new version (not duplicate).',
   'modal.flow.addExtrasCreate': '➕ Add files to upload to the new repo (images, data, code…)',
+  // #58 Phase 2: "specific file" scope
+  'modal.flow.scopeSpecific': 'Specific file in the repo',
+  'modal.flow.scopeSpecificDesc': 'Generate documentation for a single file in the repo (not the whole repo).',
+  'modal.flow.specificPathPlaceholder': 'Path: src/components/Button.tsx',
+  'modal.flow.specificPathSelectPlaceholder': 'Or pick a file from the repo tree…',
+  'modal.flow.generateSpecific': 'Generate doc for this file',
+  // #58 Phase 3: selectivity in existing scopes
+  'modal.flow.extraInstructions': 'Extra instructions (optional)',
+  'modal.flow.extraInstructionsPlaceholder': 'E.g. «Only update the providers section», «Focus on security»…',
 
   // ────── PHASE 2: Diff viewer ──────
   'diff.currentVersion': 'Current version',
