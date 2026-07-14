@@ -28,8 +28,8 @@
     "@types/diff": "^5.2.3",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
-    "@vitejs/plugin-react": "^4.3.3",
-    "@vitest/coverage-v8": "^1.6.1",
+    "@vitejs/plugin-react": "^6.0.3",
+    "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^9.13.0",
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.14",
@@ -37,8 +37,8 @@
     "jsdom": "^24.0.0",
     "typescript": "~5.6.2",
     "typescript-eslint": "^8.11.0",
-    "vite": "^5.4.10",
-    "vitest": "^1.6.1"
+    "vite": "^8.1.4",
+    "vitest": "^4.1.10"
   },
   "optionalDependencies": {
     "pdfjs-dist": "^6.0.227"
