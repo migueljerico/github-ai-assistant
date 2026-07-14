@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Eliminado estado local duplicado de `extraInstructions` en el modal; ahora el componente delega a través de `onExtraInstructionsChange`.
 
 ### Notes
-- Tests: 541/541 (client) + 5/5 (server), build limpio.
+- Tests: 545/545 (client) + 5/5 (server): se añaden 4 tests de cobertura para `generateSpecificDoc` (#58 Fase 2/3), build limpio.
 - Cambio de código por ZCode (step-3.7-flash-free).
 
 ---
