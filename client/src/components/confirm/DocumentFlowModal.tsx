@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { RepoAnalysis } from '../../types';
 import type { PublishTarget, PublishKind, StartPublishResult, FileContext } from '../../services/assistantActions';
-import type { DocTarget } from '../../services/docPublisher';
 import { resolveRepoRef } from '../../utils/repoRef';
 import PublishActions from './PublishActions';
 import { useModalDialog } from '../../hooks/useModalDialog';

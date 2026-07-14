@@ -100,8 +100,8 @@ export default function App() {
   // ── Cancel action ──────────────────────────────────────────────────────────
   const handleCancel = useCallback(() => {
     if (pendingAction) {
-      runCancelAction(
-        { token: token ?? '', user: user ?? { login: '' }, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+runCancelAction(
+{ token: token ?? '', user: user ?? { login: '' }, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
         pendingAction,
       );
     }
@@ -180,7 +180,7 @@ export default function App() {
       { provider, apiKey, model, accountId },
       repoInput,
     );
-  }, [token, user, provider, apiKey, model, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, accountId]);
+  }, [token, user, provider, apiKey, model, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, accountId]);
 
   const flowGenerateFile = useCallback(async (): Promise<string | null> => {
     // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto
@@ -194,7 +194,7 @@ export default function App() {
       primary,
       buildConversationText(),
     );
-  }, [fileContext, token, user, provider, apiKey, model, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, buildConversationText, accountId]);
+  }, [fileContext, token, user, provider, apiKey, model, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, buildConversationText, accountId]);
 
   // Publicación de la doc de repo (destino fijo = repo analizado).
   const flowCommitRepo = useCallback(async (analysis: RepoAnalysis): Promise<void> => {
@@ -235,7 +235,7 @@ export default function App() {
       repoInput,
       files,
     );
-  }, [token, user, provider, apiKey, model, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading, accountId]);
+  }, [token, user, provider, apiKey, model, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading, accountId]);
 
   // Publicación de la doc del archivo (destino elegido; maneja repo inexistente).
   const flowPublishFile = useCallback(async (target: PublishTarget): Promise<StartPublishResult> => {
@@ -304,7 +304,7 @@ const flowReleaseSpecific = useCallback(async (doc: string, path: string): Promi
       { provider, apiKey, model, accountId },
       { userText, conversationHistory, modeOverride, repoContext, fileContext, multiRepoEnabled, selectedRepos, signal: controller.signal },
     );
-  }, [inputValue, token, user, provider, apiKey, model, providerName, model, provider, t, lang, conversationHistory, multiRepoEnabled, selectedRepos, modeOverride, repoContext, fileContext, addMessage, updateMessage, addEntry, updateEntry, accountId]);
+  }, [inputValue, token, user, provider, apiKey, model, providerName, t, lang, conversationHistory, multiRepoEnabled, selectedRepos, modeOverride, repoContext, fileContext, addMessage, updateMessage, addEntry, updateEntry, accountId]);
 
   // #40: cancela la petición en vuelo; runSend mostrará "⏹️ detenido".
   const handleStop = useCallback(() => abortRef.current?.abort(), []);
@@ -319,7 +319,7 @@ const flowReleaseSpecific = useCallback(async (doc: string, path: string): Promi
       input,
       repoContext?.repoName ?? null,
     );
-  }, [token, user, provider, apiKey, model, providerName, model, provider, t, lang, repoContext, addMessage, updateMessage, addEntry, updateEntry, accountId]);
+  }, [token, user, provider, apiKey, model, providerName, t, lang, repoContext, addMessage, updateMessage, addEntry, updateEntry, accountId]);
 
   // ── Generar changelog del repo (#34) ─────────────────────────────────────────
   const handleGenerateChangelog = useCallback(async (input: string) => {
@@ -329,7 +329,7 @@ const flowReleaseSpecific = useCallback(async (doc: string, path: string): Promi
       { provider, apiKey, model, accountId },
       input,
     );
-  }, [token, user, provider, apiKey, model, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, accountId]);
+  }, [token, user, provider, apiKey, model, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, accountId]);
 
   // ── Salud del código — dashboard (#44) ───────────────────────────────────────
   const handleCodeHealth = useCallback(async (input: string) => {

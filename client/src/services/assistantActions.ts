@@ -13,11 +13,12 @@ import { generateRepoDocs, generateFileDoc, generateSpecificDoc, buildRepoContex
 import type { Language } from '../context/LanguageContext';
 import type { AIProviderConfig } from './gemini';
 import { getProvider, modelLabel, type AIProviderType } from './providers';
-import { fetchRepoTreeRecursive, getFileContents, decodeBase64, createRepo, repoExists, getRepo, updateRepo, listCommitDates, GitHubAPIError, type RepoTreeFile } from './github';
+import { fetchRepoTreeRecursive, getFileContents, decodeBase64, createRepo, repoExists, getRepo, updateRepo, listCommitDates, GitHubAPIError } from './github';
+import type { RepoTreeFile } from './github';
 import { rankFilesByQuery } from '../utils/contextRanker';
 import { isContextTooLargeError } from '../utils/retry';
 import { languageDistribution, countTechnicalDebt, commitsByWeek, type LanguageSlice, type TechnicalDebt, type CommitWeek } from '../utils/codeHealth';
-import { writeDocFiles, writeDocTargets, createDocsDraftPr, publishFileDoc, uploadFilesToRepo } from './docPublisher';
+import { writeDocFiles, createDocsDraftPr, publishFileDoc, uploadFilesToRepo } from './docPublisher';
 import { summarizeThread, parseThreadInput, listOpenThreads, formatThreadList } from './threadSummary';
 import { generateChangelog } from './changelogGenerator';
 import { executeAction, executeActionMultiRepo } from './actionExecutor';
@@ -1057,7 +1058,7 @@ export async function runGenerateSpecificDoc(
   existingContent?: string,
   conversation?: string,
 ): Promise<string | null> {
-  const { token, user, providerName, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading, lang } = deps;
+  const { token, user, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading, lang } = deps;
   const { owner, repo: repoName } = resolveRepoRef(repoInput, user.login);
 
   setIsChatLoading(true);
@@ -1123,16 +1124,15 @@ export async function runPublishSpecificDoc(
   try {
     if (kind === 'release') {
       const tag = await suggestNextVersion(token, owner, repo);
-      const { url, id } = await createGitHubRelease(token, owner, repo, {
-        version: tag,
-        title: `${tag} — ${path}`,
-        body: doc,
-      });
+const { url } = await createGitHubRelease(token, owner, repo, {
+ version: tag,
+ title: `${tag} — ${path}`,
+ body: doc,
+});
       addMessage({ role: 'assistant', content: `✅ Release [${tag}](${url}) creado en **${owner}/${repo}** con la documentación de \`${path}\`.` });
       updateEntry(histId, { status: 'completed', description: `Release ${tag} con ${path}` });
-    } else {
-      const sha = existingContent !== undefined ? await getExistingShaForPath(token, owner, repo, path) : undefined;
-      const { pr } = await publishFileDoc(token, owner, repo, path, doc, {
+} else {
+ const { pr } = await publishFileDoc(token, owner, repo, path, doc, {
         draft: kind === 'draftpr',
         sourceFile,
         extraFiles,
@@ -1150,12 +1150,3 @@ export async function runPublishSpecificDoc(
   }
 }
 
-/** Helper: obtiene el SHA de un path específico (o undefined si no existe). */
-async function getExistingShaForPath(token: string, owner: string, repo: string, path: string): Promise<string | undefined> {
-  try {
-    const existing = await getFileContents(token, owner, repo, path);
-    return existing.sha;
-  } catch {
-    return undefined;
-  }
-}
