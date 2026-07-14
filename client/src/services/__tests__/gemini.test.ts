@@ -1,17 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
-  parseGeminiAction,
-  detectPrimaryLanguage,
-  callAI,
-  buildRepoContextSummary,
-  chatPromptWithContext,
-  CHAT_PROMPT,
-  isTransientAIError,
-  isAbortError,
-  withTransientRetry,
-  generateFileDoc,
-  generateRepoDocs,
-  truncateByLines,
+ parseGeminiAction,
+ detectPrimaryLanguage,
+ callAI,
+ buildRepoContextSummary,
+ chatPromptWithContext,
+ CHAT_PROMPT,
+ isTransientAIError,
+ isAbortError,
+ withTransientRetry,
+ generateFileDoc,
+ generateRepoDocs,
+ generateSpecificDoc,
+ truncateByLines,
 } from '../gemini';
 
 describe('gemini.ts - Utilidades', () => {
@@ -726,13 +727,55 @@ describe('truncateByLines (#20)', () => {
     expect(truncateByLines('a\nb\nc', 80)).toBe('a\nb\nc');
   });
 
-  it('trunca a las primeras maxLines líneas y anota cuántas se omitieron', () => {
-    const content = Array.from({ length: 100 }, (_, i) => `L${i}`).join('\n');
-    const out = truncateByLines(content, 80);
-    const lines = out.split('\n');
-    expect(lines[0]).toBe('L0');        // preserva el inicio (imports/firmas)
-    expect(lines[79]).toBe('L79');      // hasta la línea 80
-    expect(out).toContain('[... 20 líneas más ...]');
-    expect(out).not.toContain('L80');   // no incluye el resto
-  });
-});
+ it('trunca a las primeras maxLines líneas y anota cuántas se omitieron', () => {
+ const content = Array.from({ length: 100 }, (_, i) => `L${i}`).join('\n');
+ const out = truncateByLines(content, 80);
+ const lines = out.split('\n');
+ expect(lines[0]).toBe('L0'); // preserva el inicio (imports/firmas)
+ expect(lines[79]).toBe('L79'); // hasta la línea 80
+ expect(out).toContain('[... 20 líneas más ...]');
+ expect(out).not.toContain('L80'); // no incluye el resto
+ });
+ });
+
+ describe('generateSpecificDoc (#58 Fase 2/3) — documento específico del repo', () => {
+ const config = { provider: 'groq', apiKey: 'k', model: 'm' };
+
+ it('incluye la directiva README cuando el path es readme.md', async () => {
+ const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ choices: [{ message: { content: '# README' } }] }), });
+ vi.stubGlobal('fetch', fetchMock);
+ await generateSpecificDoc('readme.md', undefined, undefined, config, 'es');
+ const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+ const sys = body.messages.find((m: { role: string }) => m.role === 'system');
+ expect(sys.content).toContain('TIPO: README');
+ expect(sys.content).toContain('EN ESPAÑOL');
+ });
+
+ it('incluye la directiva de changelog cuando el path es changelog.md', async () => {
+ const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ choices: [{ message: { content: '# Changelog' } }] }), });
+ vi.stubGlobal('fetch', fetchMock);
+ await generateSpecificDoc('changelog.md', undefined, undefined, config, 'es');
+ const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+ const sys = body.messages.find((m: { role: string }) => m.role === 'system');
+ expect(sys.content).toContain('TIPO: Changelog');
+ expect(sys.content).toContain('Added, Fixed, Changed');
+ });
+
+ it('inyecta las instrucciones adicionales (Fase 3) como contexto', async () => {
+ const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ choices: [{ message: { content: '# doc' } }] }), });
+ vi.stubGlobal('fetch', fetchMock);
+ await generateSpecificDoc('docs/api.md', undefined, 'Solo describe autenticación', config, 'es');
+ const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+ const sys = body.messages.find((m: { role: string }) => m.role === 'system');
+ expect(sys.content).toContain('Solo describe autenticación');
+ });
+
+ it('usa IN ENGLISH cuando lang es en', async () => {
+ const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ choices: [{ message: { content: '# doc' } }] }), });
+ vi.stubGlobal('fetch', fetchMock);
+ await generateSpecificDoc('readme.md', undefined, undefined, config, 'en');
+ const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+ const sys = body.messages.find((m: { role: string }) => m.role === 'system');
+ expect(sys.content).toContain('IN ENGLISH');
+ });
+ });
