@@ -739,7 +739,7 @@ describe('truncateByLines (#20)', () => {
  });
 
  describe('generateSpecificDoc (#58 Fase 2/3) — documento específico del repo', () => {
- const config = { provider: 'groq', apiKey: 'k', model: 'm' };
+ const config = { provider: 'groq', apiKey: 'k', model: 'm' } as const;
 
  it('incluye la directiva README cuando el path es readme.md', async () => {
  const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ choices: [{ message: { content: '# README' } }] }), });
