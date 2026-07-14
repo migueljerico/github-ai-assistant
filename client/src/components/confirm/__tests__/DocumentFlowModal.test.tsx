@@ -16,20 +16,29 @@ const analysis: RepoAnalysis = {
 type Props = React.ComponentProps<typeof DocumentFlowModal>;
 
 function baseProps(overrides: Partial<Props> = {}): Props {
-  return {
-    hasAttachedFile: false,
-    currentUserLogin: 'me',
-    onGenerateRepo: vi.fn().mockResolvedValue(analysis),
-    onCreateRepoAndGenerate: vi.fn().mockResolvedValue(analysis),
-    onGenerateFile: vi.fn().mockResolvedValue('# doc'),
-    onCommitRepo: vi.fn().mockResolvedValue(undefined),
-    onDraftPrRepo: vi.fn().mockResolvedValue(undefined),
-    onReleaseRepo: vi.fn().mockResolvedValue(undefined),
-    onPublishFile: vi.fn().mockResolvedValue('handled' as const),
-    onCreateRepoAndPublish: vi.fn().mockResolvedValue('published' as const),
-    onCancel: vi.fn(),
-    ...overrides,
-  };
+ return {
+ hasAttachedFile: false,
+ currentUserLogin: 'me',
+ onGenerateRepo: vi.fn().mockResolvedValue(analysis),
+ onCreateRepoAndGenerate: vi.fn().mockResolvedValue(analysis),
+ onGenerateFile: vi.fn().mockResolvedValue('# doc'),
+ onCommitRepo: vi.fn().mockResolvedValue(undefined),
+ onDraftPrRepo: vi.fn().mockResolvedValue(undefined),
+ onReleaseRepo: vi.fn().mockResolvedValue(undefined),
+ onPublishFile: vi.fn().mockResolvedValue('handled' as const),
+ onCreateRepoAndPublish: vi.fn().mockResolvedValue('published' as const),
+ // #58 Fase 2: callbacks para "documento específico del repo"
+ onGenerateSpecific: vi.fn().mockResolvedValue('specific doc'),
+ onCommitSpecific: vi.fn(),
+ onDraftPrSpecific: vi.fn(),
+ onReleaseSpecific: vi.fn(),
+ repoFileTree: undefined,
+ // #58 Fase 3: selectividad
+ extraInstructions: '',
+ onExtraInstructionsChange: vi.fn(),
+ onCancel: vi.fn(),
+ ...overrides,
+ };
 }
 
 function setup(overrides: Partial<Props> = {}) {

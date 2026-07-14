@@ -7,7 +7,8 @@ import { getProvider } from './services/providers';
 import {
   runDocumentRepo, runLoadRepoContext, runSummarizeThread, runGenerateChangelog, runCodeHealth, runCommitDocs, runCreateDraftPr, runCreateRepoRelease,
   runSend, runConfirmAction, runCancelAction, runAttachFile,
-  runGenerateFileDoc, runCreateRepo, runCreateRepoAndDocument, runStartPublish, runPublishFileDocByKind, formatConversation,
+  runGenerateFileDoc, runCreateRepo, runCreateRepoAndDocument, runGenerateSpecificDoc,
+runPublishSpecificDoc, runStartPublish, runPublishFileDocByKind, formatConversation,
 } from './services/assistantActions';
 import type { RepoContext, FileContext, PublishTarget, StartPublishResult, CodeHealth } from './services/assistantActions';
 import { serializeConversation, parseConversation, conversationFilename } from './utils/conversationIO';
@@ -243,16 +244,46 @@ export default function App() {
     return runStartPublish(deps, target, target.owner === user.login);
   }, [token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
 
-  const flowCreateRepoAndPublishFile = useCallback(async (target: PublishTarget): Promise<StartPublishResult> => {
-    if (!token || !user) return 'handled';
-    const deps = { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading };
-    const ok = await runCreateRepo(deps, target.repo);
-    if (!ok) return 'handled';
-    await runPublishFileDocByKind(deps, target);
-    return 'published';
-  }, [token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
+const flowCreateRepoAndPublishFile = useCallback(async (target: PublishTarget): Promise<StartPublishResult> => {
+  if (!token || !user) return 'handled';
+  const deps = { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading };
+  const ok = await runCreateRepo(deps, target.repo);
+  if (!ok) return 'handled';
+  await runPublishFileDocByKind(deps, target);
+  return 'published';
+}, [token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
 
-  // ── Send message to AI (Opción D - con detección de modo) ──────────────────
+// #58 Fase 2: callbacks para "documento específico del repo"
+const flowGenerateSpecific = useCallback(async (repoInput: string, targetPath: string, extraInstructions?: string): Promise<string | null> => {
+ // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto
+ if (!token || !user || !provider || !apiKey || !model) return null;
+ const deps = {
+ token, user, providerName, model, provider, t, lang,
+ addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading,
+ };
+ const doc = await runGenerateSpecificDoc(deps, { provider, apiKey, model, accountId }, repoInput, targetPath, undefined, extraInstructions);
+ return doc;
+}, [token, user, providerName, model, provider, apiKey, accountId, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading]);
+
+const flowCommitSpecific = useCallback(async (doc: string, path: string): Promise<void> => {
+  if (!token || !user) return;
+  const deps = { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading };
+  await runPublishSpecificDoc(deps, user.login, user.login, path, doc, 'commit');
+}, [token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading]);
+
+const flowDraftPrSpecific = useCallback(async (doc: string, path: string): Promise<void> => {
+  if (!token || !user) return;
+  const deps = { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading };
+  await runPublishSpecificDoc(deps, user.login, user.login, path, doc, 'draftpr');
+}, [token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading]);
+
+const flowReleaseSpecific = useCallback(async (doc: string, path: string): Promise<void> => {
+  if (!token || !user) return;
+  const deps = { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading };
+  await runPublishSpecificDoc(deps, user.login, user.login, path, doc, 'release');
+}, [token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading]);
+
+// ── Send message to AI (Opción D - con detección de modo) ──────────────────
   // Con un archivo adjunto, resolveMode (en runSend) fuerza SIEMPRE chat: el archivo
   // se conversa/analiza. Documentar/publicar es EXPLÍCITO (botón "📄 Documentar repo",
   // DocumentFlowModal), no se adivina por palabras clave (se quitó esa heurística frágil).
@@ -428,9 +459,15 @@ export default function App() {
           onCommitRepo={flowCommitRepo}
           onDraftPrRepo={flowDraftPrRepo}
           onReleaseRepo={flowReleaseRepo}
-          onPublishFile={flowPublishFile}
-          onCreateRepoAndPublish={flowCreateRepoAndPublishFile}
-          onCancel={closeDocumentFlow}
+    onPublishFile={flowPublishFile}
+    onCreateRepoAndPublish={flowCreateRepoAndPublishFile}
+    // #58 Fase 2: callbacks para "documento específico del repo"
+    onGenerateSpecific={flowGenerateSpecific}
+    onCommitSpecific={flowCommitSpecific}
+    onDraftPrSpecific={flowDraftPrSpecific}
+    onReleaseSpecific={flowReleaseSpecific}
+    repoFileTree={repoContext?.fileTree}
+    onCancel={closeDocumentFlow}
         />
       )}
 

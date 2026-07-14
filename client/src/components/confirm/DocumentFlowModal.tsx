@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { RepoAnalysis } from '../../types';
 import type { PublishTarget, PublishKind, StartPublishResult, FileContext } from '../../services/assistantActions';
+import type { DocTarget } from '../../services/docPublisher';
 import { resolveRepoRef } from '../../utils/repoRef';
 import PublishActions from './PublishActions';
 import { useModalDialog } from '../../hooks/useModalDialog';
@@ -43,11 +44,28 @@ interface DocumentFlowModalProps {
   /** Crea el repo inexistente y publica la doc del archivo. Devuelve el resultado. */
   onCreateRepoAndPublish: (target: PublishTarget) => Promise<StartPublishResult>;
 
-  onCancel: () => void;
+ // #58 Fase 2: scope "documento específico del repo"
+ /** Genera documentación para un path concreto del repo.
+  * #58 Fase 3: `extraInstructions` se incluye como contexto adicional para el generador. */
+ onGenerateSpecific: (repoInput: string, targetPath: string, extraInstructions?: string) => Promise<string | null>;
+ /** Publica (commit) un documento específico del repo. */
+ onCommitSpecific: (doc: string, path: string) => Promise<void>;
+ /** Crea Draft PR con un documento específico del repo. */
+ onDraftPrSpecific: (doc: string, path: string) => Promise<void>;
+ /** Crea Release con un documento específico del repo. */
+ onReleaseSpecific: (doc: string, path: string) => Promise<void>;
+ /** Árbol de archivos del repo para el selector de path (opcional, viene de RepoAnalysis.fileTree). */
+ repoFileTree?: { path: string }[];
+ 
+ // #58 Fase 3: selectividad — instrucciones adicionales para el generador (controlled)
+ extraInstructions?: string;
+ onExtraInstructionsChange?: (value: string) => void;
+ 
+ onCancel: () => void;
 }
 
 type Step = 1 | 2 | 3 | 4;
-type Scope = 'repo' | 'file';
+type Scope = 'repo' | 'file' | 'specific';
 
 // ── Componente ──────────────────────────────────────────────────────────────────
 // #57: flujo único de documentación (stepper de 4 pasos) que unifica los dos
@@ -69,6 +87,15 @@ export default function DocumentFlowModal({
   onReleaseRepo,
   onPublishFile,
   onCreateRepoAndPublish,
+  // #58 Fase 2: callbacks para "documento específico del repo"
+  onGenerateSpecific,
+  onCommitSpecific,
+  onDraftPrSpecific,
+  onReleaseSpecific,
+  repoFileTree,
+  // #58 Fase 3: selectividad — instrucciones adicionales
+  extraInstructions,
+  onExtraInstructionsChange,
   onCancel,
 }: DocumentFlowModalProps) {
   const { t } = useLanguage();
@@ -87,10 +114,19 @@ export default function DocumentFlowModal({
   const [repoInput, setRepoInput] = useState(safeInitialRepo);
   const [analysis, setAnalysis] = useState<RepoAnalysis | null>(null);
 
-  // Paso 2 (archivo)
-  const [fileDoc, setFileDoc] = useState<string | null>(null);
+// Paso 2 (archivo)
+const [fileDoc, setFileDoc] = useState<string | null>(null);
 
-  // Paso 3 (revisión)
+// Paso 2 (instrucciones adicionales de selectividad — Fase 3)
+// #58 Fase 3: componente controlado; se delega en `onExtraInstructionsChange` del caller.
+
+// #58 Fase 2: scope "documento específico del repo"
+const [specificRepoInput, setSpecificRepoInput] = useState('');
+const [specificPath, setSpecificPath] = useState('');
+const [specificDoc, setSpecificDoc] = useState<string | null>(null);
+const [specificMissing, setSpecificMissing] = useState<{ owner: string; repo: string } | null>(null);
+
+// Paso 3 (revisión)
   const [activeTab, setActiveTab] = useState<'readme' | 'manual'>('readme');
 
   // Paso 4 (destino + método) — compartido
@@ -161,18 +197,36 @@ export default function DocumentFlowModal({
     }
   };
 
-  const handleGenerateFile = async () => {
-    setBusy(true);
-    try {
-      const d = await onGenerateFile();
-      if (d != null) {
-        setFileDoc(d);
-        setStep(3);
-      }
-    } finally {
-      setBusy(false);
+const handleGenerateFile = async () => {
+  setBusy(true);
+  try {
+    const d = await onGenerateFile();
+    if (d != null) {
+      setFileDoc(d);
+      setStep(3);
     }
-  };
+  } finally {
+    setBusy(false);
+  }
+};
+
+// #58 Fase 2: generar documentación para un path concreto del repo
+const handleGenerateSpecific = async () => {
+ if (!specificRepoInput.trim() || !specificPath.trim()) return;
+ setBusy(true);
+ try {
+ const doc = await onGenerateSpecific(specificRepoInput.trim(), specificPath.trim(), extraInstructions);
+ if (doc === 'repo-missing') {
+ const ref = resolveRepoRef(specificRepoInput.trim(), currentUserLogin);
+ setSpecificMissing({ owner: ref.owner, repo: ref.repo });
+ } else if (doc != null) {
+ setSpecificDoc(doc);
+ setStep(3);
+ }
+ } finally {
+ setBusy(false);
+ }
+};
 
   // ── Paso 4 (repo): publicación con destino fijo ─────────────────────────────────
   const doCommitRepo = async () => {
@@ -219,17 +273,38 @@ export default function DocumentFlowModal({
     }
   };
 
-  const doCreateRepoAndPublishFile = async () => {
-    if (!repoMissing) return;
-    const ref = resolveRepoRef(`${repoMissing.owner}/${repoMissing.repo}`, currentUserLogin);
-    setBusy(true);
-    try {
-      const res = await onCreateRepoAndPublish(buildTarget(ref, pendingKind));
-      if (res === 'published') onCancel();
-    } finally {
-      setBusy(false);
-    }
-  };
+const doCreateRepoAndPublishFile = async () => {
+  if (!repoMissing) return;
+  const ref = resolveRepoRef(`${repoMissing.owner}/${repoMissing.repo}`, currentUserLogin);
+  setBusy(true);
+  try {
+    const res = await onCreateRepoAndPublish(buildTarget(ref, pendingKind));
+    if (res === 'published') onCancel();
+  } finally {
+    setBusy(false);
+  }
+};
+
+// #58 Fase 2: handlers de publicación para "documento específico del repo"
+const doCommitSpecific = async () => {
+  if (!specificDoc || !specificRepoInput.trim()) return;
+  setPending('commit'); setBusy(true);
+  try {
+    await onCommitSpecific(specificDoc, specificPath.trim());
+  } finally { setBusy(false); setPending(null); onCancel(); }
+};
+const doDraftPrSpecific = async () => {
+  if (!specificDoc || !specificRepoInput.trim()) return;
+  setPending('draftpr'); setBusy(true);
+  try { await onDraftPrSpecific(specificDoc, specificPath.trim()); }
+  finally { setBusy(false); setPending(null); onCancel(); }
+};
+const doReleaseSpecific = async () => {
+  if (!specificDoc || !specificRepoInput.trim()) return;
+  setPending('release'); setBusy(true);
+  try { await onReleaseSpecific(specificDoc, specificPath.trim()); }
+  finally { setBusy(false); setPending(null); onCancel(); }
+};
 
   // ── Helpers de extras (reutilizados del flujo de archivo) ───────────────────────
   const destFor = (name: string): string => {
@@ -243,9 +318,10 @@ export default function DocumentFlowModal({
     if (files) setExtras(prev => [...prev, ...Array.from(files)]);
   };
 
-  const isFile = scope === 'file';
+const isFile = scope === 'file';
+const isSpecific = scope === 'specific';
 
-  return (
+return (
     <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="flow-modal-title">
       <div className="modal doc-repo-modal" ref={modalRef}>
         <div className="modal-header">
@@ -285,52 +361,136 @@ export default function DocumentFlowModal({
                 >
                   <strong>{t('modal.flow.scopeFile')}</strong>
                   <small style={{ opacity: 0.8, fontWeight: 400 }}>{t('modal.flow.scopeFileDesc')}</small>
-                  {!hasAttachedFile && (
-                    <small style={{ opacity: 0.7, fontStyle: 'italic' }}>{t('modal.flow.scopeFileDisabled')}</small>
-                  )}
-                </button>
+{!hasAttachedFile && (
+  <small style={{ opacity: 0.7, fontStyle: 'italic' }}>{t('modal.flow.scopeFileDisabled')}</small>
+)}
+</button>
+{/* #58 Fase 2: botón "Documento específico del repo" */}
+<button
+  id="flow-scope-specific"
+  type="button"
+  className="btn btn-secondary"
+  style={{ textAlign: 'left', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '4px' }}
+  onClick={() => { setScope('specific'); setStep(2); }}
+>
+  <strong>{t('modal.flow.scopeSpecific')}</strong>
+  <small style={{ opacity: 0.8, fontWeight: 400 }}>{t('modal.flow.scopeSpecificDesc')}</small>
+</button>
               </div>
             </>
           )}
 
           {/* ── Paso 2: generar ── */}
-          {step === 2 && isFile && (
-            <>
-              <p>{t('modal.flow.stepScope')}</p>
-              <div style={{ marginTop: '8px' }}>
-                {allAttachedFiles && allAttachedFiles.length > 1 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '10px' }}>
-                    {allAttachedFiles.map((fc, i) => (
-                      <div key={`${fc.name}-${i}`} style={{
-                        padding: '8px 10px', borderRadius: '6px', fontSize: '0.85rem',
-                        background: i === 0 ? 'rgba(34,197,94,0.1)' : 'rgba(148,163,184,0.1)',
-                        border: `1px solid ${i === 0 ? 'rgba(34,197,94,0.3)' : 'rgba(148,163,184,0.2)'}`,
-                        display: 'flex', alignItems: 'center', gap: '6px',
-                      }}>
-                        <span>{i === 0 ? '📝' : '📎'}</span>
-                        <strong>{fc.name}</strong>
-                        <span style={{ fontSize: '0.72rem', opacity: 0.7 }}>
-                          {i === 0 ? '(se documentará)' : '(se subirá al repo)'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div style={{ fontWeight: 600, marginBottom: '10px' }}>📎 {attachedFileName}</div>
-                )}
-                <button
-                  id="flow-generate-btn"
-                  type="button"
-                  className="btn btn-success"
-                  disabled={busy}
-                  onClick={handleGenerateFile}
-                >
-                  {busy ? t('modal.flow.generating') : t('modal.flow.generate')}
-                </button>
-              </div>
-            </>
-          )}
-          {step === 2 && !isFile && (
+{step === 2 && isFile && (
+  <>
+    <p>{t('modal.flow.stepScope')}</p>
+    <div style={{ marginTop: '8px' }}>
+      {allAttachedFiles && allAttachedFiles.length > 1 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '10px' }}>
+          {allAttachedFiles.map((fc, i) => (
+            <div key={`${fc.name}-${i}`} style={{
+              padding: '8px 10px', borderRadius: '6px', fontSize: '0.85rem',
+              background: i === 0 ? 'rgba(34,197,94,0.1)' : 'rgba(148,163,184,0.1)',
+              border: `1px solid ${i === 0 ? 'rgba(34,197,94,0.3)' : 'rgba(148,163,184,0.2)'}`,
+              display: 'flex', alignItems: 'center', gap: '6px',
+            }}>
+              <span>{i === 0 ? '📝' : '📎'}</span>
+              <strong>{fc.name}</strong>
+              <span style={{ fontSize: '0.72rem', opacity: 0.7 }}>
+                {i === 0 ? '(se documentará)' : '(se subirá al repo)'}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ fontWeight: 600, marginBottom: '10px' }}>📎 {attachedFileName}</div>
+      )}
+      <button
+        id="flow-generate-btn"
+        type="button"
+        className="btn btn-success"
+        disabled={busy}
+        onClick={handleGenerateFile}
+      >
+        {busy ? t('modal.flow.generating') : t('modal.flow.generate')}
+      </button>
+    </div>
+  </>
+)}
+{/* #58 Fase 2: formulario para "documento específico del repo" */}
+{step === 2 && isSpecific && (
+  <>
+    <p>{t('modal.flow.scopeSpecific')}</p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+      <input
+        id="flow-specific-repo-input"
+        autoFocus
+        type="text"
+        className="input"
+        placeholder={t('chat.repoInputPlaceholder')}
+        value={specificRepoInput}
+        onChange={e => setSpecificRepoInput(e.target.value)}
+        style={{ fontSize: '0.85rem', padding: '8px 10px' }}
+      />
+      <input
+        id="flow-specific-path-input"
+        type="text"
+        className="input"
+        placeholder={t('modal.flow.specificPathPlaceholder')}
+        value={specificPath}
+        onChange={e => setSpecificPath(e.target.value)}
+        style={{ fontSize: '0.85rem', padding: '8px 10px' }}
+      />
+      {repoFileTree && repoFileTree.length > 0 && (
+        <select
+          id="flow-specific-path-select"
+          className="input"
+          value={specificPath}
+          onChange={e => setSpecificPath(e.target.value)}
+          style={{ fontSize: '0.85rem', padding: '8px 10px' }}
+        >
+          <option value="">— {t('modal.flow.specificPathSelectPlaceholder')} —</option>
+          {repoFileTree.map(ft => (
+            <option key={ft.path} value={ft.path}>{ft.path}</option>
+          ))}
+        </select>
+      )}
+      {/* #58 Fase 3: selectividad — instrucciones adicionales para el generador */}
+      <div style={{ marginTop: '4px' }}>
+        <label style={{ fontSize: '0.8rem', opacity: 0.75, display: 'block', marginBottom: '4px' }}>
+          {t('modal.flow.extraInstructions')}
+        </label>
+        <textarea
+          id="flow-extra-instructions"
+          className="input"
+          rows={2}
+          placeholder={t('modal.flow.extraInstructionsPlaceholder')}
+          value={extraInstructions}
+          onChange={e => onExtraInstructionsChange?.(e.target.value)}
+          disabled={busy}
+          style={{ fontSize: '0.85rem', padding: '8px 10px', resize: 'vertical', minHeight: '48px' }}
+        />
+      </div>
+      <button
+        id="flow-generate-specific-btn"
+        type="button"
+        className="btn btn-success"
+        disabled={!specificRepoInput.trim() || !specificPath.trim() || busy}
+        onClick={handleGenerateSpecific}
+      >
+        {busy ? t('modal.flow.generating') : t('modal.flow.generateSpecific')}
+      </button>
+      {specificMissing && (
+        <div style={{ marginTop: '8px', padding: '8px 10px', borderRadius: '6px', fontSize: '0.85rem', background: 'rgba(234,179,8,0.12)', border: '1px solid rgba(234,179,8,0.4)' }}>
+          {t('modal.flow.repoMissing', { repo: `${specificMissing.owner}/${specificMissing.repo}` })}
+        </div>
+      )}
+    </div>
+  </>
+)}
+
+
+{step === 2 && !isFile && !isSpecific && (
             <>
               <p>{t('modal.flow.scopeRepo')}</p>
               <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
@@ -427,9 +587,18 @@ export default function DocumentFlowModal({
               </div>
             </>
           )}
-          {step === 3 && isFile && fileDoc != null && (
-            <div className="doc-preview-content" style={{ whiteSpace: 'pre-wrap' }}>{fileDoc}</div>
-          )}
+{step === 3 && isFile && fileDoc != null && (
+  <div className="doc-preview-content" style={{ whiteSpace: 'pre-wrap' }}>{fileDoc}</div>
+)}
+{/* #58 Fase 2: preview del documento específico generado */}
+{step === 3 && isSpecific && specificDoc != null && (
+  <div className="doc-preview-content" style={{ whiteSpace: 'pre-wrap' }}>
+    <div style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: '8px' }}>
+      {specificPath}
+    </div>
+    {specificDoc}
+  </div>
+)}
 
           {/* ── Paso 4: destino + método ── */}
           {step === 4 && !isFile && analysis && (
@@ -555,24 +724,40 @@ export default function DocumentFlowModal({
           />
         )}
 
-        {step === 4 && isFile && (
-          <PublishActions
-            version={version}
-            onVersionChange={setVersion}
-            onCommit={() => startFilePublish('commit')}
-            onDraftPr={() => startFilePublish('draftpr')}
-            onRelease={() => startFilePublish('release')}
-            onCancel={onCancel}
-            busy={busy}
-            isCommitting={busy && pending === 'commit'}
-            isCreatingDraftPr={busy && pending === 'draftpr'}
-            isCreatingRelease={busy && pending === 'release'}
-            publishDisabled={!destRepo.trim()}
-            repoMissing={repoMissing}
-            onCreateRepoAndPublish={doCreateRepoAndPublishFile}
-            onCancelCreate={() => setRepoMissing(null)}
-          />
-        )}
+{step === 4 && isFile && (
+  <PublishActions
+    version={version}
+    onVersionChange={setVersion}
+    onCommit={() => startFilePublish('commit')}
+    onDraftPr={() => startFilePublish('draftpr')}
+    onRelease={() => startFilePublish('release')}
+    onCancel={onCancel}
+    busy={busy}
+    isCommitting={busy && pending === 'commit'}
+    isCreatingDraftPr={busy && pending === 'draftpr'}
+    isCreatingRelease={busy && pending === 'release'}
+    publishDisabled={!destRepo.trim()}
+    repoMissing={repoMissing}
+    onCreateRepoAndPublish={doCreateRepoAndPublishFile}
+    onCancelCreate={() => setRepoMissing(null)}
+  />
+)}
+
+{/* #58 Fase 2: Paso 4 para scope "specific" reutiliza PublishActions */}
+{step === 4 && scope === 'specific' && (
+  <PublishActions
+    version={version}
+    onVersionChange={setVersion}
+    onCommit={doCommitSpecific}
+    onDraftPr={doDraftPrSpecific}
+    onRelease={doReleaseSpecific}
+    onCancel={onCancel}
+    busy={busy}
+    isCommitting={busy && pending === 'commit'}
+    isCreatingDraftPr={busy && pending === 'draftpr'}
+    isCreatingRelease={busy && pending === 'release'}
+  />
+)}
       </div>
     </div>
   );

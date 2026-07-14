@@ -9,7 +9,7 @@
  * núcleo del chat `runSend`/`runConfirmAction`/`runCancelAction` (Fase 3).
  */
 
-import { generateRepoDocs, generateFileDoc, buildRepoContextSummary, callAI, parseGeminiAction, isAbortError, CHAT_PROMPT, ACTION_PROMPT, chatPromptWithContext, withLangDirective } from './gemini';
+import { generateRepoDocs, generateFileDoc, generateSpecificDoc, buildRepoContextSummary, callAI, parseGeminiAction, isAbortError, CHAT_PROMPT, ACTION_PROMPT, chatPromptWithContext, withLangDirective } from './gemini';
 import type { Language } from '../context/LanguageContext';
 import type { AIProviderConfig } from './gemini';
 import { getProvider, modelLabel, type AIProviderType } from './providers';
@@ -17,7 +17,7 @@ import { fetchRepoTreeRecursive, getFileContents, decodeBase64, createRepo, repo
 import { rankFilesByQuery } from '../utils/contextRanker';
 import { isContextTooLargeError } from '../utils/retry';
 import { languageDistribution, countTechnicalDebt, commitsByWeek, type LanguageSlice, type TechnicalDebt, type CommitWeek } from '../utils/codeHealth';
-import { writeDocFiles, createDocsDraftPr, publishFileDoc, uploadFilesToRepo } from './docPublisher';
+import { writeDocFiles, writeDocTargets, createDocsDraftPr, publishFileDoc, uploadFilesToRepo } from './docPublisher';
 import { summarizeThread, parseThreadInput, listOpenThreads, formatThreadList } from './threadSummary';
 import { generateChangelog } from './changelogGenerator';
 import { executeAction, executeActionMultiRepo } from './actionExecutor';
@@ -34,16 +34,18 @@ import type { ChatMessage, HistoryEntry, RepoAnalysis, GitHubRepo, PendingAction
 
 /** Contexto de repo activo para opiniones de chat fundamentadas (#41). */
 export interface RepoContext {
-  repoName: string;
-  contextText: string;
-  filesAnalyzed: number;
-  totalFiles: number;
-  truncated: boolean;
-  /** #49: archivos con contenido en memoria, para re-seleccionar por relevancia a cada
-   *  pregunta (Zero-Storage: viven solo en estado React). */
-  files: RepoTreeFile[];
-  /** #49: rutas de TODOS los archivos del repo (árbol completo, sin contenido). */
-  allPaths: string[];
+ repoName: string;
+ contextText: string;
+ filesAnalyzed: number;
+ totalFiles: number;
+ truncated: boolean;
+ /** #49: archivos con contenido en memoria, para re-seleccionar por relevancia a cada
+ * pregunta (Zero-Storage: viven solo en estado React). */
+ files: RepoTreeFile[];
+ /** #49: rutas de TODOS los archivos del repo (árbol completo, sin contenido). */
+ allPaths: string[];
+ /** #58: árbol de archivos del repo para el selector de path en el flujo de documento específico. */
+ fileTree?: { path: string }[];
 }
 
 /** Datos del dashboard "Salud del Código" (#44). */
@@ -1040,4 +1042,120 @@ export async function runStartPublish(
   }
   await runPublishFileDocByKind(deps, target);
   return 'published';
+}
+
+/**
+ * #58 Fase 2: genera documentación para un archivo ESPECÍFICO del repo.
+ * Si `existingContent` viene, pide actualizar el documento existente.
+ * Si `conversation` viene, lo usa como contexto adicional.
+ */
+export async function runGenerateSpecificDoc(
+  deps: ChatDeps,
+  config: AIProviderConfig,
+  repoInput: string,
+  targetPath: string,
+  existingContent?: string,
+  conversation?: string,
+): Promise<string | null> {
+  const { token, user, providerName, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading, lang } = deps;
+  const { owner, repo: repoName } = resolveRepoRef(repoInput, user.login);
+
+  setIsChatLoading(true);
+  const loadingId = addMessage({
+    role: 'assistant',
+    content: `📄 Generando documentación para \`${targetPath}\` en **${owner}/${repoName}**...`,
+    isLoading: true,
+  });
+  const histId = addEntry({ status: 'pending', description: `Generando ${targetPath}`, repo: `${owner}/${repoName}` });
+
+  try {
+    // Si existe, fetch el contenido actual para modo actualización
+    let currentContent: string | undefined;
+    if (existingContent === undefined) {
+      try {
+        const existing = await getFileContents(token, owner, repoName, targetPath);
+        currentContent = decodeBase64(existing.content || '');
+      } catch {
+        // 404 → no existe, se crea desde cero
+      }
+    } else {
+      currentContent = existingContent;
+    }
+
+    const repoContext = conversation ? formatConversation([{ role: 'user', content: conversation }]) : undefined;
+
+    const doc = await generateSpecificDoc(targetPath, currentContent, repoContext, config, lang);
+
+    updateMessage(loadingId, {
+      content: `✅ Documentación generada para \`${targetPath}\` en **${owner}/${repoName}**. ${currentContent ? '🔄 Se actualizará el documento existente.' : '✨ Es un documento nuevo.'} Revisa el contenido antes de publicar.`,
+      isLoading: false,
+    });
+    updateEntry(histId, { status: 'pending', description: `${targetPath} listo para publicar` });
+
+    return doc;
+  } catch (err) {
+    updateMessage(loadingId, { content: `❌ Error al generar ${targetPath}: ${(err as Error).message}`, isLoading: false });
+    updateEntry(histId, { status: 'error', description: `Error generando ${targetPath}` });
+    return null;
+  } finally {
+    setIsChatLoading(false);
+  }
+}
+
+/**
+ * #58 Fase 2: publica un documento específico del repo (commit directo, Draft PR o Release).
+ * Usa publishFileDoc (que ya soporta path arbitrario + SHA) o createGitHubRelease.
+ */
+export async function runPublishSpecificDoc(
+  deps: ChatDeps,
+  owner: string,
+  repo: string,
+  path: string,
+  doc: string,
+  kind: 'commit' | 'draftpr' | 'release',
+  existingContent?: string,
+  sourceFile?: File,
+  extraFiles?: File[],
+): Promise<void> {
+  const { token, addMessage, addEntry, updateEntry } = deps;
+  const histId = addEntry({ status: 'pending', description: `Publicando ${path} en ${owner}/${repo}`, repo: `${owner}/${repo}` });
+
+  try {
+    if (kind === 'release') {
+      const tag = await suggestNextVersion(token, owner, repo);
+      const { url, id } = await createGitHubRelease(token, owner, repo, {
+        version: tag,
+        title: `${tag} — ${path}`,
+        body: doc,
+      });
+      addMessage({ role: 'assistant', content: `✅ Release [${tag}](${url}) creado en **${owner}/${repo}** con la documentación de \`${path}\`.` });
+      updateEntry(histId, { status: 'completed', description: `Release ${tag} con ${path}` });
+    } else {
+      const sha = existingContent !== undefined ? await getExistingShaForPath(token, owner, repo, path) : undefined;
+      const { pr } = await publishFileDoc(token, owner, repo, path, doc, {
+        draft: kind === 'draftpr',
+        sourceFile,
+        extraFiles,
+      });
+      const action = kind === 'draftpr' ? 'Draft PR' : 'commit';
+      const msg = pr
+        ? `✅ Draft PR [#${pr.number}](${pr.html_url}) con \`${path}\`${sourceFile ? ' + archivo fuente' : ''} en **${owner}/${repo}**. Revísalo antes de mergear.`
+        : `✅ \`${path}\`${sourceFile ? ' + archivo fuente' : ''} commiteado en **${owner}/${repo}** (${action}).`;
+      addMessage({ role: 'assistant', content: msg });
+      updateEntry(histId, { status: 'completed', description: `${path} publicado en ${owner}/${repo}` });
+    }
+  } catch (err) {
+    addMessage({ role: 'assistant', content: `❌ Error al publicar ${path}: ${describePublishError(err, owner, repo, deps.t)}` });
+    updateEntry(histId, { status: 'error', description: `Error publicando ${path}` });
+  }
+}
+
+/** Helper: obtiene el SHA de un path específico (o undefined si no existe). */
+async function getExistingShaForPath(token: string, owner: string, repo: string, path: string): Promise<string | undefined> {
+  try {
+    const existing = await getFileContents(token, owner, repo, path);
+    return existing.sha;
+  } catch {
+    return undefined;
+  }
 }
