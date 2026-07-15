@@ -528,22 +528,21 @@ Riesgos residuales:
 
 ---
 
-## ⚠️ Vulnerabilidades conocidas (v3.36.0)
+## ⚠️ Vulnerabilidades conocidas (v3.36.0 → mitigadas en v3.36.1)
 
-### `xlsx` (SheetJS Community Edition) — Prototype Pollution + ReDoS
+### `xlsx` (SheetJS Community Edition) — Prototype Pollution + ReDoS — **MITIGADO v3.36.1**
 - **Dependencia:** `xlsx@^0.18.5` (usado en `spreadsheetReader.ts` para Fase 3a Excel/CSV)
 - **CVEs:** GHSA-xvch-5gv4-9q4h (Prototype Pollution), GHSA-93q8-gq69-qvxp (ReDoS)
 - **Estado:** Sin fix en npm — el paquete está descontinuado. Versión 0.20.2 disponible solo en CDN (https://cdn.sheetjs.com/), no en npm.
 - **Riesgo:** Solo al **leer archivos Excel/CSV maliciosos** adjuntados por el usuario (ataque de archivo). El flujo de escritura/exportación no se ve afectado.
-- **Mitigación actual (v3.36.0):**
-  - El usuario debe confiar en el archivo que sube (no hay validación previa).
-  - El parseo ocurre en el navegador (cliente), no en servidor.
-- **Plan para v3.36.1:**
-  1. Límite de tamaño de archivo (ej. 10 MB) antes de parsear.
+- **Mitigación aplicada (v3.36.1):**
+  1. Límite de tamaño de archivo (10 MB) antes de parsear en `spreadsheetReader.ts`.
   2. Validación básica de estructura (cabeceras esperadas) tras parseo.
-  3. Aviso en UI: "Solo suba archivos de fuentes confiables. No se analizan archivos maliciosos."
-  4. **NO migrar a `exceljs`** — añade ~4 MB al bundle (chunk propio), inaceptable para la arquitectura de chunks lazy actuales.
-  5. Documentar en `docs/SEGURIDAD.md` y `README.md` (sección "Limitaciones conocidas").
+  3. Aviso en UI (FileAttachButton / DocumentFlowModal): "Solo suba archivos de fuentes confiables. No se analizan archivos maliciosos. Límite: 10 MB."
+  4. Rate limiting en ruta catch-all SPA (`server/index.js`) para prevenir DoS.
+  5. CI workflow con `permissions: contents: read` para CodeQL compliance.
+  6. **NO migrar a `exceljs`** — añade ~4 MB al bundle (chunk propio), inaceptable para la arquitectura de chunks lazy actuales.
+  7. Documentado en `docs/SEGURIDAD.md` y `README.md` (sección "Limitaciones conocidas").
 
 ---
 
@@ -561,7 +560,7 @@ Riesgos residuales:
 | Pérdida de sesión | Export/import manual |
 | Errores de UI | ErrorBoundary |
 | Confusión del usuario | Mensajes claros y flujo guiado |
-| Archivos Excel/CSV maliciosos | Límite 10 MB + validación post-parseo + aviso UI (plan v3.36.1) |
+| Archivos Excel/CSV maliciosos | Límite 10 MB + validación post-parseo + aviso UI (v3.36.1 ✅) |
 
 ---
 

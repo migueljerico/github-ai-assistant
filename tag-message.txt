@@ -1,0 +1,21 @@
+v3.36.1 — Mitigación vulnerabilidades xlsx (SheetJS) + fixes CodeQL
+
+### Added
+- **Mitigación vulnerabilidades xlsx (SheetJS CE v0.18.5):**
+  - Límite de 10 MB antes de parsear en `spreadsheetReader.ts`
+  - Validación básica de cabecera post-parseo (mitiga Prototype Pollution GHSA-xvch-5gv4-9q4h y ReDoS GHSA-93q8-gq69-qvxp)
+  - Aviso en UI (`FileAttachButton`, `DocumentFlowModal`): "Solo suba archivos de fuentes confiables. Límite: 10 MB"
+
+### Fixed
+- `docxReader.ts`: fix sanitización incompleta multi-carácter (reemplazo iterativo de tags hasta estabilizar)
+- `server/index.js`: rate limiting en catch-all SPA route (200 req/min) para prevenir DoS
+- `client/src/test/setup.ts`: escape inútil en regexp corregido (`\{` → `\\{`)
+
+### Documentation
+- CHANGELOG.md, README.md (badge v3.36.1 + sección Limitaciones conocidas), MEJORAS_FUTURAS.md, docs/SEGURIDAD.md
+
+### Notes
+- Tests: 557/557 (client) + 5/5 (server) = **562 verdes**
+- Build limpio, lint 0 errores
+- NO migrado a `exceljs` (+4 MB bundle, rompe chunks lazy)
+- Cambio de código por Nemotron 3 Ultra (NVIDIA NIM)
