@@ -222,6 +222,7 @@ export const en = {
   'chat.docRepoMissingOther': '❌ Repository **{repo}** not found and I can only create repos in your account. Create it on GitHub or pick another target.',
   'chat.updateDocs': '🔄 Update docs',
   'chat.attachFileMulti': '{count} files attached',
+// ────── #48 Sync Repo Status ──────  'syncRepo.title': '🔄 Sync repo status',  'syncRepo.tooltip': 'Analyzes recent commits and suggests improvements',  'syncRepo.prompt': 'Enter repository (owner/repo or name):',  'syncRepo.noCommits': 'ℹ️ No recent commits in **{ref}**.',
   'chat.attachFileXlsxWarning': '⚠️ Only upload files from trusted sources. Malicious files are not analyzed. Limit: {maxMb} MB.',
 
   // ────── PHASE 2: Panels ──────

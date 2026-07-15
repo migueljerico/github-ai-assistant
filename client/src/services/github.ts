@@ -143,6 +143,42 @@ export async function listCommitDates(token: string, owner: string, repo: string
     .filter((d): d is string => !!d);
 }
 
+/** Detalle de un commit individual (incluye archivos modificados y diffs) — para #48 Sync Repo Status. */
+export interface CommitDetail {
+  sha: string;
+  message: string;
+  author: { name: string; email: string; date: string };
+  files: Array<{
+    filename: string;
+    status: string;
+    additions: number;
+    deletions: number;
+    changes: number;
+    patch?: string;
+  }>;
+}
+
+export async function getCommit(token: string, owner: string, repo: string, sha: string): Promise<CommitDetail> {
+  const data = await ghFetch<{
+    sha: string;
+    commit: { message: string; author: { name: string; email: string; date: string } };
+    files: Array<{
+      filename: string;
+      status: string;
+      additions: number;
+      deletions: number;
+      changes: number;
+      patch?: string;
+    }>;
+  }>(token, `/repos/${owner}/${repo}/commits/${sha}`);
+  return {
+    sha: data.sha,
+    message: data.commit.message,
+    author: data.commit.author,
+    files: data.files ?? [],
+  };
+}
+
 /**
  * Create a new repository for the authenticated user.
  * @param token - GitHub OAuth token or PAT (requires `repo` scope)

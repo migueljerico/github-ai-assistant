@@ -30,6 +30,8 @@ vi.mock('../github', () => {
     getRepo: vi.fn(),
     updateRepo: vi.fn().mockResolvedValue(undefined),
     listCommitDates: vi.fn(),
+    listRecentCommits: vi.fn(),
+    getCommit: vi.fn(),
     GitHubAPIError,
   };
 });
@@ -77,7 +79,7 @@ import { assertSupportedFile, readFileContent } from '../../utils/pdfReader';
 import { readSpreadsheet } from '../../utils/spreadsheetReader';
 import { readPowerBI } from '../../utils/powerbiReader';
 import { readDocx } from '../../utils/docxReader';
-import { fetchRepoTreeRecursive, getFileContents, createRepo, repoExists, getRepo, updateRepo, listCommitDates } from '../github';
+import { fetchRepoTreeRecursive, getFileContents, createRepo, repoExists, getRepo, updateRepo, listCommitDates, listRecentCommits, getCommit } from '../github';
 import { writeDocFiles, createDocsDraftPr, publishFileDoc, uploadFilesToRepo } from '../docPublisher';
 import { summarizeThread, parseThreadInput, listOpenThreads, formatThreadList } from '../threadSummary';
 import { generateChangelog } from '../changelogGenerator';
@@ -105,6 +107,7 @@ import {
   runStartPublish,
   runPublishFileDocByKind,
   runCreateRepoRelease,
+  runSyncRepoStatus,
   formatConversation,
   buildSignature,
 } from '../assistantActions';
@@ -275,7 +278,7 @@ describe('runSummarizeThread', () => {
     await runSummarizeThread(deps, CONFIG, 'o/r', null);
 
     expect(listOpenThreads).toHaveBeenCalledWith('tok', 'o', 'r');
-    expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', { content: 'LISTA', isLoading: false });
+    expect(deps.updateMessage).toHaveBeenCalledWith(expect.any(String), { content: 'LISTA', isLoading: false });
     expect(summarizeThread).not.toHaveBeenCalled();
   });
 
@@ -287,7 +290,7 @@ describe('runSummarizeThread', () => {
     await runSummarizeThread(deps, CONFIG, 'o/r#5', null);
 
     expect(summarizeThread).toHaveBeenCalledWith('tok', 'o', 'r', 5, CONFIG);
-    expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', expect.objectContaining({ content: expect.stringContaining('SUMMARY') }));
+    expect(deps.updateMessage).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ content: expect.stringContaining('SUMMARY') }));
     expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'completed' }));
   });
 
@@ -320,7 +323,7 @@ describe('runGenerateChangelog (#34)', () => {
     await runGenerateChangelog(deps, CONFIG, 'owner/repo');
 
     expect(generateChangelog).toHaveBeenCalledWith('tok', 'owner', 'repo', CONFIG);
-    expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', expect.objectContaining({ content: expect.stringContaining('Changelog de owner/repo'), isLoading: false }));
+    expect(deps.updateMessage).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ content: expect.stringContaining('Changelog de owner/repo'), isLoading: false }));
     expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'completed' }));
   });
 
@@ -330,7 +333,7 @@ describe('runGenerateChangelog (#34)', () => {
 
     await runGenerateChangelog(deps, CONFIG, 'owner/repo');
 
-    expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', expect.objectContaining({ content: expect.stringContaining('No hay commits nuevos'), isLoading: false }));
+    expect(deps.updateMessage).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ content: expect.stringContaining('No hay commits nuevos'), isLoading: false }));
     expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'error' }));
   });
 });
@@ -367,7 +370,7 @@ describe('runCodeHealth (#44)', () => {
     const result = await runCodeHealth(deps, 'owner/repo');
 
     expect(result).toBeNull();
-    expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', expect.objectContaining({ content: expect.stringContaining('boom'), isLoading: false }));
+    expect(deps.updateMessage).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ content: expect.stringContaining('boom'), isLoading: false }));
     expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'error' }));
   });
 });
@@ -440,7 +443,7 @@ describe('runSummarizeThread (ramas residuales)', () => {
 
     await runSummarizeThread(deps, CONFIG, 'o/r', null);
 
-    expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', expect.objectContaining({ content: expect.stringContaining('rate limit'), isLoading: false }));
+    expect(deps.updateMessage).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ content: expect.stringContaining('rate limit'), isLoading: false }));
   });
 });
 
@@ -772,7 +775,7 @@ describe('runAttachFile (#28)', () => {
     const ctx = await runAttachFile(deps, new File(['contenido del archivo'], 'notas.md'));
 
     expect(ctx).toEqual({ name: 'notas.md', contextText: expect.stringContaining('contenido del archivo') });
-    expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', expect.objectContaining({ content: expect.stringContaining('Adjuntado'), isLoading: false }));
+    expect(deps.updateMessage).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ content: expect.stringContaining('Adjuntado'), isLoading: false }));
   });
 
   it('devuelve null y avisa si el archivo no es válido', async () => {
@@ -782,7 +785,7 @@ describe('runAttachFile (#28)', () => {
     const ctx = await runAttachFile(deps, new File(['x'], 'app.exe'));
 
     expect(ctx).toBeNull();
-    expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', expect.objectContaining({ content: expect.stringContaining('.exe') }));
+    expect(deps.updateMessage).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ content: expect.stringContaining('.exe') }));
   });
 
   it('devuelve null si no hay texto extraíble', async () => {
@@ -808,7 +811,7 @@ describe('runAttachFile (#28)', () => {
     expect(readSpreadsheet).toHaveBeenCalled();
     expect(readFileContent).not.toHaveBeenCalled();
     expect(ctx).toEqual({ name: 'ventas.xlsx', contextText: expect.stringContaining('hoja de cálculo') });
-    expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', expect.objectContaining({
+    expect(deps.updateMessage).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({
       content: expect.stringContaining('muestra de las primeras 100 filas'),
       isLoading: false,
     }));
@@ -827,7 +830,7 @@ describe('runAttachFile (#28)', () => {
 
     expect(readSpreadsheet).toHaveBeenCalled();
     expect(ctx).not.toBeNull();
-    expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', expect.objectContaining({
+    expect(deps.updateMessage).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({
       content: expect.stringContaining('Adjuntado'),
     }));
     const msg = vi.mocked(deps.updateMessage).mock.calls[0][1] as { content: string };
@@ -850,7 +853,7 @@ describe('runAttachFile (#28)', () => {
     expect(readPowerBI).toHaveBeenCalled();
     expect(readFileContent).not.toHaveBeenCalled();
     expect(ctx).toEqual({ name: 'informe.pbit', contextText: expect.stringContaining('Power BI') });
-    expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', expect.objectContaining({
+    expect(deps.updateMessage).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({
       content: expect.stringContaining('Modelo: 3 tablas'),
       isLoading: false,
     }));
@@ -867,7 +870,7 @@ describe('runAttachFile (#28)', () => {
 
     await runAttachFile(deps, new File(['x'], 'grande.pbix'));
 
-    expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', expect.objectContaining({
+    expect(deps.updateMessage).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({
       content: expect.stringContaining('muestra acotada'),
     }));
   });
@@ -886,7 +889,7 @@ describe('runAttachFile (#28)', () => {
     expect(readDocx).toHaveBeenCalled();
     expect(readFileContent).not.toHaveBeenCalled();
     expect(ctx).toEqual({ name: 'memoria.docx', contextText: expect.stringContaining('documento Word') });
-    expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', expect.objectContaining({
+    expect(deps.updateMessage).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({
       content: expect.stringContaining('Documento Word: ~520 palabras'),
       isLoading: false,
     }));
@@ -903,7 +906,7 @@ describe('runAttachFile (#28)', () => {
 
     await runAttachFile(deps, new File(['x'], 'tesis.docx'));
 
-    expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', expect.objectContaining({
+    expect(deps.updateMessage).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({
       content: expect.stringContaining('parte acotada'),
     }));
   });
@@ -934,7 +937,7 @@ describe('runGenerateFileDoc (#28 Fase 2)', () => {
     expect(generateFileDoc).toHaveBeenCalledWith('notas.txt', 'contenido', CONFIG, undefined, 'es');
     expect(doc).toBe('# Doc generada');
     expect(deps.addMessage).toHaveBeenCalled();
-    expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', expect.objectContaining({ isLoading: false }));
+    expect(deps.updateMessage).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ isLoading: false }));
     expect(deps.setIsChatLoading).toHaveBeenLastCalledWith(false);
   });
 
@@ -954,7 +957,7 @@ describe('runGenerateFileDoc (#28 Fase 2)', () => {
     const doc = await runGenerateFileDoc(deps, CONFIG, FILE_CTX);
 
     expect(doc).toBeNull();
-    expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', expect.objectContaining({
+    expect(deps.updateMessage).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({
       content: expect.stringContaining('boom'),
       isLoading: false,
     }));
@@ -1347,5 +1350,102 @@ describe('runCommitDocs — about del repo (v3.31.0)', () => {
     expect(deps.addMessage).toHaveBeenCalledWith(expect.objectContaining({
       content: expect.stringContaining('about'),
     }));
+  });
+});
+
+// ── runSyncRepoStatus (#48) ───────────────────────────────────────────────────
+describe('runSyncRepoStatus (#48)', () => {
+  const makeDepsSync = () => ({
+    token: 'tok',
+    user: { login: 'me' },
+    providerName: 'Groq',
+    model: 'llama-3.1-70b-versatile',
+    provider: 'groq' as const,
+    addMessage: vi.fn(() => `msg-${Date.now()}`),
+    updateMessage: vi.fn(),
+    addEntry: vi.fn(() => 'hist-1'),
+    updateEntry: vi.fn(),
+    setIsChatLoading: vi.fn(),
+    t: (k: string) => k,
+    lang: 'es' as const,
+  });
+
+  const COMMIT_DETAILS = [
+    {
+      sha: 'abc12345',
+      message: 'feat: add new feature\n\nDescription here',
+      author: { name: 'John', email: 'john@example.com', date: '2024-01-15T10:00:00Z' },
+      files: [
+        { filename: 'src/feature.ts', status: 'added', additions: 50, deletions: 0, changes: 50, patch: '+export function foo() {}\n' },
+      ],
+    },
+    {
+      sha: 'def67890',
+      message: 'fix: resolve bug in login',
+      author: { name: 'Jane', email: 'jane@example.com', date: '2024-01-14T15:00:00Z' },
+      files: [
+        { filename: 'src/auth.ts', status: 'modified', additions: 10, deletions: 5, changes: 15, patch: '-const x = 1;\n+const x = 2;\n' },
+      ],
+    },
+  ];
+
+  it('analiza commits recientes y devuelve resumen IA', async () => {
+    vi.mocked(listRecentCommits).mockResolvedValue([
+      { sha: 'abc12345', message: 'feat: add new feature' },
+      { sha: 'def67890', message: 'fix: resolve bug' },
+    ]);
+    vi.mocked(getCommit)
+      .mockResolvedValueOnce(COMMIT_DETAILS[0] as any)
+      .mockResolvedValueOnce(COMMIT_DETAILS[1] as any);
+    vi.mocked(callAI).mockResolvedValue('Resumen IA: 2 commits analizados (1 feature, 1 fix).');
+
+    const deps = makeDepsSync();
+    const result = await runSyncRepoStatus(deps, 'owner/repo', { provider: 'groq', apiKey: 'k', model: 'm' });
+
+    expect(result).not.toBeNull();
+    expect(result!.commitsAnalyzed).toBe(2);
+    expect(result!.summary).toBe('Resumen IA: 2 commits analizados (1 feature, 1 fix).');
+    expect(listRecentCommits).toHaveBeenCalledWith('tok', 'owner', 'repo', 10);
+    expect(getCommit).toHaveBeenCalledTimes(2);
+    expect(callAI).toHaveBeenCalled();
+    expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'completed' }));
+  });
+
+  it('devuelve null si no hay commits recientes', async () => {
+    vi.mocked(listRecentCommits).mockResolvedValue([]);
+    const deps = makeDepsSync();
+
+    const result = await runSyncRepoStatus(deps, 'owner/repo', { provider: 'groq', apiKey: 'k', model: 'm' });
+
+    expect(result).not.toBeNull();
+    expect(result!.commitsAnalyzed).toBe(0);
+    expect(result!.summary).toBe('syncRepo.noCommits');
+    expect(deps.updateMessage).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ content: expect.stringContaining('commits recientes'), isLoading: false }));
+  });
+
+  it('maneja error al obtener commits', async () => {
+    vi.mocked(listRecentCommits).mockRejectedValue(new Error('404 Not Found'));
+    const deps = makeDepsSync();
+
+    const result = await runSyncRepoStatus(deps, 'owner/repo', { provider: 'groq', apiKey: 'k', model: 'm' });
+
+    expect(result).toBeNull();
+    expect(deps.updateMessage).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ content: expect.stringContaining('404'), isLoading: false }));
+    expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'error' }));
+  });
+
+  it('respeta opciones maxCommits e includeDiffs', async () => {
+    vi.mocked(listRecentCommits).mockResolvedValue([
+      { sha: 'a1', message: 'c1' },
+      { sha: 'a2', message: 'c2' },
+      { sha: 'a3', message: 'c3' },
+    ]);
+    vi.mocked(getCommit).mockResolvedValue(COMMIT_DETAILS[0] as any);
+    vi.mocked(callAI).mockResolvedValue('OK');
+
+    const deps = makeDepsSync();
+    await runSyncRepoStatus(deps, 'owner/repo', { provider: 'groq', apiKey: 'k', model: 'm' }, { maxCommits: 2, includeDiffs: false });
+
+    expect(listRecentCommits).toHaveBeenCalledWith('tok', 'owner', 'repo', 2);
   });
 });

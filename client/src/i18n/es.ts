@@ -223,6 +223,7 @@ export const es = {
   'chat.docRepoMissingCreate': '⚠️ El repositorio **{repo}** no existe. ¿Quieres que lo cree y lo documente? Puedes adjuntar archivos para subirlos al repo recién creado.',
   'chat.docRepoMissingOther': '❌ No encontré **{repo}** y solo puedo crear repositorios en tu cuenta. Créalo en GitHub o elige otro destino.',
   'chat.updateDocs': '🔄 Actualizar documentación',
+// ────── #48 Sync Repo Status ──────  'syncRepo.title': '🔄 Sincronizar estado del repo',  'syncRepo.tooltip': 'Analiza los commits recientes y sugiere mejoras',  'syncRepo.prompt': 'Introduce el repositorio (owner/repo o nombre):',  'syncRepo.noCommits': 'ℹ️ No hay commits recientes en **{ref}**.',
   'chat.attachFileMulti': '{count} archivos adjuntos',
   'chat.attachFileXlsxWarning': '⚠️ Solo suba archivos de fuentes confiables. No se analizan archivos maliciosos. Límite: {maxMb} MB.',
 

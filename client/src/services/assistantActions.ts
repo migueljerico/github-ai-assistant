@@ -13,7 +13,7 @@ import { generateRepoDocs, generateFileDoc, generateSpecificDoc, buildRepoContex
 import type { Language } from '../context/LanguageContext';
 import type { AIProviderConfig } from './gemini';
 import { getProvider, modelLabel, type AIProviderType } from './providers';
-import { fetchRepoTreeRecursive, getFileContents, decodeBase64, createRepo, repoExists, getRepo, updateRepo, listCommitDates, GitHubAPIError } from './github';
+import { fetchRepoTreeRecursive, getFileContents, decodeBase64, createRepo, repoExists, getRepo, updateRepo, listCommitDates, listRecentCommits, getCommit, GitHubAPIError } from './github';
 import type { RepoTreeFile } from './github';
 import { rankFilesByQuery } from '../utils/contextRanker';
 import { isContextTooLargeError } from '../utils/retry';
@@ -414,6 +414,104 @@ export async function runCodeHealth(deps: ChatDeps, repoInput: string): Promise<
   } catch (err) {
     updateMessage(loadingId, { content: `❌ ${(err as Error).message}`, isLoading: false });
     updateEntry(histId, { status: 'error', description: deps.t('history.errorCodeHealth', { ref }) });
+    return null;
+  } finally {
+    setIsChatLoading(false);
+  }
+}
+
+
+/**
+ * #48 Sync Repo Status — análisis bajo demanda de commits recientes.
+ * Pull-based (no webhooks): el usuario pulsa botón → fetch commits/diffs → IA analiza.
+ */
+export async function runSyncRepoStatus(
+  deps: ChatDeps,
+  repoInput: string,
+  config: AIProviderConfig,
+  options?: { maxCommits?: number; includeDiffs?: boolean }
+): Promise<{ summary: string; commitsAnalyzed: number } | null> {
+  const { token, user, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading, t, lang } = deps;
+  const { owner, repo } = resolveRepoRef(repoInput, user.login);
+  if (!repo) {
+    addMessage({ role: 'assistant', content: t('chat.repoNeeded') });
+    return null;
+  }
+
+  const maxCommits = options?.maxCommits ?? 10;
+  const includeDiffs = options?.includeDiffs ?? true;
+
+  setIsChatLoading(true);
+  const ref = `${owner}/${repo}`;
+  const loadingId = addMessage({ role: 'assistant', content: `🔄 Sincronizando estado de **${ref}** (últimos ${maxCommits} commits)...`, isLoading: true });
+  const histId = addEntry({ status: 'pending', description: `Sync Repo Status: ${ref}`, repo: ref });
+
+  try {
+    // 1. Obtener commits recientes
+    const commits = await listRecentCommits(token, owner, repo, maxCommits);
+    if (commits.length === 0) {
+      updateMessage(loadingId, { content: `ℹ️ No hay commits recientes en **${ref}**.`, isLoading: false });
+      updateEntry(histId, { status: 'completed', description: `Sync: ${ref} (sin commits)` });
+      return { summary: t('syncRepo.noCommits', { ref }), commitsAnalyzed: 0 };
+    }
+
+    // 2. Para cada commit, obtener detalle con diffs si se pide
+    const commitDetails: Awaited<ReturnType<typeof getCommit>>[] = [];
+    for (const c of commits) {
+      try {
+        const detail = await getCommit(token, owner, repo, c.sha);
+        commitDetails.push(detail);
+      } catch (err) {
+        // Si falla un commit individual, seguimos con los demás
+        console.warn(`Failed to fetch commit ${c.sha}:`, err);
+      }
+    }
+
+    // 3. Construir contexto para la IA
+    let contextText = `Análisis de sincronización para **${ref}** (${commitDetails.length} commits recientes):\n\n`;
+    for (const cd of commitDetails) {
+      const shortSha = cd.sha.slice(0, 7);
+      contextText += `## Commit ${shortSha} — ${cd.message.split('\n')[0]}\n`;
+      contextText += `Autor: ${cd.author.name} (${cd.author.date})\n`;
+      contextText += `Archivos: ${cd.files.length}\n`;
+      if (includeDiffs && cd.files.length > 0) {
+        for (const f of cd.files) {
+          if (f.patch) {
+            contextText += `\n### ${f.filename} (${f.status}, +${f.additions}/-${f.deletions})\n`;
+            // Truncar diffs muy largos
+            const patch = f.patch.length > 2000 ? f.patch.slice(0, 2000) + '\n... (truncado)' : f.patch;
+            contextText += `\`\`\`diff\n${patch}\n\`\`\`\n`;
+          }
+        }
+      }
+      contextText += '\n---\n';
+    }
+
+    // 4. Llamar a la IA para análisis
+    const systemPrompt = `Eres un asistente de ingeniería que analiza cambios recientes en un repositorio.
+Proporciona un resumen ejecutivo conciso (máx. 300 palabras) cubriendo:
+1. Qué tipo de cambios se han hecho (features, fixes, refactors, docs, tests, etc.)
+2. Áreas del código afectadas
+3. Posibles riesgos, deuda técnica o patrones preocupantes
+4. Sugerencias de seguimiento (tests faltantes, revisión de PRs, etc.)
+Responde en ${lang === 'es' ? 'español' : 'English'}.`;
+
+    const messages = [
+      { role: 'user' as const, content: contextText },
+    ];
+
+    const loadingUpdateId = addMessage({ role: 'assistant', content: '🤖 Analizando con IA...', isLoading: true });
+    const aiResponse = await callAI(messages, systemPrompt, config.provider, config.apiKey, config.model, 'chat', undefined, undefined, undefined, config.accountId);
+    updateMessage(loadingUpdateId, { content: aiResponse, isLoading: false });
+
+    updateMessage(loadingId, { content: `✅ Sync completado para **${ref}** — ${commitDetails.length} commits analizados.`, isLoading: false });
+    updateEntry(histId, { status: 'completed', description: `Sync Repo Status: ${ref} (${commitDetails.length} commits)` });
+
+    return { summary: aiResponse, commitsAnalyzed: commitDetails.length };
+  } catch (err) {
+    const errorMsg = (err as Error).message;
+    updateMessage(loadingId, { content: `❌ ${errorMsg}`, isLoading: false });
+    updateEntry(histId, { status: 'error', description: `Error sync: ${ref}` });
     return null;
   } finally {
     setIsChatLoading(false);
