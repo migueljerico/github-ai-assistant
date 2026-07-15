@@ -15,7 +15,7 @@
 ![Ollama Cloud](https://img.shields.io/badge/Ollama_Cloud-000000?style=for-the-badge&logo=ollama&logoColor=white)
 ![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
 ![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
-![Versión](https://img.shields.io/badge/Versión-v3.36.0-blue?style=for-the-badge)
+![Versión](https://img.shields.io/badge/Versión-v3.36.1-blue?style=for-the-badge)
 [![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)](./LICENSE)
 [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
 
@@ -64,7 +64,7 @@ Todo bajo el principio:
 | 🧠 Modelos disponibles | Gemini, Llama, Nemotron, GLM, Grok, DeepSeek, Qwen, MiniMax y más vía OpenRouter/NIM/Zenmux/OpenCode/Cloudflare/Ollama |
 | ⚡ Latencia observada | ~400ms Groq / ~1.2s Gemini, variable según modelo y contexto |
 | 🛡️ Seguridad | Zero-Storage: credenciales solo en memoria React |
-| 🧪 Tests | 536 tests automatizados |
+| 🧪 Tests | 561 tests automatizados |
 | 🌍 Deploy | Google Cloud Run |
 | 📦 Stack | React + TypeScript + Express + Vite |
 
@@ -209,7 +209,7 @@ Ver detalle en ./docs/SEGURIDAD.md.
 
 El proyecto usa **Vitest**, **React Testing Library**, **GitHub Actions** y **Codecov**.
 
-- **536 tests automatizados**
+- **561 tests automatizados**
 - Tests unitarios, integración y componentes
 - Tests del servidor
 - CI con lint + tests + cobertura
@@ -317,6 +317,17 @@ Este proyecto forma parte del programa de formación en **Análisis de Datos e I
 El objetivo fue explorar cómo una persona sin experiencia previa en programación puede construir una aplicación full-stack real utilizando IA como acelerador, manteniendo criterios de arquitectura, seguridad, testing, documentación y despliegue.
 
 > *“No soy ingeniero de software. Soy un profesional de negocio que ha aprendido a construir productos de IA pensando como un ingeniero.”*
+
+---
+
+## ⚠️ Limitaciones conocidas
+
+| Área | Detalle | Mitigación / Estado |
+|------|---------|---------------------|
+| **Vulnerabilidades `xlsx` (SheetJS)** | `xlsx@^0.18.5` tiene Prototype Pollution (GHSA-xvch-5gv4-9q4h) y ReDoS (GHSA-93q8-gq69-qvxp) sin fix en npm (paquete descontinuado). Riesgo solo al leer archivos Excel/CSV maliciosos. | **v3.36.1 planificado:** límite 10 MB, validación post-parseo, aviso UI. **NO migrar a `exceljs`** (+4 MB bundle). Ver `docs/SEGURIDAD.md`. |
+| **Visión / imágenes** | No hay análisis de imágenes (multimodal requeriría backend y modelos específicos). | Descartado por arquitectura. |
+| **Power BI `.pbix` moderno** | El código M (Power Query) va en modelo binario VertiPaq (no legible). | Exportar a `.pbit` para extraer M. |
+| **Word `.doc` binario** | Solo `.docx` (OOXML/ZIP) soportado. | Convertir a `.docx`. |
 
 ---
 

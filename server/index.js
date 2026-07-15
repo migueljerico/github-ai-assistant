@@ -632,8 +632,17 @@ app.get('/auth/callback', async (req, res) => {
 const clientDistPath = join(__dirname, '..', 'client', 'dist');
 app.use(express.static(clientDistPath));
 
+// Rate limiting for SPA catch-all (prevents DoS via file system access on index.html)
+const spaLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 200, // 200 requests per minute per IP
+  message: { error: 'Demasiadas peticiones. Por favor espera un momento.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Catch-all: serve index.html for SPA routing
-app.get('*', (req, res) => {
+app.get('*', spaLimiter, (req, res) => {
   if (req.path.startsWith('/api/') || req.path.startsWith('/auth/')) {
     return res.status(404).json({ error: 'Not found' });
   }

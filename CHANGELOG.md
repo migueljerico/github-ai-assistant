@@ -1,3 +1,26 @@
+## [3.36.1] — 2026-07-15
+
+### Added
+- **Mitigación vulnerabilidades `xlsx` (SheetJS CE):** límite de 10 MB en `spreadsheetReader.ts` antes de parsear + validación básica de cabecera post-parseo (mitiga Prototype Pollution GHSA-xvch-5gv4-9q4h y ReDoS GHSA-93q8-gq69-qvxp).
+- Aviso en UI (`FileAttachButton`, `DocumentFlowModal`): "Solo suba archivos de fuentes confiables. Límite: 10 MB."
+- Rate limiting en ruta catch-all SPA (`server/index.js`) para prevenir DoS vía acceso al sistema de archivos.
+
+### Fixed
+- `docxReader.ts`: sanitización incompleta de etiquetas (fix multi-character sanitization) — ahora elimina tags iterativamente hasta estabilizar.
+- `client/src/test/setup.ts`: escape inútil en regexp corregido (`\{` → `\\{`).
+- CI workflow: añadido bloque `permissions: contents: read` para CodeQL compliance.
+
+### Changed
+- Tests `spreadsheetReader`: nuevo test de límite de tamaño (10 MB).
+
+### Notes
+- Tests: 557/557 (client) + 5/5 (server) = **562 verdes**.
+- Build limpio, lint 0 errores.
+- NO migrado a `exceljs` (+4 MB bundle, rompe chunks lazy).
+- Cambio de código por Nemotron 3 Ultra (NVIDIA NIM).
+
+---
+
 ## [3.36.0] — 2026-07-14
 
 ### Added

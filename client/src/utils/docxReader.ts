@@ -68,7 +68,14 @@ export function docxXmlToText(xml: string): string {
     .replace(/<\/w:tc>/g, '\t')
     .replace(/<\/w:tr>/g, '\n');
 
-  const noTags = withBreaks.replace(/<[^>]+>/g, '');
+  // Fix: incomplete multi-character sanitization — repeatedly remove tags
+  // until no more changes (prevents residual tags like <scri<script>pt> → <script>)
+  let noTags = withBreaks;
+  let previous;
+  do {
+    previous = noTags;
+    noTags = noTags.replace(/<[^>]+>/g, '');
+  } while (noTags !== previous);
   const decoded = decodeXmlEntities(noTags);
 
   return decoded

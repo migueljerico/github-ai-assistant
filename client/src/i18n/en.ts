@@ -220,6 +220,7 @@ export const en = {
   'chat.docRepoMissingOther': '❌ Repository **{repo}** not found and I can only create repos in your account. Create it on GitHub or pick another target.',
   'chat.updateDocs': '🔄 Update docs',
   'chat.attachFileMulti': '{count} files attached',
+  'chat.attachFileXlsxWarning': '⚠️ Only upload files from trusted sources. Malicious files are not analyzed. Limit: {maxMb} MB.',
 
   // ────── PHASE 2: Panels ──────
   'panel.history.clearAria': 'Delete session history',

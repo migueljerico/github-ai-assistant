@@ -220,6 +220,7 @@ export const es = {
   'chat.docRepoMissingOther': '❌ No encontré **{repo}** y solo puedo crear repositorios en tu cuenta. Créalo en GitHub o elige otro destino.',
   'chat.updateDocs': '🔄 Actualizar documentación',
   'chat.attachFileMulti': '{count} archivos adjuntos',
+  'chat.attachFileXlsxWarning': '⚠️ Solo suba archivos de fuentes confiables. No se analizan archivos maliciosos. Límite: {maxMb} MB.',
 
   // ────── FASE 2: Paneles ──────
   'panel.history.clearAria': 'Eliminar el historial de sesión',

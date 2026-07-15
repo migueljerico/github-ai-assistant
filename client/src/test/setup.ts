@@ -13,7 +13,7 @@ vi.mock('../context/LanguageContext', () => ({
       if (params) {
         Object.keys(params).forEach(param => {
           // eslint-disable-next-line no-useless-escape
-          translation = translation.replace(new RegExp(`\{${param}\}`, 'g'), String(params[param]));
+          translation = translation.replace(new RegExp(`\\{${param}\\}`, 'g'), String(params[param]));
         });
       }
       return translation;

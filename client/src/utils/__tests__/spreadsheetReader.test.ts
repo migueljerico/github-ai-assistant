@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { SPREADSHEET_MAX_FILE_SIZE } from '../spreadsheetReader';
 
 // Mock de xlsx (SheetJS): controlamos el workbook y el CSV que produce cada hoja.
 vi.mock('xlsx', () => {
@@ -21,9 +22,10 @@ import * as XLSX from 'xlsx';
 import { readSpreadsheet, SPREADSHEET_SAMPLE_ROWS } from '../spreadsheetReader';
 
 /** Construye un File falso de hoja de cálculo (xlsx por defecto). */
-function fakeFile(name = 'datos.xlsx'): File {
+function fakeFile(name = 'datos.xlsx', size?: number): File {
   return {
     name,
+    size: size ?? 8,
     arrayBuffer: async () => new ArrayBuffer(8),
     text: async () => 'a,b\n1,2',
   } as unknown as File;
@@ -93,5 +95,10 @@ describe('readSpreadsheet (#28 Fase 3a)', () => {
   it('workbook vacío: lanza un error claro', async () => {
     vi.mocked(XLSX.read).mockReturnValue({ SheetNames: [], Sheets: {} } as never);
     await expect(readSpreadsheet(fakeFile())).rejects.toThrow(/vac[ií]a|no se pudo leer/i);
+  });
+
+  it('archivo > 10 MB: rechaza antes de parsear (SPREADSHEET_MAX_FILE_SIZE)', async () => {
+    const bigFile = fakeFile('grande.xlsx', SPREADSHEET_MAX_FILE_SIZE + 1);
+    await expect(readSpreadsheet(bigFile)).rejects.toThrow(/excede el l[ií]mite|tamaño|10 MB/i);
   });
 });

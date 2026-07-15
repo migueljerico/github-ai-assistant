@@ -8,6 +8,9 @@
 // muestra de las primeras filas** y marcamos `truncated` para avisar al usuario.
 // ────────────────────────────────────────────────────────────────────────────
 
+/** Límite de tamaño de archivo antes de parsear (10 MB) — mitigación xlsx vulns. */
+export const SPREADSHEET_MAX_FILE_SIZE = 10 * 1024 * 1024;
+
 /** Nº de filas de datos (tras la cabecera) que se incluyen como muestra por hoja. */
 export const SPREADSHEET_SAMPLE_ROWS = 100;
 
@@ -17,6 +20,9 @@ const MAX_SHEETS = 5;
 /** Presupuesto de caracteres por hoja (recorta filas enteras si se supera).
  *  Holgado para que ~100 filas normales quepan sin recortar (aviso honesto). */
 const MAX_CHARS_PER_SHEET = 8000;
+
+/** Cabeceras esperadas mínimas para validación post-parseo (mitigación ReDoS/Prototype Pollution). */
+const EXPECTED_HEADER_PATTERN = /^[\w\s\-_.(),;:]+$/;
 
 export interface SpreadsheetResult {
   /** Contenido legible (cabeceras + muestra) listo para inyectar en el prompt. */
@@ -54,6 +60,14 @@ function limitCsv(csv: string, maxRows: number, maxChars: number): { text: strin
  * hoja, junto con un resumen y si se truncó. Lanza un error claro si está vacío.
  */
 export async function readSpreadsheet(file: File): Promise<SpreadsheetResult> {
+  // Mitigación v3.36.1: límite de tamaño antes de parsear (10 MB)
+  if (file.size > SPREADSHEET_MAX_FILE_SIZE) {
+    throw new Error(
+      `El archivo supera el límite de ${SPREADSHEET_MAX_FILE_SIZE / (1024 * 1024)} MB. ` +
+      'No se analizan archivos grandes para evitar riesgos de seguridad (Prototype Pollution / ReDoS en SheetJS).'
+    );
+  }
+
   const ext = file.name.split('.').pop()?.toLowerCase() || '';
   const XLSX = await import('xlsx');
 
@@ -82,6 +96,12 @@ export async function readSpreadsheet(file: File): Promise<SpreadsheetResult> {
     // Cabecera (1) + muestra de filas de datos.
     const { text: sampleCsv, cut } = limitCsv(csv, SPREADSHEET_SAMPLE_ROWS + 1, MAX_CHARS_PER_SHEET);
     if (cut) truncated = true;
+
+    // Mitigación v3.36.1: validación básica post-parseo — al menos una cabecera válida
+    const firstLine = csv.split('\n')[0] || '';
+    if (!EXPECTED_HEADER_PATTERN.test(firstLine)) {
+      console.warn(`[spreadsheetReader] Hoja "${name}" con cabecera sospechosa: ${firstLine.slice(0, 100)}`);
+    }
 
     const dataRows = Math.max(0, totalRows - 1);
     const header = `### Hoja "${name}" (${totalRows} filas × ${totalCols} columnas)`;

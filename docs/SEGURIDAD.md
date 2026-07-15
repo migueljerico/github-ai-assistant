@@ -458,6 +458,26 @@ Para evitar saturar la ventana de contexto o bloquear el navegador:
 
 ---
 
+## ⚠️ Vulnerabilidades conocidas en dependencias
+
+### `xlsx` (SheetJS Community Edition) — Prototype Pollution + ReDoS
+
+- **Dependencia:** `xlsx@^0.18.5` (usado en `spreadsheetReader.ts` para Fase 3a Excel/CSV)
+- **CVEs:** GHSA-xvch-5gv4-9q4h (Prototype Pollution), GHSA-93q8-gq69-qvxp (ReDoS)
+- **Estado:** Sin fix en npm — el paquete está descontinuado. Versión 0.20.2 disponible solo en CDN (https://cdn.sheetjs.com/), no en npm.
+- **Riesgo:** Solo al **leer archivos Excel/CSV maliciosos** adjuntados por el usuario (ataque de archivo). El flujo de escritura/exportación no se ve afectado.
+- **Mitigación actual (v3.36.0):**
+  - El usuario debe confiar en el archivo que sube (no hay validación previa).
+  - El parseo ocurre en el navegador (cliente), no en servidor.
+- **Plan para v3.36.1:**
+  1. Límite de tamaño de archivo (ej. 10 MB) antes de parsear.
+  2. Validación básica de estructura (cabeceras esperadas) tras parseo.
+  3. Aviso en UI: "Solo suba archivos de fuentes confiables. No se analizan archivos maliciosos."
+  4. **NO migrar a `exceljs`** — añade ~4 MB al bundle (chunk propio), inaceptable para la arquitectura de chunks lazy actuales.
+  5. Documentado en `docs/SEGURIDAD.md` y `README.md` (sección "Limitaciones conocidas").
+
+---
+
 ## 💾 Export/import de conversación
 
 La exportación de conversación se realiza mediante fichero controlado por el usuario.
@@ -508,6 +528,25 @@ Riesgos residuales:
 
 ---
 
+## ⚠️ Vulnerabilidades conocidas (v3.36.0)
+
+### `xlsx` (SheetJS Community Edition) — Prototype Pollution + ReDoS
+- **Dependencia:** `xlsx@^0.18.5` (usado en `spreadsheetReader.ts` para Fase 3a Excel/CSV)
+- **CVEs:** GHSA-xvch-5gv4-9q4h (Prototype Pollution), GHSA-93q8-gq69-qvxp (ReDoS)
+- **Estado:** Sin fix en npm — el paquete está descontinuado. Versión 0.20.2 disponible solo en CDN (https://cdn.sheetjs.com/), no en npm.
+- **Riesgo:** Solo al **leer archivos Excel/CSV maliciosos** adjuntados por el usuario (ataque de archivo). El flujo de escritura/exportación no se ve afectado.
+- **Mitigación actual (v3.36.0):**
+  - El usuario debe confiar en el archivo que sube (no hay validación previa).
+  - El parseo ocurre en el navegador (cliente), no en servidor.
+- **Plan para v3.36.1:**
+  1. Límite de tamaño de archivo (ej. 10 MB) antes de parsear.
+  2. Validación básica de estructura (cabeceras esperadas) tras parseo.
+  3. Aviso en UI: "Solo suba archivos de fuentes confiables. No se analizan archivos maliciosos."
+  4. **NO migrar a `exceljs`** — añade ~4 MB al bundle (chunk propio), inaceptable para la arquitectura de chunks lazy actuales.
+  5. Documentar en `docs/SEGURIDAD.md` y `README.md` (sección "Limitaciones conocidas").
+
+---
+
 ## 🧭 Mitigaciones
 
 | Riesgo | Mitigación |
@@ -522,6 +561,7 @@ Riesgos residuales:
 | Pérdida de sesión | Export/import manual |
 | Errores de UI | ErrorBoundary |
 | Confusión del usuario | Mensajes claros y flujo guiado |
+| Archivos Excel/CSV maliciosos | Límite 10 MB + validación post-parseo + aviso UI (plan v3.36.1) |
 
 ---
 
