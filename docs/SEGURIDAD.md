@@ -564,6 +564,27 @@ Riesgos residuales:
 
 ---
 
+## 🤖 Automatización de seguridad
+
+### Dependabot
+- **Activo** en `client/` y `server/` (npm ecosystem).
+- Abre PRs automáticos para actualizaciones de dependencias (patch/minor/major configurado en `.github/dependabot.yml`).
+- Alertas de vulnerabilidades (GHSA/CVE) se generan en **Security → Dependabot alerts**.
+- **Política**: revisar PRs de Dependabot semanalmente; merguear tras CI verde.
+- **Ejemplo actual**: alertas xlsx (Prototype Pollution + ReDoS) → mitigadas en v3.36.1 (ver sección anterior).
+
+### CodeQL (GitHub Advanced Security)
+- **Activo** en cada push/PR a `main` (workflow `.github/workflows/codeql.yml` o CodeQL nativo en Actions).
+- Analiza: JavaScript/TypeScript (client + server), workflows YAML, Dockerfile.
+- Reglas: `security-extended`, `security-and-quality`.
+- **Alertas** aparecen en **Security → Code scanning alerts**.
+- **Política**: cero alertas `High/Critical` en main; `Medium/Low` revisadas en PR.
+- **Ejemplo actual**: 2 alertas `actions/missing-workflow-permissions` → corregidas en v3.36.1 con `permissions: contents: read`.
+
+> **Configuración**: `.github/workflows/ci.yml` incluye `permissions: contents: read` para cumplimiento CodeQL.
+
+---
+
 ## 🧪 Seguridad y testing
 
 Las decisiones de seguridad se acompañan de tests en áreas como:

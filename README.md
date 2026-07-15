@@ -201,6 +201,13 @@ El proyecto sigue una arquitectura **Zero-Storage**:
 - El proxy Gemini tiene rate limiting.
 - Los endpoints propuestos por IA se validan antes de ejecutar.
 
+### 🤖 Automatización continua
+
+| Herramienta | Qué hace | Estado |
+|-------------|----------|--------|
+| **Dependabot** | PRs automáticos de actualizaciones npm + alertas GHSA/CVE | ✅ Activo |
+| **CodeQL** | Análisis estático JS/TS, workflows, Docker en cada push/PR | ✅ Activo |
+
 Ver detalle en ./docs/SEGURIDAD.md.
 
 ---
@@ -209,7 +216,7 @@ Ver detalle en ./docs/SEGURIDAD.md.
 
 El proyecto usa **Vitest**, **React Testing Library**, **GitHub Actions** y **Codecov**.
 
-- **561 tests automatizados**
+- **562 tests automatizados**
 - Tests unitarios, integración y componentes
 - Tests del servidor
 - CI con lint + tests + cobertura
