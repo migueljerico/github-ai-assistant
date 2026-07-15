@@ -11,6 +11,8 @@ export const en = {
   'header.history': 'History',
   'header.hideHistory': 'Hide history',
   'header.showHistory': 'Show history',
+  'sessionWarning.message': 'Your session has been active for over 8 hours. For security (Zero-Storage), credentials only live in memory and are lost on reload. Consider reconnecting.',
+  'sessionWarning.dismiss': 'Dismiss warning',
   'chat.placeholder.disabled': 'Connect to GitHub to start…',
   'chat.placeholder.auto': 'Type an instruction… (Enter to send, Shift+Enter for new line)',
   'chat.placeholder.chat': 'Ask for an opinion, advice or analysis...',

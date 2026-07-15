@@ -13,6 +13,7 @@ runPublishSpecificDoc, runStartPublish, runPublishFileDocByKind, formatConversat
 import type { RepoContext, FileContext, PublishTarget, StartPublishResult, CodeHealth } from './services/assistantActions';
 import { serializeConversation, parseConversation, conversationFilename } from './utils/conversationIO';
 import Header from './components/layout/Header';
+import SessionWarningBanner from './components/layout/SessionWarningBanner';
 import HistoryPanel from './components/layout/HistoryPanel';
 import TemplatePanel from './components/templates/TemplatePanel';
 import ChatArea from './components/chat/ChatArea';
@@ -386,6 +387,7 @@ const flowReleaseSpecific = useCallback(async (doc: string, path: string): Promi
         templatesOpen={templatesOpen}
         historyOpen={historyOpen}
       />
+      <SessionWarningBanner />
 
       <div className="main-layout">
         {/* Fondo oscuro en móvil: al tocar fuera, cierra los paneles laterales. */}

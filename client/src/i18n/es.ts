@@ -11,6 +11,10 @@ export const es = {
   'header.history': 'Historial',
   'header.hideHistory': 'Ocultar historial',
   'header.showHistory': 'Mostrar historial',
+
+  // ────── #22: Session Warning Banner ──────
+  'sessionWarning.message': 'Tu sesión lleva más de 8 horas activa. Por seguridad (Zero-Storage), las credenciales solo viven en memoria y se pierden al recargar. Considera reconectar.',
+  'sessionWarning.dismiss': 'Descartar aviso',
   'chat.placeholder.disabled': 'Conecta con GitHub para empezar…',
   'chat.placeholder.auto': 'Escribe una instrucción… (Enter para enviar, Shift+Enter para nueva línea)',
   'chat.placeholder.chat': 'Pide una opinión, consejo o análisis...',
