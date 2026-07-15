@@ -1,3 +1,10 @@
+### CHANGELOG
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
 ## [3.37.0] — 2026-07-15
 
 ### Added
@@ -63,12 +70,7 @@
 - **Pendiente conocido (v3.36.1):** `xlsx` (SheetJS) tiene vulnerabilidades conocidas (prototype pollution, ReDoS) sin fix en npm. **Plan B para v3.36.1:** límite de tamaño de archivo + validación antes de parsear + documentar riesgo; migración a `exceljs` descartada por +4 MB de bundle.
 - Cambio de código por Nemotron 3 Ultra (NVIDIA NIM).
 
-### CHANGELOG
-
-All notable changes to this project will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+---
 
 ## [3.35.0] — 2026-07-14
 
