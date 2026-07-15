@@ -170,14 +170,19 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 ---
 
-#### #48 — Revisión bajo demanda de cambios recientes ("Sync Repo Status")
-**Esfuerzo:** 3–4h
+#### #48 — Revisión bajo demanda de cambios recientes ("Sync Repo Status") — **COMPLETADO v3.37.0**
+**Esfuerzo:** 3–4h ✅
 
-**Problema actual:** Una revisión proactiva con webhooks no es fiable porque Cloud Run escala a cero (los webhooks en frío pueden fallar).
+**Problema resuelto:** Una revisión proactiva con webhooks no es fiable porque Cloud Run escala a cero (los webhooks en frío pueden fallar).
 
-**Solución propuesta:** Botón **"Sync Repo Status"** en la UI. Al pulsarlo, el frontend pide al backend los últimos commits y diffs recientes (nuevos wrappers `listCommits`/`getCommit` en `github.ts`), y la IA los analiza en el momento para sugerir mejoras o detectar errores. Modelo **pull** (bajo demanda), no webhooks.
+**Solución implementada:** Botón **"Sync Repo Status"** en la UI (icono 🔄). Al pulsarlo, el frontend pide los últimos commits y diffs (wrappers `listRecentCommits`/`getCommit` en `github.ts`), y la IA los analiza en el momento para sugerir mejoras o detectar errores. Modelo **pull** (bajo demanda), no webhooks.
 
-**Beneficio:** Simular revisión de código proactiva sin necesidad de mantener servidores siempre activos.
+**Implementación:**
+- `github.ts`: `listRecentCommits` + `getCommit` (con diffs/files).
+- `assistantActions.ts`: `runSyncRepoStatus()` — orquestación pull-based + llamada a IA.
+- `ChatInput`: `SyncRepoStatusButton` (icono 🔄, prompt "owner/repo").
+- i18n ES/EN: `syncRepo.title/tooltip/prompt/noCommits`.
+- Tests: 4 tests (`runSyncRepoStatus` éxito, sin commits, error, opciones).
 
 ---
 
@@ -235,7 +240,7 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 | Prioridad | Total | ✅ Resueltos | ⏳ Pendientes |
 |---|---|---|---|
 | 🔴 Alta | 10 | 8 (#1, #2, #13, #14, #27, #45, #15, #28) | 2 (#26 continuo, xlsx vulns) |
-| 🟡 Media | 17 | 16 (#12, #17, #18, #19, #21, #37, #41, #32, #42, #38, #20, #49, #39, #44, #50, #51) | 1 (#26 expandir) + 3 (#22, #36, #48) |
+| 🟡 Media | 17 | 16 (#12, #17, #18, #19, #21, #37, #41, #32, #42, #38, #20, #49, #39, #44, #50, #51) | 1 (#26 expandir) + 2 (#22, #36) |  #48 ✅ |
 | 🟢 Baja | 18 | 9 (#23, #24, #34, #40, #46, #55, #56, #57, #54) | 7 (#22, #25, #36, #48, #52, #53, #58) |
 | **🗑️ Descartados** | — | — | 2 (#33, #35) descartados en v3.22.3 |
 | **TOTAL** | **43** | **33** + 2 descartados | **8** |

@@ -1,3 +1,25 @@
+## [3.37.0] — 2026-07-15
+
+### Added
+- **#48 Sync Repo Status — análisis bajo demanda de commits recientes (pull-based).**
+  - `runSyncRepoStatus()` en `assistantActions.ts`: obtiene commits recientes vía `listRecentCommits`, detalle con diffs vía `getCommit`, construye contexto y llama a IA para análisis ejecutivo (tipo de cambios, áreas afectadas, riesgos, sugerencias).
+  - Wrappers GitHub API en `github.ts`: `listRecentCommits` (paginado) y `getCommit` (con diffs/files) — pull-based, sin webhooks, compatible Cloud Run scale-to-zero.
+  - Botón UI `SyncRepoStatusButton` en `ChatInput` (icono 🔄, prompt simple "owner/repo").
+  - i18n ES/EN: `syncRepo.title`, `syncRepo.tooltip`, `syncRepo.prompt`, `syncRepo.noCommits`.
+
+### Tests
+- **4 tests nuevos** para `runSyncRepoStatus` (#48): éxito (2 commits + diffs → resumen IA), sin commits recientes, error 404, opciones `maxCommits`/`includeDiffs`.
+
+### Fixed
+- Lint: import duplicado limpiado en tests.
+
+### Notes
+- Tests: 567/567 (client) + 5/5 (server) = **572 verdes**.
+- Build limpio, lint 0 errores (8 warnings preexistentes).
+- Cambio de código por Nemotron 3 Ultra (NVIDIA NIM) via ZCode.
+
+---
+
 ## [3.36.1] — 2026-07-15
 
 ### Added
