@@ -99,6 +99,20 @@ const cloudflareLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// ─── Rate Limiting para Ai& Proxy (v3.38.1) ───────────────────────────────────
+// Ai& (api.aiand.com) NO envía cabeceras CORS → el navegador bloquea las llamadas
+// directas con "Failed to fetch". Mismo patrón que Gemini/NIM/OpenZen/CF/Ollama.
+// (Corrige la asunción falsa del handoff v3.38.0, que lo daba por "verificado".)
+const aiandLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 100,
+  message: {
+    error: 'Demasiadas peticiones a Ai&. Por favor espera un minuto.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // URL base de la API de NVIDIA NIM (el proxy reenvía a ella).
 // NIM NO envía cabeceras CORS → el navegador bloquea las llamadas directas con
 // "Failed to fetch". Este proxy elude el bloqueo igual que el de Gemini (#58).
@@ -547,6 +561,77 @@ app.get('/api/ollama/models', ollamaLimiter, async (req, res) => {
   } catch (err) {
     console.error('Ollama models proxy error:', err);
     if (!res.headersSent) res.status(502).json({ error: 'Error al contactar con Ollama Cloud (models)', detail: err?.message || String(err) });
+    else { try { res.end(); } catch { /* noop */ } }
+  }
+});
+
+// ─── Ai& Proxy (v3.38.1) ──────────────────────────────────────────────────────
+// Ai& (api.aiand.com) es OpenAI-compatible PERO no envía cabeceras CORS, así que
+// las llamadas directas del navegador fallan en prod con "Failed to fetch"
+// (No 'Access-Control-Allow-Origin' header). Mismo motivo que NIM/OpenZen/CF/Ollama.
+// La API key del usuario viaja en el header Authorization (HTTPS cliente→backend)
+// y se descarta al terminar la petición — nunca se persiste ni loguea.
+app.post('/api/aiand', aiandLimiter, async (req, res) => {
+  const auth = req.headers.authorization || '';
+  if (!auth.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Falta la API key (header Authorization: Bearer ...)' });
+  }
+  try {
+    const upstream = await fetch('https://api.aiand.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': auth,
+        'Content-Type': 'application/json',
+        ...(req.headers['accept'] ? { 'Accept': req.headers['accept'] } : {}),
+      },
+      body: JSON.stringify(req.body),
+    });
+    console.log(`[Ai&] upstream status=${upstream.status} ct=${upstream.headers.get('content-type') || '-'}`);
+    res.status(upstream.status);
+    const ct = upstream.headers.get('content-type');
+    if (ct) res.setHeader('Content-Type', ct);
+    await pipeUpstream(upstream, res);
+  } catch (err) {
+    console.error('Ai& proxy error:', err);
+    if (!res.headersSent) res.status(502).json({ error: 'Error al contactar con Ai&', detail: err?.message || String(err) });
+    else { try { res.end(); } catch { /* noop */ } }
+  }
+});
+
+// Catálogo de modelos Ai& vía proxy (evita CORS). OpenAI-compatible: { data: [...] }.
+app.get('/api/aiand/models', aiandLimiter, async (req, res) => {
+  const auth = req.headers.authorization || '';
+  if (!auth.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Falta la API key de Ai& (header Authorization: Bearer sk-...)' });
+  }
+  try {
+    const upstream = await fetch('https://api.aiand.com/v1/models', {
+      method: 'GET',
+      headers: {
+        'Authorization': auth,
+        'Accept': 'application/json',
+      },
+    });
+    console.log(`[Ai& Models] upstream status=${upstream.status} ct=${upstream.headers.get('content-type') || '-'}`);
+    res.status(upstream.status);
+    const ct = upstream.headers.get('content-type');
+    if (ct) res.setHeader('Content-Type', ct);
+    // Saneamos headers (mismo defensivo que Ollama)
+    const safeHeaders = {};
+    for (const [key, value] of upstream.headers.entries()) {
+      if (typeof value === 'string' && /^[\x00-\x7F]*$/.test(value)) {
+        safeHeaders[key] = value;
+      }
+    }
+    for (const [key, value] of Object.entries(safeHeaders)) {
+      res.setHeader(key, value);
+    }
+    res.removeHeader('content-encoding');
+    res.removeHeader('transfer-encoding');
+    await pipeUpstream(upstream, res);
+  } catch (err) {
+    console.error('Ai& models proxy error:', err);
+    if (!res.headersSent) res.status(502).json({ error: 'Error al contactar con Ai& (models)', detail: err?.message || String(err) });
     else { try { res.end(); } catch { /* noop */ } }
   }
 });

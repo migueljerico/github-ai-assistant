@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.38.1] — 2026-07-16
+
+### Fixed
+- **Ai& (`api.aiand.com`): CORS en producción — `Failed to fetch`.** El handoff v3.38.0 asumía (información de Tencent HY3, no del usuario) que Ai& no necesitaba proxy porque "CORS estaba verificado". En producción fallaba con *"No 'Access-Control-Allow-Origin' header is present on the requested resource"* → `net::ERR_FAILED`. Confirmado que `api.aiand.com` **no envía cabeceras CORS**, exactamente igual que NVIDIA NIM / OpenCode Zen / Cloudflare / Ollama (que tuvieron que moverse a proxy backend).
+  - Nuevo proxy backend en `server/index.js`: `aiandLimiter` (100 req/min/IP) + `POST /api/aiand` (→ `https://api.aiand.com/v1/chat/completions`) + `GET /api/aiand/models` (→ `https://api.aiand.com/v1/models`). Patrón idéntico a OpenZen/Ollama: passthrough de `Authorization: Bearer`, copia de status/content-type, `pipeUpstream` (soporta streaming SSE), saneado de headers.
+  - Cliente (`providers.ts`): `chatEndpoint` y `modelsEndpoint` pasan de URLs absolutas a `/api/aiand` y `/api/aiand/models`. Ai& pasa del grupo "directo" (Groq/OpenRouter/Zenmux) al grupo "proxy" (NIM/OpenZen/CF/Ollama). `transport: 'openai-compatible'` sin cambios.
+- **Ai&: catálogo mostraba 5 modelos en vez de solo Qwen 3.6.** Los 5 eran el fallback estático `AIAND_FALLBACK`, con 4 modelos inventados por el handoff anterior (Qwen3 Coder Plus, DeepSeek V4, GLM 5.2, Llama 3.3) que no se validaron contra el catálogo real (que requiere key). Reducido `AIAND_FALLBACK` a **un único modelo** (`qwen/qwen3.6-27b`). Además la rama `aiand` de `fetchModels` no filtraba free-only: añadido `.filter(m => m.free)` tras el `.sort`, de modo que del catálogo dinámico solo aparecen modelos con `pricing` a 0.
+
+### Changed
+- Comentarios de cabecera de Ai& en `providers.ts` (fallback y entrada del provider) y de los nuevos handlers en `server/index.js` reescritos para corregir la afirmación falsa ("CORS verificado — sin proxy") y dejar constancia del motivo real del proxy.
+- METODOLOGIA_IA.md: corregido el registro de v3.38.0 (quitada la afirmación "directo del navegador, sin proxy") y añadida entrada v3.38.1.
+
+### Tests
+- `providers.test.ts`: actualizadas las aserciones de Ai& — el test de endpoints ahora espera rutas relativas `/api/aiand`, `/api/aiand/models`; el test de `fetchModels` ahora verifica catálogo **free-only** (los modelos paid se filtran fuera en vez de marcarse `free === false`).
+
+### Notes
+- No cambia `defaultModel` (`qwen/qwen3.6-27b`), `maxOutputTokens: 8192`, `modelsNeedKey`, `keyPrefix: 'sk-'`, CORS del server, `.env` ni Dockerfile. La API key sigue viajando cliente→server por `Authorization` (Zero-Storage).
+- El punto 3 del handoff (`permissions: contents: read` en CI) **ya estaba aplicado** en `.github/workflows/ci.yml:8-9`; sin acción.
+- Cambio de código por ZCode (GLM-5.2).
+
+---
+
 ## [3.38.0] — 2026-07-16
 
 ### Added

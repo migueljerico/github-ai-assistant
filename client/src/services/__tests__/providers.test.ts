@@ -41,12 +41,12 @@ describe('providers — registro', () => {
     expect(PROVIDERS.gemini.staticModels.some(m => m.value === 'gemini-3-flash-preview')).toBe(true);
   });
 
-  it('aiand: openai-compatible directo del navegador (sin proxy), endpoints absolutos, maxOutputTokens 8192', () => {
+  it('aiand: openai-compatible vía proxy backend /api/aiand (sin CORS upstream), endpoints relativos, maxOutputTokens 8192', () => {
     const def = PROVIDERS.aiand;
     expect(def.transport).toBe('openai-compatible');
-    // Endpoints absolutos (acceso directo, no rutas /api/* de proxy)
-    expect(def.chatEndpoint).toBe('https://api.aiand.com/v1/chat/completions');
-    expect(def.modelsEndpoint).toBe('https://api.aiand.com/v1/models');
+    // Endpoints relativos (proxy backend — Ai& no envía CORS, igual que NIM/OpenZen/CF/Ollama)
+    expect(def.chatEndpoint).toBe('/api/aiand');
+    expect(def.modelsEndpoint).toBe('/api/aiand/models');
     // Requiere key del usuario
     expect(def.modelsNeedKey).toBe(true);
     // Default dentro de staticModels
@@ -218,7 +218,7 @@ describe('providers — fetchModels', () => {
     expect(list!.find(m => m.value === 'paid/model')!.free).toBe(false);
   });
 
-  it('aiand: marca free por pricing input_per_1m/output_per_1m a 0, filtra no-chat, ordena free primero', async () => {
+  it('aiand: catálogo free-only (filtra paid, embedding y no-chat), free detection por pricing a 0', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -238,16 +238,15 @@ describe('providers — fetchModels', () => {
     const ids = list!.map(m => m.value);
     // Filtra embedding (no-chat)
     expect(ids).not.toContain('text-embedding-3');
-    // Free primero
-    expect(list![0].free).toBe(true);
-    // Ambos precios a 0 → free
+    // Filtra modelos paid (v3.38.1: catálogo free-only)
+    expect(ids).not.toContain('paid/model');
+    // Todos los listados son free
+    expect(list!.every(m => m.free === true)).toBe(true);
+    // Ambos precios a 0 → free (presente)
     expect(list!.find(m => m.value === 'qwen/qwen-free')!.free).toBe(true);
-    // Sin pricing → free (fallback defensivo)
+    // Sin pricing → free (fallback defensivo, presente)
     expect(list!.find(m => m.value === 'no-pricing-model')!.free).toBe(true);
-    // Pricing > 0 → paid
-    expect(list!.find(m => m.value === 'paid/model')!.free).toBe(false);
-    // Solo input a 0 pero output ausente → no free (outputPer1m ?? 0 → 0, input 0 → ambos 0 = free)
-    // Nota: input=0 + output undefined → Number(undefined ?? 0)=0 → free=true (coherente con fallback)
+    // input=0 + output undefined → Number(undefined ?? 0)=0 → free=true (presente)
     expect(list!.find(m => m.value === 'partial-pricing')!.free).toBe(true);
   });
 

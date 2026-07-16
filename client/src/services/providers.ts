@@ -212,15 +212,12 @@ const OLLAMA_FALLBACK: ModelOption[] = [
 ];
 
 // Fallback de Ai& (api.aiand.com) mientras carga el catálogo dinámico o si falla.
-// Acceso DIRECTO desde el navegador (OpenAI-compatible, CORS verificado — sin proxy).
-// El catálogo dinámico marca free según pricing (input_per_1m/output_per_1m a 0).
-// Aquí dejamos modelos conocidos como red de seguridad; default qwen/qwen3.6-27b.
+// Acceso vía PROXY backend /api/aiand (Ai& no envía CORS → las llamadas directas
+// del navegador fallan con "Failed to fetch"; mismo motivo que NIM/OpenZen/CF/Ollama).
+// El catálogo dinámico filtra a free=true (pricing input_per_1m/output_per_1m a 0);
+// este fallback es la red de seguridad. defaultModel = qwen/qwen3.6-27b.
 const AIAND_FALLBACK: ModelOption[] = [
   { value: 'qwen/qwen3.6-27b', label: 'Qwen3.6 27B', recommended: true },
-  { value: 'qwen/qwen3-coder-plus', label: 'Qwen3 Coder Plus' },
-  { value: 'deepseek/deepseek-v4', label: 'DeepSeek V4' },
-  { value: 'z-ai/glm-5.2', label: 'GLM 5.2' },
-  { value: 'meta-llama/llama-3.3-70b-instruct', label: 'Llama 3.3 70B' },
 ];
 
 export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
@@ -388,10 +385,13 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     note: 'provider.ollama.note',
   },
   // Ai& (api.aiand.com): VA AL FINAL (último proveedor añadido, v3.38.0).
-  // Acceso DIRECTO desde el navegador (OpenAI-compatible, CORS verificado — sin proxy,
-  // mismo patrón que Groq/Zenmux/OpenRouter). La key viaja en memoria (Zero-Storage).
-  // Catálogo dinámico vía /v1/models con detección free por pricing
-  // (input_per_1m/output_per_1m a 0); fallback estático AIAND_FALLBACK.
+  // Acceso vía PROXY backend /api/aiand: Ai& NO envía cabeceras CORS, así que las
+  // llamadas directas del navegador fallan con "Failed to fetch" en prod. Mismo
+  // motivo y mismo patrón que NIM/OpenZen/Cloudflare/Ollama (v3.38.1 corrige la
+  // asunción falsa del handoff v3.38.0, que lo daba por "CORS verificado").
+  // La key viaja en memoria (Zero-Storage) y se reenvía por Authorization al server.
+  // Catálogo dinámico vía /api/aiand/models con filtro free (pricing a 0);
+  // fallback estático AIAND_FALLBACK (solo qwen/qwen3.6-27b).
   // maxOutputTokens: 8192 — modelos de razonamiento con salidas largas; evita
   // respuestas vacías por truncado del max_tokens (ver callAI / effectiveMaxTokens).
   aiand: {
@@ -401,8 +401,8 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     emoji: '✨',
     cardDesc: 'provider.aiand.cardDesc',
     transport: 'openai-compatible',
-    chatEndpoint: 'https://api.aiand.com/v1/chat/completions',
-    modelsEndpoint: 'https://api.aiand.com/v1/models',
+    chatEndpoint: '/api/aiand',
+    modelsEndpoint: '/api/aiand/models',
     modelsNeedKey: true,
     staticModels: AIAND_FALLBACK,
     defaultModel: AIAND_FALLBACK[0].value, // 'qwen/qwen3.6-27b'
@@ -680,7 +680,11 @@ export async function fetchModels(
         };
       })
       // free primero, luego alfabético
-      .sort((a, b) => (Number(b.free) - Number(a.free)) || a.label.localeCompare(b.label));
+      .sort((a, b) => (Number(b.free) - Number(a.free)) || a.label.localeCompare(b.label))
+      // free-only: Ai& solo muestra modelos gratuitos (pricing a 0). Si el catálogo
+      // dinámico no trae ningún free, fetchModels lanza 'empty catalog' y el panel
+      // cae en el fallback estático (AIAND_FALLBACK = solo qwen/qwen3.6-27b).
+      .filter(m => m.free);
   } else {
     // Groq (y cualquier OpenAI-compatible genérico): filtra no-chat
     models = data.data
