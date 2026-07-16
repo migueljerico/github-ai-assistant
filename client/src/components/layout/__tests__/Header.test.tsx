@@ -45,7 +45,7 @@ describe('Header', () => {
 
     render(<Header {...defaultProps} />);
     
-    expect(screen.getByText(/asistente de ia para publicar repositorios/i)).toBeInTheDocument();
+    expect(screen.getByText(/asistente de ia de github/i)).toBeInTheDocument();
   });
 
   it('debería mostrar badge "Sin conectar" cuando no está autenticado', () => {

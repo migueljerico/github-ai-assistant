@@ -3,7 +3,7 @@ import { PROVIDERS, getProvider, fetchModels, pickDefaultModel, modelLabel, reso
 
 describe('providers — registro', () => {
   it('los proveedores tienen su defaultModel dentro de staticModels', () => {
-    (['gemini', 'groq', 'openrouter', 'nvidia', 'zenmux', 'openzen', 'cloudflare', 'ollama'] as const).forEach(id => {
+    (['gemini', 'groq', 'openrouter', 'nvidia', 'zenmux', 'openzen', 'cloudflare', 'ollama', 'aiand'] as const).forEach(id => {
       const def = getProvider(id);
       expect(def.id).toBe(id);
       expect(def.staticModels.some(m => m.value === def.defaultModel)).toBe(true);
@@ -39,6 +39,22 @@ describe('providers — registro', () => {
 
   it('gemini incluye gemini-3-flash-preview en staticModels', () => {
     expect(PROVIDERS.gemini.staticModels.some(m => m.value === 'gemini-3-flash-preview')).toBe(true);
+  });
+
+  it('aiand: openai-compatible directo del navegador (sin proxy), endpoints absolutos, maxOutputTokens 8192', () => {
+    const def = PROVIDERS.aiand;
+    expect(def.transport).toBe('openai-compatible');
+    // Endpoints absolutos (acceso directo, no rutas /api/* de proxy)
+    expect(def.chatEndpoint).toBe('https://api.aiand.com/v1/chat/completions');
+    expect(def.modelsEndpoint).toBe('https://api.aiand.com/v1/models');
+    // Requiere key del usuario
+    expect(def.modelsNeedKey).toBe(true);
+    // Default dentro de staticModels
+    expect(def.staticModels.some(m => m.value === def.defaultModel)).toBe(true);
+    expect(def.defaultModel).toBe('qwen/qwen3.6-27b');
+    // Límite de salida preferido (modelos de razonamiento con salidas largas)
+    expect(def.maxOutputTokens).toBe(8192);
+    expect(def.keyPrefix).toBe('sk-');
   });
 });
 
@@ -200,6 +216,39 @@ describe('providers — fetchModels', () => {
     expect(list!.find(m => m.value === 'x-ai/grok-4.5-free')!.free).toBe(true);
     expect(list!.find(m => m.value === 'stepfun/step-3.7-flash-free')!.free).toBe(true);
     expect(list!.find(m => m.value === 'paid/model')!.free).toBe(false);
+  });
+
+  it('aiand: marca free por pricing input_per_1m/output_per_1m a 0, filtra no-chat, ordena free primero', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          { id: 'paid/model', display_name: 'Paid', pricing: { input_per_1m: 1, output_per_1m: 2 } },
+          { id: 'qwen/qwen-free', display_name: 'Qwen Free', pricing: { input_per_1m: 0, output_per_1m: 0 } },
+          { id: 'text-embedding-3', display_name: 'Embedding', pricing: { input_per_1m: 0.1 } },
+          { id: 'no-pricing-model', display_name: 'No Pricing' },
+          { id: 'partial-pricing', display_name: 'Partial', pricing: { input_per_1m: 0 } },
+        ],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const list = await fetchModels(PROVIDERS.aiand, 'sk-test');
+    expect(list).not.toBeNull();
+    const ids = list!.map(m => m.value);
+    // Filtra embedding (no-chat)
+    expect(ids).not.toContain('text-embedding-3');
+    // Free primero
+    expect(list![0].free).toBe(true);
+    // Ambos precios a 0 → free
+    expect(list!.find(m => m.value === 'qwen/qwen-free')!.free).toBe(true);
+    // Sin pricing → free (fallback defensivo)
+    expect(list!.find(m => m.value === 'no-pricing-model')!.free).toBe(true);
+    // Pricing > 0 → paid
+    expect(list!.find(m => m.value === 'paid/model')!.free).toBe(false);
+    // Solo input a 0 pero output ausente → no free (outputPer1m ?? 0 → 0, input 0 → ambos 0 = free)
+    // Nota: input=0 + output undefined → Number(undefined ?? 0)=0 → free=true (coherente con fallback)
+    expect(list!.find(m => m.value === 'partial-pricing')!.free).toBe(true);
   });
 
   it('openzen: usa catálogo estático (OPENZEN_FALLBACK) sin fetch dinámico (CORS)', async () => {

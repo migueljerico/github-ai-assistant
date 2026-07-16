@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.38.0] — 2026-07-16
+
+### Added
+- **Nuevo proveedor de IA: Ai& (`api.aiand.com`).** Acceso DIRECTO desde el navegador (OpenAI-compatible, CORS verificado — sin proxy backend, mismo patrón que Groq/Zenmux/OpenRouter). Una sola entrada en el registro `PROVIDERS` (`providers.ts`); el resto (UI, `callAI`, validación) funciona sin tocar más ficheros.
+  - Catálogo dinámico vía `GET /v1/models` con detección **free** por pricing (`input_per_1m`/`output_per_1m` a 0); fallback defensivo: modelo sin `pricing` → free. Filtra modelos no-chat (embedding, whisper, tts, asr, rerank, vision, clip, audio). Orden: free primero, luego alfabético.
+  - Fallback estático `AIAND_FALLBACK` (5 modelos); `defaultModel: qwen/qwen3.6-27b`.
+  - i18n ES/EN: `provider.aiand.cardDesc`, `provider.aiand.signupLabel`.
+- **Robustez de límite de salida por proveedor (`effectiveMaxTokens`).** Nuevo campo opcional `maxOutputTokens` en `ProviderDef`; `callAI` resuelve `maxTokens ?? provider.maxOutputTokens ?? 4096` y lo pasa a ambos transportes (Gemini y OpenAI-compatible). Ai& usa 8192 → evita respuestas vacías / `emptyError` falso en modelos de razonamiento por truncado del `max_tokens`. Corrige además una asimetría: el default 4096 ahora aplica también a la rama Gemini (antes solo a OpenAI-compatible).
+
+### Changed
+- **Renombrado del nombre visible del producto (ES/EN):** "Asistente de IA para Publicar Repositorios" → **"Asistente de IA de GitHub"** / "AI Assistant for Publishing Repositories" → **"GitHub AI Assistant"**. Solo valores de strings visibles (4 claves i18n × idioma: `header.title`, `auth.title`, `chat.area.title`, `history.logHeader`), `<title>` de `index.html`, `description` de `package.json`, banner de arranque de `server/index.js` y comentarios de cabecera de `index.css` y `Dockerfile`. No se tocan claves/estructura, subtítulos, botones, otra i18n, lógica ni los usos de "Asistente de IA" como sustantivo genérico en commit messages/signatures.
+
+### Tests
+- **2 tests nuevos** en `providers.test.ts`: registro de `aiand` (transport, endpoints absolutos, `modelsNeedKey`, `maxOutputTokens: 8192`, default dentro de staticModels) y rama `aiand` de `fetchModels` (free por pricing 0, fallback sin pricing, filtrado de embedding, orden free primero).
+- Regex de los 3 tests de UI (chatArea, ChatInput, Header) actualizadas al nuevo nombre (`/asistente de ia de github/i`).
+
+### Notes
+- Tests: 569/569 (client) + 5/5 (server) = **574 verdes**.
+- Build limpio (`tsc` estricto + vite), lint 0 errores (8 warnings preexistentes).
+- Bump 3.36.1 → 3.38.0 (el tag v3.37.0 existía pero no bumpéo los `package.json`; este cierre reconcilia saltando a 3.38.0).
+- Cambio de código por ZCode (GLM-5.2).
+
+---
+
 ## [3.37.0] — 2026-07-15
 
 ### Added

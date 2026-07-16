@@ -362,6 +362,13 @@ export async function callAI(
   accountId?: string | null,  // ← Cloudflare: sustituye {account_id} en el endpoint
 ): Promise<string> {
   const def = getProvider(provider);
+  // v3.38.0: límite de salida efectivo. Resolución por prioridad:
+  //   1) maxTokens explícito del llamador (docs usa 8192 para salidas largas).
+  //   2) maxOutputTokens del proveedor (p. ej. Ai& → 8192, evita respuestas vacías
+  //      en modelos de razonamiento y emptyError falso por truncado del max_tokens).
+  //   3) 4096 (default histórico; antes solo se aplicaba en la rama OpenAI-compat,
+  //      ahora también en Gemini para coherencia entre transportes).
+  const effectiveMaxTokens = maxTokens ?? def.maxOutputTokens ?? 4096;
   // Reintento ante errores transitorios del servidor (503 "high demand",
   // "Provider returned error"…). La validación de clave llama a las funciones
   // internas directamente, así que no se ve afectada por este reintento.
@@ -370,8 +377,8 @@ export async function callAI(
   const chatEndpoint = resolveEndpoint(def.chatEndpoint!, accountId);
   return withTransientRetry(() =>
     def.transport === 'gemini-proxy'
-      ? callGeminiDirect(apiKey, model, messages, systemPrompt, mode, onToken, signal, maxTokens)
-      : callOpenAICompatible(chatEndpoint, apiKey, model, messages, systemPrompt, mode, def.extraHeaders, onToken, signal, maxTokens, accountId),
+      ? callGeminiDirect(apiKey, model, messages, systemPrompt, mode, onToken, signal, effectiveMaxTokens)
+      : callOpenAICompatible(chatEndpoint, apiKey, model, messages, systemPrompt, mode, def.extraHeaders, onToken, signal, effectiveMaxTokens, accountId),
   );
 }
 

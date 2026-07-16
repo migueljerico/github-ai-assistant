@@ -6,7 +6,7 @@ La aplicación está dividida en:
 
 - **Frontend:** React + TypeScript + Vite.
 - **Backend:** Express.js para OAuth, proxies de IA y health check.
-- **APIs externas:** GitHub REST API, Groq Cloud, Google Gemini, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI, Ollama Cloud.
+- **APIs externas:** GitHub REST API, Groq Cloud, Google Gemini, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI, Ollama Cloud, Ai&.
 
 ---
 
@@ -20,7 +20,7 @@ Antes de empezar necesitas:
 | npm | Incluido con Node.js |
 | Git | Requerido para clonar y trabajar con el repo |
 | GitHub OAuth App | Necesaria para login con GitHub |
-| API key de IA | Groq, Gemini, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI u Ollama Cloud |
+| API key de IA | Groq, Gemini, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI, Ollama Cloud o Ai& |
 
 ---
 
@@ -76,6 +76,7 @@ Necesitarás al menos una clave de:
 | OpenCode Zen | `https://opencode.ai` |
 | Cloudflare Workers AI | `https://dash.cloudflare.com` |
 | Ollama Cloud | `https://ollama.com` |
+| Ai& | `https://aiand.com` |
 
 > La clave de IA **no** se configura en `.env`.  
 > Cada usuario la introduce directamente en la aplicación y vive solo en memoria durante la sesión.
@@ -165,7 +166,7 @@ http://localhost:5173
 2. Pulsa conectar con GitHub.
 3. Autoriza la OAuth App.
 4. Elige proveedor de IA.
-5. Pega tu clave de Groq, Gemini, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI u Ollama Cloud.
+5. Pega tu clave de Groq, Gemini, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI, Ollama Cloud o Ai&.
 6. Empieza a trabajar con tus repositorios.
 
 ---

@@ -15,7 +15,7 @@
 ![Ollama Cloud](https://img.shields.io/badge/Ollama_Cloud-000000?style=for-the-badge&logo=ollama&logoColor=white)
 ![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
 ![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
-![Versión](https://img.shields.io/badge/Versión-v3.36.1-blue?style=for-the-badge)
+![Versión](https://img.shields.io/badge/Versión-v3.38.0-blue?style=for-the-badge)
 [![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)](./LICENSE)
 [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
 
@@ -60,11 +60,11 @@ Todo bajo el principio:
 | Aspecto | Detalle |
 |---|---|
 | ⏱️ Tiempo de desarrollo | 30 días desde cero |
-| 🤖 Proveedores soportados | Groq · Google Gemini · OpenRouter · NVIDIA NIM · Zenmux · OpenCode Zen · Cloudflare Workers AI · Ollama Cloud |
-| 🧠 Modelos disponibles | Gemini, Llama, Nemotron, GLM, Grok, DeepSeek, Qwen, MiniMax y más vía OpenRouter/NIM/Zenmux/OpenCode/Cloudflare/Ollama |
+| 🤖 Proveedores soportados | Groq · Google Gemini · OpenRouter · NVIDIA NIM · Zenmux · OpenCode Zen · Cloudflare Workers AI · Ollama Cloud · Ai& |
+| 🧠 Modelos disponibles | Gemini, Llama, Nemotron, GLM, Grok, DeepSeek, Qwen, MiniMax y más vía OpenRouter/NIM/Zenmux/OpenCode/Cloudflare/Ollama/Ai& |
 | ⚡ Latencia observada | ~400ms Groq / ~1.2s Gemini, variable según modelo y contexto |
 | 🛡️ Seguridad | Zero-Storage: credenciales solo en memoria React |
-| 🧪 Tests | 561 tests automatizados |
+| 🧪 Tests | 574 tests automatizados |
 | 🌍 Deploy | Google Cloud Run |
 | 📦 Stack | React + TypeScript + Express + Vite |
 
@@ -84,7 +84,7 @@ Todo bajo el principio:
 | 📋 Changelog | Generar changelog desde commits recientes o desde el último release |
 | 📊 Salud del código | Dashboard con lenguajes, commits y deuda técnica |
 | 🌐 i18n | Interfaz bilingüe ES/EN |
-| 🔑 Multi-proveedor IA | Groq, Gemini, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI y Ollama Cloud con clave del usuario |
+| 🔑 Multi-proveedor IA | Groq, Gemini, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI, Ollama Cloud y Ai& con clave del usuario |
 
 Más detalle en ./docs/FUNCIONALIDADES.md.
 
@@ -216,7 +216,7 @@ Ver detalle en ./docs/SEGURIDAD.md.
 
 El proyecto usa **Vitest**, **React Testing Library**, **GitHub Actions** y **Codecov**.
 
-- **562 tests automatizados**
+- **574 tests automatizados**
 - Tests unitarios, integración y componentes
 - Tests del servidor
 - CI con lint + tests + cobertura
@@ -242,6 +242,7 @@ Ver detalle en ./docs/TESTING_CALIDAD.md.
 | OpenCode Zen | Modelos gratis con API key opencode.ai |
 | Cloudflare Workers AI | Modelos serverless (@cf/…) |
 | Ollama Cloud | OpenAI-compatible (proxy backend, sin CORS) |
+| Ai& | Pasarela OpenAI-compatible con modelos de razonamiento |
 | Recharts | Dashboard de salud del código |
 | Vitest | Testing |
 | Codecov | Cobertura |

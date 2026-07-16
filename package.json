@@ -1,7 +1,7 @@
 {
   "name": "github-ai-assistant",
-  "version": "3.36.1",
-  "description": "Asistente de IA para Publicar Repositorios",
+  "version": "3.38.0",
+  "description": "Asistente de IA de GitHub",
   "type": "module",
   "main": "server/index.js",
   "scripts": {

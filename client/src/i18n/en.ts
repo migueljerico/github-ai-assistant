@@ -1,7 +1,7 @@
 export const en = {
   'header.login': 'Sign in with GitHub',
   'header.logout': 'Sign out',
-  'header.title': 'AI Assistant for Publishing Repositories',
+  'header.title': 'GitHub AI Assistant',
   'header.subtitle': 'Multi-provider AI · GitHub API',
   'header.connected': 'Connected',
   'header.disconnected': 'Disconnected',
@@ -53,7 +53,7 @@ export const en = {
   'history.empty': 'Actions from this session will appear here',
   'history.exportLog': 'Export log',
   'auth.verifying': 'Verifying authentication...',
-  'auth.title': 'AI Assistant for Publishing Repositories',
+  'auth.title': 'GitHub AI Assistant',
   'auth.subtitle': 'Manage your GitHub repositories with natural language,\nmulti-provider AI with free models.',
   'auth.patDivider': 'or use a personal token',
   'auth.connectGithub': 'Connect with GitHub',
@@ -122,6 +122,9 @@ export const en = {
   'provider.ollama.cardDesc': 'Open models hosted on Ollama Cloud. Requires free account at ollama.com.',
   'provider.ollama.signupLabel': 'Create account at Ollama',
   'provider.ollama.note': 'Only verified free models. Some have low session limits (few requests/hour).',
+
+  'provider.aiand.cardDesc': 'Ai& · OpenAI-compatible gateway with reasoning models (Qwen, DeepSeek, GLM…)',
+  'provider.aiand.signupLabel': 'Get API key at aiand.com →',
 
   // ────── PHASE 2: Modals ──────
   'modal.doc.title': 'Documentation generated for {repoName}',
@@ -229,7 +232,7 @@ export const en = {
   'panel.history.clearAria': 'Delete session history',
 
   // ────── PHASE 3: Chat core ──────
-  'chat.area.title': 'AI Assistant for Publishing Repositories',
+  'chat.area.title': 'GitHub AI Assistant',
   'chat.area.intro': 'Type an instruction in natural language and the assistant will manage your GitHub repositories for you. You can create files, update READMEs, add licenses, and much more.',
   'chat.area.example1': '"Create a README.md for my repo my-project"',
   'chat.area.example2': '"Add an MIT license to all-projects"',
@@ -272,7 +275,7 @@ export const en = {
   'history.publishing': 'Publishing {path} in {repo}',
   'history.published': 'Documentation published in {repo}',
   'history.errorPublishing': 'Error publishing in {repo}',
-  'history.logHeader': '=== AI Assistant for Publishing Repositories — Session {date} ===',
+  'history.logHeader': '=== GitHub AI Assistant — Session {date} ===',
   'history.logFilename': 'session-log-{date}.txt',
 
   // ────── PHASE 3: Action executor (i18n) ──────
