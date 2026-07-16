@@ -21,7 +21,7 @@ describe('ChatArea', () => {
   it('debería mostrar mensaje de bienvenida cuando no hay mensajes', () => {
     render(<ChatArea messages={[]} />);
     
-    expect(screen.getByText(/asistente de ia para publicar repositorios/i)).toBeInTheDocument();
+    expect(screen.getByText(/asistente de ia de github/i)).toBeInTheDocument();
     expect(screen.getByText(/escribe una instrucción en lenguaje natural/i)).toBeInTheDocument();
   });
 
@@ -69,7 +69,7 @@ describe('ChatArea', () => {
 
     render(<ChatArea messages={messages} />);
     
-    expect(screen.queryByText(/asistente de ia para publicar repositorios/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/asistente de ia de github/i)).not.toBeInTheDocument();
   });
 
   it('debería tener role="log" para accesibilidad', () => {

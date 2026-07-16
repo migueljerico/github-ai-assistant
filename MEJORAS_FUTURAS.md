@@ -2,7 +2,7 @@
 
 Estado del código, mejoras pendientes y roadmap del proyecto.
 
-**Actualizado a:** v3.36.1 · Julio 2026
+**Actualizado a:** v3.38.0 · Julio 2026
 
 ---
 
@@ -66,6 +66,9 @@ Estado del código, mejoras pendientes y roadmap del proyecto.
 | 58 | **Fase 5: Crear repo + documentar archivo específico** — Flujo unificado para crear un repo inexistente y documentar un archivo específico del repo en un solo paso (reusa callbacks Fase 2/3/4). | components/confirm/DocumentFlowModal.tsx, services/assistantActions.ts | v3.35.0 |
 | 58 | **Fase 6: Persistencia avanzada** — Hook `useDocTargetSelector.ts` que persiste en `localStorage` (clave `doc_target_selector`) el `scope`, `repoInput`, `targetPath` y `extraInstructions` del último flujo "documento específico del repo". Al reabrir `DocumentFlowModal`, el usuario recupera su contexto previo. 11 tests unitarios. | client/src/hooks/useDocTargetSelector.ts, client/src/hooks/__tests__/useDocTargetSelector.test.ts, components/confirm/DocumentFlowModal.tsx, client/src/test/setup.ts | v3.36.0 |
 | — | **Mitigación vulnerabilidades `xlsx` (SheetJS)** — Límite 10 MB en `spreadsheetReader.ts` antes de parsear + validación básica cabecera post-parseo. Aviso UI en FileAttachButton/DocumentFlowModal. Rate limiting en catch-all SPA route. CI workflow `permissions: contents: read`. | client/src/utils/spreadsheetReader.ts, client/src/components/chat/FileAttachButton.tsx, server/index.js, .github/workflows/ci.yml, docs/SEGURIDAD.md, README.md | v3.36.1 |
+| — | **Nuevo proveedor Ai& (`api.aiand.com`)** — OpenAI-compatible directo del navegador (sin proxy). Catálogo dinámico con detección free por `input_per_1m`/`output_per_1m` a 0 + fallback sin pricing. `defaultModel: qwen/qwen3.6-27b`. i18n ES/EN. | client/src/services/providers.ts, client/src/i18n/{es,en}.ts | v3.38.0 |
+| — | **`effectiveMaxTokens` por proveedor** — campo `maxOutputTokens` en `ProviderDef`; `callAI` resuelve `maxTokens ?? provider.maxOutputTokens ?? 4096` para ambos transportes. Ai& → 8192 (evita respuestas vacías en modelos de razonamiento). | client/src/services/{providers,gemini}.ts | v3.38.0 |
+| — | **Renombrado del nombre visible (ES/EN)** — "Asistente de IA para Publicar Repositorios" → "Asistente de IA de GitHub" / "AI Assistant for Publishing Repositories" → "GitHub AI Assistant" (4 claves i18n × idioma, title, description, banner server, cabeceras css/Dockerfile). | client/src/i18n/{es,en}.ts, client/index.html, package.json, server/index.js, client/src/index.css, Dockerfile | v3.38.0 |
 
 ---
 
@@ -251,7 +254,12 @@ Los issues están numerados y ordenados por prioridad descendente dentro de cada
 
 ---
 
-## 🎯 Enfoque actual (v3.36.1)
+## 🎯 Enfoque actual (v3.38.0)
+
+1. Verificar Ai& en producción (CORS confirmado, catálogo dinámico y detección free por pricing).
+2. Reconciliar las listas de proveedores incompletas en `docs/COMPARATIVA_COPILOT.md` y `docs/ARQUITECTURA.md` (tabla transporte) — desfasadas desde antes de v3.38.0 (no incluyen OpenCode Zen/Cloudflare/Ollama/Ai&).
+3. **Mitigación vulnerabilidades `xlsx` (SheetJS)** — límite 10 MB en `spreadsheetReader.ts`, validación básica post-parseo, aviso en UI (FileAttachButton / DocumentFlowModal), documentar en `docs/SEGURIDAD.md` y `README.md` (sección "Limitaciones conocidas"). **NO migrar a `exceljs`**.
+4. **Revisar CI workflow** — añadir `permissions: contents: read` (requiere token con scope `workflow`).
 
 1. **Mitigación vulnerabilidades `xlsx` (SheetJS)** — límite 10 MB en `spreadsheetReader.ts`, validación básica post-parseo, aviso en UI (FileAttachButton / DocumentFlowModal), documentar en `docs/SEGURIDAD.md` y `README.md` (sección "Limitaciones conocidas"). **NO migrar a `exceljs`**.
 2. **Revisar CI workflow** — añadir `permissions: contents: read` (requiere token con scope `workflow`).

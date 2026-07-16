@@ -651,7 +651,7 @@ app.get('*', spaLimiter, (req, res) => {
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
-  console.log(`\n🚀 Asistente de IA para Publicar Repositorios`);
+  console.log(`\n🚀 Asistente de IA de GitHub`);
   console.log(`   Server:  http://localhost:${PORT}`);
   console.log(`   Health:  http://localhost:${PORT}/health`);
   console.log(`   OAuth:   http://localhost:${PORT}/auth/github`);

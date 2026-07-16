@@ -12,7 +12,7 @@
 // sessionStorage es la LISTA de modelos (catálogo), nunca la clave.
 // ────────────────────────────────────────────────────────────────────────────
 
-export type AIProviderType = 'gemini' | 'groq' | 'openrouter' | 'nvidia' | 'zenmux' | 'openzen' | 'cloudflare' | 'ollama';
+export type AIProviderType = 'gemini' | 'groq' | 'openrouter' | 'nvidia' | 'zenmux' | 'openzen' | 'cloudflare' | 'ollama' | 'aiand';
 export type ProviderTransport = 'gemini-proxy' | 'openai-compatible';
 
 export interface ModelOption {
@@ -45,6 +45,10 @@ export interface ProviderDef {
   // funcione también en modelos con TPM bajo (p. ej. Groq free rechazaba la
   // petición por tamaño). Si se omite, runSend usa los defaults 12 archivos / 80 líneas.
   contextBudget?: { maxFiles: number; maxLinesPerFile: number };
+  // v3.38.0: límite de salida preferido por proveedor. Si se omite, callAI usa
+  // 4096. Modelos de razonamiento con salidas largas (p. ej. Ai&) lo suben aquí
+  // para evitar respuestas vacías / emptyError falso por truncado del max_tokens.
+  maxOutputTokens?: number;
 }
 
 // Catálogo FIJO de Gemini. El listado dinámico vía proxy fue retirado: la API
@@ -205,6 +209,18 @@ const OLLAMA_FALLBACK: ModelOption[] = [
   { value: 'gpt-oss:120b', label: 'GPT-OSS 120B', free: true },
   { value: 'qwen3-coder:480b', label: 'Qwen3 Coder 480B', free: true },
   { value: 'devstral-2:123b', label: 'Devstral 2 123B', free: true },
+];
+
+// Fallback de Ai& (api.aiand.com) mientras carga el catálogo dinámico o si falla.
+// Acceso DIRECTO desde el navegador (OpenAI-compatible, CORS verificado — sin proxy).
+// El catálogo dinámico marca free según pricing (input_per_1m/output_per_1m a 0).
+// Aquí dejamos modelos conocidos como red de seguridad; default qwen/qwen3.6-27b.
+const AIAND_FALLBACK: ModelOption[] = [
+  { value: 'qwen/qwen3.6-27b', label: 'Qwen3.6 27B', recommended: true },
+  { value: 'qwen/qwen3-coder-plus', label: 'Qwen3 Coder Plus' },
+  { value: 'deepseek/deepseek-v4', label: 'DeepSeek V4' },
+  { value: 'z-ai/glm-5.2', label: 'GLM 5.2' },
+  { value: 'meta-llama/llama-3.3-70b-instruct', label: 'Llama 3.3 70B' },
 ];
 
 export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
@@ -370,6 +386,31 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     signupUrl: 'https://ollama.com',
     signupLabel: 'provider.ollama.signupLabel',
     note: 'provider.ollama.note',
+  },
+  // Ai& (api.aiand.com): VA AL FINAL (último proveedor añadido, v3.38.0).
+  // Acceso DIRECTO desde el navegador (OpenAI-compatible, CORS verificado — sin proxy,
+  // mismo patrón que Groq/Zenmux/OpenRouter). La key viaja en memoria (Zero-Storage).
+  // Catálogo dinámico vía /v1/models con detección free por pricing
+  // (input_per_1m/output_per_1m a 0); fallback estático AIAND_FALLBACK.
+  // maxOutputTokens: 8192 — modelos de razonamiento con salidas largas; evita
+  // respuestas vacías por truncado del max_tokens (ver callAI / effectiveMaxTokens).
+  aiand: {
+    id: 'aiand',
+    name: 'Ai&',
+    shortName: 'Ai&',
+    emoji: '✨',
+    cardDesc: 'provider.aiand.cardDesc',
+    transport: 'openai-compatible',
+    chatEndpoint: 'https://api.aiand.com/v1/chat/completions',
+    modelsEndpoint: 'https://api.aiand.com/v1/models',
+    modelsNeedKey: true,
+    staticModels: AIAND_FALLBACK,
+    defaultModel: AIAND_FALLBACK[0].value, // 'qwen/qwen3.6-27b'
+    keyPlaceholder: 'sk-...',
+    keyPrefix: 'sk-',
+    signupUrl: 'https://aiand.com',
+    signupLabel: 'provider.aiand.signupLabel',
+    maxOutputTokens: 8192,
   },
 };
 
@@ -602,6 +643,44 @@ export async function fetchModels(
       .filter((m): m is { name: string; description?: string } => !!m.name)
       .sort((a, b) => a.name.localeCompare(b.name))
       .map((m) => ({ value: m.name, label: m.name }));
+  } else if (def.id === 'aiand') {
+    // Ai& (api.aiand.com): catálogo dinámico con pricing de tipo escalado
+    // (input_per_1m / output_per_1m, costo por millón de tokens). free = ambos a 0.
+    // Fallback defensivo: si el modelo no traza pricing, se asume free (igual que
+    // Zenmux/OpenRouter). Filtra modelos no-chat (embedding, whisper, tts, etc.).
+    // Orden: free primero, luego alfabético por etiqueta.
+    const AIAND_EXCLUDED = ['embed', 'whisper', 'tts', 'asr', 'rerank', 'vision', 'clip', 'audio'];
+    type AiandModel = {
+      id: string;
+      name?: string;
+      display_name?: string;
+      pricing?: { input_per_1m?: number | string; output_per_1m?: number | string };
+    };
+    const aiandData = data.data as unknown as AiandModel[];
+    models = aiandData
+      .filter(m => !AIAND_EXCLUDED.some(p => m.id.toLowerCase().includes(p)))
+      .map(m => {
+        const pricing = m.pricing;
+        let free = false;
+        if (!pricing) {
+          free = true; // sin pricing → asumimos free (catálogo futuro-proof)
+        } else {
+          const inputPer1m = pricing.input_per_1m;
+          const outputPer1m = pricing.output_per_1m;
+          if (inputPer1m === undefined && outputPer1m === undefined) {
+            free = true;
+          } else {
+            free = Number(inputPer1m ?? 0) === 0 && Number(outputPer1m ?? 0) === 0;
+          }
+        }
+        return {
+          value: m.id,
+          label: m.display_name || m.name || m.id,
+          free,
+        };
+      })
+      // free primero, luego alfabético
+      .sort((a, b) => (Number(b.free) - Number(a.free)) || a.label.localeCompare(b.label));
   } else {
     // Groq (y cualquier OpenAI-compatible genérico): filtra no-chat
     models = data.data

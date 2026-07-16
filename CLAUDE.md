@@ -31,10 +31,10 @@ reemplazan. Saltarse este paso es la causa nº1 de trabajar en bucle.
 
 ## 1. Visión general
 
-**GitHub AI Assistant** (v3.35.0) es una app web que permite operar la **GitHub
+**GitHub AI Assistant** (v3.38.0) es una app web que permite operar la **GitHub
 REST API en lenguaje natural** a través de un proveedor de IA (Google Gemini,
-Groq Cloud, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI
-u Ollama Cloud). El usuario escribe una instrucción,
+Groq Cloud, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI,
+Ollama Cloud o Ai&). El usuario escribe una instrucción,
 la IA propone una acción, y
 **cada operación de escritura se confirma manualmente** antes de ejecutarse.
 
@@ -251,7 +251,7 @@ Ejecutar **un solo test**: `cd client && npm run test:run -- src/services/github
 - **Proxies de proveedores de IA — patrón cliente por defecto (rector):** los
   proveedores OpenAI-compatible se llaman **directo desde el navegador** con la
   key del usuario en memoria (Zero-Storage), vía `callOpenAICompatible`. Es el
-  caso de Groq, OpenRouter y Zenmux. OpenAI-compatible directo también funciona para
+  caso de Groq, OpenRouter, Zenmux y Ai&. OpenAI-compatible directo también funciona para
   OpenCode Zen, Cloudflare Workers AI y Ollama Cloud; sin embargo, estos tres
   requieren proxy backend (`/api/openzen`, `/api/cloudflare`, `/api/ollama`) porque
   **no envían cabeceras CORS** y el navegador bloquea la llamada con "Failed to fetch".
@@ -309,7 +309,7 @@ Ejecutar **un solo test**: `cd client && npm run test:run -- src/services/github
   `services/providers.ts` como entradas del registro `PROVIDERS`. Añadir uno nuevo = una
   entrada más, sin tocar más ficheros. Los proveedores actuales y su transporte:
   - `transport: 'openai-compatible'` (fetch directo desde navegador): Groq Cloud,
-    OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI, Ollama Cloud.
+    OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI, Ollama Cloud, Ai&.
   - `transport: 'gemini-proxy'` (proxy backend): Google Gemini (bloqueo EEA),
     NVIDIA NIM (sin CORS), OpenCode Zen (sin CORS), Cloudflare Workers AI (sin CORS),
     Ollama Cloud (sin CORS).

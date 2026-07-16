@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Asistente de IA para Publicar Repositorios — Multi-stage Dockerfile
+# Asistente de IA de GitHub — Multi-stage Dockerfile
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ── Stage 1: Build the React frontend ────────────────────────────────────────

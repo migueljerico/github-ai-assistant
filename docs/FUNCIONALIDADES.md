@@ -20,7 +20,7 @@ El usuario expresa lo que quiere hacer, la IA interpreta la intención, la aplic
 | 📝 Issues / PRs | Resumen de hilos con TL;DR, decisiones, pendientes y tono |
 | 📊 Salud del código | Lenguajes, commits por semana y deuda técnica |
 | 🌐 Experiencia | Streaming, detener generación, historial, export/import e i18n |
-| 🔑 IA | Groq Cloud, Google Gemini, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI, Ollama Cloud |
+| 🔑 IA | Groq Cloud, Google Gemini, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI, Ollama Cloud, Ai& |
 
 ---
 
@@ -406,6 +406,7 @@ La app soporta varios proveedores de IA.
 | OpenCode Zen | Modelos gratis con API key opencode.ai |
 | Cloudflare Workers AI | Modelos serverless (@cf/…) |
 | Ollama Cloud | OpenAI-compatible (proxy backend, sin CORS) |
+| Ai& | Pasarela OpenAI-compatible con modelos de razonamiento |
 
 El usuario introduce su propia clave de API.
 

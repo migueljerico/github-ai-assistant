@@ -1,7 +1,7 @@
 export const es = {
   'header.login': 'Iniciar sesión con GitHub',
   'header.logout': 'Cerrar sesión',
-  'header.title': 'Asistente de IA para Publicar Repositorios',
+  'header.title': 'Asistente de IA de GitHub',
   'header.subtitle': 'Multi-proveedor de IA · GitHub API',
   'header.connected': 'Conectado',
   'header.disconnected': 'Sin conectar',
@@ -55,7 +55,7 @@ export const es = {
   'history.empty': 'Las acciones de esta sesión aparecerán aquí',
   'history.exportLog': 'Exportar log',
   'auth.verifying': 'Verificando autenticación...',
-  'auth.title': 'Asistente de IA para Publicar Repositorios',
+  'auth.title': 'Asistente de IA de GitHub',
   'auth.subtitle': 'Gestiona tus repositorios de GitHub con lenguaje natural,\nmulti-proveedor de IA con modelos gratuitos.',
   'auth.patDivider': 'o usa un token personal',
   'auth.connectGithub': 'Conectar con GitHub',
@@ -124,6 +124,9 @@ export const es = {
   'provider.ollama.cardDesc': 'Modelos abiertos alojados en Ollama Cloud. Requiere cuenta gratuita en ollama.com.',
   'provider.ollama.signupLabel': 'Crear cuenta en Ollama',
   'provider.ollama.note': 'Solo modelos gratuitos verificados. Algunos tienen límite de sesión bajo (pocos requests/hora).',
+
+  'provider.aiand.cardDesc': 'Ai& · pasarela OpenAI-compatible con modelos de razonamiento (Qwen, DeepSeek, GLM…)',
+  'provider.aiand.signupLabel': 'Obtener clave en aiand.com →',
 
   // ────── FASE 2: Modales ──────
   'modal.doc.title': 'Documentación generada para {repoName}',
@@ -231,7 +234,7 @@ export const es = {
   'panel.history.clearAria': 'Eliminar el historial de sesión',
 
   // ────── FASE 3: Chat central ──────
-  'chat.area.title': 'Asistente de IA para Publicar Repositorios',
+  'chat.area.title': 'Asistente de IA de GitHub',
   'chat.area.intro': 'Escribe una instrucción en lenguaje natural y el asistente gestionará tus repositorios de GitHub por ti. Puedes crear archivos, actualizar READMEs, añadir licencias, y mucho más.',
   'chat.area.example1': '"Crea un README.md para mi repo my-project"',
   'chat.area.example2': '"Añade una licencia MIT a all-projects"',
@@ -274,7 +277,7 @@ export const es = {
   'history.publishing': 'Publicando {path} en {repo}',
   'history.published': 'Documentación publicada en {repo}',
   'history.errorPublishing': 'Error al publicar en {repo}',
-  'history.logHeader': '=== Asistente de IA para Publicar Repositorios — Sesión {date} ===',
+  'history.logHeader': '=== Asistente de IA de GitHub — Sesión {date} ===',
   'history.logFilename': 'sesion-log-{date}.txt',
 
   // ────── FASE 3: Ejecutor de acciones (i18n) ──────
