@@ -31,7 +31,7 @@ reemplazan. Saltarse este paso es la causa nº1 de trabajar en bucle.
 
 ## 1. Visión general
 
-**GitHub AI Assistant** (v3.38.0) es una app web que permite operar la **GitHub
+**GitHub AI Assistant** (v3.38.1) es una app web que permite operar la **GitHub
 REST API en lenguaje natural** a través de un proveedor de IA (Google Gemini,
 Groq Cloud, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI,
 Ollama Cloud o Ai&). El usuario escribe una instrucción,
@@ -251,13 +251,17 @@ Ejecutar **un solo test**: `cd client && npm run test:run -- src/services/github
 - **Proxies de proveedores de IA — patrón cliente por defecto (rector):** los
   proveedores OpenAI-compatible se llaman **directo desde el navegador** con la
   key del usuario en memoria (Zero-Storage), vía `callOpenAICompatible`. Es el
-  caso de Groq, OpenRouter, Zenmux y Ai&. OpenAI-compatible directo también funciona para
-  OpenCode Zen, Cloudflare Workers AI y Ollama Cloud; sin embargo, estos tres
-  requieren proxy backend (`/api/openzen`, `/api/cloudflare`, `/api/ollama`) porque
-  **no envían cabeceras CORS** y el navegador bloquea la llamada con "Failed to fetch".
+  caso de **Groq, OpenRouter y Zenmux** (estos tres sí envían cabeceras CORS).
+  El resto de OpenAI-compatible **no envían CORS** y el navegador bloquea la
+  llamada con "Failed to fetch", por lo que requieren **proxy backend**:
+  `/api/nim` (NVIDIA NIM), `/api/openzen` (OpenCode Zen), `/api/cloudflare`
+  (Cloudflare Workers AI), `/api/ollama` (Ollama Cloud) y `/api/aiand` (Ai&).
   La única excepción verdaderamente "por bloqueo geográfico" sigue siendo
-  `POST /api/gemini` (Gemini bloquea EEA desde el navegador). NVIDIA NIM tampoco
-  envía CORS → `/api/nim`.
+  `POST /api/gemini` (Gemini bloquea EEA desde el navegador).
+  ⚠️ Lección v3.38.1: Ai& se añadió en v3.38.0 como "directo" asumiendo que no
+  necesitaba proxy (afirmación de un asistente previo, no del autor); en prod daba
+  `Failed to fetch`. **Ante la duda sobre CORS de un nuevo proveedor, ponlo detrás
+  de proxy desde el principio.**
   La key viaja en HTTPS (cliente→backend) y nunca se persistite ni loguea.
   **No añadas proxies backend ni `process.env.*API_KEY` para nuevos proveedores
   sin aprobación explícita del autor.** Para añadir un proveedor, basta una entrada
@@ -307,14 +311,16 @@ Ejecutar **un solo test**: `cd client && npm run test:run -- src/services/github
   GitHub, log interno del historial, contexto que va al LLM) se dejan en español a propósito.
 - **Proveedores de IA — registro central (#15):** todos los proveedores viven en
   `services/providers.ts` como entradas del registro `PROVIDERS`. Añadir uno nuevo = una
-  entrada más, sin tocar más ficheros. Los proveedores actuales y su transporte:
-  - `transport: 'openai-compatible'` (fetch directo desde navegador): Groq Cloud,
-    OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI, Ollama Cloud, Ai&.
-  - `transport: 'gemini-proxy'` (proxy backend): Google Gemini (bloqueo EEA),
-    NVIDIA NIM (sin CORS), OpenCode Zen (sin CORS), Cloudflare Workers AI (sin CORS),
-    Ollama Cloud (sin CORS).
+  entrada más, sin tocar más ficheros. Los 10 proveedores actuales y su transporte:
+  - `transport: 'openai-compatible'` con `chatEndpoint` absoluto (fetch **directo**
+    desde navegador, sí envían CORS): **Groq Cloud, OpenRouter, Zenmux**.
+  - `transport: 'openai-compatible'` con `chatEndpoint` relativo (proxy backend,
+    no envían CORS): NVIDIA NIM (`/api/nim`), OpenCode Zen (`/api/openzen`),
+    Cloudflare Workers AI (`/api/cloudflare`), Ollama Cloud (`/api/ollama`),
+    Ai& (`/api/aiand`).
+  - `transport: 'gemini-proxy'` (proxy backend, bloqueo EEA): Google Gemini (`/api/gemini`).
   Ver `server/index.js` para los endpoints proxy: `/api/gemini`, `/api/nim`,
-  `/api/openzen`, `/api/cloudflare`, `/api/ollama`.
+  `/api/openzen`, `/api/cloudflare`, `/api/ollama`, `/api/aiand`.
 - **⚠️ No crear archivos de handoff / notas de sesión en el repo.** El handoff se entrega
   como mensaje en el chat (formato `METODOLOGIA_IA.md §2.7`). No se crean ni se dejan
   archivos `HANDOFF_*.md`, `SESSION_*.md` ni notas personales de sesión en el repo a

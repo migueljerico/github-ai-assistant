@@ -13,9 +13,10 @@
 ![OpenCode Zen](https://img.shields.io/badge/OpenCode_Zen-9C27B0?style=for-the-badge&logo=opencode&logoColor=white)
 ![Cloudflare Workers AI](https://img.shields.io/badge/Cloudflare_Workers_AI-F38020?style=for-the-badge&logo=cloudflare&logoColor=white)
 ![Ollama Cloud](https://img.shields.io/badge/Ollama_Cloud-000000?style=for-the-badge&logo=ollama&logoColor=white)
+![Ai&](https://img.shields.io/badge/Ai&-7C4DFF?style=for-the-badge)
 ![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
 ![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
-![Versión](https://img.shields.io/badge/Versión-v3.38.0-blue?style=for-the-badge)
+![Versión](https://img.shields.io/badge/Versión-v3.38.1-blue?style=for-the-badge)
 [![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)](./LICENSE)
 [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
 
@@ -128,18 +129,18 @@ Usuario
 
 Frontend React + TypeScript + Vite
   ├── GitHub API directa
-  ├── Groq directo
-  ├── OpenRouter directo
-  └── Gemini vía proxy Express
+  ├── Proveedores directos (con CORS): Groq · OpenRouter · Zenmux
+  └── Proveedores vía proxy Express (sin CORS upstream):
+        Gemini · NVIDIA NIM · OpenCode Zen · Cloudflare · Ollama · Ai&
 
 Backend Express thin
   ├── OAuth GitHub
-  ├── Proxy Gemini
-  ├── Rate limiting
+  ├── Proxies a proveedores sin CORS (/api/*)
+  ├── Rate limiting (por proveedor)
   └── Health check
 ```
 
-El backend es intencionalmente mínimo: gestiona OAuth, sirve el frontend en producción y actúa como proxy para **Gemini y NVIDIA NIM** por las restricciones regionales/CORS de sus APIs en navegadores.
+El backend es intencionalmente mínimo: gestiona OAuth, sirve el frontend en producción y actúa como proxy para los proveedores cuyas APIs **no envían cabeceras CORS** (Gemini por restricción regional; NVIDIA NIM, OpenCode Zen, Cloudflare Workers AI, Ollama y Ai& porque bloquean el navegador). Los demás proveedores (Groq, OpenRouter, Zenmux) sí permiten llamadas directas.
 
 Ver arquitectura completa en ./docs/ARQUITECTURA.md.
 
@@ -164,7 +165,7 @@ github-ai-assistant/
 │   └── vite.config.ts
 │
 ├── server/
-│   └── index.js               # Backend Express: OAuth, proxy Gemini, health check
+│   └── index.js               # Backend Express: OAuth, proxies /api/* a proveedores sin CORS, health check
 │
 ├── docs/
 │   ├── FUNCIONALIDADES.md
@@ -198,7 +199,7 @@ El proyecto sigue una arquitectura **Zero-Storage**:
 - No hay persistencia automática de credenciales.
 - Las acciones de escritura se confirman antes de ejecutar.
 - OAuth usa `state` anti-CSRF generado con CSPRNG.
-- El proxy Gemini tiene rate limiting.
+- Cada proxy a proveedor tiene su propio rate limiting (Gemini, NIM, OpenCode Zen, Cloudflare, Ollama, Ai&).
 - Los endpoints propuestos por IA se validan antes de ejecutar.
 
 ### 🤖 Automatización continua
@@ -232,17 +233,17 @@ Ver detalle en ./docs/TESTING_CALIDAD.md.
 |---|---|
 | React 18 + TypeScript | Interfaz, estado y componentes |
 | Vite | Bundler y entorno de desarrollo |
-| Express.js | OAuth, proxy Gemini/NIM y servidor de producción |
+| Express.js | OAuth, proxies a proveedores sin CORS (/api/*) y servidor de producción |
 | GitHub REST API v3 | Operaciones sobre repositorios |
-| Groq Cloud | Inferencia rápida |
+| Groq Cloud | Inferencia rápida (directo del navegador) |
 | Google Gemini | Modelo de IA vía proxy (bloqueo EU) |
-| OpenRouter | Pasarela a múltiples modelos |
-| NVIDIA NIM | Modelos optimizados vía proxy (CORS) |
-| Zenmux | Pasarela con modelos gratuitos |
-| OpenCode Zen | Modelos gratis con API key opencode.ai |
-| Cloudflare Workers AI | Modelos serverless (@cf/…) |
-| Ollama Cloud | OpenAI-compatible (proxy backend, sin CORS) |
-| Ai& | Pasarela OpenAI-compatible con modelos de razonamiento |
+| OpenRouter | Pasarela a múltiples modelos (directo del navegador) |
+| NVIDIA NIM | Modelos optimizados vía proxy (sin CORS upstream) |
+| Zenmux | Pasarela con modelos gratuitos (directo del navegador) |
+| OpenCode Zen | Modelos gratis vía proxy (sin CORS upstream) |
+| Cloudflare Workers AI | Modelos serverless vía proxy (sin CORS upstream) |
+| Ollama Cloud | OpenAI-compatible vía proxy (sin CORS upstream) |
+| Ai& | Pasarela OpenAI-compatible vía proxy (sin CORS upstream, modelos de razonamiento) |
 | Recharts | Dashboard de salud del código |
 | Vitest | Testing |
 | Codecov | Cobertura |
@@ -332,7 +333,7 @@ El objetivo fue explorar cómo una persona sin experiencia previa en programaci�
 
 | Área | Detalle | Mitigación / Estado |
 |------|---------|---------------------|
-| **Vulnerabilidades `xlsx` (SheetJS)** | `xlsx@^0.18.5` tiene Prototype Pollution (GHSA-xvch-5gv4-9q4h) y ReDoS (GHSA-93q8-gq69-qvxp) sin fix en npm (paquete descontinuado). Riesgo solo al leer archivos Excel/CSV maliciosos. | **v3.36.1 planificado:** límite 10 MB, validación post-parseo, aviso UI. **NO migrar a `exceljs`** (+4 MB bundle). Ver `docs/SEGURIDAD.md`. |
+| **Vulnerabilidades `xlsx` (SheetJS)** | `xlsx@^0.18.5` tiene Prototype Pollution (GHSA-xvch-5gv4-9q4h) y ReDoS (GHSA-93q8-gq69-qvxp) sin fix en npm (paquete descontinuado). Riesgo solo al leer archivos Excel/CSV maliciosos. | **v3.36.1 mitigado:** límite 10 MB, validación post-parseo, aviso UI, rate limit, CI permissions. **NO migrar a `exceljs`** (+4 MB bundle). Ver `docs/SEGURIDAD.md`. |
 | **Visión / imágenes** | No hay análisis de imágenes (multimodal requeriría backend y modelos específicos). | Descartado por arquitectura. |
 | **Power BI `.pbix` moderno** | El código M (Power Query) va en modelo binario VertiPaq (no legible). | Exportar a `.pbit` para extraer M. |
 | **Word `.doc` binario** | Solo `.docx` (OOXML/ZIP) soportado. | Convertir a `.docx`. |

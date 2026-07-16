@@ -69,6 +69,10 @@ Proveedores soportados:
 - OpenRouter.
 - NVIDIA NIM.
 - Zenmux.
+- OpenCode Zen.
+- Cloudflare Workers AI.
+- Ollama Cloud.
+- Ai&.
 
 La clave:
 

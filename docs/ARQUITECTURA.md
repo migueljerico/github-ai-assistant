@@ -595,11 +595,15 @@ Proveedores:
 
 | Proveedor | Transporte |
 |---|---|
-| Groq | OpenAI-compatible directo desde navegador |
-| OpenRouter | OpenAI-compatible directo desde navegador |
-| Zenmux | OpenAI-compatible directo desde navegador |
+| Groq | OpenAI-compatible directo desde navegador (envía CORS) |
+| OpenRouter | OpenAI-compatible directo desde navegador (envía CORS) |
+| Zenmux | OpenAI-compatible directo desde navegador (envía CORS) |
 | Gemini | Proxy Express `/api/gemini` (bloqueo UE/EEA) |
 | NVIDIA NIM | Proxy Express `/api/nim` (sin cabeceras CORS) |
+| OpenCode Zen | Proxy Express `/api/openzen` (sin cabeceras CORS) |
+| Cloudflare Workers AI | Proxy Express `/api/cloudflare` (sin cabeceras CORS) |
+| Ollama Cloud | Proxy Express `/api/ollama` (sin cabeceras CORS) |
+| Ai& | Proxy Express `/api/aiand` (sin cabeceras CORS) |
 
 ---
 
@@ -617,7 +621,13 @@ Responsabilidades:
 |---|---|
 | `GET /auth/github` | Inicia flujo OAuth con GitHub |
 | `GET /auth/callback` | Recibe callback y completa OAuth |
-| `POST /api/gemini` | Proxy hacia Gemini |
+| `POST /api/gemini` | Proxy hacia Gemini (SDK, bloqueo EEA) |
+| `POST /api/nim` | Proxy hacia NVIDIA NIM (sin CORS upstream) |
+| `POST /api/openzen` | Proxy hacia OpenCode Zen (sin CORS upstream) |
+| `POST /api/cloudflare` | Proxy hacia Cloudflare Workers AI (sin CORS upstream) |
+| `POST /api/ollama` | Proxy hacia Ollama Cloud (sin CORS upstream) |
+| `POST /api/aiand` | Proxy hacia Ai& (sin CORS upstream) |
+| `GET /api/*/models` | Catálogos de modelos de NIM, Ollama y Ai& vía proxy |
 | `GET /health` | Health check |
 | `GET /*` | Sirve frontend en producción |
 

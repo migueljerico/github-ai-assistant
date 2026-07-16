@@ -1,6 +1,6 @@
 # 📖 Manual Técnico — GitHub AI Assistant
 
-**Versión:** v3.34.1 · Julio 2026
+**Versión:** v3.38.1 · Julio 2026
 
 ---
 
@@ -85,7 +85,7 @@ github-ai-assistant/
 │       │   └── en.ts
 │       ├── services/
 │       │   ├── github.ts           # Wrapper GitHub REST API v3
-│       │   ├── providers.ts        # Registro de proveedores (Gemini/Groq/OpenRouter)
+│       │   ├── providers.ts        # Registro de los 10 proveedores de IA
 │       │   ├── gemini.ts           # Cliente unificado (callAI, OpenAI-compatible + proxy)
 │       │   ├── assistantActions.ts # Orquestación del chat (runSend/Confirm/Cancel + botones) #42;
 │       │   │                        #   documentar+publicar archivo (commit/Draft PR/Release + fuente/extras) #28
@@ -234,6 +234,7 @@ directamente, por lo que no se ve afectada por este reintento.
 | OpenCode Zen | OpenAI-compatible | Sí (`/api/openzen`) | Sin CORS → el navegador bloquea "Failed to fetch" |
 | Cloudflare Workers AI | OpenAI-compatible | Sí (`/api/cloudflare`) | Sin CORS → el navegador bloquea "Failed to fetch" |
 | Ollama Cloud | OpenAI-compatible | Sí (`/api/ollama`) | Sin CORS → el navegador bloquea "Failed to fetch" |
+| Ai& | OpenAI-compatible | Sí (`/api/aiand`) | Sin CORS → el navegador bloquea "Failed to fetch" |
 | Google Gemini | `gemini-proxy` (SDK) | Sí (`/api/gemini`) | Bloqueo geográfico en EEA |
 
 ### Proxies backend (rate limiters por proveedor)
@@ -248,6 +249,7 @@ abuso de un proveedor no agote la cuota del otro:
 | `POST /api/openzen` | 100 req/min por IP | `opencode.ai/zen/v1` |
 | `POST /api/cloudflare` | 100 req/min por IP | `api.cloudflare.com/client/v4/accounts/{id}/ai/v1` |
 | `POST /api/ollama` + `GET /api/ollama/models` | 100 req/min por IP | `ollama.com/v1` |
+| `POST /api/aiand` + `GET /api/aiand/models` | 100 req/min por IP | `api.aiand.com/v1` |
 
 Todos los proxies reenvían el body y el header `Authorization` sin tocarlos,
 respeta streaming SSE (`pipeUpstream`), y sanean headers del upstream para
@@ -497,7 +499,7 @@ gcloud run deploy github-ai-assistant \
 - **CI:** GitHub Actions (`.github/workflows/ci.yml`) ejecuta en cada push/PR a `main`
   el lint, los tests del cliente con cobertura y los tests del servidor
   (job `server-test`). Ver "Pipeline CI/CD" en la sección de despliegue.
-- **Cobertura actual:** ~60% (ver Codecov para el valor exacto) · 536 tests en el cliente
+- **Cobertura actual:** ~60% (ver Codecov para el valor exacto) · 569 tests en el cliente + 5 en el servidor (574 totales)
 
 ### Módulos testeados
 

@@ -17,7 +17,7 @@ La diferencia principal no está en “hacer código mejor”, sino en ofrecer u
 | Foco principal | Ayuda al programar dentro del editor | Operar y documentar GitHub en lenguaje natural |
 | Entorno natural | IDE, GitHub y herramientas integradas | Aplicación web autoalojable |
 | Modelo de uso | Servicio gestionado por GitHub | Código abierto con claves propias |
-| Proveedores de IA | Catálogo gestionado por la plataforma | Groq, Gemini, OpenRouter, NVIDIA NIM y Zenmux |
+| Proveedores de IA | Catálogo gestionado por la plataforma | Groq, Gemini, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI, Ollama Cloud y Ai& |
 | Credenciales | Gestionadas por la plataforma | Zero-Storage en memoria del navegador |
 | Acciones GitHub | Integradas según capacidades de Copilot | Orquestadas mediante GitHub REST API con confirmación |
 | Público objetivo | Desarrolladores que escriben código | Usuarios que quieren operar, analizar y publicar repos sin conocer la API |
@@ -74,7 +74,7 @@ Su foco no es escribir código línea a línea, sino **convertir intenciones en 
 | **Resumir issues o PRs bajo demanda** | ✅ `owner/repo#42` → TL;DR, puntos clave, decisiones y pendientes | Parcial, según capacidades disponibles en GitHub/Copilot |
 | **Analizar archivos locales** | ✅ PDF, DOCX, Excel/CSV, Power BI, texto y código | No es su foco principal |
 | **Leer Power BI `.pbix` / `.pbit`** | ✅ Extrae estructura, Power Query M y modelo DAX en `.pbit` | No es su foco |
-| **Elegir proveedor de IA** | ✅ Groq, Gemini, OpenRouter, NVIDIA NIM u Zenmux | Catálogo gestionado por GitHub |
+| **Elegir proveedor de IA** | ✅ Groq, Gemini, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI, Ollama Cloud y Ai& | Catálogo gestionado por GitHub |
 | **Usar clave propia de IA** | ✅ El usuario aporta su propia clave | No es el modelo habitual de Copilot |
 | **Autoalojable / código abierto** | ✅ Sí | No |
 | **Zero-Storage de credenciales** | ✅ Token GitHub y claves IA solo en memoria React | Gestionado por la plataforma |
@@ -132,6 +132,10 @@ GitHub AI Assistant permite elegir entre varios proveedores:
 | OpenRouter | Acceso a múltiples modelos, gratuitos y de pago |
 | NVIDIA NIM | Modelos optimizados (Nemotron, GLM, Llama) |
 | Zenmux | Pasarela con modelos gratuitos (Grok, GLM, Step) |
+| OpenCode Zen | Modelos gratuitos vía opencode.ai |
+| Cloudflare Workers AI | Modelos serverless (@cf/…) |
+| Ollama Cloud | Modelos open-source vía Ollama |
+| Ai& | Pasarela con modelos de razonamiento (Qwen) |
 
 Esto permite adaptar el uso según:
 
