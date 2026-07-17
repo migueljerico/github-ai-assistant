@@ -6,12 +6,19 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { randomUUID } from 'node:crypto';
+import { createRequire } from 'node:module';
 // #65 (v3.39.0): logs estructurados (JSON línea) + middleware requestId.
 // Sustituye a los 34 console.log/error de texto plano que había antes.
 import { log, requestIdMiddleware } from './logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// #25-parte2 (v3.40.0): versión leída de package.json (single source of truth).
+// Antes '3.39.0' estaba hardcodeada en el startup log, lo que se desincronizaba
+// al bumpar versión. createRequire permite leer package.json (CJS) desde ESM.
+const require = createRequire(import.meta.url);
+const { version: VERSION } = require('../package.json');
 
 // ── Fix #2: Fail loudly if SESSION_SECRET is missing in production ───────────
 if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
@@ -51,8 +58,29 @@ app.use(session({
 }));
 
 // ─── Health Check (required for Cloud Run) ────────────────────────────────────
+// #25-parte2 (v3.40.0): ampliado para diagnóstico. Devuelve versión, uptime,
+// timestamp, versión de Node y estado de las variables críticas (sólo booleanos,
+// nunca valores). Sigue devolviendo status:'ok' + HTTP 200 para no romper la
+// sonda de Cloud Run (que reinicia el contenedor si /health no responde 200).
+//
+// Seguridad (Zero-Storage): aquí se reporta ÚNICAMENTE si la var está presente
+// (true/false). Nunca se envían valores, así que un secret no puede filtrarse
+// por este endpoint. Las claves elegidas son las críticas de arranque/OAuth:
+// - GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET → OAuth GitHub (sin ellas, login falla)
+// - SESSION_SECRET → guard fatal_config en producción (server/index.js:24)
+// NODE_ENV/PORT/FRONTEND_URL tienen defaults y no aportan diagnóstico útil.
+const HEALTH_VARS = ['GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'SESSION_SECRET'];
 app.get('/health', (_req, res) => {
-  res.status(200).json({ status: 'ok' });
+  const env = {};
+  for (const k of HEALTH_VARS) env[k] = Boolean(process.env[k]);
+  res.status(200).json({
+    status: 'ok',
+    version: VERSION,
+    uptime: Number(process.uptime().toFixed(2)),
+    timestamp: new Date().toISOString(),
+    nodeVersion: process.version,
+    env,
+  });
 });
 
 // ─── Rate Limiting para Gemini Proxy (#14) ────────────────────────────────────
@@ -747,7 +775,7 @@ app.listen(PORT, () => {
   // jsonPayload.event==='startup'. Sustituye a los 12 console.log de texto plano.
   log.info('startup', {
     event: 'startup',
-    version: '3.39.0',
+    version: VERSION,
     port: PORT,
     routes: [
       '/health', '/auth/github', '/auth/callback',

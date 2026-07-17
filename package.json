@@ -1,6 +1,6 @@
 {
   "name": "github-ai-assistant",
-  "version": "3.39.0",
+  "version": "3.40.0",
   "description": "Asistente de IA de GitHub",
   "type": "module",
   "main": "server/index.js",
