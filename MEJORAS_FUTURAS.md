@@ -175,9 +175,17 @@ GitHub. Por eso sube de esfuerzo y complejidad.
 
 ---
 
-#### #52 — Modo Auditoría de Seguridad (flujo/template)
+#### #52 — Modo Auditoría de Seguridad (flujo/template) ✅ RESUELTO en v3.42.0
 **Esfuerzo:** 3–4h
 **Origen:** sugerencia de **Gemma 4 31B** (OpenRouter), **dogfooding**.
+
+> ✅ **Implementado en v3.42.0**: botón 🛡️ (`SecurityAuditButton`) + plantilla
+> "Auditar Seguridad" en el dropdown. Runner `runSecurityAudit` (molde de
+> `runSummarizeThread`) que carga archivos sensibles extra por path conocido
+> (`package.json`, lockfile, `Dockerfile`, workflows, etc., tragando 404s) y los
+> pasa al prompt dedicado `prompts/security-audit.md` (rol auditor, 3 ejes,
+> disclaimer). Lectura-only (modo `chat`), Zero-Storage intacto. Caveat
+> comunicado en UI: orientativo, no sustituye a `gitleaks`/Dependabot/CodeQL.
 
 **Problema actual:** la app gestiona y documenta repos, pero no ayuda a **asegurarlos**.
 
@@ -216,10 +224,10 @@ GitHub. Por eso sube de esfuerzo y complejidad.
 |---|---|---|
 | 🔴 Alta | #1, #2, #13, #14, #15, #27, #28, #45, #62, #63 | #26 (en progreso, continuo) |
 | 🟡 Media | #12, #17, #18, #19, #20, #21, #22, #32, #34, #37, #38, #39, #40, #41, #42, #44, #46, #48, #49, #50, #51, #55, #56, #57, #59, #60, #61, #64 | — |
-| 🟢 Baja | #23, #24, #25 | #52, #53, #58 (extensiones) |
+| 🟢 Baja | #23, #24, #25, #52 | #53, #58 (extensiones) |
 | 🗑️ Descartados | — | #33, #35 (descartados en v3.22.3), #36 (descartado en v3.41.0) |
 
-> **Cómputo:** 46 ítems resueltos + 4 pendientes + 3 descartados = 53 referencias (algunos issues como `#28`, `#57`, `#58` generan varias filas por sus fases). Los pendientes reales accionables son: **#26** (continuo), **#52**, **#53**, **#58-ext**. **#25 cerrado completo en v3.41.0** (logs v3.39.0 + healthcheck v3.40.0 + deploy.sh v3.41.0). **#36 descartado en v3.41.0** (rompe zero-storage, costo alto, beneficio marginal en single-user).
+> **Cómputo:** 47 ítems resueltos + 3 pendientes + 3 descartados = 53 referencias (algunos issues como `#28`, `#57`, `#58` generan varias filas por sus fases). Los pendientes reales accionables son: **#26** (continuo), **#53**, **#58-ext**. **#25 cerrado completo en v3.41.0** (logs v3.39.0 + healthcheck v3.40.0 + deploy.sh v3.41.0). **#52 resuelto en v3.42.0** (Modo Auditoría de Seguridad: botón 🛡️ + plantilla + `runSecurityAudit` + prompt dedicado, lectura-only). **#36 descartado en v3.41.0** (rompe zero-storage, costo alto, beneficio marginal en single-user).
 
 > **#28** cubierto en su norte por las Fases 1 (v3.0.0, adjuntar como contexto) y 2 (v3.1.0, documentar→publicar). Más formatos: Fase 3a (v3.2.0, Excel/CSV), Fase 3b MVP (v3.3.0, Power BI .pbix/.pbit) y Fase 3b-bis (v3.4.0, Power Query M del `DataMashup`). Única limitación restante: en un `.pbix` moderno el M va en el modelo binario (no legible) → exporta `.pbit`. Word `.docx` (v3.11.0): texto de `word/document.xml`. Imágenes/visión: descartada.
 

@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.42.0] — 2026-07-17
+
+### Added
+- **Modo Auditoría de Seguridad (#52).** La app pasa de *gestionar* el repo a
+  *asegurarlo*: un botón 🛡️ y una plantilla lanzan una revisión orientativa del
+  LLM sobre el repo cargado, cubriendo tres ejes — **secrets expuestos**,
+  **dependencias obsoletas** y **falta de validación de inputs** — con respuesta
+  Markdown estructurada por eje y severidad. Origen: dogfooding de
+  **Gemma 4 31B** (OpenRouter), que propuso #51, #52 y #53.
+  - **Dos puntos de entrada**: botón 🛡️ en el panel del chat (`SecurityAuditButton`)
+    que lanza la auditoría sobre el repo activo, y plantilla "Auditar Seguridad"
+    en el dropdown de autocompletado (`instructionSuggestions.ts`) para la vía
+    ligera por chat normal.
+  - **Carga archivos sensibles extra** por path conocido (`package.json`,
+    `package-lock.json`, `Dockerfile`, `.env.example`, `requirements.txt`,
+    `go.mod`, `Cargo.toml`, workflows de CI, `docker-compose.yml`, entrypoints),
+    porque algunos no entran en el contexto general (`package-lock.json` queda
+    fuera por el filtro `.lock` + 50 KB; los workflows pueden caer del cap de 120).
+    Los 404 se tragan sin romper la auditoría.
+  - **Prompt dedicado** `client/src/prompts/security-audit.md` (patrón #23,
+    import `?raw`) con rol de auditor, reglas de honestidad y disclaimer.
+  - **Lectura-only**: modo `chat` forzado, no genera JSON de acción ni abre
+    `ConfirmModal`. **Zero-Storage sin cambios**: el resultado vive solo en la
+    conversación (memoria React), no se persiste ni se loguea en servidor.
+
+### Notes
+- **Caveat comunicado en UI**: ayuda orientativa vía LLM, **no un escáner formal**.
+  No sustituye a `gitleaks` (secrets), Dependabot / `npm audit` (dependencias) ni
+  CodeQL (código) — el prompt lo dice y la burbuja de carga lo repite. El LLM no
+  afirma CVEs concretos que no pueda verificar.
+- **No se toca** `server/*`, `runSend`/`SendParams`/`modeOverride`, ni proveedores.
+  Reutiliza `runSecurityAudit` (runner especializado, molde de `runSummarizeThread`),
+  `buildRepoContextSummary`, `callAI`, streaming y abort del chat.
+- **Tests**: +3 en `assistantActions.test.ts` (camino feliz / sin repo / traga 404)
+  y +7 en el nuevo `instructionSuggestions.test.ts`. Servidor **24/24** y cliente
+  **579/579** sin regresión.
+- `client/package.json` vuelve a sincronizarse con la raíz (3.38.1 → 3.42.0).
+
 ## [3.41.0] — 2026-07-17
 
 ### Added

@@ -31,7 +31,7 @@ reemplazan. Saltarse este paso es la causa nº1 de trabajar en bucle.
 
 ## 1. Visión general
 
-**GitHub AI Assistant** (v3.41.0) es una app web que permite operar la **GitHub
+**GitHub AI Assistant** (v3.42.0) es una app web que permite operar la **GitHub
 REST API en lenguaje natural** a través de un proveedor de IA (Google Gemini,
 Groq Cloud, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI,
 Ollama Cloud o Ai&). El usuario escribe una instrucción,
@@ -283,6 +283,16 @@ Ejecutar **un solo test**: `cd client && npm run test:run -- src/services/github
   el servicio de Cloud Run; el script no usa `--set-env-vars`). Lee `.env` si
   existe (vars del shell ya exportadas tienen prioridad). Lánzalo con
   `./deploy.sh` o `npm run deploy`.
+  ⚠️ Lección v3.42.0 (#52): el **Modo Auditoría de Seguridad** es un **runner
+  especializado** (`runSecurityAudit`, molde de `runSummarizeThread`), NO un
+  flag en `runSend`/`SendParams`. Es **lectura-only** (modo `'chat'` forzado, sin
+  JSON de acción ni `ConfirmModal`) y reutiliza `callAI` + streaming + abort.
+  Carga **archivos sensibles por path conocido** (package.json, lockfile,
+  Dockerfile, workflows, etc.) porque `package-lock.json` queda fuera del árbol
+  general (filtro `.lock` + 50KB) y los workflows pueden caer del cap de 120;
+  los 404 se tragan. Prompt dedicado en `prompts/security-audit.md` (patrón #23,
+  `?raw`). **Es orientativo**: el prompt prohíbe afirmar CVEs no verificables y
+  el disclaimer "no sustituye a gitleaks/Dependabot/CodeQL" va en la UI.
   **No añadas proxies backend ni `process.env.*API_KEY` para nuevos proveedores
   sin aprobación explícita del autor.** Para añadir un proveedor, basta una entrada
   en el registro `PROVIDERS` (`providers.ts`) — el resto (UI, `callAI`, streaming,

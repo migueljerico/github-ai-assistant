@@ -16,7 +16,7 @@
 ![Ai&](https://img.shields.io/badge/Ai&-7C4DFF?style=for-the-badge)
 ![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
 ![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
-![Versión](https://img.shields.io/badge/Versión-v3.41.0-blue?style=for-the-badge)
+![Versión](https://img.shields.io/badge/Versión-v3.42.0-blue?style=for-the-badge)
 [![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)](./LICENSE)
 [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
 
@@ -84,6 +84,7 @@ Todo bajo el principio:
 | 📝 Issues/PRs | Resumir hilos con TL;DR, decisiones y pendientes |
 | 📋 Changelog | Generar changelog desde commits recientes o desde el último release |
 | 📊 Salud del código | Dashboard con lenguajes, commits y deuda técnica |
+| 🛡️ Auditoría de seguridad | Revisión orientativa (LLM) de secrets, dependencias y validación de inputs |
 | 🌐 i18n | Interfaz bilingüe ES/EN |
 | 🔑 Multi-proveedor IA | Groq, Gemini, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI, Ollama Cloud y Ai& con clave del usuario |
 
