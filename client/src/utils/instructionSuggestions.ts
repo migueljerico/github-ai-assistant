@@ -51,6 +51,8 @@ const TEMPLATE_DEFS: TemplateDef[] = [
   { id: 'analyze-repo', category: 'general', emoji: '🔍' },
   { id: 'generate-docs', category: 'docs', emoji: '📖' },
   { id: 'create-release', category: 'general', emoji: '🚀' },
+  // #52: Modo Auditoría de Seguridad (vía chat normal con contexto del repo).
+  { id: 'security-audit', category: 'general', emoji: '🛡️' },
 ];
 
 /**

@@ -9,6 +9,7 @@ import ChangelogButton from './ChangelogButton';
 import CodeHealthButton from './CodeHealthButton';
 import ConversationIOButton from './ConversationIOButton';
 import FileAttachButton from './FileAttachButton';
+import SecurityAuditButton from './SecurityAuditButton';
 
 interface ChatInputProps {
   value: string;
@@ -31,6 +32,9 @@ interface ChatInputProps {
   onGenerateChangelog: (input: string) => void;
   // #44 - Dashboard "Salud del código"
   onCodeHealth: (input: string) => void;
+  // #52 - Modo Auditoría de Seguridad (lectura-only, lanza runSecurityAudit).
+  // Opcional para retrocompatibilidad con tests que renderizan ChatInput parcialmente.
+  onOpenSecurityAudit?: (initialRepo?: string) => void;
   // #46 - Exportar/importar la conversación (Zero-Storage)
   onExportConversation: () => void;
   onImportConversation: (file: File) => void;
@@ -64,6 +68,7 @@ export default function ChatInput({
   onSummarizeThread,
   onGenerateChangelog,
   onCodeHealth,
+  onOpenSecurityAudit,
   onExportConversation,
   onImportConversation,
   hasMessages,
@@ -217,6 +222,17 @@ export default function ChatInput({
           disabled={disabled}
           onCodeHealth={onCodeHealth}
         />
+
+        {/* #52: Modo Auditoría de Seguridad — revisión orientativa de secrets,
+            dependencias y validación de inputs. Sobre el repo activo si lo hay.
+            onOpen es opcional en la interfaz; si no se pasa (tests), no se renderiza. */}
+        {onOpenSecurityAudit && (
+          <SecurityAuditButton
+            disabled={disabled}
+            onOpen={onOpenSecurityAudit}
+            repoContextName={repoContextName}
+          />
+        )}
 
         <ConversationIOButton
           disabled={disabled}

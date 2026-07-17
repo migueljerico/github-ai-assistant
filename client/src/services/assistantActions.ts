@@ -9,7 +9,7 @@
  * núcleo del chat `runSend`/`runConfirmAction`/`runCancelAction` (Fase 3).
  */
 
-import { generateRepoDocs, generateFileDoc, generateSpecificDoc, buildRepoContextSummary, callAI, parseGeminiAction, isAbortError, CHAT_PROMPT, ACTION_PROMPT, chatPromptWithContext, withLangDirective } from './gemini';
+import { generateRepoDocs, generateFileDoc, generateSpecificDoc, buildRepoContextSummary, buildSecurityAuditContext, callAI, parseGeminiAction, isAbortError, CHAT_PROMPT, ACTION_PROMPT, SECURITY_PROMPT, chatPromptWithContext, withLangDirective } from './gemini';
 import type { Language } from '../context/LanguageContext';
 import type { AIProviderConfig } from './gemini';
 import { getProvider, modelLabel, type AIProviderType } from './providers';
@@ -516,6 +516,149 @@ Responde en ${lang === 'es' ? 'español' : 'English'}.`;
   } finally {
     setIsChatLoading(false);
   }
+}
+
+// ── #52: Modo Auditoría de Seguridad ─────────────────────────────────────────
+/**
+ * Lanza una auditoría de seguridad orientativa sobre un repo: el LLM revisa
+ * secrets expuestos, dependencias obsoletas y falta de validación de inputs. Es
+ * un filtro orientativo, NO un escáner formal (no sustituye gitleaks/Dependabot).
+ *
+ * - Lectura-only: `finalMode='chat'`, no genera JSON de acción ni abre ConfirmModal.
+ * - Zero-Storage: el resultado vive solo en la conversación (memoria React), nunca
+ *   se persiste ni se loguea en servidor.
+ * - Carga ARCHIVOS SENSIBLES extra por path conocido (package.json, lockfile,
+ *   Dockerfile, .env.example, workflows, entrypoints) porque algunos quedan fuera
+ *   del árbol general (lock por filtro `.lock`+50KB; workflows por cap de 120).
+ * - Reutiliza `SECURITY_PROMPT` + `buildRepoContextSummary` (árbol general, si hay
+ *   repoContext activo) + `buildSecurityAuditContext` (archivos sensibles).
+ *
+ * @param deps    dependencias inyectadas (estado de chat/historial).
+ * @param config  config del proveedor de IA activo.
+ * @param repoInput  "owner/repo" o ref resoluble (toma el repo activo si está vacío).
+ * @param opts.repoContext  contexto del repo activo (si lo hay, enriquece el prompt).
+ * @param opts.signal      AbortSignal para cancelar (botón Detener).
+ */
+export async function runSecurityAudit(
+  deps: ChatDeps,
+  config: AIProviderConfig,
+  repoInput: string,
+  opts: { repoContext?: RepoContext | null; signal?: AbortSignal } = {},
+): Promise<void> {
+  const { token, user, providerName, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading, t, lang } = deps;
+  const { owner, repo } = resolveRepoRef(repoInput, user.login);
+  if (!repo) {
+    addMessage({ role: 'assistant', content: deps.t('chat.repoNeeded') });
+    return;
+  }
+
+  setIsChatLoading(true);
+  const ref = `${owner}/${repo}`;
+  const loadingId = addMessage({
+    role: 'assistant',
+    content: `🛡️ ${t('chat.auditSecurity.loading', { ref, provider: providerName })}\n\n${t('chat.auditSecurity.disclaimer')}`,
+    isLoading: true,
+  });
+  const histId = addEntry({ status: 'pending', description: t('history.auditingSecurity', { ref }), repo: ref });
+
+  // Declarado FUERA del try para que el catch (abort) pueda conservar lo generado.
+  let lastText = '';
+
+  try {
+    // 1. Cargar archivos sensibles por path conocido (tragando 404s). package-lock.json
+    //    y workflows no siempre están en el árbol general (filtro .lock / cap 120).
+    const sensitivePaths = await resolveSensitivePaths(token, owner, repo);
+    const sensitiveFiles: Array<{ path: string; content?: string }> = [];
+    for (const path of sensitivePaths) {
+      try {
+        const file = await getFileContents(token, owner, repo, path);
+        sensitiveFiles.push({ path, content: decodeBase64(file.content || '') });
+      } catch (err) {
+        // 404 = el archivo no existe en el repo; cualquier otro error se ignora
+        // para no romper la auditoría por un solo fichero inaccesible.
+        if (!(err instanceof GitHubAPIError && err.status === 404)) {
+          console.warn(`[#52] No pude cargar ${path} de ${ref}:`, err);
+        }
+      }
+    }
+
+    // 2. Construir el system prompt: SECURITY_PROMPT + contexto del repo (si lo hay) +
+    //    bloque de archivos sensibles. La directiva de idioma solo aplica al texto.
+    const generalContext = opts.repoContext
+      ? buildRepoContextSummary(ref, opts.repoContext.files.slice(0, 8), { allPaths: opts.repoContext.allPaths, maxFiles: 8, maxLinesPerFile: 60 })
+      : '';
+    const auditContext = buildSecurityAuditContext(ref, sensitiveFiles);
+    const combinedContext = [generalContext, auditContext].filter(Boolean).join('\n\n');
+    const systemPrompt = withLangDirective(SECURITY_PROMPT, lang) +
+      `\n\n═══════════════════════════════════════════════════════\nCONTEXTO DEL REPOSITORIO A AUDITAR\n═══════════════════════════════════════════════════════\n${combinedContext}`;
+
+    // 3. Streaming en modo chat (lectura-only). onToken actualiza la burbuja.
+    const onToken = (textSoFar: string) => {
+      lastText = textSoFar;
+      updateMessage(loadingId, { content: textSoFar, isLoading: true });
+    };
+
+    const userMessage = t('chat.auditSecurity.userMessage', { ref });
+    const messages = [{ role: 'user' as const, content: userMessage }];
+
+    const rawResponse = await callAI(
+      messages,
+      systemPrompt,
+      config.provider,
+      config.apiKey,
+      config.model,
+      'chat',
+      onToken,
+      opts.signal,
+      undefined,
+      config.accountId,
+    );
+
+    // Modo chat: nunca se ejecuta nada. Si el modelo devolviera JSON por error,
+    // se extrae el texto (mismo patrón que runSend).
+    const action = parseGeminiAction(rawResponse);
+    const textResponse = action && action.accion && action.accion.length > 50 ? action.accion : rawResponse;
+
+    updateMessage(loadingId, { content: textResponse, isLoading: false });
+    updateEntry(histId, { status: 'completed', description: t('history.securityAudited', { ref }) });
+  } catch (err) {
+    // #40: si el usuario pulsó Detener, conserva lo ya generado y márcalo como
+    // detenido (sin burbuja de error roja). Mismo patrón que runSend.
+    if (isAbortError(err)) {
+      updateMessage(loadingId, {
+        content: lastText ? `${lastText}\n\n⏹️ _(detenido)_` : t('chat.generationStopped'),
+        isLoading: false,
+      });
+      updateEntry(histId, { status: 'cancelled', description: t('history.cancelledAction', { action: t('chat.auditSecurity') }) });
+    } else {
+      updateMessage(loadingId, { content: `❌ ${(err as Error).message}`, isLoading: false });
+      updateEntry(histId, { status: 'error', description: t('history.errorSecurityAudit', { ref }) });
+    }
+  } finally {
+    setIsChatLoading(false);
+  }
+}
+
+/**
+ * #52: determina qué paths sensibles pedirle a la API de GitHub. Combina una lista
+ * fija de nombres típicos con los workflows/entrypoints descubiertos vía
+ * `fetchRepoTreeRecursive().allPaths` (que sí lista workflows y entrypoints, aunque
+ * no sus contenidos si cayeron del cap de 120). Devuelve paths únicos.
+ */
+async function resolveSensitivePaths(token: string, owner: string, repo: string): Promise<string[]> {
+  const fixed = ['package.json', 'package-lock.json', 'Dockerfile', '.env.example', 'requirements.txt', 'go.mod', 'Cargo.toml'];
+  const discovered: string[] = [];
+  try {
+    const { allPaths } = await fetchRepoTreeRecursive(token, owner, repo);
+    for (const p of allPaths ?? []) {
+      if (p.startsWith('.github/workflows/') && /\.(ya?ml)$/i.test(p)) discovered.push(p);
+      else if (p.startsWith('entrypoints/') && /\.(js|ts|py|sh)$/i.test(p)) discovered.push(p);
+      else if (/(^|\/)(docker-compose|compose)\.(ya?ml)$/i.test(p)) discovered.push(p);
+    }
+  } catch {
+    // Si el árbol no carga (rate limit, repo vacío…), seguimos solo con los fijos.
+  }
+  return Array.from(new Set([...fixed, ...discovered]));
 }
 
 /**

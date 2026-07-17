@@ -226,6 +226,11 @@ export const es = {
   'chat.docRepoMissingCreate': '⚠️ El repositorio **{repo}** no existe. ¿Quieres que lo cree y lo documente? Puedes adjuntar archivos para subirlos al repo recién creado.',
   'chat.docRepoMissingOther': '❌ No encontré **{repo}** y solo puedo crear repositorios en tu cuenta. Créalo en GitHub o elige otro destino.',
   'chat.updateDocs': '🔄 Actualizar documentación',
+  // ────── #52 Modo Auditoría de Seguridad ──────
+  'chat.auditSecurity': '🛡️ Auditar seguridad',
+  'chat.auditSecurity.loading': 'Analizando la seguridad de **{ref}** con {provider}...',
+  'chat.auditSecurity.disclaimer': '⚠️ Ayuda orientativa, no un escáner formal: no sustituye a gitleaks, Dependabot o CodeQL.',
+  'chat.auditSecurity.userMessage': 'Audita la seguridad de **{ref}**: revisa secrets expuestos, dependencias obsoletas y falta de validación de inputs. Cita los archivos concretos que veas.',
 // ────── #48 Sync Repo Status ──────  'syncRepo.title': '🔄 Sincronizar estado del repo',  'syncRepo.tooltip': 'Analiza los commits recientes y sugiere mejoras',  'syncRepo.prompt': 'Introduce el repositorio (owner/repo o nombre):',  'syncRepo.noCommits': 'ℹ️ No hay commits recientes en **{ref}**.',
   'chat.attachFileMulti': '{count} archivos adjuntos',
   'chat.attachFileXlsxWarning': '⚠️ Solo suba archivos de fuentes confiables. No se analizan archivos maliciosos. Límite: {maxMb} MB.',
@@ -259,6 +264,9 @@ export const es = {
   'history.errorChangelog': 'Error al generar changelog de {ref}',
   'history.codeHealthOf': 'Salud del código de {ref}',
   'history.errorCodeHealth': 'Error al analizar la salud de {ref}',
+  'history.auditingSecurity': 'Auditoría de seguridad de {ref}',
+  'history.securityAudited': 'Auditoría de seguridad de {ref} completada',
+  'history.errorSecurityAudit': 'Error en la auditoría de seguridad de {ref}',
   'history.committingDocs': 'Commiteando documentación en {repo}',
   'history.docsCommitted': 'Documentación commiteada en {repo}',
   'history.errorCommittingDocs': 'Error al commitear documentación',
@@ -349,6 +357,9 @@ export const es = {
   'tmpl.create-release.title': 'Crear Release',
   'tmpl.create-release.description': 'Crear un nuevo release con notas',
   'tmpl.create-release.template': 'Crea un release v[versión] con notas que resumen los cambios principales.',
+  'tmpl.security-audit.title': 'Auditar Seguridad',
+  'tmpl.security-audit.description': 'Revisión orientativa de secrets, dependencias y validación de inputs',
+  'tmpl.security-audit.template': 'Audita la seguridad de este repositorio: revisa secrets expuestos, dependencias obsoletas y falta de validación de inputs. Sé concreto con los archivos que ves.',
 
   // ────── Plantillas del panel lateral ──────
   'tmpl_panel.cat_readme.name': 'README',

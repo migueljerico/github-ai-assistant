@@ -34,6 +34,8 @@ import { withTransientRetry, isAbortError, isTransientError } from '../utils/ret
 // salto de línea final del archivo cambie el prompt respecto al literal original.
 import actionSystemPrompt from '../prompts/action-system.md?raw';
 import chatPromptText from '../prompts/chat.md?raw';
+// #52: prompt dedicado del Modo Auditoría de Seguridad.
+import securityAuditPromptText from '../prompts/security-audit.md?raw';
 
 // ── System prompts (Opción D - Tres modos) ────────────────────────────────────
 
@@ -45,6 +47,11 @@ export const CHAT_PROMPT = chatPromptText.trimEnd();
 
 // ── ACTION PROMPT (Opción D - Modo acción explícito) ──────────────────────────
 export const ACTION_PROMPT = SYSTEM_PROMPT;
+
+// ── SECURITY AUDIT PROMPT (#52 - Modo Auditoría de Seguridad) ─────────────────
+// Lectura-only: no genera JSON de acción. El disclaimer "filtro orientativo, no
+// escáner formal" vive dentro del propio prompt.
+export const SECURITY_PROMPT = securityAuditPromptText.trimEnd();
 
 /**
  * Añade al system prompt una directiva explícita de idioma (#24 Fase 3, v3.22.0),
@@ -103,6 +110,39 @@ export function buildRepoContextSummary(
   return `Repositorio: ${repoName}\nArchivos en el repo: ${treePaths.length}\n\n` +
     `ESTRUCTURA DEL PROYECTO (todos los archivos):\n\`\`\`\n${tree}\n\`\`\`\n\n` +
     `CONTENIDO DE LOS ARCHIVOS MÁS RELEVANTES A LA PREGUNTA:\n\n${bodies}`;
+}
+
+// ── #52: contexto específico para el Modo Auditoría de Seguridad ──────────────
+/**
+ * Empaqueta los ARCHIVOS SENSIBLES (manifests, lockfiles, workflows, Dockerfile,
+ * plantilla .env) como contexto para el audit prompt. Estos archivos no siempre
+ * entran en el resumen general de `buildRepoContextSummary` (p. ej.
+ * `package-lock.json` queda fuera por el filtro `.lock` + 50KB, y los workflows
+ * pueden caer del cap de 120), así que el runner los carga por path conocido y
+ * los pasa por aquí. Función pura (testeable).
+ *
+ * @param repoName - "owner/repo"
+ * @param sensitiveFiles - { path, content } de los archivos sensibles encontrados
+ * @param opts.maxLinesPerFile - tope de líneas por archivo (default 120, más
+ *   generoso que el chat porque un Dockerfile o workflow corto interesa entero).
+ */
+export function buildSecurityAuditContext(
+  repoName: string,
+  sensitiveFiles: Array<{ path: string; content?: string }>,
+  opts: { maxLinesPerFile?: number } = {},
+): string {
+  const maxLinesPerFile = opts.maxLinesPerFile ?? 120;
+  const bodies = sensitiveFiles
+    .filter(f => f.content && f.content.trim())
+    .map(f => `### ${f.path}\n\`\`\`\n${truncateByLines(f.content || '', maxLinesPerFile)}\n\`\`\``)
+    .join('\n\n');
+
+  if (!bodies) {
+    return `Repositorio: ${repoName}\n\nNo se encontraron archivos sensibles típicos (manifests, lockfiles, Dockerfile, workflows, .env.example) accesibles. Trabaja con la estructura general y recomienda al usuario que te comparta manualmente package.json, Dockerfile o workflows si quiere un análisis más profundo.`;
+  }
+
+  return `Repositorio: ${repoName}\n\n` +
+    `ARCHIVOS SENSIBLES CARGADOS PARA LA AUDITORÍA:\n\n${bodies}`;
 }
 
 /**

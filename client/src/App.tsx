@@ -5,7 +5,7 @@ import { useAIProvider } from './context/AIProviderContext';
 import { useLanguage } from './context/LanguageContext';
 import { getProvider } from './services/providers';
 import {
-  runDocumentRepo, runLoadRepoContext, runSummarizeThread, runGenerateChangelog, runCodeHealth, runCommitDocs, runCreateDraftPr, runCreateRepoRelease,
+  runDocumentRepo, runLoadRepoContext, runSummarizeThread, runGenerateChangelog, runCodeHealth, runCommitDocs, runCreateDraftPr, runCreateRepoRelease, runSecurityAudit,
   runSend, runConfirmAction, runCancelAction, runAttachFile,
   runGenerateFileDoc, runCreateRepo, runCreateRepoAndDocument, runGenerateSpecificDoc,
 runPublishSpecificDoc, runStartPublish, runPublishFileDocByKind, formatConversation,
@@ -342,6 +342,27 @@ const flowReleaseSpecific = useCallback(async (doc: string, path: string): Promi
     if (result) setCodeHealth(result);
   }, [token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
 
+  // ── Modo Auditoría de Seguridad (#52) — lectura-only, lanza runSecurityAudit ──
+  // Sobre el repo activo si lo hay; si no, el usuario debe indicar uno. Reutiliza
+  // el mismo AbortController del chat para que el botón Detener canule la auditoría.
+  const handleSecurityAudit = useCallback(async (initialRepo?: string) => {
+    // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto
+    if (!token || !user || !provider || !apiKey || !model) return;
+    const repoInput = initialRepo ?? repoContext?.repoName ?? '';
+    if (!repoInput.trim()) {
+      addMessage({ role: 'assistant', content: t('chat.repoNeeded') });
+      return;
+    }
+    const controller = new AbortController();
+    abortRef.current = controller;
+    await runSecurityAudit(
+      { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+      { provider, apiKey, model, accountId },
+      repoInput,
+      { repoContext, signal: controller.signal },
+    );
+  }, [token, user, provider, apiKey, model, providerName, t, lang, repoContext, addMessage, updateMessage, addEntry, updateEntry, accountId]);
+
   // ── Exportar / importar conversación (#46, Zero-Storage) ─────────────────────
   const handleExportConversation = useCallback(() => {
     const json = serializeConversation(messages, conversationHistory, repoContext?.repoName ?? null);
@@ -420,6 +441,7 @@ const flowReleaseSpecific = useCallback(async (doc: string, path: string): Promi
             onSummarizeThread={handleSummarizeThread}
             onGenerateChangelog={handleGenerateChangelog}
             onCodeHealth={handleCodeHealth}
+            onOpenSecurityAudit={handleSecurityAudit}
             onExportConversation={handleExportConversation}
             onImportConversation={handleImportConversation}
             hasMessages={messages.length > 0}

@@ -224,6 +224,11 @@ export const en = {
   'chat.docRepoMissingCreate': '⚠️ Repository **{repo}** does not exist. Want me to create and document it? You can attach files to upload to the new repo.',
   'chat.docRepoMissingOther': '❌ Repository **{repo}** not found and I can only create repos in your account. Create it on GitHub or pick another target.',
   'chat.updateDocs': '🔄 Update docs',
+  // ────── #52 Security Audit Mode ──────
+  'chat.auditSecurity': '🛡️ Audit security',
+  'chat.auditSecurity.loading': 'Analyzing the security of **{ref}** with {provider}...',
+  'chat.auditSecurity.disclaimer': '⚠️ Advisory help only, not a formal scanner: does not replace gitleaks, Dependabot, or CodeQL.',
+  'chat.auditSecurity.userMessage': 'Audit the security of **{ref}**: review exposed secrets, outdated dependencies, and missing input validation. Cite the specific files you see.',
   'chat.attachFileMulti': '{count} files attached',
 // ────── #48 Sync Repo Status ──────  'syncRepo.title': '🔄 Sync repo status',  'syncRepo.tooltip': 'Analyzes recent commits and suggests improvements',  'syncRepo.prompt': 'Enter repository (owner/repo or name):',  'syncRepo.noCommits': 'ℹ️ No recent commits in **{ref}**.',
   'chat.attachFileXlsxWarning': '⚠️ Only upload files from trusted sources. Malicious files are not analyzed. Limit: {maxMb} MB.',
@@ -257,6 +262,9 @@ export const en = {
   'history.errorChangelog': 'Error generating changelog for {ref}',
   'history.codeHealthOf': 'Code health of {ref}',
   'history.errorCodeHealth': 'Error analyzing code health of {ref}',
+  'history.auditingSecurity': 'Security audit of {ref}',
+  'history.securityAudited': 'Security audit of {ref} completed',
+  'history.errorSecurityAudit': 'Error in security audit of {ref}',
   'history.committingDocs': 'Committing documentation in {repo}',
   'history.docsCommitted': 'Documentation committed in {repo}',
   'history.errorCommittingDocs': 'Error committing documentation',
@@ -347,6 +355,9 @@ export const en = {
   'tmpl.create-release.title': 'Create Release',
   'tmpl.create-release.description': 'Create a new release with notes',
   'tmpl.create-release.template': 'Create a release v[version] with notes summarizing the main changes.',
+  'tmpl.security-audit.title': 'Audit Security',
+  'tmpl.security-audit.description': 'Advisory review of secrets, dependencies, and input validation',
+  'tmpl.security-audit.template': 'Audit the security of this repository: review exposed secrets, outdated dependencies, and missing input validation. Be specific about the files you see.',
 
   // ────── Sidebar panel templates ──────
   'tmpl_panel.cat_readme.name': 'README',

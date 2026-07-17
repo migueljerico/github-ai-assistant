@@ -5,7 +5,9 @@ import { es } from '../../i18n/es';
 vi.mock('../gemini', () => ({
   generateRepoDocs: vi.fn(),
   generateFileDoc: vi.fn(),
-  buildRepoContextSummary: vi.fn(),
+  generateSpecificDoc: vi.fn(),
+  buildRepoContextSummary: vi.fn(() => 'GENERAL_CTX'),
+  buildSecurityAuditContext: vi.fn(() => 'AUDIT_CTX'),
   callAI: vi.fn(),
   parseGeminiAction: vi.fn(),
   isAbortError: (err: unknown) => (err as { name?: string })?.name === 'AbortError',
@@ -15,6 +17,7 @@ vi.mock('../gemini', () => ({
     prompt + (lang === 'en' ? '\n\nIMPORTANT: Respond to the user in English.' : '\n\nIMPORTANTE: Responde al usuario en español.'),
   CHAT_PROMPT: 'CHAT_PROMPT',
   ACTION_PROMPT: 'ACTION_PROMPT',
+  SECURITY_PROMPT: 'SECURITY_PROMPT',
 }));
 vi.mock('../github', () => {
   class GitHubAPIError extends Error {
@@ -108,6 +111,7 @@ import {
   runPublishFileDocByKind,
   runCreateRepoRelease,
   runSyncRepoStatus,
+  runSecurityAudit,
   formatConversation,
   buildSignature,
 } from '../assistantActions';
@@ -1447,5 +1451,69 @@ describe('runSyncRepoStatus (#48)', () => {
     await runSyncRepoStatus(deps, 'owner/repo', { provider: 'groq', apiKey: 'k', model: 'm' }, { maxCommits: 2, includeDiffs: false });
 
     expect(listRecentCommits).toHaveBeenCalledWith('tok', 'owner', 'repo', 2);
+  });
+});
+
+describe('runSecurityAudit (#52)', () => {
+  const CONFIG = { provider: 'groq' as const, apiKey: 'k', model: 'm' };
+
+  it('camino feliz: carga archivos sensibles, llama a callAI en modo chat con SECURITY_PROMPT', async () => {
+    // fetchRepoTreeRecursive devuelve allPaths con un workflow (lo descubre resolveSensitivePaths).
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({
+      files: [], totalScanned: 0, truncated: false, allPaths: ['.github/workflows/ci.yml'],
+    } as any);
+    // package.json existe; package-lock.json NO (404 → se traga).
+    vi.mocked(getFileContents).mockImplementation(async (_t, _o, _r, path) => {
+      if (path === 'package-lock.json') {
+        const { GitHubAPIError } = await import('../github');
+        throw new GitHubAPIError('Not Found', 404);
+      }
+      return { content: btoa(`content of ${path}`) } as any;
+    });
+    vi.mocked(callAI).mockResolvedValue('AUDITORÍA OK');
+
+    const deps = makeDeps();
+    await runSecurityAudit(deps, CONFIG, 'owner/repo');
+
+    // 1. callAI recibe modo 'chat' (lectura-only) y el prompt de seguridad con directiva ES.
+    expect(callAI).toHaveBeenCalledTimes(1);
+    const args = vi.mocked(callAI).mock.calls[0];
+    expect(args[5]).toBe('chat'); // 6º arg = mode
+    expect(String(args[1])).toContain('SECURITY_PROMPT');
+    expect(String(args[1])).toContain('IMPORTANTE: Responde al usuario en español.');
+
+    // 2. Se intentó cargar package.json y package-lock.json (entre los fijos).
+    const fetchedPaths = vi.mocked(getFileContents).mock.calls.map(c => c[3]);
+    expect(fetchedPaths).toContain('package.json');
+    expect(fetchedPaths).toContain('package-lock.json');
+    expect(fetchedPaths).toContain('.github/workflows/ci.yml');
+
+    // 3. El resultado se vuelca en la burbuja (no se persiste en ningún sitio).
+    expect(deps.updateMessage).toHaveBeenLastCalledWith(expect.any(String), expect.objectContaining({ content: 'AUDITORÍA OK', isLoading: false }));
+    expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'completed' }));
+  });
+
+  it('sin repo (input vacío) → avisa con chat.repoNeeded y no llama a la IA', async () => {
+    const deps = makeDeps();
+    await runSecurityAudit(deps, CONFIG, '');
+    expect(callAI).not.toHaveBeenCalled();
+    expect(deps.addMessage).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('owner/repo') }));
+  });
+
+  it('traga 404 sin romper y prosigue con los archivos que sí existen', async () => {
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [], totalScanned: 0, truncated: false, allPaths: [] } as any);
+    vi.mocked(getFileContents).mockImplementation(async (_t, _o, _r, path) => {
+      const { GitHubAPIError } = await import('../github');
+      throw new GitHubAPIError('Not Found', 404);
+    });
+    vi.mocked(callAI).mockResolvedValue('SIN ARCHIVOS SENSIBLES');
+
+    const deps = makeDeps();
+    await runSecurityAudit(deps, CONFIG, 'owner/repo');
+
+    // Todos los ficheros dieron 404 pero la auditoría no aborta: llama a la IA y
+    // responde (el prompt ya indica cómo actuar sin archivos sensibles).
+    expect(callAI).toHaveBeenCalledTimes(1);
+    expect(deps.updateMessage).toHaveBeenLastCalledWith(expect.any(String), expect.objectContaining({ content: 'SIN ARCHIVOS SENSIBLES', isLoading: false }));
   });
 });
