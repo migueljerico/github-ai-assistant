@@ -122,16 +122,42 @@ Ordenadas por prioridad. Cada ítem se mueve a la tabla ✅ al resolverse.
 
 ### 🟡 Media Prioridad
 
-#### #36 — Migrar a GitHub App para permisos granulares
+#### #36 — ~~Migrar a GitHub App para permisos granulares~~ (DESCARTADO en v3.41.0)
 **Esfuerzo:** 6–8h (cambio de arquitectura de auth)
 
-**Problema actual:** La app usa una **OAuth App** con scope `repo` (acceso total a todos los repos), excesivo si solo se usan funciones de lectura.
+**Problema original:** La app usa una **OAuth App** con scope `repo` (acceso total
+a todos los repos), excesivo si solo se usan funciones de lectura.
 
-**Solución propuesta:** Los permisos finos por recurso (repos concretos, lectura vs escritura) **no son viables con la OAuth App actual** — requieren migrar a una **GitHub App** con *fine-grained permissions* y selección de repositorios por instalación. Implica rehacer el flujo OAuth del servidor (`server/index.js`) y el manejo de tokens de instalación.
+**Solución propuesta:** Los permisos finos por recurso (repos concretos, lectura
+vs escritura) **no son viables con la OAuth App actual** — requieren migrar a una
+**GitHub App** con *fine-grained permissions* y selección de repositorios por
+instalación. Implica rehacer el flujo OAuth del servidor (`server/index.js`) y el
+manejo de tokens de instalación.
 
-**Beneficio:** Principio de mínimo privilegio real; el usuario elige a qué repos da acceso; mayor confianza.
+**Beneficio:** Principio de mínimo privilegio real; el usuario elige a qué repos
+da acceso; mayor confianza.
 
-**Caveat:** No es un ajuste de scopes, es un cambio de tipo de aplicación en GitHub. Por eso sube de esfuerzo y complejidad.
+**Caveat:** No es un ajuste de scopes, es un cambio de tipo de aplicación en
+GitHub. Por eso sube de esfuerzo y complejidad.
+
+**❌ Descartado en v3.41.0** tras análisis del flujo de auth real. Razones:
+1. **Rompe el principio zero-storage**: la app hoy guarda el token **solo en
+   memoria del navegador** (`AuthContext.tsx:19-26`, nunca en el server). Los
+   *installation tokens* de una GitHub App **expiran cada ~1h** y requieren
+   refresh con JWT de la App + `installation_id` **persistidos server-side** — lo
+   que destruiría la arquitectura deliberadamente sin-persistencia actual.
+2. **Beneficio marginal para el modelo de uso**: la app es **single-user, uso
+   personal** (un usuario, su token, sesión de navegador). El principio de mínimo
+   privilegio por-usuario no aporta valor cuando no hay multi-tenant.
+3. **Coste alto, riesgo alto**: 6-8h tocando el núcleo de auth (que funciona),
+   para un beneficio de seguridad marginal en este modelo de amenaza (el riesgo
+   real es robo de sesión de navegador, no over-scoping).
+4. El scope `read:org` (también pedido en `server/index.js:694`) **no se usa** —
+   no hay endpoints `/orgs` ni `/teams` en el código. Si se quisiera reducir el
+   over-scoping sin migrar, bastaría con quitar ese scope; pero `repo` es
+   indivisible en OAuth App y la app escribe (PRs, ficheros, branches), así que
+   no se puede acotar más sin migrar. **Decisión: el coste/beneficio no se
+   justifica. Cerrado como descartado.**
 
 ---
 
@@ -189,11 +215,11 @@ Ordenadas por prioridad. Cada ítem se mueve a la tabla ✅ al resolverse.
 | Prioridad | ✅ Resueltos | ⏳ Pendientes |
 |---|---|---|
 | 🔴 Alta | #1, #2, #13, #14, #15, #27, #28, #45, #62, #63 | #26 (en progreso, continuo) |
-| 🟡 Media | #12, #17, #18, #19, #20, #21, #22, #32, #34, #37, #38, #39, #40, #41, #42, #44, #46, #48, #49, #50, #51, #55, #56, #57, #59, #60, #61, #64 | #36 |
+| 🟡 Media | #12, #17, #18, #19, #20, #21, #22, #32, #34, #37, #38, #39, #40, #41, #42, #44, #46, #48, #49, #50, #51, #55, #56, #57, #59, #60, #61, #64 | — |
 | 🟢 Baja | #23, #24, #25 | #52, #53, #58 (extensiones) |
-| 🗑️ Descartados | — | #33, #35 (descartados en v3.22.3) |
+| 🗑️ Descartados | — | #33, #35 (descartados en v3.22.3), #36 (descartado en v3.41.0) |
 
-> **Cómputo:** 46 ítems resueltos + 5 pendientes + 2 descartados = 53 referencias (algunos issues como `#28`, `#57`, `#58` generan varias filas por sus fases). Los pendientes reales accionables son: **#26** (continuo), **#36**, **#52**, **#53**, **#58-ext**. **#25 cerrado completo en v3.41.0** (logs v3.39.0 + healthcheck v3.40.0 + deploy.sh v3.41.0).
+> **Cómputo:** 46 ítems resueltos + 4 pendientes + 3 descartados = 53 referencias (algunos issues como `#28`, `#57`, `#58` generan varias filas por sus fases). Los pendientes reales accionables son: **#26** (continuo), **#52**, **#53**, **#58-ext**. **#25 cerrado completo en v3.41.0** (logs v3.39.0 + healthcheck v3.40.0 + deploy.sh v3.41.0). **#36 descartado en v3.41.0** (rompe zero-storage, costo alto, beneficio marginal en single-user).
 
 > **#28** cubierto en su norte por las Fases 1 (v3.0.0, adjuntar como contexto) y 2 (v3.1.0, documentar→publicar). Más formatos: Fase 3a (v3.2.0, Excel/CSV), Fase 3b MVP (v3.3.0, Power BI .pbix/.pbit) y Fase 3b-bis (v3.4.0, Power Query M del `DataMashup`). Única limitación restante: en un `.pbix` moderno el M va en el modelo binario (no legible) → exporta `.pbit`. Word `.docx` (v3.11.0): texto de `word/document.xml`. Imágenes/visión: descartada.
 

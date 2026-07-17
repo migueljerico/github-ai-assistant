@@ -29,6 +29,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   disponible). Verificación manual: `bash -n` OK + 4 pruebas de runtime (sin vars
   aborta / con `N` cancela sin `gcloud` / 2-de-3 indica la var que falta / carga
   `.env`).
+- **#36 (Migrar a GitHub App) descartado** tras análisis del flujo de auth real:
+  rompería el principio **zero-storage** (los *installation tokens* expiran en
+  ~1h y exigen persistencia server-side del JWT/`installation_id`) y el
+  **beneficio es marginal** para el modelo single-user de la app. Coste alto
+  (6-8h, tocar el núcleo de auth que funciona) sin justificación. Decisión
+  documentada en `MEJORAS_FUTURAS.md`.
 - Cambio de código por ZCode (GLM-5.2).
 
 ---
