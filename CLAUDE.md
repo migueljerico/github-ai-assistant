@@ -31,7 +31,7 @@ reemplazan. Saltarse este paso es la causa nº1 de trabajar en bucle.
 
 ## 1. Visión general
 
-**GitHub AI Assistant** (v3.39.0) es una app web que permite operar la **GitHub
+**GitHub AI Assistant** (v3.40.0) es una app web que permite operar la **GitHub
 REST API en lenguaje natural** a través de un proveedor de IA (Google Gemini,
 Groq Cloud, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI,
 Ollama Cloud o Ai&). El usuario escribe una instrucción,
@@ -269,6 +269,13 @@ Ejecutar **un solo test**: `cd client && npm run test:run -- src/services/github
   headers Authorization ni API keys** — solo metadatos. El `requestId` se inyecta
   vía `requestIdMiddleware` y se devuelve en `X-Request-Id`.
   La key viaja en HTTPS (cliente→backend) y nunca se persistite ni loguea.
+  ⚠️ Lección v3.40.0 (#25-parte2): `GET /health` ahora devuelve diagnóstico
+  (`version`, `uptime`, `timestamp`, `nodeVersion`, `env`). El bloque `env`
+  reporta **booleanos** por variable crítica (¿está presente?), **nunca el
+  valor** — Zero-Storage sin cambios. Sigue devolviendo `status:'ok'` + **HTTP
+  200 siempre** (la sonda de Cloud Run reinicia el contenedor si responde 5xx).
+  La versión se lee de `package.json` vía `createRequire` (single source of
+  truth); **no hardcodear la versión** en `index.js` al bumpar.
   **No añadas proxies backend ni `process.env.*API_KEY` para nuevos proveedores
   sin aprobación explícita del autor.** Para añadir un proveedor, basta una entrada
   en el registro `PROVIDERS` (`providers.ts`) — el resto (UI, `callAI`, streaming,

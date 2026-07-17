@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.40.0] — 2026-07-17
+
+### Added
+- **Healthcheck extendido en `/health` (#25-parte2).** `GET /health` (antes
+  `{status:'ok'}` estático en `server/index.js`) ahora devuelve diagnóstico:
+  `version`, `uptime` (`process.uptime()`), `timestamp` (ISO 8601),
+  `nodeVersion` (`process.version`) y `env` con las **3 variables críticas**
+  (`GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `SESSION_SECRET`) como **booleanos**
+  — sólo indican si la var está presente, **nunca su valor** (Zero-Storage sin
+  cambios: un secret no puede filtrarse por este endpoint). Sigue devolviendo
+  `status:'ok'` + **HTTP 200 siempre** para no romper la sonda de Cloud Run.
+- **Versión sin hardcodeo.** El `startup` log ya no tiene `'3.39.0'` escrito a
+  mano: se lee de `package.json` vía `createRequire` (single source of truth),
+  imposible de desincronizar al bumpar versión. Reutilizada en `/health`.
+
+### Tests
+- Nuevo `server/__tests__/health.test.js` (**8 tests**): status/versión/uptime
+  creciente/timestamp ISO/nodeVersion/booleanos por clave/no-revelación de
+  valores. Patrón supertest + express + factory `createTestApp()` (como
+  `rateLimit.test.js`).
+- Servidor: **16 → 24 tests** (logger 11 + geminiModelsProxy 3 + rateLimit 2 +
+  health 8). Cliente: **569/569** sin cambios (no se toca el cliente).
+
+### Notes
+- **Sin dependencias nuevas** (`createRequire` es de `node:module`). **Cero
+  cambios** en proxies, OAuth, rate limiters ni cliente.
+- Cierra el item "Healthcheck extendido en `/health`" de #25 (parte 2 de 3);
+  queda pendiente `deploy.sh` (#25-parte3).
+- Cambio de código por ZCode (GLM-5.2).
+
+---
+
 ## [3.39.0] — 2026-07-17
 
 ### Added

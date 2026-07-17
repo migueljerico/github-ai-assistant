@@ -111,7 +111,7 @@ github-ai-assistant/
 ├── server/
 │   ├── index.js              # Express: OAuth + proxies (Gemini/NIM/OpenZen/CF/Ollama/Ai&) + rate limit + static
 │   ├── logger.js             # #65 (v3.39.0): logEvent (JSON línea) + requestIdMiddleware
-│   └── __tests__/            # Tests de servidor (vitest + supertest): geminiModelsProxy, rateLimit, logger
+│   └── __tests__/            # Tests de servidor (vitest + supertest): geminiModelsProxy, rateLimit, logger, health
 ├── Dockerfile                # Multi-stage build (Node 22 Alpine)
 ├── .env.example              # Plantilla de variables de entorno
 └── .gitignore
@@ -501,7 +501,7 @@ gcloud run deploy github-ai-assistant \
 - **CI:** GitHub Actions (`.github/workflows/ci.yml`) ejecuta en cada push/PR a `main`
   el lint, los tests del cliente con cobertura y los tests del servidor
   (job `server-test`). Ver "Pipeline CI/CD" en la sección de despliegue.
-- **Cobertura actual:** ~60% (ver Codecov para el valor exacto) · 569 tests en el cliente + 16 en el servidor (585 totales)
+- **Cobertura actual:** ~60% (ver Codecov para el valor exacto) · 569 tests en el cliente + 24 en el servidor (593 totales)
 
 ### Módulos testeados
 
@@ -526,7 +526,7 @@ gcloud run deploy github-ai-assistant \
 | `docxReader.ts` | Word `.docx`: extracción de párrafos/tablas, entidades XML, truncado, errores | ✅ |
 | Hooks | `useChat`, `useActions` | ✅ |
 | Componentes React | ChatArea, ChatInput, ChatMessage, ConfirmModal, Header, TemplatePanel, AIProviderPanel, AIProviderBadge, RepoContextButton, FileAttachButton, ThreadSummaryButton | ✅ |
-| Servidor | `rateLimit.test.js` (rate limiter del proxy) | ✅ |
+| Servidor | `rateLimit.test.js` (rate limiter del proxy), `logger.test.js` (logs estructurados #65), `health.test.js` (healthcheck extendido #25-parte2) | ✅ |
 
 ### Ejecutar tests localmente
 
@@ -547,7 +547,7 @@ Ver [MEJORAS_FUTURAS.md](./MEJORAS_FUTURAS.md) para el detalle completo.
 | SessionWarningBanner no implementado | Sin aviso de caducidad | Banner de advertencia (#22) |
 | ~~Prompts incrustados en código~~ | ~~Dificulta edición/i18n~~ | ✅ Migrados a archivos `prompts/*.md` (#23, v3.11.2) |
 | ~~App solo en español~~ | ~~Limita audiencia~~ | ✅ i18n ligero ES/EN sin dependencias (#24, Fases 1–2: v3.20.0–v3.21.0) |
-| Sin healthcheck extendido | Menos visibilidad | Logs + health mejorado (#25) |
+| ~~Sin healthcheck extendido~~ | ~~Menos visibilidad~~ | ✅ Healthcheck ampliado en `/health` con versión/uptime/env + logs estructurados (#25 partes 1–2: v3.39.0–v3.40.0) |
 
 ### Limitaciones resueltas en v2.3.0
 
