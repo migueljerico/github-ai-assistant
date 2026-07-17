@@ -1,6 +1,6 @@
 {
   "name": "github-ai-assistant",
-  "version": "3.40.0",
+  "version": "3.41.0",
   "description": "Asistente de IA de GitHub",
   "type": "module",
   "main": "server/index.js",
@@ -10,6 +10,7 @@
     "dev:client": "cd client && npm run dev",
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "build": "cd client && npm run build",
+    "deploy": "bash deploy.sh",
     "postinstall": "",
     "test:coverage": "vitest run --coverage",
     "test:server": "vitest run server"
