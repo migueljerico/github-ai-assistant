@@ -6,18 +6,24 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { randomUUID } from 'node:crypto';
+// #65 (v3.39.0): logs estructurados (JSON línea) + middleware requestId.
+// Sustituye a los 34 console.log/error de texto plano que había antes.
+import { log, requestIdMiddleware } from './logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // ── Fix #2: Fail loudly if SESSION_SECRET is missing in production ───────────
 if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
-  console.error('FATAL: SESSION_SECRET must be set in production. Exiting.');
+  log.error('fatal_config', { reason: 'SESSION_SECRET missing in production' });
   process.exit(1);
 }
 
 const app = express();
 app.set('trust proxy', 1);
+// #65 (v3.39.0): requestId por petición para correlación entre logs estructurados.
+// Se monta antes que cualquier ruta para que req.id esté disponible en todos los handlers.
+app.use(requestIdMiddleware);
 const PORT = process.env.PORT || 3001;
 
 const {
@@ -155,7 +161,7 @@ const NIM_BASE_URL = 'https://integrate.api.nvidia.com/v1';
     
         // 🔥 OPCIÓN D: Log para ver el modo en Cloud Run (útil para debugging)
         if (mode) {
-          console.log(`[Opción D] Gemini proxy received mode: ${mode}${stream ? ' (streaming)' : ''}`);
+          log.info('gemini_mode', { provider: 'gemini', mode, stream: !!stream, requestId: req.id });
         }
     
         // Translate from internal Message format → Gemini SDK format.
@@ -192,7 +198,7 @@ const NIM_BASE_URL = 'https://integrate.api.nvidia.com/v1';
     const text = result.response.text();
     res.json({ text });
   } catch (err) {
-    console.error('Gemini proxy error:', err);
+    log.error('proxy_error', { provider: 'gemini', flow: 'chat', requestId: req.id, error: err?.message || String(err) });
     // Si ya empezó el stream (cabeceras enviadas), solo cerramos la conexión.
     if (res.headersSent) {
       try { res.end(); } catch { /* noop */ }
@@ -260,7 +266,7 @@ app.get('/api/gemini/models', geminiLimiter, async (req, res) => {
       });
     res.json({ data: chatModels });
   } catch (err) {
-    console.error('Gemini models proxy error:', err);
+    log.error('proxy_error', { provider: 'gemini', flow: 'models', requestId: req.id, error: err?.message || String(err) });
     const status = err?.status ?? err?.httpErrorCode ?? 500;
     const safeStatus = (status >= 400 && status < 600) ? status : 500;
     res.status(safeStatus).json({
@@ -328,7 +334,7 @@ app.post('/api/nim', nimLimiter, async (req, res) => {
     });
     // Log de status upstream: los errores de NIM (401/403/404/429/5xx) dejan de ser
     // opacos. Solo el status (sin body ni auth) — zero-PII.
-    console.log(`[NIM] upstream status=${upstream.status} ct=${upstream.headers.get('content-type') || '-'}`);
+    log.info('upstream', { provider: 'nim', flow: 'chat', status: upstream.status, ct: upstream.headers.get('content-type') || '-', requestId: req.id });
     // Pasarela transparente: copiar el status y el content-type del upstream para
     // que JSON (200) y SSE (text/event-stream) lleguen idénticos al cliente.
     res.status(upstream.status);
@@ -336,7 +342,7 @@ app.post('/api/nim', nimLimiter, async (req, res) => {
     if (ct) res.setHeader('Content-Type', ct);
     await pipeUpstream(upstream, res);
   } catch (err) {
-    console.error('NIM proxy error (chat):', err);
+    log.error('proxy_error', { provider: 'nim', flow: 'chat', requestId: req.id, error: err?.message || String(err) });
     if (!res.headersSent) res.status(502).json({ error: 'Error al contactar con NVIDIA NIM', detail: err?.message || String(err) });
     else { try { res.end(); } catch { /* noop */ } }
   }
@@ -364,7 +370,7 @@ app.get('/api/nim/models', nimLimiter, async (req, res) => {
     const data = await upstream.json();
     res.json(data);
   } catch (err) {
-    console.error('NIM proxy error (models):', err);
+    log.error('proxy_error', { provider: 'nim', flow: 'models', requestId: req.id, error: err?.message || String(err) });
     const status = err?.status ?? 502;
     const safeStatus = (status >= 400 && status < 600) ? status : 502;
     res.status(safeStatus).json({ error: 'Error al contactar con NVIDIA NIM' });
@@ -394,13 +400,13 @@ app.post('/api/openzen', openzenLimiter, async (req, res) => {
       },
       body: JSON.stringify(req.body),
     });
-    console.log(`[OpenZen] upstream status=${upstream.status} ct=${upstream.headers.get('content-type') || '-'}`);
+    log.info('upstream', { provider: 'openzen', flow: 'chat', status: upstream.status, ct: upstream.headers.get('content-type') || '-', requestId: req.id });
     res.status(upstream.status);
     const ct = upstream.headers.get('content-type');
     if (ct) res.setHeader('Content-Type', ct);
     await pipeUpstream(upstream, res);
   } catch (err) {
-    console.error('OpenCode Zen proxy error:', err);
+    log.error('proxy_error', { provider: 'openzen', flow: 'chat', requestId: req.id, error: err?.message || String(err) });
     if (!res.headersSent) res.status(502).json({ error: 'Error al contactar con OpenCode Zen', detail: err?.message || String(err) });
     else { try { res.end(); } catch { /* noop */ } }
   }
@@ -442,7 +448,7 @@ app.post('/api/cloudflare', cloudflareLimiter, async (req, res) => {
       },
       body: JSON.stringify(req.body),
     });
-    console.log(`[Cloudflare] status=${upstream.status} ct=${upstream.headers.get('content-type') || '-'}`);
+    log.info('upstream', { provider: 'cloudflare', flow: 'chat', status: upstream.status, ct: upstream.headers.get('content-type') || '-', requestId: req.id });
 
     // Saneamos los headers del upstream: eliminamos valores con caracteres
     // fuera de ISO-8859-1 para evitar el error del navegador al parsearlos.
@@ -464,7 +470,7 @@ app.post('/api/cloudflare', cloudflareLimiter, async (req, res) => {
     res.removeHeader('transfer-encoding');
     await pipeUpstream(upstream, res);
   } catch (err) {
-    console.error('Cloudflare proxy error:', err);
+    log.error('proxy_error', { provider: 'cloudflare', flow: 'chat', requestId: req.id, error: err?.message || String(err) });
     if (!res.headersSent) res.status(502).json({ error: 'Error al contactar con Cloudflare Workers AI', detail: err?.message || String(err) });
     else { try { res.end(); } catch { /* noop */ } }
   }
@@ -503,7 +509,7 @@ app.post('/api/ollama', ollamaLimiter, async (req, res) => {
       },
       body: JSON.stringify(req.body),
     });
-    console.log(`[Ollama] upstream status=${upstream.status} ct=${upstream.headers.get('content-type') || '-'}`);
+    log.info('upstream', { provider: 'ollama', flow: 'chat', status: upstream.status, ct: upstream.headers.get('content-type') || '-', requestId: req.id });
     res.status(upstream.status);
     const ct = upstream.headers.get('content-type');
     if (ct) res.setHeader('Content-Type', ct);
@@ -521,7 +527,7 @@ app.post('/api/ollama', ollamaLimiter, async (req, res) => {
     res.removeHeader('transfer-encoding');
     await pipeUpstream(upstream, res);
   } catch (err) {
-    console.error('Ollama proxy error:', err);
+    log.error('proxy_error', { provider: 'ollama', flow: 'chat', requestId: req.id, error: err?.message || String(err) });
     if (!res.headersSent) res.status(502).json({ error: 'Error al contactar con Ollama Cloud', detail: err?.message || String(err) });
     else { try { res.end(); } catch { /* noop */ } }
   }
@@ -541,7 +547,7 @@ app.get('/api/ollama/models', ollamaLimiter, async (req, res) => {
         'Accept': 'application/json',
       },
     });
-    console.log(`[Ollama Models] upstream status=${upstream.status} ct=${upstream.headers.get('content-type') || '-'}`);
+    log.info('upstream', { provider: 'ollama', flow: 'models', status: upstream.status, ct: upstream.headers.get('content-type') || '-', requestId: req.id });
     res.status(upstream.status);
     const ct = upstream.headers.get('content-type');
     if (ct) res.setHeader('Content-Type', ct);
@@ -559,7 +565,7 @@ app.get('/api/ollama/models', ollamaLimiter, async (req, res) => {
     res.removeHeader('transfer-encoding');
     await pipeUpstream(upstream, res);
   } catch (err) {
-    console.error('Ollama models proxy error:', err);
+    log.error('proxy_error', { provider: 'ollama', flow: 'models', requestId: req.id, error: err?.message || String(err) });
     if (!res.headersSent) res.status(502).json({ error: 'Error al contactar con Ollama Cloud (models)', detail: err?.message || String(err) });
     else { try { res.end(); } catch { /* noop */ } }
   }
@@ -586,13 +592,13 @@ app.post('/api/aiand', aiandLimiter, async (req, res) => {
       },
       body: JSON.stringify(req.body),
     });
-    console.log(`[Ai&] upstream status=${upstream.status} ct=${upstream.headers.get('content-type') || '-'}`);
+    log.info('upstream', { provider: 'aiand', flow: 'chat', status: upstream.status, ct: upstream.headers.get('content-type') || '-', requestId: req.id });
     res.status(upstream.status);
     const ct = upstream.headers.get('content-type');
     if (ct) res.setHeader('Content-Type', ct);
     await pipeUpstream(upstream, res);
   } catch (err) {
-    console.error('Ai& proxy error:', err);
+    log.error('proxy_error', { provider: 'aiand', flow: 'chat', requestId: req.id, error: err?.message || String(err) });
     if (!res.headersSent) res.status(502).json({ error: 'Error al contactar con Ai&', detail: err?.message || String(err) });
     else { try { res.end(); } catch { /* noop */ } }
   }
@@ -612,7 +618,7 @@ app.get('/api/aiand/models', aiandLimiter, async (req, res) => {
         'Accept': 'application/json',
       },
     });
-    console.log(`[Ai& Models] upstream status=${upstream.status} ct=${upstream.headers.get('content-type') || '-'}`);
+    log.info('upstream', { provider: 'aiand', flow: 'models', status: upstream.status, ct: upstream.headers.get('content-type') || '-', requestId: req.id });
     res.status(upstream.status);
     const ct = upstream.headers.get('content-type');
     if (ct) res.setHeader('Content-Type', ct);
@@ -630,7 +636,7 @@ app.get('/api/aiand/models', aiandLimiter, async (req, res) => {
     res.removeHeader('transfer-encoding');
     await pipeUpstream(upstream, res);
   } catch (err) {
-    console.error('Ai& models proxy error:', err);
+    log.error('proxy_error', { provider: 'aiand', flow: 'models', requestId: req.id, error: err?.message || String(err) });
     if (!res.headersSent) res.status(502).json({ error: 'Error al contactar con Ai& (models)', detail: err?.message || String(err) });
     else { try { res.end(); } catch { /* noop */ } }
   }
@@ -673,7 +679,7 @@ app.get('/auth/callback', async (req, res) => {
   delete req.session.oauthState; // consume it — single use only
 
   if (!state || !expectedState || state !== expectedState) {
-    console.error('OAuth state mismatch — possible CSRF attempt');
+    log.warn('oauth_state_mismatch', { requestId: req.id, detail: 'possible CSRF attempt' });
     return res.redirect(`${FRONTEND_URL}/#error=state_mismatch`);
   }
 
@@ -701,14 +707,14 @@ app.get('/auth/callback', async (req, res) => {
     const tokenData = await tokenRes.json();
 
     if (tokenData.error) {
-      console.error('GitHub OAuth error:', tokenData.error_description);
+      log.error('oauth_error', { requestId: req.id, detail: tokenData.error_description });
       return res.redirect(`${FRONTEND_URL}/#error=${encodeURIComponent(tokenData.error_description)}`);
     }
 
     // Return token to frontend via URL hash — stays in sessionStorage, never on the server
     res.redirect(`${FRONTEND_URL}/#access_token=${tokenData.access_token}&token_type=${tokenData.token_type}`);
   } catch (err) {
-    console.error('OAuth callback error:', err);
+    log.error('oauth_callback_error', { requestId: req.id, error: err?.message || String(err) });
     res.redirect(`${FRONTEND_URL}/#error=server_error`);
   }
 });
@@ -736,16 +742,24 @@ app.get('*', spaLimiter, (req, res) => {
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
-  console.log(`\n🚀 Asistente de IA de GitHub`);
-  console.log(`   Server:  http://localhost:${PORT}`);
-  console.log(`   Health:  http://localhost:${PORT}/health`);
-  console.log(`   OAuth:   http://localhost:${PORT}/auth/github`);
-  console.log(`   Proxy Gemini: POST http://localhost:${PORT}/api/gemini`);
-  console.log(`   Proxy NIM:    POST http://localhost:${PORT}/api/nim · GET /api/nim/models`);
-  console.log(`   Proxy OpenZen: POST http://localhost:${PORT}/api/openzen`);
-  console.log(`   Proxy CF:     POST http://localhost:${PORT}/api/cloudflare`);
-  console.log(`   🛡️  Rate Limit: 40 req/min en /api/gemini, /api/nim, /api/openzen y /api/cloudflare`);
-  console.log(`\n   ℹ️  OpenRouter / Zenmux → llamadas directas desde el navegador`);
-  console.log(`   ℹ️  Gemini → proxiado via /api/gemini (elude bloqueo EU)`);
-  console.log(`   ℹ️  NIM / OpenCode Zen / Cloudflare → proxiados (eluden bloqueo CORS)\n`);
+  // #65 (v3.39.0): banner de arranque como evento estructurado. Una sola línea
+  // JSON con versión, puerto y catálogo de rutas — filtrable en Cloud Run por
+  // jsonPayload.event==='startup'. Sustituye a los 12 console.log de texto plano.
+  log.info('startup', {
+    event: 'startup',
+    version: '3.39.0',
+    port: PORT,
+    routes: [
+      '/health', '/auth/github', '/auth/callback',
+      'POST /api/gemini', 'GET /api/gemini/models',
+      'POST /api/nim', 'GET /api/nim/models',
+      'POST /api/openzen', 'POST /api/cloudflare',
+      'POST /api/ollama', 'GET /api/ollama/models',
+      'POST /api/aiand', 'GET /api/aiand/models',
+    ],
+    rateLimited: ['/api/gemini', '/api/gemini/models', '/api/nim', '/api/nim/models',
+                  '/api/openzen', '/api/cloudflare', '/api/ollama', '/api/ollama/models',
+                  '/api/aiand', '/api/aiand/models'],
+    directFromBrowser: ['openrouter', 'zenmux', 'groq'],
+  });
 });
