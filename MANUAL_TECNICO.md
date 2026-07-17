@@ -490,6 +490,24 @@ gcloud run deploy github-ai-assistant \
   --allow-unauthenticated
 ```
 
+**`deploy.sh` (deploy manual validado, v3.41.0 — #25-parte3).** Alternativa al
+comando anterior: valida que las **3 variables críticas**
+(`GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `SESSION_SECRET`) estén presentes
+**antes** de desplegar, para no subir una revisión rota (OAuth caído o sesión sin
+firmar). Las lee de `.env` si existe (las ya exportadas en el shell/CI tienen
+prioridad); si falta alguna, aborta con `exit 1` y un mensaje claro. Pide
+confirmación `[s/N]` (default NO) antes de invocar el mismo `gcloud run deploy`
+de arriba.
+
+```bash
+./deploy.sh        # o:  npm run deploy
+```
+
+> **No sustituye al CD automático** (activador de Cloud Build en cada push a
+> `main`): es para deploys puntuales o rollbacks sin pasar por `main`. Tampoco
+> gestiona secretos — las variables viven en el servicio de Cloud Run, no las
+> pasa el script (no `--set-env-vars`).
+
 ---
 
 ## 🧪 Testing y Calidad

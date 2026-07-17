@@ -31,7 +31,7 @@ reemplazan. Saltarse este paso es la causa nº1 de trabajar en bucle.
 
 ## 1. Visión general
 
-**GitHub AI Assistant** (v3.40.0) es una app web que permite operar la **GitHub
+**GitHub AI Assistant** (v3.41.0) es una app web que permite operar la **GitHub
 REST API en lenguaje natural** a través de un proveedor de IA (Google Gemini,
 Groq Cloud, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI,
 Ollama Cloud o Ai&). El usuario escribe una instrucción,
@@ -276,6 +276,13 @@ Ejecutar **un solo test**: `cd client && npm run test:run -- src/services/github
   200 siempre** (la sonda de Cloud Run reinicia el contenedor si responde 5xx).
   La versión se lee de `package.json` vía `createRequire` (single source of
   truth); **no hardcodear la versión** en `index.js` al bumpar.
+  ⚠️ Lección v3.41.0 (#25-parte3, completo): `deploy.sh` valida las **3 vars
+  críticas** antes de `gcloud run deploy` (aborta `exit 1` si falta alguna).
+  **No sustituye al CD automático** (Cloud Build trigger en push a `main`): es
+  para deploys puntuales/rollbacks. **No gestiona secretos** (las vars viven en
+  el servicio de Cloud Run; el script no usa `--set-env-vars`). Lee `.env` si
+  existe (vars del shell ya exportadas tienen prioridad). Lánzalo con
+  `./deploy.sh` o `npm run deploy`.
   **No añadas proxies backend ni `process.env.*API_KEY` para nuevos proveedores
   sin aprobación explícita del autor.** Para añadir un proveedor, basta una entrada
   en el registro `PROVIDERS` (`providers.ts`) — el resto (UI, `callAI`, streaming,
@@ -467,6 +474,10 @@ El flujo con el usuario es siempre el mismo, **no lo cambies**:
 3. **No hay puntos de parada manuales** en la rutina de cierre: el push, el tag,
    el GitHub release **y el deploy a Cloud Run** son todos automáticos. Lo único
    que espera confirmación del usuario son acciones **fuera** de esta rutina.
+4. **Deploy manual puntual:** si hace falta desplegar sin pasar por `main`
+   (rollback, prueba aislada), usa `./deploy.sh` o `npm run deploy` (v3.41.0,
+   #25-parte3): valida las 3 vars críticas antes de `gcloud run deploy`. **No lo
+   uses para la rutina normal** — el CD automático del punto 9 es lo canónico.
 
 > Regla de oro: el `commit` + `push` + `tag` + `release` + `deploy` van siempre
 > juntos al cerrar. Nunca commitees sin pushear, ni pushees sin tagear, ni

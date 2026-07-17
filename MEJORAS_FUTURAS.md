@@ -145,7 +145,7 @@ Ordenadas por prioridad. Cada ítem se mueve a la tabla ✅ al resolverse.
 - ✅ Despliegue continuo (CD) — Cloud Build construye y despliega `main` a Cloud Run en cada push — *operativo*
 - ✅ Logs estructurados en el servidor (JSON con timestamp, level, requestId) — *v3.39.0* (#65: `server/logger.js` con `logEvent` + `requestIdMiddleware`; 34 `console.*` → `log.info/error`)
 - ✅ Healthcheck extendido en `/health` (versión, uptime, timestamp, nodeVersion, estado de variables críticas como booleanos) — *v3.40.0* (#25-parte2: `HEALTH_VARS` + versión leída de `package.json` vía `createRequire`; `/health` sigue HTTP 200 + `status:'ok'` para Cloud Run; `server/__tests__/health.test.js` 8 tests)
-- ⏳ Script `deploy.sh` automatizado para Cloud Run con validación previa de variables (alternativa al deploy manual)
+- ✅ Script `deploy.sh` con validación previa de variables (alternativa al deploy manual) — *v3.41.0* (#25-parte3: valida `GITHUB_CLIENT_ID`/`GITHUB_CLIENT_SECRET`/`SESSION_SECRET` antes de `gcloud run deploy --source .`; lee `.env` si existe; confirmación `[s/N]`; no sustituye el CD automático; `npm run deploy`)
 
 ---
 
@@ -190,10 +190,10 @@ Ordenadas por prioridad. Cada ítem se mueve a la tabla ✅ al resolverse.
 |---|---|---|
 | 🔴 Alta | #1, #2, #13, #14, #15, #27, #28, #45, #62, #63 | #26 (en progreso, continuo) |
 | 🟡 Media | #12, #17, #18, #19, #20, #21, #22, #32, #34, #37, #38, #39, #40, #41, #42, #44, #46, #48, #49, #50, #51, #55, #56, #57, #59, #60, #61, #64 | #36 |
-| 🟢 Baja | #23, #24 | #25 (parcial), #52, #53, #58 (extensiones) |
+| 🟢 Baja | #23, #24, #25 | #52, #53, #58 (extensiones) |
 | 🗑️ Descartados | — | #33, #35 (descartados en v3.22.3) |
 
-> **Cómputo:** 45 ítems resueltos + 6 pendientes + 2 descartados = 53 referencias (algunos issues como `#28`, `#57`, `#58` generan varias filas por sus fases). Los pendientes reales accionables son: **#26** (continuo), **#36**, **#25** (parcial), **#52**, **#53**, **#58-ext**.
+> **Cómputo:** 46 ítems resueltos + 5 pendientes + 2 descartados = 53 referencias (algunos issues como `#28`, `#57`, `#58` generan varias filas por sus fases). Los pendientes reales accionables son: **#26** (continuo), **#36**, **#52**, **#53**, **#58-ext**. **#25 cerrado completo en v3.41.0** (logs v3.39.0 + healthcheck v3.40.0 + deploy.sh v3.41.0).
 
 > **#28** cubierto en su norte por las Fases 1 (v3.0.0, adjuntar como contexto) y 2 (v3.1.0, documentar→publicar). Más formatos: Fase 3a (v3.2.0, Excel/CSV), Fase 3b MVP (v3.3.0, Power BI .pbix/.pbit) y Fase 3b-bis (v3.4.0, Power Query M del `DataMashup`). Única limitación restante: en un `.pbix` moderno el M va en el modelo binario (no legible) → exporta `.pbit`. Word `.docx` (v3.11.0): texto de `word/document.xml`. Imágenes/visión: descartada.
 

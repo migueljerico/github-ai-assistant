@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.41.0] — 2026-07-17
+
+### Added
+- **`deploy.sh` con validación previa de variables (#25-parte3).** Primer script
+  shell del repo. Antes de invocar el deploy manual `gcloud run deploy --source .`
+  (documentado en `MANUAL_TECNICO.md`), valida que las **3 variables críticas**
+  (`GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `SESSION_SECRET`) estén presentes.
+  Las lee de `.env` si existe (las ya exportadas en el shell/CI tienen prioridad);
+  si falta alguna, aborta con `exit 1` y mensaje claro — para no subir una
+  revisión rota a Cloud Run. Confirmación `[s/N]` (default NO). **No sustituye al
+  CD automático** (Cloud Build trigger en cada push a `main`): es una alternativa
+  validada al deploy manual, para deploys puntuales o rollbacks. No gestiona
+  secretos (las vars viven en el servicio; no `--set-env-vars`).
+- **`package.json`**: nuevo script `"deploy": "bash deploy.sh"` (`npm run deploy`).
+
+### Notes
+- **#25 queda COMPLETO** con esta parte 3: logs estructurados ✅ (v3.39.0) +
+  healthcheck extendido ✅ (v3.40.0) + `deploy.sh` ✅ (v3.41.0).
+- **Sin cambios funcionales** ni en el pipeline de CD automático. Servidor:
+  **24/24 tests** sin regresión. Cliente sin cambios.
+- **Sin tests automáticos para bash** (no encaja en vitest; `shellcheck` no
+  disponible). Verificación manual: `bash -n` OK + 4 pruebas de runtime (sin vars
+  aborta / con `N` cancela sin `gcloud` / 2-de-3 indica la var que falta / carga
+  `.env`).
+- Cambio de código por ZCode (GLM-5.2).
+
+---
+
 ## [3.40.0] — 2026-07-17
 
 ### Added
