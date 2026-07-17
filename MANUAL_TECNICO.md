@@ -109,7 +109,9 @@ github-ai-assistant/
 │       │   └── modeDetection.ts    # Detección de modo chat vs action
 │       └── types/index.ts          # Tipos compartidos TypeScript
 ├── server/
-│   └── index.js              # Express: OAuth + proxy Gemini + rate limit + static
+│   ├── index.js              # Express: OAuth + proxies (Gemini/NIM/OpenZen/CF/Ollama/Ai&) + rate limit + static
+│   ├── logger.js             # #65 (v3.39.0): logEvent (JSON línea) + requestIdMiddleware
+│   └── __tests__/            # Tests de servidor (vitest + supertest): geminiModelsProxy, rateLimit, logger
 ├── Dockerfile                # Multi-stage build (Node 22 Alpine)
 ├── .env.example              # Plantilla de variables de entorno
 └── .gitignore
@@ -499,7 +501,7 @@ gcloud run deploy github-ai-assistant \
 - **CI:** GitHub Actions (`.github/workflows/ci.yml`) ejecuta en cada push/PR a `main`
   el lint, los tests del cliente con cobertura y los tests del servidor
   (job `server-test`). Ver "Pipeline CI/CD" en la sección de despliegue.
-- **Cobertura actual:** ~60% (ver Codecov para el valor exacto) · 569 tests en el cliente + 5 en el servidor (574 totales)
+- **Cobertura actual:** ~60% (ver Codecov para el valor exacto) · 569 tests en el cliente + 16 en el servidor (585 totales)
 
 ### Módulos testeados
 

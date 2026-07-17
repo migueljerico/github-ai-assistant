@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.39.0] — 2026-07-17
+
+### Added
+- **Logs estructurados en el servidor (#65, parte 1 de #25).** Nuevo módulo
+  `server/logger.js` con `logEvent(level, msg, ctx)` que emite **una línea JSON
+  por evento** (`ts`, `level`, `msg` + campos) a stdout/stderr, y middleware
+  `requestIdMiddleware` que asigna un `req.id` (UUID) por petición y lo devuelve
+  en el header `X-Request-Id`. Los 34 `console.log/error` de `server/index.js`
+  se reescriben como `log.info/error('upstream'|'proxy_error'|...,
+  {provider, flow, status, requestId, ...})`. Beneficio: los logs de Cloud Run
+  son ahora filtrables en Logs Explorer por `jsonPayload.provider`,
+  `jsonPayload.level` o `jsonPayload.requestId` — imposible con texto plano.
+  Sin dependencias nuevas (JSON.stringify + process.stdout/stderr).
+
+### Tests
+- Nuevo `server/__tests__/logger.test.js` (11 tests): `logEvent` emite JSON
+  parseable, mergea `ctx`, nivel inválido cae a `info`, escribe a stderr en
+  `error`, una línea por llamada; `requestIdMiddleware` genera UUID, respeta
+  `X-Request-Id` entrante válido, ignora vacío / >64 chars.
+- Servidor: 5 → **16 tests** (5 previos + 11 del logger). Cliente: **569/569**
+  sin cambios (no se toca el cliente).
+
+### Notes
+- **Zero-Storage (sin cambios):** los logs solo contienen metadatos (status,
+  provider, requestId, content-type). **Nunca** bodies, headers `Authorization`
+  ni API keys — la regla ya la seguían los `console.*`, ahora es explícita.
+- **No cambia ningún flujo de usuario:** status, headers y bodies que recibe el
+  cliente son idénticos a v3.38.1. Solo cambia cómo se emiten los logs.
+- Relaja el canon "backend de un solo archivo": ahora `server/` tiene
+  `index.js` + `logger.js` (utilidad pura, testeable aislada como los tests
+  existentes). Las rutas, OAuth y proxies siguen todos en `index.js`.
+- Cambio de código por ZCode (GLM-5.2).
+
+---
+
 ## [3.38.1] — 2026-07-16
 
 ### Fixed

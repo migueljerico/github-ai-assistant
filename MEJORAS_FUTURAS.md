@@ -143,7 +143,7 @@ Ordenadas por prioridad. Cada ítem se mueve a la tabla ✅ al resolverse.
 **Tareas:**
 - ✅ GitHub Actions CI — lint + tests (cliente + servidor) con cobertura en cada push/PR a main — *v2.4.0*
 - ✅ Despliegue continuo (CD) — Cloud Build construye y despliega `main` a Cloud Run en cada push — *operativo*
-- ⏳ Logs estructurados en el servidor (JSON con timestamp, level, requestId)
+- ✅ Logs estructurados en el servidor (JSON con timestamp, level, requestId) — *v3.39.0* (#65: `server/logger.js` con `logEvent` + `requestIdMiddleware`; 34 `console.*` → `log.info/error`)
 - ⏳ Healthcheck extendido en `/health` (versión, uptime, estado de variables de entorno)
 - ⏳ Script `deploy.sh` automatizado para Cloud Run con validación previa de variables (alternativa al deploy manual)
 

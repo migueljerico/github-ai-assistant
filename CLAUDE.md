@@ -31,7 +31,7 @@ reemplazan. Saltarse este paso es la causa nº1 de trabajar en bucle.
 
 ## 1. Visión general
 
-**GitHub AI Assistant** (v3.38.1) es una app web que permite operar la **GitHub
+**GitHub AI Assistant** (v3.39.0) es una app web que permite operar la **GitHub
 REST API en lenguaje natural** a través de un proveedor de IA (Google Gemini,
 Groq Cloud, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI,
 Ollama Cloud o Ai&). El usuario escribe una instrucción,
@@ -262,6 +262,12 @@ Ejecutar **un solo test**: `cd client && npm run test:run -- src/services/github
   necesitaba proxy (afirmación de un asistente previo, no del autor); en prod daba
   `Failed to fetch`. **Ante la duda sobre CORS de un nuevo proveedor, ponlo detrás
   de proxy desde el principio.**
+  ⚠️ Lección v3.39.0 (#65): el servidor ahora emite **logs estructurados** (JSON
+  línea, ver `server/logger.js`) en vez de `console.*` de texto plano. Cada proxy
+  loguea `log.info('upstream', {provider, flow, status, requestId})` y los errores
+  `log.error('proxy_error', {...})`. **Zero-Storage sigue: nunca loguear bodies,
+  headers Authorization ni API keys** — solo metadatos. El `requestId` se inyecta
+  vía `requestIdMiddleware` y se devuelve en `X-Request-Id`.
   La key viaja en HTTPS (cliente→backend) y nunca se persistite ni loguea.
   **No añadas proxies backend ni `process.env.*API_KEY` para nuevos proveedores
   sin aprobación explícita del autor.** Para añadir un proveedor, basta una entrada
@@ -282,6 +288,10 @@ Ejecutar **un solo test**: `cd client && npm run test:run -- src/services/github
   el backend es **un único `server/index.js`** (thin: OAuth + proxy Gemini + estático,
   ~244 líneas con secciones claras) y hay módulos de cliente **cohesivos** de ~700 líneas
   (`gemini.ts`, `assistantActions.ts`, `github.ts`). **Esto es intencionado, NO deuda
+  técnica** — el "backend de un solo archivo" es incluso un punto de venta del README.
+  Única excepción desde v3.39.0: `server/logger.js` (`logEvent` + `requestIdMiddleware`),
+  extraído para poder testearlo aislado como el resto de tests de servidor. **No añadir
+  más ficheros a `server/` sin aprobación del autor.** Las
   técnica** — el "backend de un solo archivo" es incluso un punto de venta del README. Las
   revisiones de IA externas (DeepSeek y similares) **sobreponderan** este tema y **reinciden
   ronda tras ronda** en recomendar partir el `index.js` / cambiar la infraestructura, sin
