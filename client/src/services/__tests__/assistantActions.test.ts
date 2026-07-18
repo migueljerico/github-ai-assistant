@@ -1463,7 +1463,8 @@ describe('runSecurityAudit (#52)', () => {
       files: [], totalScanned: 0, truncated: false, allPaths: ['.github/workflows/ci.yml'],
     } as any);
     // package.json existe; package-lock.json NO (404 → se traga).
-    vi.mocked(getFileContents).mockImplementation(async (_t, _o, _r, path) => {
+    vi.mocked(getFileContents).mockImplementation(async (...args: unknown[]) => {
+      const path = args[3] as string;
       if (path === 'package-lock.json') {
         const { GitHubAPIError } = await import('../github');
         throw new GitHubAPIError('Not Found', 404);
@@ -1502,7 +1503,7 @@ describe('runSecurityAudit (#52)', () => {
 
   it('traga 404 sin romper y prosigue con los archivos que sí existen', async () => {
     vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [], totalScanned: 0, truncated: false, allPaths: [] } as any);
-    vi.mocked(getFileContents).mockImplementation(async (_t, _o, _r, path) => {
+    vi.mocked(getFileContents).mockImplementation(async () => {
       const { GitHubAPIError } = await import('../github');
       throw new GitHubAPIError('Not Found', 404);
     });
