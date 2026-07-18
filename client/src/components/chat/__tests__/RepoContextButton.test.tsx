@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import RepoContextButton from '../RepoContextButton';
 
 describe('RepoContextButton (#41)', () => {
-  it('muestra el botón "Opinar sobre repo" cuando no hay contexto', () => {
+  it('muestra el botón "Cargar repo" cuando no hay contexto', () => {
     render(
       <RepoContextButton
         disabled={false}
@@ -12,7 +12,7 @@ describe('RepoContextButton (#41)', () => {
         onClearContext={vi.fn()}
       />,
     );
-    expect(screen.getByRole('button', { name: /Opinar sobre repo/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Cargar repo/ })).toBeInTheDocument();
   });
 
   it('al pulsar el botón se abre el input de repo', () => {
@@ -24,7 +24,7 @@ describe('RepoContextButton (#41)', () => {
         onClearContext={vi.fn()}
       />,
     );
-    fireEvent.click(screen.getByRole('button', { name: /Opinar sobre repo/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Cargar repo/ }));
     expect(screen.getByPlaceholderText(/owner\/repo/)).toBeInTheDocument();
   });
 
@@ -38,7 +38,7 @@ describe('RepoContextButton (#41)', () => {
         onClearContext={vi.fn()}
       />,
     );
-    fireEvent.click(screen.getByRole('button', { name: /Opinar sobre repo/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Cargar repo/ }));
     const input = screen.getByPlaceholderText(/owner\/repo/);
     fireEvent.change(input, { target: { value: '  mi-repo  ' } });
     fireEvent.click(screen.getByRole('button', { name: '✓' }));
@@ -55,7 +55,7 @@ describe('RepoContextButton (#41)', () => {
         onClearContext={vi.fn()}
       />,
     );
-    fireEvent.click(screen.getByRole('button', { name: /Opinar sobre repo/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Cargar repo/ }));
     fireEvent.click(screen.getByRole('button', { name: '✕' }));
     expect(screen.queryByPlaceholderText(/owner\/repo/)).not.toBeInTheDocument();
     expect(onLoad).not.toHaveBeenCalled();

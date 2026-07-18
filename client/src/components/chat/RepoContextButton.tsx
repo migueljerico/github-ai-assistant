@@ -10,7 +10,10 @@ interface RepoContextButtonProps {
 }
 
 /**
- * Disparador para cargar un repositorio como "contexto activo" del chat (#41).
+ * Botón "Cargar repo" (#41, v3.43.0): carga un repositorio como "contexto
+ * activo" del chat SIN opinar (solo inyecta el árbol de archivos + contenido en
+ * la conversación; el LLM no se llama hasta el próximo turno del usuario).
+ * Antes era "💬 Opinar sobre repo" — nombre engañoso, renombrado en v3.43.0.
  * Replica el patrón de DocumentRepoButton. Cuando hay un contexto cargado,
  * muestra un chip con el repo y un botón para descartarlo.
  */
@@ -37,7 +40,7 @@ export default function RepoContextButton({
   if (activeContext) {
     return (
       <span className="repo-context-chip" id="repo-context-chip">
-        💬 {t('chat.contextPrefix')}: <strong>{activeContext}</strong>
+        📂 {t('chat.contextPrefix')}: <strong>{activeContext}</strong>
         <button
           type="button"
           className="repo-context-clear"
@@ -60,7 +63,7 @@ export default function RepoContextButton({
         disabled={disabled}
         type="button"
       >
-        💬 {t('chat.opinionRepo')}
+        {t('chat.opinionRepo')}
       </button>
     );
   }

@@ -343,23 +343,44 @@ const flowReleaseSpecific = useCallback(async (doc: string, path: string): Promi
   }, [token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
 
   // ── Modo Auditoría de Seguridad (#52) — lectura-only, lanza runSecurityAudit ──
-  // Sobre el repo activo si lo hay; si no, el usuario debe indicar uno. Reutiliza
-  // el mismo AbortController del chat para que el botón Detener canule la auditoría.
+  // Sobre el repo activo si lo hay; si no, SecurityAuditButton abre un input
+  // inline y el repo llega aquí vía initialRepo. v3.43.0: si el repo indicado no
+  // es el que ya está en repoContext, lo cargamos primero (aparece el chip
+  // "Contexto" para futuras preguntas) y luego encadenamos la auditoría — un
+  // solo gesto del usuario, sin el "repoNeeded y se cuelga" previo.
+  // Reutiliza el mismo AbortController del chat para que el botón Detener lo cancele.
   const handleSecurityAudit = useCallback(async (initialRepo?: string) => {
     // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto
     if (!token || !user || !provider || !apiKey || !model) return;
     const repoInput = initialRepo ?? repoContext?.repoName ?? '';
     if (!repoInput.trim()) {
+      // Red de seguridad: por la UI ya no se llega aquí (SecurityAuditButton pide
+      // input inline cuando no hay repo activo), pero protegemos llamadas directas.
       addMessage({ role: 'assistant', content: t('chat.repoNeeded') });
       return;
     }
+
+    // Si el repo indicado no coincide con el contexto activo, cargarlo primero.
+    // runLoadRepoContext NO llama al LLM: solo inyecta árbol + contenido en la
+    // conversación y deja el chip "Contexto: X" (Zero-Storage intacto).
+    let ctx = repoContext;
+    if (!ctx || ctx.repoName !== repoInput) {
+      ctx = await runLoadRepoContext(
+        { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+        repoInput,
+        provider ?? undefined,
+      );
+      if (ctx) setRepoContext(ctx);
+    }
+    if (!ctx) return; // runLoadRepoContext ya emitió su mensaje de error
+
     const controller = new AbortController();
     abortRef.current = controller;
     await runSecurityAudit(
       { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
       { provider, apiKey, model, accountId },
       repoInput,
-      { repoContext, signal: controller.signal },
+      { repoContext: ctx, signal: controller.signal },
     );
   }, [token, user, provider, apiKey, model, providerName, t, lang, repoContext, addMessage, updateMessage, addEntry, updateEntry, accountId]);
 

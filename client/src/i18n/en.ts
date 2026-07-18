@@ -34,7 +34,7 @@ export const en = {
   'chat.import': 'Import',
   'chat.exportTitle': 'Download conversation as JSON',
   'chat.importTitle': 'Restore conversation from JSON',
-  'chat.opinionRepo': 'Opine about repo',
+  'chat.opinionRepo': '📂 Load repo',
   'chat.contextPrefix': 'Context',
   'chat.contextClearAria': 'Discard repository context',
   'chat.contextClearTitle': 'Discard context',
@@ -210,7 +210,7 @@ export const en = {
   // ────── PHASE 2: Chat messages ──────
   'chat.threadRefNotFound': '❌ I didn\'t understand the thread reference. Provide an issue/PR as `owner/repo#42`, paste its GitHub URL, or type just the repo to pick from a list.',
   'chat.repoNotFound': '❌ I couldn\'t determine the repository. Provide it as `owner/repo#42` or load a context repo first.',
-  'chat.repoNeeded': '❌ Tell me the repository, e.g. `owner/repo` or just the repo name.',
+  'chat.repoNeeded': '❌ No repository loaded. Tap **📂 Load repo** (below) to add one (e.g. `owner/repo` or just the repo name) and then try again.',
   'chat.generationStopped': '⏹️ Generation stopped.',
   'chat.actionCancelled': '⏸️ Action cancelled.',
   'chat.attachDocHint': 'When you want to **document and publish it**, press the **📄 Document repo** button (below): there you choose the scope and publishing method (commit, Draft PR or Release).',
