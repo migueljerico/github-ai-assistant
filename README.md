@@ -1,6 +1,6 @@
 # 🤖 GitHub AI Assistant
 
-![React](https://img.shields.io/badge/React_18-61DAFB?style=for-the-badge&logo=react&logoColor=black)
+![React](https://img.shields.io/badge/React_19-61DAFB?style=for-the-badge&logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)
 ![Express](https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white)
@@ -16,7 +16,7 @@
 ![Ai&](https://img.shields.io/badge/Ai&-7C4DFF?style=for-the-badge)
 ![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
 ![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
-![Versión](https://img.shields.io/badge/Versión-v3.42.1-blue?style=for-the-badge)
+![Versión](https://img.shields.io/badge/Versión-v3.50.1-blue?style=for-the-badge)
 [![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)](./LICENSE)
 [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
 
@@ -232,7 +232,7 @@ Ver detalle en ./docs/TESTING_CALIDAD.md.
 
 | Tecnología | Uso |
 |---|---|
-| React 18 + TypeScript | Interfaz, estado y componentes |
+| React 19 + TypeScript | Interfaz, estado y componentes |
 | Vite | Bundler y entorno de desarrollo |
 | Express.js | OAuth, proxies a proveedores sin CORS (/api/*) y servidor de producción |
 | GitHub REST API v3 | Operaciones sobre repositorios |

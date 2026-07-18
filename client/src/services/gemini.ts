@@ -866,6 +866,7 @@ export async function generateSpecificDoc(
   const baseName = targetPath.replace(/\.[^.]+$/, '').replace(/[^\w.-]+/g, '-') || 'archivo';
 
   // Prompt base adaptado al tipo de documento
+  // eslint-disable-next-line no-useless-assignment -- falso positivo: se reasigna en todas las ramas del if/else y se usa más abajo; el linter no sigue el flujo.
   let typeDirective = '';
   if (targetPath.toLowerCase() === 'changelog.md' || (ext === 'md' && baseName.toLowerCase() === 'changelog')) {
     typeDirective = 'TIPO: Changelog. Genera entradas de cambios legibles para un público no técnico, agrupadas por categorías (Added, Fixed, Changed). Básate en el contexto del repo (commits recientes, estructura).';

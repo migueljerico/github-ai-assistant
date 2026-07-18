@@ -763,8 +763,10 @@ const spaLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Catch-all: serve index.html for SPA routing
-app.get('*', spaLimiter, (req, res) => {
+// Catch-all: serve index.html for SPA routing.
+// Express 5 (path-to-regexp v8) exige nombre para el wildcard: el '*' suelto
+// lanza TypeError: Missing parameter name al arrancar. Ver CLAUDE.md §5.
+app.get('/{*splat}', spaLimiter, (req, res) => {
   if (req.path.startsWith('/api/') || req.path.startsWith('/auth/')) {
     return res.status(404).json({ error: 'Not found' });
   }
