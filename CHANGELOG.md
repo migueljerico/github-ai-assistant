@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.42.1] — 2026-07-18
+
+### Fixed
+- **CI lint roto en v3.42.0** (4 errores `@typescript-eslint/no-unused-vars` en
+  `assistantActions.test.ts`): los mocks de `getFileContents` declaraban
+  parámetros sin uso (`_t`, `_o`, `_r`, `path`). El config de ESLint del repo no
+  define `argsIgnorePattern`, así que el prefijo `_` no exime la regla. Cambiado
+  a `(...args: unknown[]) => args[3]` (camino feliz) y a `async () =>` (test de
+  404, sin args). Tests **93/93** del fichero siguen pasando; lint del fichero
+  limpio. Las 8 warnings restantes son **preexistentes** (contextos fast-refresh,
+  `App.tsx:121` de otro callback, `setup.ts`) y no se tocaron.
+
+### Notes
+- Sin cambios funcionales. `package.json` y `client/package.json`: 3.42.0 → 3.42.1.
+
 ## [3.42.0] — 2026-07-17
 
 ### Added
