@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.43.0] — 2026-07-18
+
+### Changed
+- **Renombrado "💬 Opinar sobre repo" → "📂 Cargar repo"** (`RepoContextButton`,
+  `es.ts`/`en.ts`). El botón **ya no opinaba**: su handler (`handleLoadRepoContext`
+  → `runLoadRepoContext`) solo carga el contexto (árbol de archivos + contenido)
+  sin llamar al LLM, dejando "✅ Contexto cargado… pregúntame lo que quieras".
+  El nombre "Opinar" engañaba y llevaba a usar 🛡️ esperando carga. Ahora el
+  etiquetado refleja lo que hace.
+
+### Fixed
+- **Bug del botón 🛡️ Auditar cuando no hay repo activo.** Antes, al pulsarlo sin
+  repo cargado, mostraba `chat.repoNeeded` ("Indícame el repositorio…") y **se
+  quedaba colgado sin ofrecer cargar** (`App.tsx:351-355`). Ahora `SecurityAuditButton`
+  abre un input inline `owner/repo` (mismo patrón que `RepoContextButton`/`ChangelogButton`),
+  y `handleSecurityAudit` **enciadena carga + auditoría**: si el repo indicado no
+  es el activo, carga el contexto primero (aparece el chip "Contexto" para futuras
+  preguntas) y luego lanza `runSecurityAudit` sobre ese repo — un solo gesto del
+  usuario. Si ya hay repo activo, audita directo (sin recargar).
+- **Mensaje `chat.repoNeeded` mejorado** como red de seguridad (es/en): ahora
+  apunta al botón **📂 Cargar repo** en vez del críptico "Indícame el repositorio".
+  Por la UI ya no se alcanza (el botón pide input inline), pero protege llamadas
+  directas sin args.
+
+### Notes
+- **Zero-Storage intacto**: ni `runLoadRepoContext` ni `runSecurityAudit` persisten
+  nada; el contexto vive solo en `useState<RepoContext>` de `App.tsx`.
+- **`modeOverride` sin tocar**: la carga no llama al LLM; el sesgo a chat cuando
+  hay repo ocurre automáticamente en el siguiente `runSend`.
+- **`runSecurityAudit` runner sin cambios** (ni su prompt `security-audit.md`, ni
+  `resolveSensitivePaths`).
+- **Changelog/CodeHealth fuera de scope**: confirmado que sus botones ya piden
+  input propio vía formulario inline, no sufrían el bug.
+- Tests cliente: **583** (+4 nuevos en `SecurityAuditButton.test.tsx`). Tests
+  servidor: 24. Build: 682 módulos. Lint: 0 errores, 8 warnings preexistentes.
+- `package.json` y `client/package.json`: 3.42.1 → 3.43.0.
+
 ## [3.42.1] — 2026-07-18
 
 ### Fixed
