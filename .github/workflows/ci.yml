@@ -73,7 +73,7 @@ jobs:
           fetch-depth: 0   # gitleaks necesita el historial completo
 
       - name: gitleaks (secret scan)
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # GITLEAKS_LICENSE no se configura: el modo público/opensource basta
