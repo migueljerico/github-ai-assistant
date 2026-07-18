@@ -23,7 +23,7 @@
     "express-session": "^1.17.3"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2",
+    "concurrently": "^10.0.3",
     "supertest": "^7.0.0",
     "vitest": "^4.1.10"
   },
