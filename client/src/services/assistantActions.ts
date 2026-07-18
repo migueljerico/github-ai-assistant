@@ -21,7 +21,9 @@ import { languageDistribution, countTechnicalDebt, commitsByWeek, type LanguageS
 import { writeDocFiles, createDocsDraftPr, publishFileDoc, uploadFilesToRepo } from './docPublisher';
 import { summarizeThread, parseThreadInput, listOpenThreads, formatThreadList } from './threadSummary';
 import { generateChangelog } from './changelogGenerator';
-import { executeAction, executeActionMultiRepo } from './actionExecutor';
+import { executeAction, executeActionMultiRepo, parseRepoTarget } from './actionExecutor';
+// #53 (v3.50.0): sugerencia de commit semántico antes de confirmar.
+import { suggestCommitMessage } from './commitSuggester';
 import { createGitHubRelease, suggestNextVersion } from '../utils/releaseGenerator';
 import { uploadReleaseAsset, getMimeType } from '../utils/releaseAssets';
 import { resolveMode } from '../utils/modeDetection';
@@ -895,7 +897,40 @@ export async function runSend(deps: SendDeps, config: AIProviderConfig, params: 
 
     if (enrichedAction.requiereConfirmacion) {
       const repos = multiRepoEnabled && selectedRepos.length > 0 ? selectedRepos : [];
-      setPendingAction({ action: enrichedAction, targetRepos: repos });
+
+      // #53 (v3.50.0): sugerir un mensaje de commit semántico ANTES de abrir el
+      // modal, para que el usuario vea una propuesta editable. Best-effort: si
+      // falla (sin apiKey/model, red, etc.) el modal abre sin sugerencia y el
+      // usuario escribe la suya. Solo tiene sentido para acciones PUT/DELETE que
+      // tocan archivos; en el resto skip (evita latencia y gasto de token).
+      let commitMessage: string | undefined;
+      const isWriteAction = (enrichedAction.metodo === 'PUT' || enrichedAction.metodo === 'DELETE')
+        && !!enrichedAction.archivo;
+      if (isWriteAction && config.apiKey && config.model) {
+        try {
+          // Resolvemos owner/name del repo destino para el few-shot. En multi-repo
+          // no hay un único repo de referencia → omitimos few-shot (la sugerencia
+          // es genérica pero sigue siendo editable).
+          const parsed = parseRepoTarget(enrichedAction.repo, user);
+          const repoRef = repos.length === 1
+            ? { owner: repos[0].owner.login, name: repos[0].name }
+            : { owner: parsed.owner, name: parsed.repo };
+          commitMessage = await suggestCommitMessage({
+            action: enrichedAction,
+            token,
+            repoOwner: repoRef.owner,
+            repoName: repoRef.name,
+            provider: config.provider,
+            apiKey: config.apiKey,
+            model: config.model,
+            lang: deps.lang,
+          });
+        } catch {
+          // No bloqueamos el flujo: el modal abre con el fallback vacío.
+        }
+      }
+
+      setPendingAction({ action: enrichedAction, targetRepos: repos, commitMessage });
     } else {
       // Solo lectura: ejecutar directamente.
       const histId = addEntry({ status: 'pending', description: enrichedAction.accion, repo: enrichedAction.repo });
@@ -940,11 +975,11 @@ export async function runConfirmAction(deps: ChatDeps, pendingAction: PendingAct
       onProgress: (repo, status, message) => {
         addEntry({ status, description: message, repo });
       },
-    }, t);
+    }, t, pendingAction.commitMessage);
     addMessage({ role: 'assistant', content: t(targetRepos.length !== 1 ? 'history.multiRepoAppliedPlural' : 'history.multiRepoApplied', { count: targetRepos.length }) });
   } else {
     const histId = addEntry({ status: 'pending', description: action.accion, repo: action.repo });
-    const result = await executeAction(token, user, action, undefined, t);
+    const result = await executeAction(token, user, action, undefined, t, pendingAction.commitMessage);
     updateEntry(histId, { status: result.success ? 'completed' : 'error', description: result.message });
     addMessage({
       role: 'assistant',

@@ -61,6 +61,16 @@ vi.mock('../threadSummary', () => ({
 vi.mock('../actionExecutor', () => ({
   executeAction: vi.fn(),
   executeActionMultiRepo: vi.fn(),
+  // #53 (v3.50.0): exportado por actionExecutor; replica el comportamiento real
+  // para que runSend pueda resolver owner/name del repo destino.
+  parseRepoTarget: vi.fn((repoFullName: string | null, user: { login: string }) => {
+    if (!repoFullName) return { owner: user.login, repo: '' };
+    if (repoFullName.includes('/')) {
+      const [owner, repo] = repoFullName.split('/');
+      return { owner, repo };
+    }
+    return { owner: user.login, repo: repoFullName };
+  }),
 }));
 vi.mock('../../utils/modeDetection', () => ({ resolveMode: vi.fn() }));
 vi.mock('../../utils/formatResult', () => ({ formatResultData: vi.fn(() => 'FORMATTED') }));

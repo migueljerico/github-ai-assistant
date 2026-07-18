@@ -56,3 +56,38 @@ jobs:
 
       - name: Run server tests
         run: npm run test:server
+
+  # ─── Seguridad (Hallazgo #2, v3.50.0) ────────────────────────────────────
+  # gitleaks: escaneo de secretos en todo el historial del PR/push.
+  # npm audit: advisories known del registry. Solo HIGH/CRITICAL rompen el CI;
+  # los de devDeps bajos se ignoran con --audit-level=high + || true para no
+  # bloquear el flujo por advisories cosméticos.
+  security:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # gitleaks necesita el historial completo
+
+      - name: gitleaks (secret scan)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GITLEAKS_LICENSE no se configura: el modo público/opensource basta
+          # para escanear pushes. Si se quieren re-gates SARIF en el repo,
+          # añadir GITLEAKS_LICENSE en Settings → Secrets.
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: npm audit (server)
+        run: npm audit --audit-level=high --omit=dev || true
+
+      - name: npm audit (client)
+        run: npm audit --audit-level=high --omit=dev
+        working-directory: client

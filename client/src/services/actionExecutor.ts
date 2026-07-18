@@ -57,7 +57,7 @@ export interface ExecutionCallbacks {
  * @param repoFullName - Repo name from the AI action (may be null, "name", or "owner/name")
  * @param user         - The authenticated GitHub user (provides the default owner)
  */
-function parseRepoTarget(
+export function parseRepoTarget(
   repoFullName: string | null,
   user: { login: string }
 ): { owner: string; repo: string } {
@@ -115,6 +115,10 @@ export async function executeAction(
   action: GeminiAction,
   targetRepo?: GitHubRepo,
   t?: (key: string, params?: Record<string, string | number>) => string,
+  // #53 (v3.50.0): mensaje de commit confirmado por el usuario en ConfirmModal.
+  // Si llega, reemplaza al fallback "chore: update …". Solo relevante para
+  // acciones PUT/DELETE sobre archivos; el resto de métodos lo ignoran.
+  commitMessage?: string,
 ): Promise<ExecutionResult> {
   const repoTarget = targetRepo
     ? { owner: targetRepo.owner.login, repo: targetRepo.name }
@@ -174,7 +178,10 @@ export async function executeAction(
         if (!action.archivo) throw new Error('Se requiere la ruta del archivo para esta operación');
         const path = action.archivo;
         const content = action.contenidoPropuesto || '';
-        const message = (action.payload as { message?: string }).message || `chore: update ${path} via Asistente de IA`;
+        // #53: prioridad al mensaje confirmado por el usuario en el modal.
+        const message = commitMessage
+          || (action.payload as { message?: string }).message
+          || `chore: update ${path} via Asistente de IA`;
 
         // Attempt to get the current SHA — needed for updating existing files.
         // If the file doesn't exist yet, the catch block suppresses the 404 error
@@ -209,7 +216,10 @@ export async function executeAction(
         if (!action.archivo) throw new Error('Se requiere la ruta del archivo para eliminar');
         const path = action.archivo;
         const existing = await getFileContents(token, repoTarget.owner, repoTarget.repo, path);
-        const message = (action.payload as { message?: string }).message || `chore: delete ${path} via Asistente de IA`;
+        // #53: prioridad al mensaje confirmado por el usuario en el modal.
+        const message = commitMessage
+          || (action.payload as { message?: string }).message
+          || `chore: delete ${path} via Asistente de IA`;
         await deleteFile(token, repoTarget.owner, repoTarget.repo, path, existing.sha, message);
         return { success: true, message: t ? t('history.exec.fileDeleted', { path }) : `Archivo ${path} eliminado correctamente` };
       }
@@ -247,12 +257,16 @@ export async function executeActionMultiRepo(
   repos: GitHubRepo[],
   callbacks: ExecutionCallbacks,
   t?: (key: string, params?: Record<string, string | number>) => string,
+  // #53 (v3.50.0): mensaje de commit confirmado por el usuario; se propaga a
+  // cada repo. En multi-repo el MISMO mensaje aplica a todos (es coherente
+  // porque la acción es idéntica en cada uno).
+  commitMessage?: string,
 ): Promise<ExecutionResult[]> {
   const results: ExecutionResult[] = [];
   for (const repo of repos) {
     const processingMsg = t ? t('history.exec.processing', { repo: repo.full_name }) : `Procesando ${repo.full_name}...`;
     callbacks.onProgress?.(repo.full_name, 'pending', processingMsg);
-    const result = await executeAction(token, user, action, repo, t);
+    const result = await executeAction(token, user, action, repo, t, commitMessage);
     callbacks.onProgress?.(
       repo.full_name,
       result.success ? 'completed' : 'error',

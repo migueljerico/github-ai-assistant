@@ -179,4 +179,78 @@ describe('ConfirmModal', () => {
     
     expect(screen.getByText('📖')).toBeInTheDocument();
   });
+
+  // ── #53 (v3.50.0): textarea editable de commit message ──────────────────────
+  // El textarea se localiza por su <label htmlFor="confirm-commit-message">, que
+  // es más estable que el placeholder. Buscamos por el texto del label.
+  const findCommitTextarea = () => screen.queryByLabelText(/mensaje de commit/i);
+
+  it('debería mostrar el textarea de commit message en acciones PUT con archivo', () => {
+    render(<ConfirmModal {...defaultProps} />);
+    expect(findCommitTextarea()).toBeInTheDocument();
+  });
+
+  it('NO debería mostrar el textarea en acciones de lectura (GET)', () => {
+    const readAction: GeminiAction = { ...mockAction, metodo: 'GET', tipo: 'lectura' };
+    render(
+      <ConfirmModal
+        {...defaultProps}
+        pendingAction={{ action: readAction, targetRepos: [] }}
+      />
+    );
+    expect(findCommitTextarea()).not.toBeInTheDocument();
+  });
+
+  it('debería pre-rellenar el textarea con el commitMessage sugerido', () => {
+    render(
+      <ConfirmModal
+        {...defaultProps}
+        pendingAction={{ action: mockAction, targetRepos: [], commitMessage: 'feat: sugerido por IA' }}
+      />
+    );
+    expect(findCommitTextarea()).toHaveValue('feat: sugerido por IA');
+  });
+
+  it('debería propagar el mensaje editado al confirmar', () => {
+    const onConfirm = vi.fn();
+    render(
+      <ConfirmModal
+        {...defaultProps}
+        onConfirm={onConfirm}
+        pendingAction={{ action: mockAction, targetRepos: [], commitMessage: 'feat: inicial' }}
+      />
+    );
+    const textarea = findCommitTextarea() as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: 'docs: editado por el usuario' } });
+    fireEvent.click(screen.getByRole('button', { name: /confirmar y ejecutar/i }));
+    expect(onConfirm).toHaveBeenCalledWith('docs: editado por el usuario');
+  });
+
+  it('debería pasar undefined al confirmar si el campo está vacío', () => {
+    const onConfirm = vi.fn();
+    render(
+      <ConfirmModal
+        {...defaultProps}
+        onConfirm={onConfirm}
+        pendingAction={{ action: mockAction, targetRepos: [] }}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /confirmar y ejecutar/i }));
+    // commitMessage vacío → undefined para que executeAction use su fallback.
+    expect(onConfirm).toHaveBeenCalledWith(undefined);
+  });
+
+  it('debería pasar undefined al confirmar cuando la acción no muestra el campo', () => {
+    const readAction: GeminiAction = { ...mockAction, metodo: 'GET', tipo: 'lectura' };
+    const onConfirm = vi.fn();
+    render(
+      <ConfirmModal
+        {...defaultProps}
+        onConfirm={onConfirm}
+        pendingAction={{ action: readAction, targetRepos: [] }}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /confirmar y ejecutar/i }));
+    expect(onConfirm).toHaveBeenCalledWith(undefined);
+  });
 });

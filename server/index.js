@@ -10,6 +10,9 @@ import { createRequire } from 'node:module';
 // #65 (v3.39.0): logs estructurados (JSON línea) + middleware requestId.
 // Sustituye a los 34 console.log/error de texto plano que había antes.
 import { log, requestIdMiddleware } from './logger.js';
+// #1+#3 (v3.50.0): validación de body (estructura de messages + content-type)
+// en los 6 proxies POST de chat. Ver server/validators.js.
+import { validateChatBody } from './validators.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -165,7 +168,7 @@ const NIM_BASE_URL = 'https://integrate.api.nvidia.com/v1';
 //               terminado con `data: [DONE]` (#38).
     //
     // Groq calls are NOT proxied — they go directly from the browser (no EU block).
-    app.post('/api/gemini', geminiLimiter, async (req, res) => {
+    app.post('/api/gemini', geminiLimiter, validateChatBody, async (req, res) => {
       // 🔥 OPCIÓN D: Extraemos 'mode' opcional del body. #38: 'stream' opcional.
       const { apiKey, model, messages, systemPrompt, mode, stream, maxOutputTokens } = req.body;
 
@@ -345,7 +348,7 @@ async function pipeUpstream(upstream, res) {
   res.end(buf);
 }
 
-app.post('/api/nim', nimLimiter, async (req, res) => {
+app.post('/api/nim', nimLimiter, validateChatBody, async (req, res) => {
   const auth = req.headers.authorization || '';
   if (!auth.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Falta la API key (header Authorization: Bearer nvapi-...)' });
@@ -413,7 +416,7 @@ app.get('/api/nim/models', nimLimiter, async (req, res) => {
 //
 // La API key del usuario viaja en el header Authorization (HTTPS cliente→backend)
 // y se descarta al terminar la petición — nunca se persiste ni loguea.
-app.post('/api/openzen', openzenLimiter, async (req, res) => {
+app.post('/api/openzen', openzenLimiter, validateChatBody, async (req, res) => {
   const auth = req.headers.authorization || '';
   if (!auth.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Falta la API key (header Authorization: Bearer ...)' });
@@ -455,7 +458,7 @@ app.post('/api/openzen', openzenLimiter, async (req, res) => {
 //   "Failed to read the 'headers' property from 'RequestInit':
 //    String contains non ISO-8859-1 code point"
 // Por eso saneamos los headers del upstream antes de reenviarlos al cliente.
-app.post('/api/cloudflare', cloudflareLimiter, async (req, res) => {
+app.post('/api/cloudflare', cloudflareLimiter, validateChatBody, async (req, res) => {
   const auth = req.headers.authorization || '';
   if (!auth.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Falta la API key de Cloudflare (header Authorization: Bearer ...)' });
@@ -522,7 +525,7 @@ const ollamaLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-app.post('/api/ollama', ollamaLimiter, async (req, res) => {
+app.post('/api/ollama', ollamaLimiter, validateChatBody, async (req, res) => {
   const auth = req.headers.authorization || '';
   if (!auth.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Falta la API key de Ollama (header Authorization: Bearer sk-ollama-...)' });
@@ -605,7 +608,7 @@ app.get('/api/ollama/models', ollamaLimiter, async (req, res) => {
 // (No 'Access-Control-Allow-Origin' header). Mismo motivo que NIM/OpenZen/CF/Ollama.
 // La API key del usuario viaja en el header Authorization (HTTPS cliente→backend)
 // y se descarta al terminar la petición — nunca se persiste ni loguea.
-app.post('/api/aiand', aiandLimiter, async (req, res) => {
+app.post('/api/aiand', aiandLimiter, validateChatBody, async (req, res) => {
   const auth = req.headers.authorization || '';
   if (!auth.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Falta la API key (header Authorization: Bearer ...)' });

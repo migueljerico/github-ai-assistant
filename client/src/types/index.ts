@@ -163,6 +163,11 @@ export interface TemplateCategory {
 export interface PendingAction {
   action: GeminiAction;
   targetRepos: GitHubRepo[]; // 1 for single, N for multi-repo
+  // #53 (v3.50.0): mensaje de commit sugerido por el LLM (Conventional Commits).
+  // El usuario puede editarlo en ConfirmModal antes de confirmar. Solo se usa
+  // para acciones de escritura (PUT/DELETE sobre archivos); las de lectura lo
+  // ignoran. Opcional: si no llega, executeAction cae a su fallback habitual.
+  commitMessage?: string;
 }
 
 // ── Document Repo ────────────────────────────────────────────────────────────

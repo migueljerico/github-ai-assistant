@@ -1,0 +1,37 @@
+# Dependabot — version updates automáticos (Hallazgo #2, v3.50.0)
+# Mantiene server (raíz), client y las GitHub Actions actualizadas semanalmente.
+# Los PR se abren en main; el CI existente (lint + tests + audit) valida antes de merge.
+version: 2
+updates:
+  # Server (raíz) — Express, @google/generative-ai, express-rate-limit, etc.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  # Client — React, Vite, Vitest, etc.
+  - package-ecosystem: "npm"
+    directory: "/client"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  # GitHub Actions del propio workflow
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(ci)"
+      include: "scope"

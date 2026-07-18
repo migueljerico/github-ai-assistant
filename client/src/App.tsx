@@ -83,9 +83,16 @@ export default function App() {
   }, []);
 
   // ── Confirm action ─────────────────────────────────────────────────────────
-  const handleConfirm = useCallback(async () => {
+  // #53 (v3.50.0): onConfirm recibe opcionalmente el mensaje de commit editado
+  // por el usuario en el textarea del modal. Lo fusionamos en el PendingAction
+  // antes de ejecutar, para que runConfirmAction lo propague a createOrUpdateFile.
+  const handleConfirm = useCallback(async (editedCommitMessage?: string) => {
     if (!pendingAction || !token || !user) return;
-    const pa = pendingAction;
+    // editedCommitMessage === undefined → el modal no mostró textarea (lectura)
+    // o el usuario dejó el campo vacío. Solo sobreescribimos si hay valor real.
+    const pa = editedCommitMessage
+      ? { ...pendingAction, commitMessage: editedCommitMessage }
+      : pendingAction;
     setPendingAction(null);
     setIsExecuting(true);
     try {
