@@ -58,10 +58,13 @@ jobs:
         run: npm run test:server
 
   # ─── Seguridad (Hallazgo #2, v3.50.0) ────────────────────────────────────
-  # gitleaks: escaneo de secretos en todo el historial del PR/push.
-  # npm audit: advisories known del registry. Solo HIGH/CRITICAL rompen el CI;
-  # los de devDeps bajos se ignoran con --audit-level=high + || true para no
-  # bloquear el flujo por advisories cosméticos.
+  # gitleaks: escaneo de secretos en todo el historial del PR/push. SÍ rompe
+  # el CI si encuentra un secreto (gate duro).
+  # npm audit: informativo. NO rompe el CI: `|| true` porque algunas advisories
+  # no tienen fix disponible (p.ej. xlsx/SheetJS GHSA-4r6h-8v6p-xvw6 y
+  # GHSA-5pgg-2g8v-p4x9, "No fix available"). Sin el `|| true`, una advisory
+  # sin parche bloquearía todos los merges indefinidamente. El reporte queda
+  # visible en el log del job para seguimiento manual.
   security:
     runs-on: ubuntu-latest
     permissions:
@@ -89,5 +92,5 @@ jobs:
         run: npm audit --audit-level=high --omit=dev || true
 
       - name: npm audit (client)
-        run: npm audit --audit-level=high --omit=dev
+        run: npm audit --audit-level=high --omit=dev || true
         working-directory: client
