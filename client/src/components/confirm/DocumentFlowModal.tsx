@@ -145,9 +145,13 @@ const [specificMissing, setSpecificMissing] = useState<{ owner: string; repo: st
 
   // #57 Tanda B fix: al entrar en Paso 4 (publicación, scope archivo), auto-poblar
   // los extras con los archivos no-principales del contexto multi-archivo.
+  // Sincronización de estado con una condición del flujo (step+scope+contexto
+  // del caller): no es derivable en render porque depende del momento exacto
+  // de entrada al paso 4. set-state-in-effect es intencionado aquí.
   useEffect(() => {
     if (step === 4 && scope === 'file' && allAttachedFiles && allAttachedFiles.length > 1) {
       const nonPrimary = allAttachedFiles.slice(1).map(f => f.file).filter((f): f is File => !!f);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- auto-poblar extras al entrar al paso 4 (side-effect de flujo)
       setExtras(nonPrimary);
     }
   }, [step, scope, allAttachedFiles]);
@@ -165,6 +169,7 @@ const [specificMissing, setSpecificMissing] = useState<{ owner: string; repo: st
   // Restaurar estado guardado al montar (solo si no hay initialRepo que sobrescribe)
   useEffect(() => {
     if (!initialRepo && savedState?.scope === 'specific') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- run-once: hidratar estado persistido al montar
       setScope('specific');
       setSpecificRepoInput(savedState.specificRepoInput);
       setSpecificPath(savedState.specificPath);

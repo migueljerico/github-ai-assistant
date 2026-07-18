@@ -137,6 +137,8 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
  * Must be used inside a `<HistoryProvider>`.
  * @throws Error if called outside of HistoryProvider
  */
+// Hook de consumo co-localizado con el Provider (patrón canónico de Context).
+// eslint-disable-next-line react-refresh/only-export-components
 export function useHistory(): HistoryContextValue {
   const ctx = useContext(HistoryContext);
   if (!ctx) throw new Error('useHistory must be used inside HistoryProvider');

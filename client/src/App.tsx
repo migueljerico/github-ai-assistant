@@ -125,7 +125,7 @@ runCancelAction(
       provider ?? undefined,
     );
     if (ctx) setRepoContext(ctx);
-  }, [token, user, provider, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
+  }, [token, user, provider, providerName, model, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
 
   const handleClearRepoContext = useCallback(() => {
     setRepoContext(null);

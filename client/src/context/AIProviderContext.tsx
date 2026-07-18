@@ -71,6 +71,11 @@ export function AIProviderContextProvider({ children }: { children: ReactNode })
   );
 }
 
+// Hook de consumo co-localizado con el Provider (patrón canónico de Context).
+// Fast Refresh avisa porque el archivo exporta algo que no es componente,
+// pero separar el hook a otro fichero rompería imports en toda la app sin
+// ganancia real. Patrón estándar y recomendado en React.
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAIProvider(): AIProviderState {
   const ctx = useContext(AIProviderContext);
   if (!ctx) throw new Error('useAIProvider must be used within AIProviderContextProvider');

@@ -13,6 +13,10 @@ import LanguageSelector from './components/layout/LanguageSelector.tsx';
 import ErrorBoundary from './components/ErrorBoundary.tsx';
 
 // ── Step 1: GitHub Auth Gate ──────────────────────────────────────────────────
+// main.tsx es el entry point del bundler (createRoot + render). Las gates son
+// componentes internos no exportados; Fast Refresh no aplica al punto de
+// montaje, así que only-export-components no aporta aquí.
+// eslint-disable-next-line react-refresh/only-export-components
 function AuthGate() {
   const { isAuthenticated, isLoading, setTokenFromOAuth } = useAuth();
   const { t } = useLanguage();
@@ -69,6 +73,7 @@ function AuthGate() {
 }
 
 // ── Step 2: AI Provider Gate ──────────────────────────────────────────────────
+// eslint-disable-next-line react-refresh/only-export-components -- gate interna del entry point
 function AIProviderGate() {
   const { isConnected } = useAIProvider();
 
@@ -80,6 +85,7 @@ function AIProviderGate() {
 }
 
 // ── Root ──────────────────────────────────────────────────────────────────────
+// eslint-disable-next-line react-refresh/only-export-components -- raíz del árbol de providers
 function Root() {
   return (
     <LanguageProvider>

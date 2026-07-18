@@ -13,8 +13,13 @@ const FOCUSABLE =
 export function useModalDialog<T extends HTMLElement = HTMLDivElement>(onClose: () => void) {
   const ref = useRef<T>(null);
   // Mantener la última `onClose` sin re-suscribir el listener en cada render.
+  // Se actualiza en un effect (tras cada render) en lugar de durante el render:
+  // el listener del keydown se suscribe una sola vez (effect con []) y siempre
+  // lee `onCloseRef.current`, por lo que ve la versión más reciente.
   const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
 
   useEffect(() => {
     const node = ref.current;

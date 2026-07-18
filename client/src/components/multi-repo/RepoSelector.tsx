@@ -16,6 +16,11 @@ export default function RepoSelector({ selectedRepos, onChange }: RepoSelectorPr
 
   useEffect(() => {
     if (!token) return;
+    // Patrón estándar de carga de datos: marcar loading antes del fetch async.
+    // La regla set-state-in-effect señala el setIsLoading(true) síncrono, pero
+    // aquí es intencionado (feedback inmediato al usuario mientras se resuelve
+    // la promesa). No deriva de props/estado, es un side-effect de carga.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsLoading(true);
     listAllRepos(token)
       .then(repos => {

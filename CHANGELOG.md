@@ -5,6 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.50.2] — 2026-07-18
+
+> **Cierre de la deuda de lint heredada de v3.50.1.** Al subir ESLint 9→10 y
+> `eslint-plugin-react-hooks` 5→7 (#77) surgieron 15 warnings de tres reglas
+> nuevas (`set-state-in-effect`, `refs`, `react-refresh/only-export-components`)
+> que en el hotfix se degradaron a `warn` para no bloquear main. Esta versión
+> los resuelve caso por caso: `npm run lint` pasa de 15 warnings a **0**. Las
+> reglas siguen activas en `warn` para detectar futuros casos nuevos. Patch puro
+> de calidad, sin cambios funcionales. Por ZCode (GLM-5.2).
+
+### Fixed
+- **Bug en `App.tsx:128`**: el array de dependencias de `handleLoadRepoContext`
+  listaba `provider` dos veces (copy-paste). `react-hooks/exhaustive-deps` lo
+  marcaba como duplicado. Corregido eliminando la repetición.
+
+### Changed
+- **`InstructionSuggestions.tsx`** — `suggestions` ahora se deriva con
+  `useMemo` (input + templates) en lugar de un effect que hacía `setSuggestions`.
+  Elimina el re-render en cascada y el warning `set-state-in-effect`. El
+  reseteo de `selectedIndex` al cambiar el input se mantiene en un effect
+  mínimo silenciado in situ (selección obsoleta tras filtrar).
+- **`SessionWarningBanner.tsx`** — `visible` se filtra en render contra
+  `dismissed` (ya no hace falta el effect que saneaba `dismissed`); el
+  intervalo de TTL lee `checkTTL` vía *latest-ref* sin invocarlo en el body
+  del effect, patrón estándar de suscripción.
+- **`useModalDialog.ts`** — `onCloseRef.current = onClose` se movió del cuerpo
+  de render a un `useEffect` (la regla `refs` prohíbe escribir refs durante el
+  render). El listener sigue suscrito una sola vez (`[]`) y lee siempre la
+  última versión.
+- **8 silenciamientos in situ justificados** con comentario explicando por qué
+  son patrones legítimos: fetch en mount (`RepoSelector.tsx`), auto-poblar
+  extras al entrar al paso 4 e hidratar estado persistido (`DocumentFlowModal.tsx`),
+  hooks de consumo co-localizados con su Provider (3 contexts — patrón canónico
+  de React Context) y gates internas del entry point (`main.tsx`).
+- **`test/setup.ts`** — borrado un `eslint-disable no-useless-escape` que ya no
+  aplicaba (la versión actual de typescript-eslint no dispara sobre la regex).
+
+### Notas
+- Validación local completa en verde: lint **0 warnings / 0 errores** (antes
+  15 warnings), `tsc --noEmit` limpio, tests cliente **613/613** (53 suites),
+  build `tsc -b && vite build` OK (685 módulos).
+- Las tres reglas (`set-state-in-effect`, `refs`, `react-refresh/only-export-components`)
+  se mantienen en `warn` en `eslint.config.js` para señalizar futuros casos.
+- Sin cambios funcionales ni en la API; solo calidad de código.
+
+Cambio de código por [ZCode](https://z.ai) (GLM-5.2).
+
 ## [3.50.1] — 2026-07-18
 
 > **Hotfix tras fusionar 10 PRs de Dependabot de golpe** (incluidos 4 majors

@@ -23,25 +23,41 @@ export default function InstructionSuggestions({
   onOpenChange,
 }: InstructionSuggestionsProps) {
   const { t } = useLanguage();
-  const [suggestions, setSuggestions] = useState<InstructionTemplate[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Plantillas traducidas al idioma activo (se reconstruyen si cambia el idioma).
   const templates = useMemo(() => buildTemplates(t), [t]);
 
-  // Filter suggestions based on input
+  // Suggestions deriva de inputValue + templates: sin setState, sin effect.
+  // Antes esto vivía en un effect que hacía setSuggestions (set-state-in-effect);
+  // al derivarlo con useMemo eliminamos el warning y el re-render en cascada.
+  const suggestions = useMemo<InstructionTemplate[]>(() => {
+    if (inputValue.trim().length === 0) {
+      return templates.slice(0, 5); // Show first 5 by default
+    }
+    const filtered = filterInstructions(inputValue, templates);
+    return filtered.slice(0, 8); // Limit to 8 suggestions
+  }, [inputValue, templates]);
+
+  // Sincronizar la apertura del popover con el resultado del filtrado. Es un
+  // side-effect sobre una prop callback del padre (no un setState local), así
+  // que no dispara set-state-in-effect.
   useEffect(() => {
     if (inputValue.trim().length === 0) {
-      setSuggestions(templates.slice(0, 5)); // Show first 5 by default
       onOpenChange(true);
     } else {
       const filtered = filterInstructions(inputValue, templates);
-      setSuggestions(filtered.slice(0, 8)); // Limit to 8 suggestions
       onOpenChange(filtered.length > 0);
     }
+  }, [inputValue, templates, onOpenChange]);
+
+  // Reset de la selección al cambiar el input. Legítimo: la selección anterior
+  // ya no aplica a la lista nueva. Silenciamos in situ.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de selección al cambiar el input
     setSelectedIndex(-1);
-  }, [inputValue, onOpenChange, templates]);
+  }, [inputValue]);
 
   // Handle keyboard navigation
   useEffect(() => {

@@ -12,7 +12,7 @@
 // - El aviso de GitHub incluye botón "Reconectar" que lanza el flujo OAuth
 // ────────────────────────────────────────────────────────────────────
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useAIProvider } from '../../context/AIProviderContext';
 
@@ -68,20 +68,26 @@ export default function SessionWarningBanner() {
     });
   }, [isAuthenticated, isConnected, ghConnectedAt, aiConnectedAt]);
 
-  // Limpiar dismissed cuando el aviso desaparece (ej: usuario reconectó)
+  // `dismissed` acumula tipos cerrados por el usuario; se filtra contra los
+  // warnings activos al renderizar, así que los tipos obsoletos (aviso que
+  // desapareció) son ignorados sin necesidad de limpiarlos con un effect.
+  // Antes había un effect set-state-in-effect para sanear dismissed; al
+  // derivar `visible` en render queda sin propósito.
+
+  // Latest-ref de checkTTL para que el interval (suscripción única al montar)
+  // invoque siempre la versión más reciente sin re-suscribirse cuando cambian
+  // las dependencias del callback. La primera llamada y las del timer van por
+  // el ref; el effect solo monta/desmonta el interval (sin setState en su body).
+  const checkTTLRef = useRef(checkTTL);
   useEffect(() => {
-    setDismissed(prev => {
-      const active = new Set(warnings.map(w => w.type));
-      const cleaned = new Set([...prev].filter(t => active.has(t)));
-      return cleaned.size === prev.size ? prev : cleaned;
-    });
-  }, [warnings]);
+    checkTTLRef.current = checkTTL;
+  });
 
   useEffect(() => {
-    checkTTL();
-    const id = setInterval(checkTTL, CHECK_EVERY);
+    checkTTLRef.current();
+    const id = setInterval(() => checkTTLRef.current(), CHECK_EVERY);
     return () => clearInterval(id);
-  }, [checkTTL]);
+  }, []);
 
   const visible = warnings.filter(w => !dismissed.has(w.type));
   if (visible.length === 0) return null;

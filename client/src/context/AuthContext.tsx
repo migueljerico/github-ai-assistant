@@ -167,6 +167,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
  * Must be used inside an `<AuthProvider>`.
  * @throws Error if called outside of AuthProvider
  */
+// Hook de consumo co-localizado con el Provider (patrón canónico de Context).
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
