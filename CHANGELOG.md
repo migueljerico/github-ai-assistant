@@ -5,6 +5,64 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.50.0] — 2026-07-18
+
+> **Hallazgos originales detectados por Gemini 3.5 Flash (OpenRouter) vía
+> dogfooding del Modo Auditoría de Seguridad (#52)** — la propia app auditándose
+> a sí misma. Esta versión cierra esos hallazgos e implementa el feature de
+> producto #53. Salto de minor por ser un conjunto relacionado de mejoras de
+> seguridad + un feature nuevo.
+
+### Added
+- **#53: Sugerencia de commit semántico en ConfirmModal.** Cuando el asistente
+  va a crear/editar/borrar un archivo (PUT/DELETE), el modal de confirmación
+  muestra ahora un **textarea editable** con un mensaje Conventional Commits
+  sugerido por el LLM. La sugerencia usa el historial de commits recientes del
+  repo destino como few-shot de estilo y un prompt dedicado
+  (`client/src/prompts/commit-message.md`). El usuario puede reescribirlo antes
+  de confirmar; el mensaje final viaja al `createOrUpdateFile` de la GitHub API.
+  Best-effort: si el LLM no responde, el campo abre vacío y el usuario escribe
+  lo que quiera. Zero-Storage intacto (la sugerencia vive solo en el modal).
+  Nuevos: `commitSuggester.ts`, `commit-message.md`, `commitMessage?: string`
+  en `PendingAction`. Plumbing en `executeAction`/`executeActionMultiRepo`.
+
+- **Dependabot activo** (`.github/dependabot.yml`): PRs automáticos semanales
+  para server (raíz), client y GitHub Actions. Hallazgo #2.
+
+- **Job `security` en CI** (`.github/workflows/ci.yml`): escaneo de secretos con
+  `gitleaks/gitleaks-action@v2` (sobre el historial completo) + `npm audit`
+  (`--audit-level=high --omit=dev`) en server y client. Hallazgo #2.
+
+### Fixed
+- **Validación de body en los 6 proxies POST de chat** (`/api/gemini`, `/api/nim`,
+  `/api/openzen`, `/api/cloudflare`, `/api/ollama`, `/api/aiand`). Antes solo
+  validaban la presencia de la API key; ahora además validan:
+  (a) `Content-Type: application/json` (415 si no),
+  (b) `messages` es array no vacío, cada item `{role, content}` con `role` en
+  la lista permitida y `content` string, con límites `MAX_MESSAGES=200` turnos
+  y `MAX_CONTENT_BYTES=100KB` por mensaje (400 si falla). Factorizado en
+  `server/validators.js` (`validateChatBody` middleware + `validateMessages`)
+  para mantener `index.js` testeable. **Zero-Storage intacto**: NO se añadió
+  auth de sesión (rompería el modelo proxy); la validación es de CONTENIDO,
+  no de auth. Hallazgos #1+#3. Nota: `express.json({limit:'4mb'})` ya existía
+  globalmente (`index.js:44`); no se duplicó.
+
+### Notes
+- **Crédito**: cambios de código por ZCode (GLM-5.2). Hallazgos originales de
+  los Bloques B/C por **Gemini 3.5 Flash (OpenRouter)**, detectados vía
+  dogfooding del Modo Auditoría de Seguridad (#52) que la propia app implementa.
+- **Scope recortado con criterio**: el hallazgo "falta `express.json({limit})`"
+  de Gemini resultó INEXACTO tras verificación (ya existía). Se aplicó lo que
+  FALTABA (content-type + estructura), no lo que ya había.
+- **docPublisher fuera de scope**: sus commit messages literales
+  (`docs: generate README — ${signature}`) viven en otro flujo
+  (`DocumentFlowModal`), no en `ConfirmModal`. #53 se centra en el flujo de
+  acciones del asistente; docPublisher queda para una iteración futura.
+- Tests servidor: **44** (+20 nuevos de `validators.test.js`). Tests cliente:
+  **613** (+30: 24 de `commitSuggester` + 6 de `ConfirmModal`). Lint: 0 errores,
+  8 warnings preexistentes. Build: 684 módulos.
+- `package.json` y `client/package.json`: 3.43.0 → 3.50.0.
+
 ## [3.43.0] — 2026-07-18
 
 ### Changed
