@@ -84,6 +84,7 @@ Ordenado por versión ascendente. Las fases de un mismo issue (`#24`, `#28`, `#5
 | 64 | **Fix Ai& (v3.38.1):** CORS en prod + catálogo. (1) `api.aiand.com` no envía CORS → `Failed to fetch`; movido a proxy backend (`aiandLimiter` + `POST /api/aiand` + `GET /api/aiand/models`, patrón idéntico a NIM/OpenZen/CF/Ollama). (2) Catálogo mostraba 5 modelos (fallback `AIAND_FALLBACK` con 4 modelos no validados) → reducido a solo `qwen/qwen3.6-27b` + filtro free-only en `fetchModels`. No cambia `transport`, `defaultModel` ni `maxOutputTokens: 8192` | server/index.js, client/src/services/providers.ts, client/src/services/__tests__/providers.test.ts, CHANGELOG.md, METODOLOGIA_IA.md | v3.38.1 |
 | 65 | **Deuda de lint de v3.50.1 resuelta** — Los 15 warnings heredados de subir ESLint 9→10 + react-hooks 5→7 (#77) se resuelven caso por caso: `npm run lint` 15→0 warnings. Bug real corregido (`App.tsx:128` `provider` duplicado en deps), 5 refactors (derived state con `useMemo` en `InstructionSuggestions`, `SessionWarningBanner` con `visible` filtrado en render + intervalo vía latest-ref, `useModalDialog` con ref en `useEffect`), 8 silenciamientos in situ justificados (fetch en mount, hooks co-localizados con Provider, gates del entry point) y 1 `eslint-disable` inútil borrado. Las 3 reglas siguen en `warn` en `eslint.config.js`. | App.tsx, components/{chat/InstructionSuggestions,layout/SessionWarningBanner,multi-repo/RepoSelector,confirm/DocumentFlowModal}.tsx, hooks/useModalDialog.ts, context/{AIProvider,Auth,History}Context.tsx, main.tsx, test/setup.ts | v3.50.2 |
 | 26 | **Cobertura de los componentes tocados en v3.50.2 sin suite propia.** 34 tests nuevos en 3 suites que blindan los refactors de v3.50.2: `HistoryContext` (9 tests — add/update/clear/export + guard), `RepoSelector` (11 tests — fetch en mount, filtro, toggle/toggleAll con estado controlado, error de red, pluralización), `InstructionSuggestions` componente (14 tests — navegación por teclado cíclica, renderizado condicional, reset de selección). `main.tsx` y `App.tsx` se dejan fuera (el propio #26 los marca "bajo valor, opcional"). | client/src/context/__tests__/HistoryContext.test.tsx, client/src/components/multi-repo/__tests__/RepoSelector.test.tsx, client/src/components/chat/__tests__/InstructionSuggestions.test.tsx | v3.50.3 |
+| 53 | **Sugerir mensaje de commit semántico** — Reformulación final: como la app opera vía GitHub API sin working tree local, "analizar el diff pendiente" no aplica. En su lugar, `commitSuggester.ts` propone el mensaje **antes de abrir el `ConfirmModal`** para acciones PUT/DELETE sobre archivos, usando los 10 commits recientes del repo destino como few-shot de estilo y el prompt dedicado `prompts/commit-message.md` (Conventional Commits). Best-effort con fallback determinista (`feat:`/`docs:`/`chore:` según tipo de acción) si no hay apiKey/model o falla la red; nunca bloquea el flujo. Zero-Storage intacto (la sugerencia vive solo en el textarea del modal). 24 tests. ⚠️ **Implementado de hecho en v3.50.0 pero sin documentar entonces en el roadmap;** este cierre editorial llega en v3.50.3. | client/src/services/commitSuggester.ts, client/src/services/assistantActions.ts:901-933, client/src/prompts/commit-message.md, client/src/services/__tests__/commitSuggester.test.ts | v3.50.0 (docs: v3.50.3) |
 
 ---
 
@@ -200,17 +201,16 @@ GitHub. Por eso sube de esfuerzo y complejidad.
 
 ---
 
-#### #53 — Sugerir mensaje de commit semántico (a validar encaje)
-**Esfuerzo:** 2–3h
-**Origen:** sugerencia de **Gemma 4 31B** (OpenRouter), **reformulada**, **dogfooding**.
+#### #53 — ~~Sugerir mensaje de commit semántico~~ ✅ RESUELTO en v3.50.0 (docs: v3.50.3)
 
-**Problema actual:** el usuario no técnico no siempre escribe buenos mensajes de commit (Conventional Commits), lo que luego afecta al changelog automático (#34).
-
-**Caveat de encaje:** la app **no tiene working tree/staging local** (opera la GitHub API, no es un cliente git con "cambios pendientes"), así que la idea original de "analizar el diff pendiente" no aplica tal cual.
-
-**Solución propuesta (reformulada):** sugerir el mensaje **en el momento de subir/crear un archivo** (proponer un `feat:`/`docs:`… en el `ConfirmModal` a partir de la acción y el contenido), o a partir de **commits recientes** (reutiliza `compareCommits` de #34). **Pendiente de validar** que aporte valor real dado el modelo de la app.
-
-**Beneficio:** mantener el repo limpio y un historial que alimente bien el changelog.
+> ✅ **Implementado en v3.50.0** (sin documentar entonces en el roadmap; cierre
+> editorial en v3.50.3). Reformulación final: la app opera vía GitHub API sin
+> working tree local, así que "analizar el diff pendiente" no aplica. En su
+> lugar, `commitSuggester.ts` propone el mensaje **antes de abrir el
+> `ConfirmModal`** para acciones PUT/DELETE sobre archivos, usando los commits
+> recientes del repo como few-shot y un prompt dedicado. Best-effort con
+> fallback determinista; nunca bloquea el flujo. Zero-Storage intacto. 24 tests.
+> Ver la fila correspondiente en la tabla ✅ de arriba.
 
 ---
 
@@ -227,20 +227,31 @@ GitHub. Por eso sube de esfuerzo y complejidad.
 |---|---|---|
 | 🔴 Alta | #1, #2, #13, #14, #15, #27, #28, #45, #62, #63 | #26 (en progreso, continuo) |
 | 🟡 Media | #12, #17, #18, #19, #20, #21, #22, #32, #34, #37, #38, #39, #40, #41, #42, #44, #46, #48, #49, #50, #51, #55, #56, #57, #59, #60, #61, #64 | — |
-| 🟢 Baja | #23, #24, #25, #52 | #53, #58 (extensiones) |
+| 🟢 Baja | #23, #24, #25, #52, #53 | #58 (extensiones) |
 | 🗑️ Descartados | — | #33, #35 (descartados en v3.22.3), #36 (descartado en v3.41.0) |
 
-> **Cómputo:** 47 ítems resueltos + 3 pendientes + 3 descartados = 53 referencias (algunos issues como `#28`, `#57`, `#58` generan varias filas por sus fases). Los pendientes reales accionables son: **#26** (continuo), **#53**, **#58-ext**. **#25 cerrado completo en v3.41.0** (logs v3.39.0 + healthcheck v3.40.0 + deploy.sh v3.41.0). **#52 resuelto en v3.42.0** (Modo Auditoría de Seguridad: botón 🛡️ + plantilla + `runSecurityAudit` + prompt dedicado, lectura-only). **#36 descartado en v3.41.0** (rompe zero-storage, costo alto, beneficio marginal en single-user).
+> **Cómputo:** 48 ítems resueltos + 2 pendientes + 3 descartados = 53 referencias (algunos issues como `#28`, `#57`, `#58` generan varias filas por sus fases). Los pendientes reales accionables son: **#26** (continuo, cobertura) y **#58-ext** (extensiones de publicación, fuera de alcance inmediato). **#53 resuelto en v3.50.0** (sugerencia de commit semántico vía `commitSuggester.ts` + few-shot con commits recientes + fallback determinista; documentado en el roadmap en v3.50.3). **#25 cerrado completo en v3.41.0** (logs v3.39.0 + healthcheck v3.40.0 + deploy.sh v3.41.0). **#52 resuelto en v3.42.0** (Modo Auditoría de Seguridad: botón 🛡️ + plantilla + `runSecurityAudit` + prompt dedicado, lectura-only). **#36 descartado en v3.41.0** (rompe zero-storage, costo alto, beneficio marginal en single-user).
 
 > **#28** cubierto en su norte por las Fases 1 (v3.0.0, adjuntar como contexto) y 2 (v3.1.0, documentar→publicar). Más formatos: Fase 3a (v3.2.0, Excel/CSV), Fase 3b MVP (v3.3.0, Power BI .pbix/.pbit) y Fase 3b-bis (v3.4.0, Power Query M del `DataMashup`). Única limitación restante: en un `.pbix` moderno el M va en el modelo binario (no legible) → exporta `.pbit`. Word `.docx` (v3.11.0): texto de `word/document.xml`. Imágenes/visión: descartada.
 
 ---
 
-## 🎯 Próximo enfoque (post-v3.38.1)
+## 🎯 Próximo enfoque (post-v3.50.3)
 
-1. **(🟢 Baja, ~1h)** Reconciliar las listas de proveedores en `docs/COMPARATIVA_COPILOT.md` y `docs/ARQUITECTURA.md` — **hecho en la tanda de documentación v3.38.1** (ver commit `docs(v3.38.1)`). Cerrar este punto como ✅ al confirmar.
-2. **(🟢 Baja, ~1h)** Revisar si queda algo por documentar de la mitigación `xlsx` (#62) — ya cubierta en `docs/SEGURIDAD.md` y README.
-3. **(🟡 Media, propuesta para mañana)** Ver *Propuesta de mejora* en el handoff de cierre de sesión.
+Con #53 cerrado (docs), el roadmap queda con dos únicos pendientes accionables:
+
+1. **#26 — Cobertura de tests (🔴 Alta, continuo).** Tras v3.50.3 el proyecto
+   suma **691 tests** (cliente 647 en 56 suites + servidor 44 en 5). Próximos
+   módulos poco cubiertos: `DiffViewer`, edge cases de servicios existentes, y
+   configurar un **umbral mínimo de cobertura en CI** (fail si < 70%). `App.tsx`
+   y `main.tsx` se dejan fuera (bajo valor, opcional).
+2. **#58 — Extensiones de publicación flexible (🟢 Baja, fuera de alcance
+   inmediato).** Bulk de varios archivos, edición incremental con diff contra
+   doc existente, y modo "revisión de doc existente" (la IA sugiere, el usuario
+   confirma uno a uno).
+
+Fuera de roadmap: vigilar si aparece parche para la vuln `xlsx` (GHSA-4r6h-8v6p-xvw6
++ GHSA-5pgg-2g8v-p4x9, *No fix available*, mitigada en v3.36.1).
 
 ---
 
