@@ -5,6 +5,79 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.50.6] — 2026-07-19
+
+> **Edge cases de servicios para preparar el gate de cobertura de CI (#26).**
+> Antes de activar el umbral mínimo de cobertura (v3.51.0, que cierra #26),
+> esta versión amplía los tests de los servicios con menor ratio para
+> garantizar que el baseline pasa con margen en las cuatro métricas. El foco
+> ha sido `branches` (la más difícil de subir), que estaba en 70.75% — justo
+> en el límite del futuro umbral. Esta versión añade **81 tests** y sube
+> `branches` a 74.88% (+4.13pp), `lines` a 90.16% y `functions` a 83.09%.
+> Sin cambios funcionales. Por ZCode (GLM-5.2).
+
+### Added
+- **`github.test.ts`** (+34 tests, 38→72) — cubre las ramas de error de
+  `ghFetch` que faltaban: **401** (token expirado), **403 como secondary
+  rate limit** (con y sin headers de reset — documentando que el mensaje
+  enriquecido "Rate limit" hace que `withTransientRetry` lo reintere por
+  el patrón de `retry.ts`), **502 sostenido tras 2 reintentos**, **fallo
+  de red puro** (`fetch` rejection) con y sin recuperación, **payload JSON
+  malformado** en respuesta 200, y mensaje fallback cuando el body no trae
+  `message`. Más los wrappers de GitHub que no tenían test directo:
+  `listIssues`, `createIssue`, `updateIssueState`, `commentOnIssue`,
+  `listPullRequests`, `createPullRequest`, `mergePullRequest`,
+  `listBranches`, `createBranch`, `deleteBranch`, `listWorkflows`,
+  `listWorkflowRuns` (con y sin `status`), `triggerWorkflowRun`,
+  `listAllRepos` (paginación), `listUserRepos`, `getCommit` (con y sin
+  `files`). Y ramas de `fetchRepoTreeRecursive`: `truncated:true` del API,
+  exclusión de binarios y archivos > 50 KB de `allPaths`, tolerancia a
+  `getFileContents` que falla en un batch (`Promise.allSettled`), y cap
+  de 120 archivos. Cambio accesorio: el `beforeEach` pasa de
+  `clearAllMocks` a `mockReset` en el mock de `fetch` para vaciar también
+  la cola de `mockResolvedValueOnce` entre tests (evita que un test
+  consuma un mock residual del anterior).
+- **`actionExecutor.test.ts`** (+25 tests, 9→34) — cubre los tres
+  ejecutores específicos que no tenían suite: `executeIssueAction`
+  (comentar / cerrar / reabrir / endpoint sin número / acción no
+  reconocida), `executePRAction` (merge con método explícito / default
+  `merge` / sin número / acción no reconocida) y `executeWorkflowAction`
+  (rerun / sin ID de run / acción no reconocida). Más `parseRepoTarget`
+  (3 formatos), ramas de error de `executeAction` (PUT/DELETE sin
+  `archivo`, método HTTP no soportado, GET/POST genéricos vía `ghFetch`,
+  GET `/contents/` con contenido vacío), PUT con SHA existente (rama
+  "actualizado"), override de commitMessage del usuario (#53), y
+  multi-repo con fallo parcial de un repo (reporta `error` vía
+  `onProgress` sin parar el bucle).
+- **`changelogGenerator.test.ts`** (+8 tests, 6→14) — edge cases de
+  `generateChangelog`: sin releases ni commits recientes (mensaje
+  específico), propagación de error de GitHub y de la IA, y mezcla de
+  merge commits con commits válidos. Más `classifyCommits`: array vacío,
+  breaking change (`!:`), scope con tipo, y prefijo no reconocido.
+- **`AuthContext.test.tsx`** (+5 tests, 7→12) — fallo de red (`fetch`
+  rejection, no solo `{ok:false}`), `connectedAt` tras login, limpieza
+  del `error` previo en un login válido tras uno fallido, logout no-op
+  estando desautenticado, y `useAuth` lanza si se consume fuera del
+  Provider.
+- **`assistantActions.test.ts`** (+5 tests, 97→102) — cubre las dos
+  funciones exportadas que no tenían tests: `runGenerateSpecificDoc`
+  (camino feliz, archivo inexistente → doc nueva, `existingContent`
+  explícito, conversación como contexto, error de IA → null) y
+  `runPublishSpecificDoc` (commit / draftpr / release / propagación de
+  error).
+
+### Patrones documentados
+- **`vi.mocked(fetch).mockReset()` vs `clearAllMocks`** — `clearAllMocks`
+  solo vacía `mock.calls`/`mock.results`; `mockReset` además vacía la cola
+  de `mockResolvedValueOnce` y elimina la implementación. En suites con
+  muchos `mockResolvedValueOnce` encadenados (como `github.test.ts`), el
+  `mockReset` evita fugas de mocks entre tests.
+- **Los 403 de GitHub se tratan como rate limit** — `isRateLimitError()`
+  cubre 429 y 403 (GitHub usa 403 para el secondary rate limit). Como el
+  mensaje enriquecido contiene "Rate limit", `withTransientRetry` lo
+  considera transitorio por patrón y reintenta 2 veces antes de propagar.
+  Esto se documenta ahora en tests en vez de ser conocimiento implícito.
+
 ## [3.50.5] — 2026-07-19
 
 > **Fix de build de la suite `DiffViewer` (v3.50.4).**

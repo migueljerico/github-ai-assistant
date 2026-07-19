@@ -165,4 +165,71 @@ describe('AuthContext - Zero-Storage Architecture', () => {
     expect(result.current.token).toBeNull();
     expect(result.current.error).toBeTruthy();
   });
+
+  // ── Edge cases para #26 (v3.50.6) ──────────────────────────────────────────
+
+  it('maneja un fallo de red (fetch rejection) sin romper el estado', async () => {
+    ((globalThis as any).fetch as any).mockRejectedValueOnce(new TypeError('Failed to fetch'));
+
+    const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
+
+    await act(async () => {
+      await result.current.loginWithPat('some-token');
+    });
+
+    expect(result.current.isAuthenticated).toBe(false);
+    expect(result.current.token).toBeNull();
+    expect(result.current.error).toBe('Failed to fetch');
+    expect(result.current.isLoading).toBe(false);
+  });
+
+  it('establece connectedAt tras un login válido', async () => {
+    ((globalThis as any).fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ login: 'u', id: 1, avatar_url: '', name: '' }),
+    });
+
+    const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
+
+    await act(async () => {
+      await result.current.loginWithPat('tok');
+    });
+
+    expect(result.current.connectedAt).not.toBeNull();
+    expect(result.current.isLoading).toBe(false);
+  });
+
+  it('loginWithPat con error y luego login válido limpia el error previo', async () => {
+    ((globalThis as any).fetch as any)
+      .mockResolvedValueOnce({ ok: false, status: 401 })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ login: 'u', id: 1, avatar_url: '', name: '' }) });
+
+    const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
+
+    await act(async () => { await result.current.loginWithPat('bad'); });
+    expect(result.current.error).toBeTruthy();
+
+    await act(async () => { await result.current.loginWithPat('good'); });
+    expect(result.current.isAuthenticated).toBe(true);
+    expect(result.current.error).toBeNull();
+  });
+
+  it('logout estando ya desautenticado es no-op seguro para el estado', () => {
+    const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
+
+    act(() => { result.current.logout(); });
+
+    expect(result.current.isAuthenticated).toBe(false);
+    // Sigue redirigiendo a GitHub logout (limpieza de sesión del IdP).
+    expect(window.location.href).toContain('github.com/logout');
+  });
+});
+
+describe('useAuth — fuera de Provider (#26)', () => {
+  it('lanza si se consume sin AuthProvider', () => {
+    // Silenciamos el error esperado para que no contamine la salida del test.
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect(() => renderHook(() => useAuth())).toThrow(/must be used inside AuthProvider/);
+    spy.mockRestore();
+  });
 });

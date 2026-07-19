@@ -87,7 +87,7 @@ vi.mock('../../utils/powerbiReader', () => ({ readPowerBI: vi.fn() }));
 vi.mock('../../utils/docxReader', () => ({ readDocx: vi.fn() }));
 vi.mock('../changelogGenerator', () => ({ generateChangelog: vi.fn() }));
 
-import { generateRepoDocs, generateFileDoc, buildRepoContextSummary, callAI, parseGeminiAction, chatPromptWithContext } from '../gemini';
+import { generateRepoDocs, generateFileDoc, generateSpecificDoc, buildRepoContextSummary, callAI, parseGeminiAction, chatPromptWithContext } from '../gemini';
 import { assertSupportedFile, readFileContent } from '../../utils/pdfReader';
 import { readSpreadsheet } from '../../utils/spreadsheetReader';
 import { readPowerBI } from '../../utils/powerbiReader';
@@ -122,6 +122,8 @@ import {
   runCreateRepoRelease,
   runSyncRepoStatus,
   runSecurityAudit,
+  runGenerateSpecificDoc,
+  runPublishSpecificDoc,
   formatConversation,
   buildSignature,
 } from '../assistantActions';
@@ -1526,5 +1528,134 @@ describe('runSecurityAudit (#52)', () => {
     // responde (el prompt ya indica cómo actuar sin archivos sensibles).
     expect(callAI).toHaveBeenCalledTimes(1);
     expect(deps.updateMessage).toHaveBeenLastCalledWith(expect.any(String), expect.objectContaining({ content: 'SIN ARCHIVOS SENSIBLES', isLoading: false }));
+  });
+});
+
+// ── runGenerateSpecificDoc / runPublishSpecificDoc (#58 Fase 2, #26 v3.50.6) ─
+// Estas dos funciones estaban exportadas pero sin suite propia.
+
+describe('runGenerateSpecificDoc', () => {
+  it('camino feliz: genera la doc y la devuelve', async () => {
+    vi.mocked(getFileContents).mockResolvedValue({ content: 'b64', sha: 's1' } as any);
+    vi.mocked(generateSpecificDoc).mockResolvedValue('# Doc generada');
+
+    const deps = makeDeps();
+    const doc = await runGenerateSpecificDoc(deps, CONFIG, 'owner/repo', 'src/a.ts');
+
+    expect(doc).toBe('# Doc generada');
+    expect(generateSpecificDoc).toHaveBeenCalledWith('src/a.ts', 'decoded(b64)', undefined, CONFIG, 'es');
+    expect(deps.updateMessage).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ isLoading: false, content: expect.stringContaining('🔄 Se actualizará') })
+    );
+    expect(deps.setIsChatLoading).toHaveBeenLastCalledWith(false);
+  });
+
+  it('si el archivo no existe (getFileContents 404), genera doc nueva desde cero', async () => {
+    vi.mocked(getFileContents).mockRejectedValue(new Error('404'));
+    vi.mocked(generateSpecificDoc).mockResolvedValue('# Nueva doc');
+
+    const deps = makeDeps();
+    const doc = await runGenerateSpecificDoc(deps, CONFIG, 'owner/repo', 'nuevo.md');
+
+    expect(doc).toBe('# Nueva doc');
+    expect(generateSpecificDoc).toHaveBeenCalledWith('nuevo.md', undefined, undefined, CONFIG, 'es');
+    expect(deps.updateMessage).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ content: expect.stringContaining('✨ Es un documento nuevo') })
+    );
+  });
+
+  it('usa existingContent explícito en vez de hacer fetch (#58 Fase 3)', async () => {
+    vi.mocked(generateSpecificDoc).mockResolvedValue('# Actualizada');
+
+    const deps = makeDeps();
+    await runGenerateSpecificDoc(deps, CONFIG, 'owner/repo', 'a.ts', 'CONTENIDO_PREVIO');
+
+    expect(getFileContents).not.toHaveBeenCalled();
+    expect(generateSpecificDoc).toHaveBeenCalledWith('a.ts', 'CONTENIDO_PREVIO', undefined, CONFIG, 'es');
+  });
+
+  it('incorpora la conversación como contexto cuando se pasa', async () => {
+    vi.mocked(generateSpecificDoc).mockResolvedValue('# Doc');
+
+    const deps = makeDeps();
+    await runGenerateSpecificDoc(deps, CONFIG, 'owner/repo', 'a.ts', undefined, 'pregunta previa del usuario');
+
+    expect(generateSpecificDoc).toHaveBeenCalledWith(
+      'a.ts', undefined, 'Usuario: pregunta previa del usuario', CONFIG, 'es'
+    );
+  });
+
+  it('si la IA falla, devuelve null y marca la entrada como error', async () => {
+    vi.mocked(getFileContents).mockRejectedValue(new Error('404'));
+    vi.mocked(generateSpecificDoc).mockRejectedValue(new Error('IA caída'));
+
+    const deps = makeDeps();
+    const doc = await runGenerateSpecificDoc(deps, CONFIG, 'owner/repo', 'a.ts');
+
+    expect(doc).toBeNull();
+    expect(deps.updateMessage).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ content: expect.stringContaining('IA caída'), isLoading: false })
+    );
+    expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'error' }));
+    expect(deps.setIsChatLoading).toHaveBeenLastCalledWith(false);
+  });
+});
+
+describe('runPublishSpecificDoc', () => {
+  it('kind=commit → publishFileDoc sin draft y commitea', async () => {
+    vi.mocked(publishFileDoc).mockResolvedValue({ pr: null } as any);
+
+    const deps = makeDeps();
+    await runPublishSpecificDoc(deps, 'owner', 'repo', 'a.ts', '# Doc', 'commit');
+
+    expect(publishFileDoc).toHaveBeenCalledWith('tok', 'owner', 'repo', 'a.ts', '# Doc', expect.objectContaining({ draft: false }));
+    expect(deps.addMessage).toHaveBeenCalledWith(expect.objectContaining({
+      content: expect.stringContaining('commiteado'),
+    }));
+    expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'completed' }));
+  });
+
+  it('kind=draftpr → publishFileDoc con draft:true y abre PR', async () => {
+    vi.mocked(publishFileDoc).mockResolvedValue({ pr: { number: 7, html_url: 'https://gh/pr/7' } } as any);
+
+    const deps = makeDeps();
+    await runPublishSpecificDoc(deps, 'owner', 'repo', 'a.ts', '# Doc', 'draftpr');
+
+    expect(publishFileDoc).toHaveBeenCalledWith('tok', 'owner', 'repo', 'a.ts', '# Doc', expect.objectContaining({ draft: true }));
+    expect(deps.addMessage).toHaveBeenCalledWith(expect.objectContaining({
+      content: expect.stringContaining('Draft PR'),
+    }));
+  });
+
+  it('kind=release → suggestNextVersion + createGitHubRelease', async () => {
+    vi.mocked(suggestNextVersion).mockResolvedValue('v1.2.0');
+    vi.mocked(createGitHubRelease).mockResolvedValue({ url: 'https://gh/release/1' } as any);
+
+    const deps = makeDeps();
+    await runPublishSpecificDoc(deps, 'owner', 'repo', 'a.ts', '# Doc', 'release');
+
+    expect(suggestNextVersion).toHaveBeenCalledWith('tok', 'owner', 'repo');
+    expect(createGitHubRelease).toHaveBeenCalledWith('tok', 'owner', 'repo', expect.objectContaining({
+      version: 'v1.2.0', body: '# Doc',
+    }));
+    expect(deps.addMessage).toHaveBeenCalledWith(expect.objectContaining({
+      content: expect.stringContaining('v1.2.0'),
+    }));
+    expect(publishFileDoc).not.toHaveBeenCalled();
+  });
+
+  it('propaga el error como mensaje de assistant y marca entry error', async () => {
+    vi.mocked(publishFileDoc).mockRejectedValue(new Error('403 forbidden'));
+
+    const deps = makeDeps();
+    await runPublishSpecificDoc(deps, 'owner', 'repo', 'a.ts', '# Doc', 'commit');
+
+    expect(deps.addMessage).toHaveBeenCalledWith(expect.objectContaining({
+      content: expect.stringContaining('Error al publicar a.ts'),
+    }));
+    expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'error' }));
   });
 });

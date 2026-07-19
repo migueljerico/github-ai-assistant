@@ -88,4 +88,70 @@ describe('generateChangelog (#34)', () => {
     const md = await generateChangelog('tok', 'o', 'r', CONFIG);
     expect(md).toBe('## Notas\n- x');
   });
+
+  // ── Edge cases para #26 (v3.50.6) ──────────────────────────────────────────
+
+  it('sin releases y sin commits recientes lanza el mensaje específico', async () => {
+    vi.mocked(getLatestReleaseTag).mockResolvedValue(null);
+    vi.mocked(listRecentCommits).mockResolvedValue([]);
+
+    await expect(generateChangelog('tok', 'o', 'r', CONFIG)).rejects.toThrow(
+      /No encontré commits recientes en el repositorio/
+    );
+    expect(callAI).not.toHaveBeenCalled();
+  });
+
+  it('propaga el error de GitHub (getLatestReleaseTag cae)', async () => {
+    vi.mocked(getLatestReleaseTag).mockRejectedValue(new Error('503 server error'));
+
+    await expect(generateChangelog('tok', 'o', 'r', CONFIG)).rejects.toThrow('503 server error');
+    expect(callAI).not.toHaveBeenCalled();
+  });
+
+  it('propaga el error de la IA (callAI rechaza)', async () => {
+    vi.mocked(getLatestReleaseTag).mockResolvedValue(null);
+    vi.mocked(listRecentCommits).mockResolvedValue([mk('feat: x')]);
+    vi.mocked(callAI).mockRejectedValue(new Error('IA caída'));
+
+    await expect(generateChangelog('tok', 'o', 'r', CONFIG)).rejects.toThrow('IA caída');
+  });
+
+  it('descarta commits cuyo body es un merge pero queda al menos un commit válido', async () => {
+    vi.mocked(getLatestReleaseTag).mockResolvedValue(null);
+    vi.mocked(listRecentCommits).mockResolvedValue([
+      mk('Merge branch dev into main'),
+      mk('feat: nueva funcionalidad'),
+    ]);
+    vi.mocked(callAI).mockResolvedValue('notas');
+
+    await generateChangelog('tok', 'o', 'r', CONFIG);
+
+    const userMsg = vi.mocked(callAI).mock.calls[0][0][0].content;
+    expect(userMsg).toContain('nueva funcionalidad');
+  });
+});
+
+describe('classifyCommits — edge cases (#34, #26)', () => {
+  it('array vacío → total 0 y sin grupos', () => {
+    const out = classifyCommits([]);
+    expect(out.total).toBe(0);
+    expect(out.groups).toEqual([]);
+    expect(out.otros).toEqual([]);
+  });
+
+  it('commit con breaking change (!:) sigue clasificándose por el tipo', () => {
+    const out = classifyCommits([{ sha: 's', message: 'feat!: cambia la API' }]);
+    expect(out.groups[0].items).toEqual(['cambia la API']);
+  });
+
+  it('commit con scope (feat(ui): ...) se clasifica por el tipo', () => {
+    const out = classifyCommits([{ sha: 's', message: 'perf(api): más rápido' }]);
+    expect(out.groups[0].title).toBe('⚡ Rendimiento');
+  });
+
+  it('commit con prefijo no reconocido va a otros', () => {
+    const out = classifyCommits([{ sha: 's', message: 'wip: pruebas' }]);
+    expect(out.groups).toEqual([]);
+    expect(out.otros).toEqual(['wip: pruebas']);
+  });
 });
