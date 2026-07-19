@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.51.0] — 2026-07-19
+
+> **Gate de cobertura al 70% en CI — CIERRA #26.**
+> El issue #26 ("Cobertura de tests") queda formalmente cerrado: el job
+> `test` de GitHub Actions ahora **rompe** si cualquiera de las cuatro
+> métricas (lines / functions / branches / statements) baja del 70%.
+> Hasta ahora el paso de coverage del CI estaba enmascarado por un
+> `|| echo "No coverage script found yet"` que hacía no-failable cualquier
+> salida de Vitest, y los umbrales solo existían en Codecov (SaaS, con
+> `target: auto` — sin mínimo absoluto). Esta versión activa el gate en
+> el propio `vitest.config.ts` para que falle rápido, en local y en CI,
+> antes del push. Sin cambios funcionales. Por ZCode (GLM-5.2).
+
+### Added
+- **`client/vitest.config.ts`** — bloque `coverage.thresholds` con las
+  cuatro métricas al 70% (`lines`, `functions`, `branches`, `statements`).
+  Vitest ejecuta `npm run test:coverage` (en local y en CI) y, si alguna
+  métrica no alcanza el umbral, termina con exit code distinto de cero y
+  un mensaje `ERROR: Coverage for X (Y%) does not meet global threshold
+  (70%)` por cada métrica fallida. Verificado: pasa al 70% y falla al
+  95% (prueba negativa durante el desarrollo).
+- **`coverage.exclude`** en `vitest.config.ts` — replica las exclusiones
+  de `codecov.yml` (`src/App.tsx`, `src/main.tsx`,
+  `src/components/dashboard/CodeHealthCharts.tsx`). Son glue/entry points
+  y presentación pura (Recharts en jsdom no renderiza), marcados como
+  "bajo valor, opcional" en el propio #26. Sin el exclude, tirarían el %
+  global por debajo del 70% por diseño, no por regresión.
+
+### Changed
+- **`.github/workflows/ci.yml`** — el paso "Run tests with coverage" pasa
+  de `npm run test:coverage || echo "No coverage script found yet"` a
+  `npm run test:coverage` sin el coletijo. Ahora un fallo de tests **o**
+  de umbral rompe el CI como debe. El script `test:coverage` ya existía
+  en `client/package.json:13` y el provider `@vitest/coverage-v8` ya
+  estaba en deps, así que no hace falta instalar nada nuevo. El upload a
+  Codecov se mantiene (informativo, `fail_ci_if_error: false`).
+
+### Closed
+- **#26 — Cobertura de tests.** El objetivo declarado del issue (umbral
+  mínimo de cobertura en CI) está activo. Baseline actual: lines 90.16%,
+  functions 83.09%, branches 74.88%, statements ~87% — todas con margen
+  ≥ 4pp sobre el umbral. Las métricas de Codecov (`target: auto`,
+  `threshold: 1%`) siguen funcionando como anti-regresión adicional a
+  nivel de patch.
+
 ## [3.50.6] — 2026-07-19
 
 > **Edge cases de servicios para preparar el gate de cobertura de CI (#26).**
