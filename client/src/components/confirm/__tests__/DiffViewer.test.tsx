@@ -22,9 +22,14 @@ vi.mock('diff', async () => {
 
 // Mock por defecto de diff2html: pasa el patch a un marcador determinista
 // para no depender de la salida HTML completa de la librería (que puede
-// cambiar entre versiones y romper los tests).
+// cambiar entre versiones y romper los tests). El parámetro se tipa como
+// `string | DiffFile[]` para coincidir con la firma real de la librería y
+// no romper `tsc -b` (que es más estricto que `tsc --noEmit`); en producción
+// siempre llega un `string` (el patch generado por `Diff.createPatch`).
 vi.mock('diff2html', () => ({
-  html: vi.fn((patch: string) => `<div data-testid="d2h-output">${patch}</div>`),
+  html: vi.fn((patch: string | unknown[]) =>
+    `<div data-testid="d2h-output">${patch}</div>`,
+  ),
 }));
 
 import { createPatch } from 'diff';
@@ -38,10 +43,9 @@ describe('DiffViewer', () => {
   beforeEach(() => {
     createPatchMock.mockClear();
     diff2htmlMock.mockClear();
-    // Restaurar implementación por defecto por si algún test la sobreescribió.
-    diff2htmlMock.mockImplementation((patch: string) =>
-      `<div data-testid="d2h-output">${patch}</div>`,
-    );
+    // diff2htmlMock viene del vi.mock factory con su implementación por
+    // defecto; mockClear() no la resetea, así que basta para aislar tests.
+    // Los tests que necesiten sobrescribirla usan mockImplementationOnce.
   });
 
   // ── Render básico y cabecera ────────────────────────────────────────────────

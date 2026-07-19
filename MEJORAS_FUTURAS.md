@@ -2,7 +2,7 @@
 
 Estado del código, mejoras realizadas y pendientes del proyecto.
 
-**Actualizado a:** v3.50.4 · Julio 2026
+**Actualizado a:** v3.50.5 · Julio 2026
 
 ---
 
@@ -237,11 +237,11 @@ GitHub. Por eso sube de esfuerzo y complejidad.
 
 ---
 
-## 🎯 Próximo enfoque (post-v3.50.4)
+## 🎯 Próximo enfoque (post-v3.50.5)
 
 Con #53 cerrado (docs), el roadmap queda con dos únicos pendientes accionables:
 
-1. **#26 — Cobertura de tests (🔴 Alta, continuo).** Tras v3.50.4 el proyecto
+1. **#26 — Cobertura de tests (🔴 Alta, continuo).** Tras v3.50.5 el proyecto
    suma **709 tests** (cliente 665 en 57 suites + servidor 44 en 5). Con
    `DiffViewer` ya cubierto, quedan: edge cases de servicios existentes, y
    configurar un **umbral mínimo de cobertura en CI** (fail si < 70%). `App.tsx`

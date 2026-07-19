@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.50.5] — 2026-07-19
+
+> **Fix de build de la suite `DiffViewer` (v3.50.4).**
+> La v3.50.4 se publicó con tag + release pero su build de Cloud Build falló:
+> el mock de `diff2html` declaraba el parámetro como `string` mientras la
+> firma real es `string | DiffFile[]`, y `tsc -b` (lo que usa el Dockerfile)
+> es más estricto que el `tsc --noEmit` con el que se validó localmente.
+> Esta versión tipa correctamente el mock (`string | unknown[]` para evitar
+> importar `DiffFile` solo para el test) y simplifica el `beforeEach` (la
+> implementación por defecto ya viene del `vi.mock` factory). Sin cambios
+> funcionales ni en el número de tests (siguen siendo 18, 709 totales).
+>
+> **Lección de proceso documentada:** la validación local de patches que
+> tocan código de test debe usar `npm run build` (que corre `tsc -b`), no
+> `tsc --noEmit` — son comandos con distinto grado de estrictez.
+
 ## [3.50.4] — 2026-07-19
 
 > **Cobertura de `DiffViewer` (#26).**
