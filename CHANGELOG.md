@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.50.3] — 2026-07-19
+
+> **Cobertura de tests de los componentes tocados en v3.50.2 sin suite propia.**
+> La tanda anterior (lint 0 warnings) se validó solo con `tsc` + `build` en 5
+> archivos por no tener tests. Esta versión cierra ese gap con **34 tests
+> nuevos** en 3 suites que cubren la lógica no trivial y, de paso, blindan los
+> refactors de v3.50.2 (el `useMemo` de `InstructionSuggestions`, el patrón de
+> fetch-en-mount de `RepoSelector`, las transiciones de estado de
+> `HistoryContext`). Patch de calidad, sin cambios funcionales. Por ZCode (GLM-5.2).
+
+### Added
+- **`HistoryContext.test.tsx`** (9 tests) — cubre `addEntry` (id único +
+  timestamp + conservación de status/description/repo), `updateEntry` (cambio
+  de status/description + id inexistente no rompe), `clearHistory`, el guard
+  `useHistory must be used inside HistoryProvider`, el caso `repo: null` del
+  formateador de export y el flujo de descarga del log (blob, click, revoke).
+- **`RepoSelector.test.tsx`** (11 tests) — mockea `useAuth` y `listAllRepos`
+  para aislar la UI: fetch al montar con token (sin token no llama), spinner
+  durante la carga, contador total, marca de privado 🔒 / público 📁, filtro
+  case-insensitive por nombre y por descripción, toggle de un checkbox
+  (añade/quita con estado controlado), `toggleAll` (todos↔ninguno) y que
+  respeta el filtro activo, manejo de error de red, banner de selección con
+  pluralización (1 repo / N repos).
+- **`InstructionSuggestions.test.tsx`** (14 tests) — cubre el componente (no el
+  util, que ya se testa): renderizado condicional por `isOpen` y por filtrado
+  vacío, límite de 5/8 sugerencias, click invoca `onSelectTemplate`,
+  navegación por teclado (ArrowDown/ArrowUp cíclicos, Enter con/sin selección,
+  Escape cierra vía `onOpenChange(false)`), reset de selección al cambiar el
+  input, `onMouseEnter` marca la sugerencia, y guard de teclado cuando
+  `isOpen=false`.
+
+### Notas
+- Validación local completa en verde: lint **0/0**, `tsc -b` limpio, tests
+  **691/691** (cliente 647 en 56 suites + servidor 44 en 5 suites; antes
+  659 totales), build OK (685 módulos).
+- Avanza el roadmap **#26** (cobertura continua): +34 tests, suites 58→61.
+- Sin cambios funcionales ni en la API.
+
+Cambio de código por [ZCode](https://z.ai) (GLM-5.2).
+
 ## [3.50.2] — 2026-07-18
 
 > **Cierre de la deuda de lint heredada de v3.50.1.** Al subir ESLint 9→10 y

@@ -2,7 +2,7 @@
 
 Estado del código, mejoras realizadas y pendientes del proyecto.
 
-**Actualizado a:** v3.50.2 · Julio 2026
+**Actualizado a:** v3.50.3 · Julio 2026
 
 ---
 
@@ -83,6 +83,7 @@ Ordenado por versión ascendente. Las fases de un mismo issue (`#24`, `#28`, `#5
 | 61 | Renombrado del nombre visible (ES/EN) — "Asistente de IA para Publicar Repositorios" → "Asistente de IA de GitHub" / "AI Assistant for Publishing Repositories" → "GitHub AI Assistant" (4 claves i18n × idioma, title, description, banner server, cabeceras css/Dockerfile). | client/src/i18n/{es,en}.ts, client/index.html, package.json, server/index.js, client/src/index.css, Dockerfile | v3.38.0 |
 | 64 | **Fix Ai& (v3.38.1):** CORS en prod + catálogo. (1) `api.aiand.com` no envía CORS → `Failed to fetch`; movido a proxy backend (`aiandLimiter` + `POST /api/aiand` + `GET /api/aiand/models`, patrón idéntico a NIM/OpenZen/CF/Ollama). (2) Catálogo mostraba 5 modelos (fallback `AIAND_FALLBACK` con 4 modelos no validados) → reducido a solo `qwen/qwen3.6-27b` + filtro free-only en `fetchModels`. No cambia `transport`, `defaultModel` ni `maxOutputTokens: 8192` | server/index.js, client/src/services/providers.ts, client/src/services/__tests__/providers.test.ts, CHANGELOG.md, METODOLOGIA_IA.md | v3.38.1 |
 | 65 | **Deuda de lint de v3.50.1 resuelta** — Los 15 warnings heredados de subir ESLint 9→10 + react-hooks 5→7 (#77) se resuelven caso por caso: `npm run lint` 15→0 warnings. Bug real corregido (`App.tsx:128` `provider` duplicado en deps), 5 refactors (derived state con `useMemo` en `InstructionSuggestions`, `SessionWarningBanner` con `visible` filtrado en render + intervalo vía latest-ref, `useModalDialog` con ref en `useEffect`), 8 silenciamientos in situ justificados (fetch en mount, hooks co-localizados con Provider, gates del entry point) y 1 `eslint-disable` inútil borrado. Las 3 reglas siguen en `warn` en `eslint.config.js`. | App.tsx, components/{chat/InstructionSuggestions,layout/SessionWarningBanner,multi-repo/RepoSelector,confirm/DocumentFlowModal}.tsx, hooks/useModalDialog.ts, context/{AIProvider,Auth,History}Context.tsx, main.tsx, test/setup.ts | v3.50.2 |
+| 26 | **Cobertura de los componentes tocados en v3.50.2 sin suite propia.** 34 tests nuevos en 3 suites que blindan los refactors de v3.50.2: `HistoryContext` (9 tests — add/update/clear/export + guard), `RepoSelector` (11 tests — fetch en mount, filtro, toggle/toggleAll con estado controlado, error de red, pluralización), `InstructionSuggestions` componente (14 tests — navegación por teclado cíclica, renderizado condicional, reset de selección). `main.tsx` y `App.tsx` se dejan fuera (el propio #26 los marca "bajo valor, opcional"). | client/src/context/__tests__/HistoryContext.test.tsx, client/src/components/multi-repo/__tests__/RepoSelector.test.tsx, client/src/components/chat/__tests__/InstructionSuggestions.test.tsx | v3.50.3 |
 
 ---
 
@@ -99,18 +100,19 @@ Ordenadas por prioridad. Cada ítem se mueve a la tabla ✅ al resolverse.
 #### #26 — Mantener y expandir cobertura de tests con Codecov
 **Esfuerzo:** Continuo (2-4h por sprint)
 
-**Progreso realizado (v3.38.1):** ✅ Infraestructura completa
+**Progreso realizado (v3.50.3):** ✅ Infraestructura completa
 - ✅ Vitest + Codecov + CI con GitHub Actions (cliente + servidor)
 - ✅ Badge de Codecov en README
 - ✅ Cobertura actual: ver Codecov (histórico ~60–64%)
-- ✅ **569 tests en el cliente + 5 en el servidor** (574 totales). Cobertura amplia de contextos, services, utils, hooks y componentes.
+- ✅ **647 tests en el cliente + 44 en el servidor** (691 totales, 61 suites). Cobertura amplia de contextos, services, utils, hooks y componentes.
 
 **Pendiente:**
 - Aumentar cobertura del ~64% al 70% objetivo.
 - Añadir tests para módulos poco cubiertos:
   - `App.tsx` (~0%): tras #42 ya es solo JSX + wrappers finos (la lógica vive testeada en `assistantActions.ts`). Llevarlo a verde requiere un **test de integración que renderice `App`** (mockeando los 3 contextos y los hijos) — bajo valor, opcional.
-  - `HistoryContext.tsx`
-  - `RepoSelector`
+  - ✅ `HistoryContext.tsx` — cubierto en v3.50.3 (9 tests).
+  - ✅ `RepoSelector` — cubierto en v3.50.3 (11 tests).
+  - ✅ `InstructionSuggestions.tsx` (componente) — cubierto en v3.50.3 (14 tests).
   - `DiffViewer`
   - Edge cases y errores en servicios existentes.
 - Configurar umbral mínimo de cobertura en CI (fail si < 70%).
