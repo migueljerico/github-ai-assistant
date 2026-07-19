@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.50.4] — 2026-07-19
+
+> **Cobertura de `DiffViewer` (#26).**
+> Último componente de confirmación con valor real y sin suite propia. El
+> componente es compacto (53 líneas) pero integra dos librerías externas
+> (`diff` + `diff2html`) en un `useEffect` que escribe `innerHTML` vía ref,
+> superficie no trivial que merecía blindaje. Esta versión añade **18 tests**
+> en una suite nueva (`DiffViewer.test.tsx`) que cubre render, leyendas i18n,
+> generación del patch, conversión a HTML, re-renders selectivos por dep
+> cambiada (e inmutabilidad cuando no cambian), casos límite de contenido
+> (idéntico, creación, borrado, multilinea) y resiliencia ante errores de
+> `diff2html`. Patch de calidad, sin cambios funcionales. Por ZCode (GLM-5.2).
+
+### Added
+- **`DiffViewer.test.tsx`** (18 tests) — mockea `diff` (factory que reexporta
+  el módulo real y reemplaza `createPatch` por `vi.fn`) y `diff2html` (HTML
+  determinista), aislando la suite de la salida HTML completa de la librería:
+  cabecera con `📄 filename` y leyendas `● Eliminado` / `● Añadido` (i18n `es`
+  ya mockeado globalmente en `setup.ts`), contenedor `.diff-wrapper`,
+  invocación de `createPatch` con los 5 argumentos esperados (incluyendo los
+  headers `Versión actual` / `Versión propuesta`), opciones de `diff2html`
+  (`side-by-side` + `matching: 'lines'`), inyección del HTML en el contenedor,
+  re-renders que regeneran el diff solo cuando cambia cada una de las props
+  (filename, oldContent, newContent) y **no** cuando son idénticas, casos
+  límite (contenido igual, creación con `oldContent=""`, borrado con
+  `newContent=""`, multilinea), propagación de excepciones de `diff2html`
+  (no se silencian implícitamente) y render correcto cuando la librería
+  devuelve cadena vacía.
+
+### Patrones útiles para futuros tests
+- **ESM + `vi.spyOn`** no es espiable en namespaces ESM (limitación de
+  Vitest). Patrón correcto: `vi.mock('modulo', () => ({ ...actual, fn:
+  vi.fn(actual.fn) }))` + `vi.mocked(fn)` para asertar.
+- **Mock determinista de librerías que devuelven HTML** (como `diff2html`):
+  reemplazar por un marcador `<div data-testid="...">` evita acoplarse a la
+  salida completa, que cambia entre versiones y rompería los tests.
+
 ## [3.50.3] — 2026-07-19
 
 > **Cobertura de tests de los componentes tocados en v3.50.2 sin suite propia.**

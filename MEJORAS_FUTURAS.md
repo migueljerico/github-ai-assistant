@@ -2,7 +2,7 @@
 
 Estado del código, mejoras realizadas y pendientes del proyecto.
 
-**Actualizado a:** v3.50.3 · Julio 2026
+**Actualizado a:** v3.50.4 · Julio 2026
 
 ---
 
@@ -85,6 +85,7 @@ Ordenado por versión ascendente. Las fases de un mismo issue (`#24`, `#28`, `#5
 | 65 | **Deuda de lint de v3.50.1 resuelta** — Los 15 warnings heredados de subir ESLint 9→10 + react-hooks 5→7 (#77) se resuelven caso por caso: `npm run lint` 15→0 warnings. Bug real corregido (`App.tsx:128` `provider` duplicado en deps), 5 refactors (derived state con `useMemo` en `InstructionSuggestions`, `SessionWarningBanner` con `visible` filtrado en render + intervalo vía latest-ref, `useModalDialog` con ref en `useEffect`), 8 silenciamientos in situ justificados (fetch en mount, hooks co-localizados con Provider, gates del entry point) y 1 `eslint-disable` inútil borrado. Las 3 reglas siguen en `warn` en `eslint.config.js`. | App.tsx, components/{chat/InstructionSuggestions,layout/SessionWarningBanner,multi-repo/RepoSelector,confirm/DocumentFlowModal}.tsx, hooks/useModalDialog.ts, context/{AIProvider,Auth,History}Context.tsx, main.tsx, test/setup.ts | v3.50.2 |
 | 26 | **Cobertura de los componentes tocados en v3.50.2 sin suite propia.** 34 tests nuevos en 3 suites que blindan los refactors de v3.50.2: `HistoryContext` (9 tests — add/update/clear/export + guard), `RepoSelector` (11 tests — fetch en mount, filtro, toggle/toggleAll con estado controlado, error de red, pluralización), `InstructionSuggestions` componente (14 tests — navegación por teclado cíclica, renderizado condicional, reset de selección). `main.tsx` y `App.tsx` se dejan fuera (el propio #26 los marca "bajo valor, opcional"). | client/src/context/__tests__/HistoryContext.test.tsx, client/src/components/multi-repo/__tests__/RepoSelector.test.tsx, client/src/components/chat/__tests__/InstructionSuggestions.test.tsx | v3.50.3 |
 | 53 | **Sugerir mensaje de commit semántico** — Reformulación final: como la app opera vía GitHub API sin working tree local, "analizar el diff pendiente" no aplica. En su lugar, `commitSuggester.ts` propone el mensaje **antes de abrir el `ConfirmModal`** para acciones PUT/DELETE sobre archivos, usando los 10 commits recientes del repo destino como few-shot de estilo y el prompt dedicado `prompts/commit-message.md` (Conventional Commits). Best-effort con fallback determinista (`feat:`/`docs:`/`chore:` según tipo de acción) si no hay apiKey/model o falla la red; nunca bloquea el flujo. Zero-Storage intacto (la sugerencia vive solo en el textarea del modal). 24 tests. ⚠️ **Implementado de hecho en v3.50.0 pero sin documentar entonces en el roadmap;** este cierre editorial llega en v3.50.3. | client/src/services/commitSuggester.ts, client/src/services/assistantActions.ts:901-933, client/src/prompts/commit-message.md, client/src/services/__tests__/commitSuggester.test.ts | v3.50.0 (docs: v3.50.3) |
+| 26 | **Cobertura de `DiffViewer`** — Último componente de confirmación con valor real y sin suite propia. 18 tests nuevos en `DiffViewer.test.tsx`: render de cabecera y leyendas i18n (`● Eliminado`/`● Añadido`), invocación de `Diff.createPatch` con los 5 argumentos (incluye headers `Versión actual`/`Versión propuesta`), opciones de `diff2html` (`side-by-side` + `matching: 'lines'`), inyección del HTML en `.diff-wrapper`, re-renders selectivos por dep cambiada (e inmutabilidad cuando las props no cambian), casos límite (contenido idéntico, creación, borrado, multilinea) y resiliencia ante errores/HTML vacío de `diff2html`. Patrones documentados: mock de namespaces ESM vía `vi.mock` + factory (no `vi.spyOn`) y mock determinista del HTML de librerías externas. | client/src/components/confirm/__tests__/DiffViewer.test.tsx | v3.50.4 |
 
 ---
 
@@ -101,11 +102,11 @@ Ordenadas por prioridad. Cada ítem se mueve a la tabla ✅ al resolverse.
 #### #26 — Mantener y expandir cobertura de tests con Codecov
 **Esfuerzo:** Continuo (2-4h por sprint)
 
-**Progreso realizado (v3.50.3):** ✅ Infraestructura completa
+**Progreso realizado (v3.50.4):** ✅ Infraestructura completa
 - ✅ Vitest + Codecov + CI con GitHub Actions (cliente + servidor)
 - ✅ Badge de Codecov en README
 - ✅ Cobertura actual: ver Codecov (histórico ~60–64%)
-- ✅ **647 tests en el cliente + 44 en el servidor** (691 totales, 61 suites). Cobertura amplia de contextos, services, utils, hooks y componentes.
+- ✅ **665 tests en el cliente (57 suites) + 44 en el servidor (5 suites)** = **709 totales, 62 suites**. Cobertura amplia de contextos, services, utils, hooks y componentes.
 
 **Pendiente:**
 - Aumentar cobertura del ~64% al 70% objetivo.
@@ -114,7 +115,7 @@ Ordenadas por prioridad. Cada ítem se mueve a la tabla ✅ al resolverse.
   - ✅ `HistoryContext.tsx` — cubierto en v3.50.3 (9 tests).
   - ✅ `RepoSelector` — cubierto en v3.50.3 (11 tests).
   - ✅ `InstructionSuggestions.tsx` (componente) — cubierto en v3.50.3 (14 tests).
-  - `DiffViewer`
+  - ✅ `DiffViewer.tsx` — cubierto en v3.50.4 (18 tests).
   - Edge cases y errores en servicios existentes.
 - Configurar umbral mínimo de cobertura en CI (fail si < 70%).
 
@@ -236,13 +237,13 @@ GitHub. Por eso sube de esfuerzo y complejidad.
 
 ---
 
-## 🎯 Próximo enfoque (post-v3.50.3)
+## 🎯 Próximo enfoque (post-v3.50.4)
 
 Con #53 cerrado (docs), el roadmap queda con dos únicos pendientes accionables:
 
-1. **#26 — Cobertura de tests (🔴 Alta, continuo).** Tras v3.50.3 el proyecto
-   suma **691 tests** (cliente 647 en 56 suites + servidor 44 en 5). Próximos
-   módulos poco cubiertos: `DiffViewer`, edge cases de servicios existentes, y
+1. **#26 — Cobertura de tests (🔴 Alta, continuo).** Tras v3.50.4 el proyecto
+   suma **709 tests** (cliente 665 en 57 suites + servidor 44 en 5). Con
+   `DiffViewer` ya cubierto, quedan: edge cases de servicios existentes, y
    configurar un **umbral mínimo de cobertura en CI** (fail si < 70%). `App.tsx`
    y `main.tsx` se dejan fuera (bajo valor, opcional).
 2. **#58 — Extensiones de publicación flexible (🟢 Baja, fuera de alcance
