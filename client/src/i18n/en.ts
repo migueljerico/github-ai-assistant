@@ -205,6 +205,10 @@ export const en = {
   'modal.flow.extraInstructionsPlaceholder': 'E.g. «Only update the providers section», «Focus on security»…',
   // #58 (b): diff incremental en el documento específico
   'modal.flow.diffVsExisting': 'Differences against the current document',
+  // #58 (b) scope file: estados del fetch del doc ya existente en el repo destino
+  'modal.flow.fetchingExisting': 'Checking for an existing document in the target repo…',
+  'modal.flow.newDocNotice': '✨ This document does not exist in the target repo: it will be created as a new file.',
+  'modal.flow.fetchExistingError': '⚠️ Could not check whether the document already exists in the target repo. You can continue; it will be uploaded anyway.',
 
   // ────── PHASE 2: Diff viewer ──────
   'diff.currentVersion': 'Current version',

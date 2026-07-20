@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useDocTargetSelector } from '../../hooks/useDocTargetSelector';
 import type { RepoAnalysis } from '../../types';
 import type { PublishTarget, PublishKind, StartPublishResult, FileContext, GenerateSpecificResult } from '../../services/assistantActions';
+import { docPathFor } from '../../services/assistantActions';
 import { resolveRepoRef } from '../../utils/repoRef';
 import PublishActions from './PublishActions';
 import DiffViewer from './DiffViewer';
@@ -45,6 +46,9 @@ interface DocumentFlowModalProps {
   onPublishFile: (target: PublishTarget) => Promise<StartPublishResult>;
   /** Crea el repo inexistente y publica la doc del archivo. Devuelve el resultado. */
   onCreateRepoAndPublish: (target: PublishTarget) => Promise<StartPublishResult>;
+  /** #58 (b): trae el contenido actual de `docs/{base}.md` en el repo destino,
+   *  para mostrar el diff old↔new en el paso 4 del scope file. `null` = alta nueva. */
+  onFetchExistingDoc?: (owner: string, repo: string, fileName: string) => Promise<string | null>;
 
  // #58 Fase 2: scope "documento específico del repo"
  /** Genera documentación para un path concreto del repo.
@@ -91,6 +95,8 @@ export default function DocumentFlowModal({
   onReleaseRepo,
   onPublishFile,
   onCreateRepoAndPublish,
+  // #58 (b): fetch del contenido actual de docs/{base}.md en el repo destino.
+  onFetchExistingDoc,
   // #58 Fase 2: callbacks para "documento específico del repo"
   onGenerateSpecific,
   onCommitSpecific,
@@ -146,6 +152,12 @@ const [specificMissing, setSpecificMissing] = useState<{ owner: string; repo: st
   const [busy, setBusy] = useState(false);
   const [repoMissing, setRepoMissing] = useState<{ owner: string; repo: string } | null>(null);
 
+  // #58 (b): contenido actual de docs/{base}.md en el repo destino (scope file).
+  // Se carga asíncronamente al entrar en paso 4 con un `destRepo` válido, para
+  // mostrar el diff old↔new antes de publicar. `status` guía el render.
+  const [fileExistingContent, setFileExistingContent] = useState<string | null>(null);
+  const [fileExistingStatus, setFileExistingStatus] = useState<'idle' | 'loading' | 'found' | 'notfound' | 'error'>('idle');
+
   // #57 Tanda B: archivos para poblar el repo recién creado (scope repo, rama crear).
   const [createExtras, setCreateExtras] = useState<File[]>([]);
 
@@ -161,6 +173,45 @@ const [specificMissing, setSpecificMissing] = useState<{ owner: string; repo: st
       setExtras(nonPrimary);
     }
   }, [step, scope, allAttachedFiles]);
+
+  // #58 (b): al entrar en paso 4 (scope file) con un `destRepo` válido, dispara
+  // el fetch del contenido actual de docs/{base}.md para el diff. Se re-dispara
+  // si el usuario cambia el repo destino. set-state-in-effect intencionado:
+  // la carga es asíncrona y depende del momento exacto de entrada al paso 4.
+  useEffect(() => {
+    if (step !== 4 || scope !== 'file' || !onFetchExistingDoc) {
+      setFileExistingStatus('idle');
+      setFileExistingContent(null);
+      return;
+    }
+    const trimmed = destRepo.trim();
+    const primary = allAttachedFiles?.[0]?.name ?? attachedFileName;
+    if (!trimmed || !primary) {
+      setFileExistingStatus('idle');
+      setFileExistingContent(null);
+      return;
+    }
+    let cancelled = false;
+    setFileExistingStatus('loading');
+    const ref = resolveRepoRef(trimmed, currentUserLogin);
+    onFetchExistingDoc(ref.owner, ref.repo, primary)
+      .then(content => {
+        if (cancelled) return;
+        if (content == null) {
+          setFileExistingStatus('notfound');
+          setFileExistingContent(null);
+        } else {
+          setFileExistingStatus('found');
+          setFileExistingContent(content);
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setFileExistingStatus('error');
+        setFileExistingContent(null);
+      });
+    return () => { cancelled = true; };
+  }, [step, scope, destRepo, allAttachedFiles, attachedFileName, onFetchExistingDoc, currentUserLogin]);
 
   // #58 Fase 6: hook de persistencia avanzada del selector de documento específico
   const {
@@ -730,6 +781,41 @@ return (
                   </ul>
                 )}
               </div>
+
+              {/* #58 (b): diff old↔new frente a docs/{base}.md ya existente en el repo destino. */}
+              {fileExistingStatus === 'loading' && (
+                <div style={{ marginTop: '12px', fontSize: '0.85rem', opacity: 0.7 }}>
+                  ⏳ {t('modal.flow.fetchingExisting')}
+                </div>
+              )}
+              {fileExistingStatus === 'notfound' && fileDoc != null && (
+                <div style={{
+                  marginTop: '12px', padding: '10px 12px', borderRadius: '8px', fontSize: '0.85rem',
+                  background: 'rgba(34, 197, 94, 0.12)', border: '1px solid rgba(34, 197, 94, 0.4)',
+                }}>
+                  {t('modal.flow.newDocNotice')}
+                </div>
+              )}
+              {fileExistingStatus === 'found' && fileExistingContent != null && fileDoc != null && (
+                <div className="doc-preview-diff" style={{ marginTop: '12px' }}>
+                  <div style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: '8px' }}>
+                    {t('modal.flow.diffVsExisting')}
+                  </div>
+                  <DiffViewer
+                    filename={docPathFor(allAttachedFiles?.[0]?.name ?? attachedFileName ?? 'archivo')}
+                    oldContent={fileExistingContent}
+                    newContent={fileDoc}
+                  />
+                </div>
+              )}
+              {fileExistingStatus === 'error' && (
+                <div style={{
+                  marginTop: '12px', padding: '10px 12px', borderRadius: '8px', fontSize: '0.85rem',
+                  background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.4)',
+                }}>
+                  {t('modal.flow.fetchExistingError')}
+                </div>
+              )}
 
               {repoMissing && (
                 <div

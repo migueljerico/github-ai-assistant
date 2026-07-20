@@ -9,6 +9,7 @@ import {
   runSend, runConfirmAction, runCancelAction, runAttachFile,
   runGenerateFileDoc, runCreateRepo, runCreateRepoAndDocument, runGenerateSpecificDoc,
 runPublishSpecificDoc, runStartPublish, runPublishFileDocByKind, formatConversation,
+fetchExistingFileDoc,
 } from './services/assistantActions';
 import type { RepoContext, FileContext, PublishTarget, StartPublishResult, CodeHealth, GenerateSpecificResult } from './services/assistantActions';
 import { serializeConversation, parseConversation, conversationFilename } from './utils/conversationIO';
@@ -203,6 +204,13 @@ runCancelAction(
       buildConversationText(),
     );
   }, [fileContext, token, user, provider, apiKey, model, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, buildConversationText, accountId]);
+
+  // #58 (b): trae el contenido actual de docs/{base}.md en el repo destino para
+  // que el paso 4 del scope file muestre el diff old↔new antes de publicar.
+  const flowFetchExistingDoc = useCallback(async (owner: string, repo: string, fileName: string): Promise<string | null> => {
+    if (!token) return null;
+    return fetchExistingFileDoc(token, owner, repo, fileName);
+  }, [token]);
 
   // Publicación de la doc de repo (destino fijo = repo analizado).
   const flowCommitRepo = useCallback(async (analysis: RepoAnalysis): Promise<void> => {
@@ -514,6 +522,8 @@ const flowReleaseSpecific = useCallback(async (doc: string, path: string): Promi
           onReleaseRepo={flowReleaseRepo}
     onPublishFile={flowPublishFile}
     onCreateRepoAndPublish={flowCreateRepoAndPublishFile}
+    // #58 (b): fetch del doc ya existente en el repo destino (scope file, paso 4).
+    onFetchExistingDoc={flowFetchExistingDoc}
     // #58 Fase 2: callbacks para "documento específico del repo"
     onGenerateSpecific={flowGenerateSpecific}
     onCommitSpecific={flowCommitSpecific}

@@ -207,6 +207,10 @@ export const es = {
   'modal.flow.extraInstructionsPlaceholder': 'Ej: «Solo actualiza la sección de providers», «Enfócate en seguridad»…',
   // #58 (b): diff incremental en el documento específico
   'modal.flow.diffVsExisting': 'Diferencias frente al documento actual',
+  // #58 (b) scope file: estados del fetch del doc ya existente en el repo destino
+  'modal.flow.fetchingExisting': 'Buscando el documento ya existente en el repo destino…',
+  'modal.flow.newDocNotice': '✨ Este documento no existe en el repo destino: se creará como archivo nuevo.',
+  'modal.flow.fetchExistingError': '⚠️ No se pudo comprobar si el documento ya existe en el repo destino. Puedes continuar; se subirá igualmente.',
 
   // ────── FASE 2: Visor de diferencias ──────
   'diff.currentVersion': 'Versión actual',

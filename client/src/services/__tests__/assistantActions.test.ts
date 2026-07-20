@@ -126,6 +126,8 @@ import {
   runPublishSpecificDoc,
   formatConversation,
   buildSignature,
+  fetchExistingFileDoc,
+  docPathFor,
 } from '../assistantActions';
 
 const CONFIG = { provider: 'groq' as const, apiKey: 'k', model: 'm' };
@@ -1659,5 +1661,50 @@ describe('runPublishSpecificDoc', () => {
       content: expect.stringContaining('Error al publicar a.ts'),
     }));
     expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'error' }));
+  });
+});
+
+// ── fetchExistingFileDoc / docPathFor (#58 b scope file) ────────────────────
+
+describe('docPathFor', () => {
+  it('deriva docs/{base}.md quitando solo la última extensión', () => {
+    expect(docPathFor('Button.tsx')).toBe('docs/Button.md');
+    // El regex solo quita la última extensión; los puntos intermedios se
+    // conservan (están en la allowlist [^\w.-]).
+    expect(docPathFor('reporte.final.csv')).toBe('docs/reporte.final.md');
+  });
+
+  it('sanea caracteres no-word a "-" y solo cae a "archivo" si el base queda vacío', () => {
+    // Espacios y '!' → '-', pero el resultado '-' no es vacío, así que no cae
+    // al fallback. Solo cae a 'archivo' cuando el base es realmente ''.
+    expect(docPathFor('  !!  .xlsx')).toBe('docs/-.md');
+    expect(docPathFor('.xlsx')).toBe('docs/archivo.md');
+  });
+});
+
+describe('fetchExistingFileDoc', () => {
+  it('devuelve el contenido decodificado cuando el doc ya existe', async () => {
+    vi.mocked(getFileContents).mockResolvedValue({ content: 'b64', sha: 's1' } as any);
+
+    const content = await fetchExistingFileDoc('tok', 'owner', 'repo', 'Button.tsx');
+
+    expect(getFileContents).toHaveBeenCalledWith('tok', 'owner', 'repo', 'docs/Button.md');
+    expect(content).toBe('decoded(b64)');
+  });
+
+  it('devuelve null (alta nueva) cuando getFileContents falla con 404', async () => {
+    vi.mocked(getFileContents).mockRejectedValue(new Error('404'));
+
+    const content = await fetchExistingFileDoc('tok', 'owner', 'repo', 'Button.tsx');
+
+    expect(content).toBeNull();
+  });
+
+  it('tolera content vacío devolviendo string vacío (no null)', async () => {
+    vi.mocked(getFileContents).mockResolvedValue({ content: '', sha: 's1' } as any);
+
+    const content = await fetchExistingFileDoc('tok', 'owner', 'repo', 'Button.tsx');
+
+    expect(content).toBe('decoded()');
   });
 });

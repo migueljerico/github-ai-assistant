@@ -336,3 +336,71 @@ describe('DocumentFlowModal — #58 (b) diff incremental en scope specific', () 
     expect(screen.queryByTestId('diff-viewer-mock')).not.toBeInTheDocument();
   });
 });
+
+// ── #58 (b) scope file: diff en paso 4 al conocer el repo destino ─────────────
+// El diff aparece en el paso 4 (destino) tras meter un repo válido. Estados:
+// loading → (found: DiffViewer | notfound: banner "alta nueva") | error.
+describe('DocumentFlowModal — #58 (b) diff en paso 4 scope file', () => {
+  // Helper: navega archivo → generar → continuar → meter repo destino.
+  async function irAPaso4FileConDestino(props: Partial<Props> = {}) {
+    render(<DocumentFlowModal {...baseProps(props)} />);
+    fireEvent.click(screen.getByRole('button', { name: /Archivo adjunto/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Generar documentación/ }));
+    await screen.findByText('# doc');
+    fireEvent.click(screen.getByRole('button', { name: /Continuar/ }));
+    fireEvent.change(screen.getByPlaceholderText(/owner\/repo o repo/), { target: { value: 'owner/repo' } });
+  }
+
+  it('muestra DiffViewer cuando onFetchExistingDoc devuelve contenido (actualización)', async () => {
+    await irAPaso4FileConDestino({
+      hasAttachedFile: true,
+      attachedFileName: 'notas.txt',
+      onFetchExistingDoc: vi.fn().mockResolvedValue('# doc vieja'),
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('diff-viewer-mock')).toBeInTheDocument();
+    });
+    const diff = screen.getByTestId('diff-viewer-mock');
+    expect(diff.getAttribute('data-filename')).toBe('docs/notas.md');
+    expect(diff.getAttribute('data-old-len')).toBe(String('# doc vieja'.length));
+  });
+
+  it('muestra banner "alta nueva" cuando onFetchExistingDoc devuelve null', async () => {
+    await irAPaso4FileConDestino({
+      hasAttachedFile: true,
+      attachedFileName: 'notas.txt',
+      onFetchExistingDoc: vi.fn().mockResolvedValue(null),
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/se creará como archivo nuevo/i)).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('diff-viewer-mock')).not.toBeInTheDocument();
+  });
+
+  it('muestra mensaje de error cuando onFetchExistingDoc rechaza', async () => {
+    await irAPaso4FileConDestino({
+      hasAttachedFile: true,
+      attachedFileName: 'notas.txt',
+      onFetchExistingDoc: vi.fn().mockRejectedValue(new Error('red')),
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/No se pudo comprobar/i)).toBeInTheDocument();
+    });
+  });
+
+  it('sin onFetchExistingDoc no renderiza diff ni banners (queda idle)', async () => {
+    await irAPaso4FileConDestino({
+      hasAttachedFile: true,
+      attachedFileName: 'notas.txt',
+      // onFetchExistingDoc ausente deliberadamente.
+    });
+
+    // Dar tiempo a que un useEffect equivocado pudiera dispararse.
+    await new Promise(r => setTimeout(r, 0));
+    expect(screen.queryByTestId('diff-viewer-mock')).not.toBeInTheDocument();
+    expect(screen.queryByText(/se creará como archivo nuevo/i)).not.toBeInTheDocument();
+  });
+});

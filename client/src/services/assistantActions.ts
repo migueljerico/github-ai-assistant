@@ -1187,9 +1187,29 @@ export async function runCreateRepoAndDocument(
 }
 
 /** Deriva `docs/{base}.md` a partir del nombre del archivo adjunto. */
-function docPathFor(fileName: string): string {
+export function docPathFor(fileName: string): string {
   const base = fileName.replace(/\.[^.]+$/, '').replace(/[^\w.-]+/g, '-') || 'archivo';
   return `docs/${base}.md`;
+}
+
+/**
+ * #58 (b): trae el contenido actual del documento del adjunto en el repo
+ * destino (`docs/{base}.md`), para que el modal pueda mostrar el diff old↔new
+ * en el paso de publicación. Devuelve `null` si no existe (alta nueva).
+ */
+export async function fetchExistingFileDoc(
+  token: string,
+  owner: string,
+  repo: string,
+  fileName: string,
+): Promise<string | null> {
+  try {
+    const existing = await getFileContents(token, owner, repo, docPathFor(fileName));
+    return decodeBase64(existing.content || '');
+  } catch {
+    // 404 → no existe, alta nueva.
+    return null;
+  }
 }
 
 /** Publica la documentación generada como fichero (commit directo o Draft PR). */
