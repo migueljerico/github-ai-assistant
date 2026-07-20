@@ -183,6 +183,12 @@ export interface RepoAnalysis {
   /** v3.31.0: resumen corto generado por la IA; se usa como "about" (descripción)
    *  del repo al publicar, junto con la firma de documentación. */
   resumen?: string;
+  /** #58 (b): contenido actual del README.md en el repo (para diff old↔new).
+   *  `undefined` cuando el README no existe (alta nueva). */
+  readmeActual?: string;
+  /** #58 (b): contenido actual del MANUAL_TECNICO.md en el repo (para diff old↔new).
+   *  `undefined` cuando el MANUAL no existe (alta nueva). */
+  manualActual?: string;
 }
 
 // ── Re-export types from gemini service for convenience ──────────────────────

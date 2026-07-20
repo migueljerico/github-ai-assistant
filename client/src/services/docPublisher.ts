@@ -15,8 +15,8 @@ import {
 } from './github';
 import type { GitHubPullRequest } from '../types';
 
-const README_PATH = 'README.md';
-const MANUAL_PATH = 'MANUAL_TECNICO.md';
+export const README_PATH = 'README.md';
+export const MANUAL_PATH = 'MANUAL_TECNICO.md';
 const README_MESSAGE = 'docs: generate README via Asistente de IA';
 const MANUAL_MESSAGE = 'docs: generate MANUAL_TECNICO via Asistente de IA';
 

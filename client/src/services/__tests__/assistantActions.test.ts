@@ -43,6 +43,9 @@ vi.mock('../docPublisher', () => ({
   createDocsDraftPr: vi.fn(),
   publishFileDoc: vi.fn(),
   uploadFilesToRepo: vi.fn(),
+  // #58 (b): constantes reales (no mocks) para que runDocumentRepo las use.
+  README_PATH: 'README.md',
+  MANUAL_PATH: 'MANUAL_TECNICO.md',
 }));
 vi.mock('../../utils/releaseGenerator', () => ({
   createGitHubRelease: vi.fn(),
@@ -198,12 +201,54 @@ describe('runDocumentRepo', () => {
 
     const result = await runDocumentRepo(deps, CONFIG, 'owner/repo');
 
-    expect(result).toEqual({ readme: 'R', manualTecnico: 'M', filesAnalyzed: 2, totalFiles: 2, truncated: false, repoName: 'owner/repo', alreadyDocumented: false });
+    // #58 (b): cuando !alreadyDocumented, no se hacen fetches del contenido
+    // actual y readmeActual/manualActual quedan como undefined.
+    expect(result).toEqual({ readme: 'R', manualTecnico: 'M', filesAnalyzed: 2, totalFiles: 2, truncated: false, repoName: 'owner/repo', alreadyDocumented: false, readmeActual: undefined, manualActual: undefined });
+    expect(getFileContents).not.toHaveBeenCalled();
     expect(getRepo).toHaveBeenCalledWith('tok', 'owner', 'repo');
     expect(fetchRepoTreeRecursive).toHaveBeenCalledWith('tok', 'owner', 'repo', 'main');
     expect(generateRepoDocs).toHaveBeenCalledWith('owner/repo', expect.any(Array), CONFIG, 'es');
     expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'pending' }));
     expect(deps.setIsChatLoading).toHaveBeenLastCalledWith(false);
+  });
+
+  it('#58 (b): cuando alreadyDocumented=true, trae el README/MANUAL actual y lo propaga', async () => {
+    vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'README.md' }, { path: 'MANUAL_TECNICO.md' }], totalScanned: 2, truncated: false, allPaths: ['README.md', 'MANUAL_TECNICO.md'] } as any);
+    vi.mocked(generateRepoDocs).mockResolvedValue({ readme: 'R nueva', manualTecnico: 'M nueva' } as any);
+    // El mock de getFileContents devuelve contenido base64; decodeBase64 lo decodifica.
+    vi.mocked(getFileContents).mockImplementation(async (_t: string, _o: string, _r: string, path: string) =>
+      ({ content: path === 'README.md' ? 'b64-r' : 'b64-m', sha: 's' }) as any
+    );
+    const deps = makeDeps();
+
+    const result = await runDocumentRepo(deps, CONFIG, 'owner/repo');
+
+    expect(result).toEqual(expect.objectContaining({
+      alreadyDocumented: true,
+      readmeActual: 'decoded(b64-r)',
+      manualActual: 'decoded(b64-m)',
+    }));
+    expect(getFileContents).toHaveBeenCalledWith('tok', 'owner', 'repo', 'README.md');
+    expect(getFileContents).toHaveBeenCalledWith('tok', 'owner', 'repo', 'MANUAL_TECNICO.md');
+  });
+
+  it('#58 (b): si el README existe pero el MANUAL da 404, readmeActual se rellena y manualActual queda undefined', async () => {
+    vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'README.md' }], totalScanned: 1, truncated: false, allPaths: ['README.md', 'MANUAL_TECNICO.md'] } as any);
+    vi.mocked(generateRepoDocs).mockResolvedValue({ readme: 'R nueva', manualTecnico: 'M nueva' } as any);
+    vi.mocked(getFileContents).mockImplementation(async (_t: string, _o: string, _r: string, path: string) => {
+      if (path === 'MANUAL_TECNICO.md') throw new Error('404');
+      return { content: 'b64-r', sha: 's' } as any;
+    });
+    const deps = makeDeps();
+
+    const result = await runDocumentRepo(deps, CONFIG, 'owner/repo');
+
+    expect(result).toEqual(expect.objectContaining({
+      readmeActual: 'decoded(b64-r)',
+      manualActual: undefined,
+    }));
   });
 
   it('marca alreadyDocumented cuando el repo ya tiene README.md (#57 Tanda B)', async () => {

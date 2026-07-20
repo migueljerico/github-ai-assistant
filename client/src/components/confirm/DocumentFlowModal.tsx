@@ -697,9 +697,31 @@ return (
                   {t('modal.doc.manual')}
                 </button>
               </div>
-              <div className="doc-preview-content">
-                {activeTab === 'readme' ? analysis.readme : analysis.manualTecnico}
-              </div>
+              {/* #58 (b): si el README/MANUAL ya existe en el repo, renderiza el
+                  diff old↔new; si no, mantiene el <pre> en crudo. Una rama por tab. */}
+              {activeTab === 'readme' ? (
+                analysis.readmeActual != null ? (
+                  <div className="doc-preview-diff">
+                    <div style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: '8px' }}>
+                      {t('modal.flow.diffVsExisting')} · <code>README.md</code>
+                    </div>
+                    <DiffViewer filename="README.md" oldContent={analysis.readmeActual} newContent={analysis.readme} />
+                  </div>
+                ) : (
+                  <div className="doc-preview-content">{analysis.readme}</div>
+                )
+              ) : (
+                analysis.manualActual != null ? (
+                  <div className="doc-preview-diff">
+                    <div style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: '8px' }}>
+                      {t('modal.flow.diffVsExisting')} · <code>MANUAL_TECNICO.md</code>
+                    </div>
+                    <DiffViewer filename="MANUAL_TECNICO.md" oldContent={analysis.manualActual} newContent={analysis.manualTecnico} />
+                  </div>
+                ) : (
+                  <div className="doc-preview-content">{analysis.manualTecnico}</div>
+                )
+              )}
             </>
           )}
 {step === 3 && isFile && fileDoc != null && (

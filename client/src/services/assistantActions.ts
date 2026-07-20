@@ -18,7 +18,7 @@ import type { RepoTreeFile } from './github';
 import { rankFilesByQuery } from '../utils/contextRanker';
 import { isContextTooLargeError } from '../utils/retry';
 import { languageDistribution, countTechnicalDebt, commitsByWeek, type LanguageSlice, type TechnicalDebt, type CommitWeek } from '../utils/codeHealth';
-import { writeDocFiles, createDocsDraftPr, publishFileDoc, uploadFilesToRepo } from './docPublisher';
+import { writeDocFiles, createDocsDraftPr, publishFileDoc, uploadFilesToRepo, README_PATH, MANUAL_PATH } from './docPublisher';
 import { summarizeThread, parseThreadInput, listOpenThreads, formatThreadList } from './threadSummary';
 import { generateChangelog } from './changelogGenerator';
 import { executeAction, executeActionMultiRepo, parseRepoTarget } from './actionExecutor';
@@ -206,13 +206,31 @@ export async function runDocumentRepo(
     const knownPaths = allPaths ?? files.map(f => f.path);
     const alreadyDocumented = knownPaths.some(p => p === 'README.md' || p === 'MANUAL_TECNICO.md');
 
+    // #58 (b): traer en paralelo el contenido actual del README y el MANUAL
+    // (si existen) para que el paso 3 del modal pueda renderizar el diff old↔new.
+    // Un 404 (archivo no presente) se tolera como `undefined` (alta nueva);
+    // cualquier error aislado aquí no debe abortar la generación del análisis.
+    const fetchActual = async (path: string): Promise<string | undefined> => {
+      try {
+        const existing = await getFileContents(token, owner, repoName, path);
+        if (!existing) return undefined;
+        return decodeBase64(existing.content || '');
+      } catch {
+        return undefined;
+      }
+    };
+    const [readmeActual, manualActual] = await Promise.all([
+      alreadyDocumented ? fetchActual(README_PATH) : Promise.resolve(undefined),
+      alreadyDocumented ? fetchActual(MANUAL_PATH) : Promise.resolve(undefined),
+    ]);
+
     updateMessage(loadingId, {
       content: `✅ Documentación generada para **${owner}/${repoName}**. Revisa el contenido antes de hacer commit.`,
       isLoading: false,
     });
     updateEntry(histId, { status: 'pending', description: deps.t('history.docReady') });
 
-    return { readme, manualTecnico, filesAnalyzed: files.length, totalFiles: totalScanned, truncated, repoName: `${owner}/${repoName}`, alreadyDocumented, resumen };
+    return { readme, manualTecnico, filesAnalyzed: files.length, totalFiles: totalScanned, truncated, repoName: `${owner}/${repoName}`, alreadyDocumented, resumen, readmeActual, manualActual };
   } catch (err) {
     // v3.22.3: distinguir "repo no encontrado / sin acceso" (404) de otros errores.
     const status = err instanceof GitHubAPIError ? err.status : undefined;

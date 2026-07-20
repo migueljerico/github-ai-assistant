@@ -404,3 +404,51 @@ describe('DocumentFlowModal — #58 (b) diff en paso 4 scope file', () => {
     expect(screen.queryByText(/se creará como archivo nuevo/i)).not.toBeInTheDocument();
   });
 });
+
+// ── #58 (b) scope repo: diff en paso 3 (tabs README/MANUAL) ───────────────────
+describe('DocumentFlowModal — #58 (b) diff en paso 3 scope repo', () => {
+  function analysisConActual(over: Partial<RepoAnalysis> = {}): RepoAnalysis {
+    return {
+      readme: 'README CONTENT', manualTecnico: 'MANUAL CONTENT',
+      filesAnalyzed: 3, totalFiles: 3, truncated: false, repoName: 'owner/repo',
+      ...over,
+    };
+  }
+
+  // Helper: navega repo → generar → entrar en paso 3.
+  async function irAPaso3Repo(over: Partial<RepoAnalysis> = {}) {
+    render(<DocumentFlowModal {...baseProps({ onGenerateRepo: vi.fn().mockResolvedValue(analysisConActual(over)) })} />);
+    fireEvent.click(screen.getByRole('button', { name: /Repositorio entero/ }));
+    fireEvent.change(screen.getByPlaceholderText(/nombre-del-repo o owner\/repo/), { target: { value: 'owner/repo' } });
+    fireEvent.click(screen.getByRole('button', { name: /Generar documentación/ }));
+  }
+
+  it('tab README: renderiza DiffViewer cuando analysis.readmeActual viene', async () => {
+    await irAPaso3Repo({ readmeActual: 'README viejo' });
+
+    await waitFor(() => expect(screen.getByTestId('diff-viewer-mock')).toBeInTheDocument());
+    const diff = screen.getByTestId('diff-viewer-mock');
+    expect(diff.getAttribute('data-filename')).toBe('README.md');
+    expect(diff.getAttribute('data-old-len')).toBe(String('README viejo'.length));
+  });
+
+  it('tab MANUAL: renderiza DiffViewer cuando analysis.manualActual viene', async () => {
+    await irAPaso3Repo({ readmeActual: 'README viejo', manualActual: 'MANUAL viejo' });
+
+    await screen.findByTestId('diff-viewer-mock'); // tab README inicial
+    fireEvent.click(screen.getByRole('button', { name: /MANUAL_TECNICO/ }));
+
+    await waitFor(() => {
+      const diff = screen.getByTestId('diff-viewer-mock');
+      expect(diff.getAttribute('data-filename')).toBe('MANUAL_TECNICO.md');
+      expect(diff.getAttribute('data-old-len')).toBe(String('MANUAL viejo'.length));
+    });
+  });
+
+  it('tab README: muestra <pre> (sin DiffViewer) cuando readmeActual no viene', async () => {
+    await irAPaso3Repo(); // sin readmeActual
+
+    await screen.findByText('README CONTENT');
+    expect(screen.queryByTestId('diff-viewer-mock')).not.toBeInTheDocument();
+  });
+});
