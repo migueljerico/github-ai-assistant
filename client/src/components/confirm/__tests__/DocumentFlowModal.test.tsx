@@ -4,6 +4,14 @@ import DocumentFlowModal from '../DocumentFlowModal';
 import type { RepoAnalysis } from '../../../types';
 import type { FileContext } from '../../../services/assistantActions';
 
+// #58 (b): mockeamos DiffViewer para aislar la lógica del modal (decisión
+// diff vs <pre>) sin depender de diff2html (que inyecta innerHTML en jsdom).
+vi.mock('../DiffViewer', () => ({
+  default: ({ filename, oldContent, newContent }: { filename: string; oldContent: string; newContent: string }) => (
+    <div data-testid="diff-viewer-mock" data-filename={filename} data-old-len={oldContent.length} data-new-len={newContent.length} />
+  ),
+}));
+
 const analysis: RepoAnalysis = {
   readme: 'README CONTENT',
   manualTecnico: 'MANUAL CONTENT',
@@ -28,7 +36,8 @@ function baseProps(overrides: Partial<Props> = {}): Props {
  onPublishFile: vi.fn().mockResolvedValue('handled' as const),
  onCreateRepoAndPublish: vi.fn().mockResolvedValue('published' as const),
  // #58 Fase 2: callbacks para "documento específico del repo"
- onGenerateSpecific: vi.fn().mockResolvedValue('specific doc'),
+ // #58 (b): onGenerateSpecific devuelve {doc, currentContent} en vez de string.
+ onGenerateSpecific: vi.fn().mockResolvedValue({ doc: 'specific doc', currentContent: undefined }),
  onCommitSpecific: vi.fn(),
  onDraftPrSpecific: vi.fn(),
  onReleaseSpecific: vi.fn(),
@@ -283,5 +292,47 @@ describe('DocumentFlowModal (#57)', () => {
     expect(input.value).toBe('migueljerico/mi-repo');
     // El botón de generar está habilitado (repoInput.trim() no rompe).
     expect(screen.getByRole('button', { name: /Generar documentación/ })).not.toBeDisabled();
+  });
+});
+
+// ── #58 (b): diff incremental en el scope `specific` ──────────────────────────
+// El paso 3 muestra <DiffViewer> cuando hay contenido actual (actualización) y
+// un <pre> en crudo cuando es un alta nueva (currentContent === undefined).
+describe('DocumentFlowModal — #58 (b) diff incremental en scope specific', () => {
+  it('paso 3: renderiza DiffViewer cuando hay currentContent (actualización)', async () => {
+    const props = baseProps({
+      onGenerateSpecific: vi.fn().mockResolvedValue({ doc: '# Doc nueva', currentContent: '# Doc vieja' }),
+    });
+    render(<DocumentFlowModal {...props} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Documento específico del repo/ }));
+    fireEvent.change(screen.getByPlaceholderText(/nombre-del-repo o owner\/repo/), { target: { value: 'owner/repo' } });
+    fireEvent.change(screen.getByPlaceholderText(/Ruta: src\/components\/Button\.tsx/), { target: { value: 'src/a.ts' } });
+    fireEvent.click(screen.getByRole('button', { name: /Generar doc de este archivo/ }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('diff-viewer-mock')).toBeInTheDocument();
+    });
+    const diff = screen.getByTestId('diff-viewer-mock');
+    expect(diff.getAttribute('data-filename')).toBe('src/a.ts');
+    expect(diff.getAttribute('data-old-len')).toBe(String('# Doc vieja'.length));
+    expect(diff.getAttribute('data-new-len')).toBe(String('# Doc nueva'.length));
+  });
+
+  it('paso 3: renderiza <pre> (sin DiffViewer) cuando currentContent es undefined (alta nueva)', async () => {
+    const props = baseProps({
+      onGenerateSpecific: vi.fn().mockResolvedValue({ doc: '# Doc nueva', currentContent: undefined }),
+    });
+    render(<DocumentFlowModal {...props} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Documento específico del repo/ }));
+    fireEvent.change(screen.getByPlaceholderText(/nombre-del-repo o owner\/repo/), { target: { value: 'owner/repo' } });
+    fireEvent.change(screen.getByPlaceholderText(/Ruta: src\/components\/Button\.tsx/), { target: { value: 'src/a.ts' } });
+    fireEvent.click(screen.getByRole('button', { name: /Generar doc de este archivo/ }));
+
+    await waitFor(() => {
+      expect(screen.getByText('# Doc nueva')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('diff-viewer-mock')).not.toBeInTheDocument();
   });
 });

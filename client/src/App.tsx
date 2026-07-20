@@ -10,7 +10,7 @@ import {
   runGenerateFileDoc, runCreateRepo, runCreateRepoAndDocument, runGenerateSpecificDoc,
 runPublishSpecificDoc, runStartPublish, runPublishFileDocByKind, formatConversation,
 } from './services/assistantActions';
-import type { RepoContext, FileContext, PublishTarget, StartPublishResult, CodeHealth } from './services/assistantActions';
+import type { RepoContext, FileContext, PublishTarget, StartPublishResult, CodeHealth, GenerateSpecificResult } from './services/assistantActions';
 import { serializeConversation, parseConversation, conversationFilename } from './utils/conversationIO';
 import Header from './components/layout/Header';
 import SessionWarningBanner from './components/layout/SessionWarningBanner';
@@ -262,15 +262,16 @@ const flowCreateRepoAndPublishFile = useCallback(async (target: PublishTarget): 
 }, [token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
 
 // #58 Fase 2: callbacks para "documento específico del repo"
-const flowGenerateSpecific = useCallback(async (repoInput: string, targetPath: string, extraInstructions?: string): Promise<string | null> => {
+// #58 (b): devuelve GenerateSpecificResult ({doc, currentContent}) en vez de
+// string plano, para que el modal pueda renderizar el diff old↔new.
+const flowGenerateSpecific = useCallback(async (repoInput: string, targetPath: string, extraInstructions?: string): Promise<GenerateSpecificResult | null> => {
  // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto
  if (!token || !user || !provider || !apiKey || !model) return null;
  const deps = {
  token, user, providerName, model, provider, t, lang,
  addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading,
  };
- const doc = await runGenerateSpecificDoc(deps, { provider, apiKey, model, accountId }, repoInput, targetPath, undefined, extraInstructions);
- return doc;
+ return runGenerateSpecificDoc(deps, { provider, apiKey, model, accountId }, repoInput, targetPath, undefined, extraInstructions);
 }, [token, user, providerName, model, provider, apiKey, accountId, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading]);
 
 const flowCommitSpecific = useCallback(async (doc: string, path: string): Promise<void> => {

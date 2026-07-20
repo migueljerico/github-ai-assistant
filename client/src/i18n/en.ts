@@ -203,6 +203,8 @@ export const en = {
   // #58 Phase 3: selectivity in existing scopes
   'modal.flow.extraInstructions': 'Extra instructions (optional)',
   'modal.flow.extraInstructionsPlaceholder': 'E.g. «Only update the providers section», «Focus on security»…',
+  // #58 (b): diff incremental en el documento específico
+  'modal.flow.diffVsExisting': 'Differences against the current document',
 
   // ────── PHASE 2: Diff viewer ──────
   'diff.currentVersion': 'Current version',

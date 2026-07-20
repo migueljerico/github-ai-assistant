@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 // #58 Fase 6: hook de persistencia avanzada del selector de documento específico
 import { useDocTargetSelector } from '../../hooks/useDocTargetSelector';
 import type { RepoAnalysis } from '../../types';
-import type { PublishTarget, PublishKind, StartPublishResult, FileContext } from '../../services/assistantActions';
+import type { PublishTarget, PublishKind, StartPublishResult, FileContext, GenerateSpecificResult } from '../../services/assistantActions';
 import { resolveRepoRef } from '../../utils/repoRef';
 import PublishActions from './PublishActions';
+import DiffViewer from './DiffViewer';
 import { useModalDialog } from '../../hooks/useModalDialog';
 import { useLanguage } from '../../context/LanguageContext';
 
@@ -47,8 +48,10 @@ interface DocumentFlowModalProps {
 
  // #58 Fase 2: scope "documento específico del repo"
  /** Genera documentación para un path concreto del repo.
-  * #58 Fase 3: `extraInstructions` se incluye como contexto adicional para el generador. */
- onGenerateSpecific: (repoInput: string, targetPath: string, extraInstructions?: string) => Promise<string | null>;
+  * #58 Fase 3: `extraInstructions` se incluye como contexto adicional para el generador.
+  * #58 (b): devuelve `{doc, currentContent}` para que el modal pueda mostrar el
+  * diff old↔new; `currentContent` es `undefined` cuando el documento es nuevo. */
+ onGenerateSpecific: (repoInput: string, targetPath: string, extraInstructions?: string) => Promise<GenerateSpecificResult | null>;
  /** Publica (commit) un documento específico del repo. */
  onCommitSpecific: (doc: string, path: string) => Promise<void>;
  /** Crea Draft PR con un documento específico del repo. */
@@ -125,6 +128,9 @@ const [fileDoc, setFileDoc] = useState<string | null>(null);
 const [specificRepoInput, setSpecificRepoInput] = useState('');
 const [specificPath, setSpecificPath] = useState('');
 const [specificDoc, setSpecificDoc] = useState<string | null>(null);
+// #58 (b): contenido actual del documento en el repo (para diff). `undefined`
+// cuando es un alta nueva; `string` cuando ya existía y se va a actualizar.
+const [specificExistingContent, setSpecificExistingContent] = useState<string | undefined>(undefined);
 const [specificMissing, setSpecificMissing] = useState<{ owner: string; repo: string } | null>(null);
 
 // Paso 3 (revisión)
@@ -266,12 +272,19 @@ const handleGenerateSpecific = async () => {
  if (!specificRepoInput.trim() || !specificPath.trim()) return;
  setBusy(true);
  try {
- const doc = await onGenerateSpecific(specificRepoInput.trim(), specificPath.trim(), extraInstructions);
- if (doc === 'repo-missing') {
+ const result = await onGenerateSpecific(specificRepoInput.trim(), specificPath.trim(), extraInstructions);
+ // #58 (b): soporta tanto el retorno nuevo {doc, currentContent} como el
+ // legacy 'repo-missing' (defensa ante callers que aún lo emitan). El `as any`
+ // evita el narrowing TS2367: el tipo declarado nunca incluye 'repo-missing',
+ // pero callers externos podrían emitirlo.
+ if ((result as unknown) === 'repo-missing') {
  const ref = resolveRepoRef(specificRepoInput.trim(), currentUserLogin);
  setSpecificMissing({ owner: ref.owner, repo: ref.repo });
- } else if (doc != null) {
- setSpecificDoc(doc);
+ } else if (result && typeof result === 'object' && result.doc != null) {
+ setSpecificDoc(result.doc);
+ // #58 (b): guardar el contenido actual para el diff en paso 3. Si es
+ // `undefined` (alta nueva), el paso 3 muestra <pre> sin diff.
+ setSpecificExistingContent(result.currentContent);
  setStep(3);
  }
  } finally {
@@ -642,13 +655,28 @@ return (
   <div className="doc-preview-content" style={{ whiteSpace: 'pre-wrap' }}>{fileDoc}</div>
 )}
 {/* #58 Fase 2: preview del documento específico generado */}
+{/* #58 (b): si el documento ya existía en el repo, renderiza el diff old↔new
+    reutilizando DiffViewer. Si es un alta nueva, mantiene el <pre> en crudo. */}
 {step === 3 && isSpecific && specificDoc != null && (
-  <div className="doc-preview-content" style={{ whiteSpace: 'pre-wrap' }}>
-    <div style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: '8px' }}>
-      {specificPath}
+  specificExistingContent != null ? (
+    <div className="doc-preview-diff">
+      <div style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: '8px' }}>
+        {t('modal.flow.diffVsExisting')} · <code>{specificPath}</code>
+      </div>
+      <DiffViewer
+        filename={specificPath}
+        oldContent={specificExistingContent}
+        newContent={specificDoc}
+      />
     </div>
-    {specificDoc}
-  </div>
+  ) : (
+    <div className="doc-preview-content" style={{ whiteSpace: 'pre-wrap' }}>
+      <div style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: '8px' }}>
+        {specificPath}
+      </div>
+      {specificDoc}
+    </div>
+  )
 )}
 
           {/* ── Paso 4: destino + método ── */}

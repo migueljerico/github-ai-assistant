@@ -1535,14 +1535,14 @@ describe('runSecurityAudit (#52)', () => {
 // Estas dos funciones estaban exportadas pero sin suite propia.
 
 describe('runGenerateSpecificDoc', () => {
-  it('camino feliz: genera la doc y la devuelve', async () => {
+  it('camino feliz: genera la doc y la devuelve junto al currentContent (#58 b)', async () => {
     vi.mocked(getFileContents).mockResolvedValue({ content: 'b64', sha: 's1' } as any);
     vi.mocked(generateSpecificDoc).mockResolvedValue('# Doc generada');
 
     const deps = makeDeps();
-    const doc = await runGenerateSpecificDoc(deps, CONFIG, 'owner/repo', 'src/a.ts');
+    const result = await runGenerateSpecificDoc(deps, CONFIG, 'owner/repo', 'src/a.ts');
 
-    expect(doc).toBe('# Doc generada');
+    expect(result).toEqual({ doc: '# Doc generada', currentContent: 'decoded(b64)' });
     expect(generateSpecificDoc).toHaveBeenCalledWith('src/a.ts', 'decoded(b64)', undefined, CONFIG, 'es');
     expect(deps.updateMessage).toHaveBeenCalledWith(
       expect.any(String),
@@ -1551,14 +1551,14 @@ describe('runGenerateSpecificDoc', () => {
     expect(deps.setIsChatLoading).toHaveBeenLastCalledWith(false);
   });
 
-  it('si el archivo no existe (getFileContents 404), genera doc nueva desde cero', async () => {
+  it('si el archivo no existe (getFileContents 404), genera doc nueva y currentContent=undefined (#58 b)', async () => {
     vi.mocked(getFileContents).mockRejectedValue(new Error('404'));
     vi.mocked(generateSpecificDoc).mockResolvedValue('# Nueva doc');
 
     const deps = makeDeps();
-    const doc = await runGenerateSpecificDoc(deps, CONFIG, 'owner/repo', 'nuevo.md');
+    const result = await runGenerateSpecificDoc(deps, CONFIG, 'owner/repo', 'nuevo.md');
 
-    expect(doc).toBe('# Nueva doc');
+    expect(result).toEqual({ doc: '# Nueva doc', currentContent: undefined });
     expect(generateSpecificDoc).toHaveBeenCalledWith('nuevo.md', undefined, undefined, CONFIG, 'es');
     expect(deps.updateMessage).toHaveBeenCalledWith(
       expect.any(String),
@@ -1566,25 +1566,27 @@ describe('runGenerateSpecificDoc', () => {
     );
   });
 
-  it('usa existingContent explícito en vez de hacer fetch (#58 Fase 3)', async () => {
+  it('usa existingContent explícito en vez de hacer fetch y lo propaga al resultado (#58 Fase 3 + b)', async () => {
     vi.mocked(generateSpecificDoc).mockResolvedValue('# Actualizada');
 
     const deps = makeDeps();
-    await runGenerateSpecificDoc(deps, CONFIG, 'owner/repo', 'a.ts', 'CONTENIDO_PREVIO');
+    const result = await runGenerateSpecificDoc(deps, CONFIG, 'owner/repo', 'a.ts', 'CONTENIDO_PREVIO');
 
     expect(getFileContents).not.toHaveBeenCalled();
     expect(generateSpecificDoc).toHaveBeenCalledWith('a.ts', 'CONTENIDO_PREVIO', undefined, CONFIG, 'es');
+    expect(result).toEqual({ doc: '# Actualizada', currentContent: 'CONTENIDO_PREVIO' });
   });
 
   it('incorpora la conversación como contexto cuando se pasa', async () => {
     vi.mocked(generateSpecificDoc).mockResolvedValue('# Doc');
 
     const deps = makeDeps();
-    await runGenerateSpecificDoc(deps, CONFIG, 'owner/repo', 'a.ts', undefined, 'pregunta previa del usuario');
+    const result = await runGenerateSpecificDoc(deps, CONFIG, 'owner/repo', 'a.ts', undefined, 'pregunta previa del usuario');
 
     expect(generateSpecificDoc).toHaveBeenCalledWith(
       'a.ts', undefined, 'Usuario: pregunta previa del usuario', CONFIG, 'es'
     );
+    expect(result).toEqual({ doc: '# Doc', currentContent: undefined });
   });
 
   it('si la IA falla, devuelve null y marca la entrada como error', async () => {
@@ -1592,9 +1594,9 @@ describe('runGenerateSpecificDoc', () => {
     vi.mocked(generateSpecificDoc).mockRejectedValue(new Error('IA caída'));
 
     const deps = makeDeps();
-    const doc = await runGenerateSpecificDoc(deps, CONFIG, 'owner/repo', 'a.ts');
+    const result = await runGenerateSpecificDoc(deps, CONFIG, 'owner/repo', 'a.ts');
 
-    expect(doc).toBeNull();
+    expect(result).toBeNull();
     expect(deps.updateMessage).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({ content: expect.stringContaining('IA caída'), isLoading: false })

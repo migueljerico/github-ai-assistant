@@ -1278,6 +1278,16 @@ export interface PublishTarget {
   extraFiles?: File[];
 }
 
+/**
+ * #58 (b): resultado de generar un documento específico del repo.
+ * `currentContent` permite al modal mostrar el diff old↔new; es `undefined`
+ * cuando el documento no existía previamente (alta nueva).
+ */
+export interface GenerateSpecificResult {
+  doc: string;
+  currentContent?: string;
+}
+
 /** Despacha la publicación según el `kind` (commit / Draft PR / Release). */
 export async function runPublishFileDocByKind(deps: ChatDeps, t: PublishTarget): Promise<void> {
   if (t.kind === 'release') {
@@ -1325,6 +1335,8 @@ export async function runStartPublish(
  * #58 Fase 2: genera documentación para un archivo ESPECÍFICO del repo.
  * Si `existingContent` viene, pide actualizar el documento existente.
  * Si `conversation` viene, lo usa como contexto adicional.
+ * #58 (b): devuelve también `currentContent` (contenido actual del repo, si
+ * existía) para que el modal pueda renderizar el diff old↔new en la revisión.
  */
 export async function runGenerateSpecificDoc(
   deps: ChatDeps,
@@ -1333,7 +1345,7 @@ export async function runGenerateSpecificDoc(
   targetPath: string,
   existingContent?: string,
   conversation?: string,
-): Promise<string | null> {
+): Promise<GenerateSpecificResult | null> {
   const { token, user, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading, lang } = deps;
   const { owner, repo: repoName } = resolveRepoRef(repoInput, user.login);
 
@@ -1369,7 +1381,7 @@ export async function runGenerateSpecificDoc(
     });
     updateEntry(histId, { status: 'pending', description: `${targetPath} listo para publicar` });
 
-    return doc;
+    return { doc, currentContent };
   } catch (err) {
     updateMessage(loadingId, { content: `❌ Error al generar ${targetPath}: ${(err as Error).message}`, isLoading: false });
     updateEntry(histId, { status: 'error', description: `Error generando ${targetPath}` });
