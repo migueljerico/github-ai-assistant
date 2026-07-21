@@ -10,14 +10,16 @@ const STORAGE_KEY = 'doc_target_selector';
 
 /** Datos que se persisten para el selector de documento específico */
 export interface DocTargetSelectorState {
-  /** Alcance seleccionado: 'repo' | 'file' | 'specific' */
-  scope: 'repo' | 'file' | 'specific' | null;
+  /** Alcance seleccionado: 'repo' | 'file' | 'specific' | 'bulk' (#58 a) */
+  scope: 'repo' | 'file' | 'specific' | 'bulk' | null;
   /** Input del repo para scope 'specific' (owner/repo) */
   specificRepoInput: string;
   /** Path del archivo dentro del repo para scope 'specific' */
   specificPath: string;
   /** Instrucciones adicionales para el generador (Fase 3 selectividad) */
   extraInstructions: string;
+  /** #58 (a): paths seleccionados del repoFileTree para el scope 'bulk' */
+  bulkPaths: string[];
   /** Timestamp de la última actualización (para depuración/expiración futura) */
   updatedAt: number;
 }
@@ -28,6 +30,7 @@ const DEFAULT_STATE: DocTargetSelectorState = {
   specificRepoInput: '',
   specificPath: '',
   extraInstructions: '',
+  bulkPaths: [],
   updatedAt: 0,
 };
 
@@ -90,6 +93,11 @@ export function useDocTargetSelector() {
     setState((prev) => ({ ...prev, extraInstructions, updatedAt: Date.now() }));
   }, []);
 
+  // #58 (a): setter para los paths multi-select del scope 'bulk'
+  const setBulkPaths = useCallback((bulkPaths: string[]) => {
+    setState((prev) => ({ ...prev, bulkPaths, updatedAt: Date.now() }));
+  }, []);
+
   const clear = useCallback(() => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem(STORAGE_KEY);
@@ -103,6 +111,7 @@ export function useDocTargetSelector() {
     setSpecificRepoInput,
     setSpecificPath,
     setExtraInstructions,
+    setBulkPaths,
     clear,
   };
 }

@@ -18,7 +18,8 @@ import type { RepoTreeFile } from './github';
 import { rankFilesByQuery } from '../utils/contextRanker';
 import { isContextTooLargeError } from '../utils/retry';
 import { languageDistribution, countTechnicalDebt, commitsByWeek, type LanguageSlice, type TechnicalDebt, type CommitWeek } from '../utils/codeHealth';
-import { writeDocFiles, createDocsDraftPr, publishFileDoc, uploadFilesToRepo, README_PATH, MANUAL_PATH } from './docPublisher';
+import { writeDocFiles, createDocsDraftPr, publishFileDoc, uploadFilesToRepo, README_PATH, MANUAL_PATH, publishBulkCommit, publishBulkDraftPr } from './docPublisher';
+import type { DocTarget } from './docPublisher';
 import { summarizeThread, parseThreadInput, listOpenThreads, formatThreadList } from './threadSummary';
 import { generateChangelog } from './changelogGenerator';
 import { executeAction, executeActionMultiRepo, parseRepoTarget } from './actionExecutor';
@@ -1473,6 +1474,58 @@ const { url } = await createGitHubRelease(token, owner, repo, {
   } catch (err) {
     addMessage({ role: 'assistant', content: `❌ Error al publicar ${path}: ${describePublishError(err, owner, repo, deps.t)}` });
     updateEntry(histId, { status: 'error', description: `Error publicando ${path}` });
+  }
+}
+
+/**
+ * #58 (a): publica N archivos en 1 commit atómico (commit directo o Draft PR).
+ * Orquesta publishBulkCommit / publishBulkDraftPr, con feedback al chat y al
+ * historial. Reusa el mismo patrón try/catch + describePublishError que
+ * runPublishSpecificDoc.
+ *
+ * @param targets - Lista de {path, content, message?} a commitear atómicamente.
+ * @param kind - 'commit' (rama por defecto) o 'draftpr' (rama nueva + Draft PR).
+ */
+export async function runPublishBulk(
+  deps: ChatDeps,
+  owner: string,
+  repo: string,
+  targets: DocTarget[],
+  kind: 'commit' | 'draftpr',
+): Promise<void> {
+  const { token, addMessage, addEntry, updateEntry } = deps;
+  const plural = targets.length !== 1;
+  const label = `${targets.length} archivo${plural ? 's' : ''}`;
+  const histId = addEntry({
+    status: 'pending',
+    description: `Publicando bulk de ${label} en ${owner}/${repo}`,
+    repo: `${owner}/${repo}`,
+  });
+
+  try {
+    if (kind === 'draftpr') {
+      const { pr } = await publishBulkDraftPr(token, owner, repo, targets);
+      const list = targets.map((t) => `\`${t.path}\``).join(', ');
+      addMessage({
+        role: 'assistant',
+        content: `✅ Draft PR [#${pr.number}](${pr.html_url}) con ${label} (${list}) en **${owner}/${repo}**. Revísalo antes de mergear.`,
+      });
+      updateEntry(histId, { status: 'completed', description: `Draft PR bulk con ${label}` });
+    } else {
+      const { commitSha } = await publishBulkCommit(token, owner, repo, targets);
+      const list = targets.map((t) => `\`${t.path}\``).join(', ');
+      addMessage({
+        role: 'assistant',
+        content: `✅ Bulk de ${label} commiteado atómicamente en **${owner}/${repo}** (${list}). Commit \`${commitSha.slice(0, 7)}\`.`,
+      });
+      updateEntry(histId, { status: 'completed', description: `Bulk commit con ${label}` });
+    }
+  } catch (err) {
+    addMessage({
+      role: 'assistant',
+      content: `❌ Error al publicar el bulk de ${label}: ${describePublishError(err, owner, repo, deps.t)}`,
+    });
+    updateEntry(histId, { status: 'error', description: `Error en bulk de ${label}` });
   }
 }
 

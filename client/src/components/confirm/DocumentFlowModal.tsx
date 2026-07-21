@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useDocTargetSelector } from '../../hooks/useDocTargetSelector';
 import type { RepoAnalysis } from '../../types';
 import type { PublishTarget, PublishKind, StartPublishResult, FileContext, GenerateSpecificResult } from '../../services/assistantActions';
+import type { DocTarget } from '../../services/docPublisher';
 import { docPathFor } from '../../services/assistantActions';
 import { resolveRepoRef } from '../../utils/repoRef';
 import PublishActions from './PublishActions';
@@ -62,6 +63,10 @@ interface DocumentFlowModalProps {
  onDraftPrSpecific: (doc: string, path: string) => Promise<void>;
  /** Crea Release con un documento específico del repo. */
  onReleaseSpecific: (doc: string, path: string) => Promise<void>;
+ /** #58 (a): bulk multi-archivo atómico (commit directo a la rama por defecto). */
+ onCommitBulk?: (owner: string, repo: string, targets: DocTarget[]) => Promise<void>;
+ /** #58 (a): bulk multi-archivo atómico como Draft PR (rama nueva docs/bulk-{ts}). */
+ onDraftPrBulk?: (owner: string, repo: string, targets: DocTarget[]) => Promise<void>;
  /** Árbol de archivos del repo para el selector de path (opcional, viene de RepoAnalysis.fileTree). */
  repoFileTree?: { path: string }[];
  
@@ -73,7 +78,7 @@ interface DocumentFlowModalProps {
 }
 
 type Step = 1 | 2 | 3 | 4;
-type Scope = 'repo' | 'file' | 'specific';
+type Scope = 'repo' | 'file' | 'specific' | 'bulk';
 
 // ── Componente ──────────────────────────────────────────────────────────────────
 // #57: flujo único de documentación (stepper de 4 pasos) que unifica los dos
@@ -102,6 +107,9 @@ export default function DocumentFlowModal({
   onCommitSpecific,
   onDraftPrSpecific,
   onReleaseSpecific,
+  // #58 (a): callbacks para bulk multi-archivo atómico
+  onCommitBulk,
+  onDraftPrBulk,
   repoFileTree,
   // #58 Fase 3: selectividad — instrucciones adicionales
   extraInstructions,
@@ -137,6 +145,14 @@ const [specificDoc, setSpecificDoc] = useState<string | null>(null);
 // #58 (b): contenido actual del documento en el repo (para diff). `undefined`
 // cuando es un alta nueva; `string` cuando ya existía y se va a actualizar.
 const [specificExistingContent, setSpecificExistingContent] = useState<string | undefined>(undefined);
+// #58 (a): estado del scope bulk
+const [bulkRepoInput, setBulkRepoInput] = useState('');
+// Paths del repoFileTree seleccionados para generar doc vía IA (multi-select).
+const [bulkPaths, setBulkPaths] = useState<string[]>([]);
+// Targets ya resueltos (path+content+origen) listos para el commit atómico.
+const [bulkTargets, setBulkTargets] = useState<Array<{ path: string; content: string; origin: 'ai' | 'attached' }>>([]);
+// Progreso de generación IA (para el botón "Generando done/total").
+const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
 // Paso 3 (revisión)
   const [activeTab, setActiveTab] = useState<'readme' | 'manual'>('readme');
 
@@ -412,6 +428,68 @@ const doReleaseSpecific = async () => {
   finally { setBusy(false); setPending(null); onCancel(); }
 };
 
+// ── #58 (a): handlers del scope bulk ──────────────────────────────────────────
+// Toggle de un path del repoFileTree en la selección multi-archivo.
+const toggleBulkPath = (path: string) => {
+  setBulkPaths(prev => prev.includes(path) ? prev.filter(p => p !== path) : [...prev, path]);
+};
+
+// Genera la doc (IA) para cada path seleccionado del repo y combina con los
+// archivos adjuntos del usuario. El resultado queda en `bulkTargets` (paso 3).
+const handleGenerateBulk = async () => {
+  if (busy) return;
+  const trimmedRepo = bulkRepoInput.trim();
+  const hasPaths = bulkPaths.length > 0;
+  const attached = allAttachedFiles ?? [];
+  if (!trimmedRepo || (hasPaths === false && attached.length === 0)) return;
+  setBusy(true);
+  setBulkProgress({ done: 0, total: bulkPaths.length });
+  try {
+    const targets: Array<{ path: string; content: string; origin: 'ai' | 'attached' }> = [];
+    // 1. Generar doc con IA para cada path seleccionado (en serie para respetar
+    //    rate limits de la IA y poder reportar progreso).
+    for (let i = 0; i < bulkPaths.length; i++) {
+      const p = bulkPaths[i];
+      const result = await onGenerateSpecific(trimmedRepo, p, extraInstructions);
+      if (result && typeof result === 'object' && result.doc != null) {
+        targets.push({ path: p, content: result.doc, origin: 'ai' });
+      }
+      setBulkProgress({ done: i + 1, total: bulkPaths.length });
+    }
+    // 2. Adjuntos del usuario: cada archivo se convierte en {path: name, content: text}.
+    for (const fc of attached) {
+      if (!fc.file) continue;
+      try {
+        const text = await fc.file.text();
+        targets.push({ path: fc.name, content: text, origin: 'attached' });
+      } catch {
+        // Binarios no legibles como texto: se ignoran (no son aptos para commit de texto).
+      }
+    }
+    if (targets.length === 0) return;
+    setBulkTargets(targets);
+    // Destino por defecto del bulk = el repo introducido en paso 2.
+    setDestRepo(trimmedRepo);
+    setStep(3);
+  } finally {
+    setBusy(false);
+    setBulkProgress(null);
+  }
+};
+
+// Paso 4 bulk: commit directo o Draft PR al destino elegido.
+const doCommitBulk = async (kind: 'commit' | 'draftpr') => {
+  if (bulkTargets.length === 0 || !destRepo.trim()) return;
+  const handler = kind === 'commit' ? onCommitBulk : onDraftPrBulk;
+  if (!handler) return;
+  setPending(kind); setBusy(true);
+  try {
+    const ref = resolveRepoRef(destRepo.trim(), currentUserLogin);
+    const docTargets: DocTarget[] = bulkTargets.map(t => ({ path: t.path, content: t.content }));
+    await handler(ref.owner, ref.repo, docTargets);
+  } finally { setBusy(false); setPending(null); onCancel(); }
+};
+
   // ── Helpers de extras (reutilizados del flujo de archivo) ───────────────────────
   const destFor = (name: string): string => {
     const ext = name.split('.').pop()?.toLowerCase() || '';
@@ -426,6 +504,7 @@ const doReleaseSpecific = async () => {
 
 const isFile = scope === 'file';
 const isSpecific = scope === 'specific';
+const isBulk = scope === 'bulk';
 
 return (
     <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="flow-modal-title">
@@ -481,6 +560,17 @@ return (
 >
   <strong>{t('modal.flow.scopeSpecific')}</strong>
   <small style={{ opacity: 0.8, fontWeight: 400 }}>{t('modal.flow.scopeSpecificDesc')}</small>
+</button>
+{/* #58 (a): botón "Varios archivos a la vez" (bulk atómico) */}
+<button
+  id="flow-scope-bulk"
+  type="button"
+  className="btn btn-secondary"
+  style={{ textAlign: 'left', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '4px' }}
+  onClick={() => { setScope('bulk'); saveScope('bulk'); setStep(2); }}
+>
+  <strong>{t('modal.flow.scopeBulk')}</strong>
+  <small style={{ opacity: 0.8, fontWeight: 400 }}>{t('modal.flow.scopeBulkDesc')}</small>
 </button>
               </div>
             </>
@@ -590,8 +680,102 @@ return (
   </>
 )}
 
+{/* #58 (a): formulario del scope bulk — repo + multi-select de paths + adjuntos */}
+{step === 2 && isBulk && (
+  <>
+    <p>{t('modal.flow.scopeBulk')}</p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+      <label style={{ fontSize: '0.8rem', opacity: 0.75 }}>{t('modal.flow.bulkRepo')}</label>
+      <input
+        id="flow-bulk-repo-input"
+        autoFocus
+        type="text"
+        className="input"
+        placeholder={t('modal.flow.bulkRepoPlaceholder')}
+        value={bulkRepoInput}
+        onChange={e => setBulkRepoInput(e.target.value)}
+        disabled={busy}
+        style={{ fontSize: '0.85rem', padding: '8px 10px' }}
+      />
 
-{step === 2 && !isFile && !isSpecific && (
+      {/* Multi-select de paths del repoFileTree */}
+      <div>
+        <div style={{ fontSize: '0.8rem', opacity: 0.75, marginBottom: '4px' }}>{t('modal.flow.bulkSelectPaths')}</div>
+        <small style={{ display: 'block', fontSize: '0.72rem', opacity: 0.6, marginBottom: '6px' }}>
+          {t('modal.flow.bulkSelectPathsHint')}
+        </small>
+        {(!repoFileTree || repoFileTree.length === 0) ? (
+          <small style={{ fontSize: '0.78rem', opacity: 0.7 }}>{t('modal.flow.bulkNoTree')}</small>
+        ) : (
+          <div id="flow-bulk-paths-list" style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid var(--border, rgba(255,255,255,0.1))', borderRadius: '6px', padding: '4px' }}>
+            {repoFileTree.map(ft => (
+              <label key={ft.path} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 6px', fontSize: '0.8rem', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={bulkPaths.includes(ft.path)}
+                  onChange={() => toggleBulkPath(ft.path)}
+                  disabled={busy}
+                />
+                <code style={{ fontSize: '0.78rem' }}>{ft.path}</code>
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Resumen de adjuntos disponibles */}
+      <div>
+        <div style={{ fontSize: '0.8rem', opacity: 0.75, marginBottom: '4px' }}>{t('modal.flow.bulkAttached')}</div>
+        {(allAttachedFiles && allAttachedFiles.length > 0) ? (
+          <ul style={{ margin: '0', paddingLeft: '18px', fontSize: '0.8rem' }}>
+            {allAttachedFiles.map((fc, i) => (
+              <li key={`bulk-att-${fc.name}-${i}`}>
+                <strong>{fc.name}</strong>{fc.file ? '' : ' ⚠️'}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <small style={{ fontSize: '0.78rem', opacity: 0.6 }}>{t('modal.flow.bulkNoAttached')}</small>
+        )}
+      </div>
+
+      {/* Instrucciones adicionales (compartidas con specific) */}
+      <div>
+        <label style={{ fontSize: '0.8rem', opacity: 0.75, display: 'block', marginBottom: '4px' }}>
+          {t('modal.flow.extraInstructions')}
+        </label>
+        <textarea
+          id="flow-bulk-extra-instructions"
+          className="input"
+          rows={2}
+          placeholder={t('modal.flow.extraInstructionsPlaceholder')}
+          value={extraInstructions}
+          onChange={e => onExtraInstructionsChange?.(e.target.value)}
+          disabled={busy}
+          style={{ fontSize: '0.85rem', padding: '8px 10px', resize: 'vertical', minHeight: '48px' }}
+        />
+      </div>
+
+      <button
+        id="flow-generate-bulk-btn"
+        type="button"
+        className="btn btn-success"
+        disabled={busy || !bulkRepoInput.trim() || (bulkPaths.length === 0 && !(allAttachedFiles && allAttachedFiles.length > 0))}
+        onClick={handleGenerateBulk}
+      >
+        {bulkProgress
+          ? t('modal.flow.bulkGenerating', { done: bulkProgress.done, total: bulkProgress.total })
+          : t('modal.flow.bulkGenerate')}
+      </button>
+      {bulkPaths.length === 0 && !(allAttachedFiles && allAttachedFiles.length > 0) && (
+        <small style={{ fontSize: '0.78rem', opacity: 0.7 }}>{t('modal.flow.bulkEmpty')}</small>
+      )}
+    </div>
+  </>
+)}
+
+
+{step === 2 && !isFile && !isSpecific && !isBulk && (
             <>
               <p>{t('modal.flow.scopeRepo')}</p>
               <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
@@ -738,6 +922,37 @@ return (
   )
 )}
 
+{/* #58 (a): paso 3 bulk — resumen tabular de los targets generados/recogidos */}
+{step === 3 && isBulk && bulkTargets.length > 0 && (
+  <div style={{ marginTop: '8px' }}>
+    <div style={{ fontSize: '0.85rem', opacity: 0.8, marginBottom: '8px' }}>
+      {t('modal.flow.bulkSummary', { count: bulkTargets.length, s: bulkTargets.length !== 1 ? 's' : '' })}
+    </div>
+    <table className="bulk-summary-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+      <thead>
+        <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border, rgba(255,255,255,0.1))' }}>
+          <th style={{ padding: '6px 8px' }}>{t('modal.flow.specificPathPlaceholder').split(':')[0]}</th>
+          <th style={{ padding: '6px 8px' }}>{t('modal.flow.bulkSelectPaths').split(' ')[0]}</th>
+          <th style={{ padding: '6px 8px', textAlign: 'right' }}>{t('modal.flow.bulkLines', { count: '' }).replace('{count}', '').trim() || 'Líneas'}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {bulkTargets.map((tgt, i) => (
+          <tr key={`bulk-tgt-${tgt.path}-${i}`} style={{ borderBottom: '1px solid var(--border, rgba(255,255,255,0.05))' }}>
+            <td style={{ padding: '6px 8px' }}><code style={{ fontSize: '0.78rem' }}>{tgt.path}</code></td>
+            <td style={{ padding: '6px 8px' }}>
+              {tgt.origin === 'ai' ? t('modal.flow.bulkOriginAI') : t('modal.flow.bulkOriginAttached')}
+            </td>
+            <td style={{ padding: '6px 8px', textAlign: 'right', opacity: 0.7 }}>
+              {tgt.content.split('\n').length}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+)}
+
           {/* ── Paso 4: destino + método ── */}
           {step === 4 && !isFile && analysis && (
             <div style={{ fontSize: '0.9rem' }}>
@@ -838,6 +1053,23 @@ return (
               )}
             </>
           )}
+
+          {/* #58 (a): paso 4 bulk — input destino (el método va en el footer) */}
+          {step === 4 && isBulk && bulkTargets.length > 0 && (
+            <div style={{ fontSize: '0.9rem' }}>
+              <div style={{ opacity: 0.8, marginBottom: '4px' }}>{t('modal.flow.bulkDest')}</div>
+              <input
+                id="flow-bulk-dest-input"
+                className="input"
+                type="text"
+                placeholder={t('modal.flow.destinationPlaceholder')}
+                value={destRepo}
+                onChange={e => setDestRepo(e.target.value)}
+                disabled={busy}
+                style={{ fontSize: '0.85rem', padding: '8px 10px' }}
+              />
+            </div>
+          )}
         </div>
 
         {/* ── Footers por paso ── */}
@@ -930,6 +1162,30 @@ return (
     isCreatingDraftPr={busy && pending === 'draftpr'}
     isCreatingRelease={busy && pending === 'release'}
   />
+)}
+
+{/* #58 (a): footer paso 4 bulk — 2 botones (Commit directo + Draft PR) */}
+{step === 4 && isBulk && (
+  <div className="modal-footer">
+    <button id="flow-cancel-btn" className="btn btn-danger" onClick={onCancel} disabled={busy}>{t('modal.publish.cancel')}</button>
+    <button id="flow-back-btn" className="btn btn-secondary" onClick={() => setStep(3)} disabled={busy}>{t('modal.flow.back')}</button>
+    <button
+      id="flow-bulk-commit-btn"
+      className="btn btn-success"
+      onClick={() => doCommitBulk('commit')}
+      disabled={busy || !destRepo.trim()}
+    >
+      {busy && pending === 'commit' ? <><span className="spinner spinner-sm" /> {t('modal.flow.generating')}</> : t('modal.flow.bulkCommitDirect')}
+    </button>
+    <button
+      id="flow-bulk-draftpr-btn"
+      className="btn btn-success"
+      onClick={() => doCommitBulk('draftpr')}
+      disabled={busy || !destRepo.trim()}
+    >
+      {busy && pending === 'draftpr' ? <><span className="spinner spinner-sm" /> {t('modal.flow.generating')}</> : t('modal.flow.bulkDraftPr')}
+    </button>
+  </div>
 )}
       </div>
     </div>

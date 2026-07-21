@@ -9,6 +9,10 @@ vi.mock('../github', () => ({
   getBranchSha: vi.fn(),
   createBranch: vi.fn(),
   createPullRequest: vi.fn(),
+  createBlob: vi.fn(),
+  createTree: vi.fn(),
+  createCommit: vi.fn(),
+  updateRef: vi.fn(),
 }));
 
 import {
@@ -19,8 +23,12 @@ import {
   getBranchSha,
   createBranch,
   createPullRequest,
+  createBlob,
+  createTree,
+  createCommit,
+  updateRef,
 } from '../github';
-import { writeDocFiles, buildDocsPrBody, createDocsDraftPr, publishFileDoc, uploadPathFor, writeDocTargets } from '../docPublisher';
+import { writeDocFiles, buildDocsPrBody, createDocsDraftPr, publishFileDoc, uploadPathFor, writeDocTargets, commitMultipleFiles, publishBulkCommit, publishBulkDraftPr, buildBulkPrBody } from '../docPublisher';
 
 const TOKEN = 'tok';
 const OWNER = 'owner';
@@ -296,5 +304,90 @@ describe('uploadPathFor (#28 4b)', () => {
     expect(uploadPathFor('Empleados.xlsx')).toBe('data/Empleados.xlsx');
     expect(uploadPathFor('datos.csv')).toBe('data/datos.csv');
     expect(uploadPathFor('LICENSE.txt')).toBe('LICENSE.txt');
+  });
+});
+
+// ── #58 (a) bulk multi-archivo atómico ────────────────────────────────────────
+describe('#58 (a) bulk atómico (Git Data API)', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  describe('commitMultipleFiles', () => {
+    it('ordena correctamente blob(paralelo) → tree → commit → updateRef', async () => {
+      vi.mocked(getBranchSha).mockResolvedValueOnce('base-sha');
+      vi.mocked(createBlob)
+        .mockResolvedValueOnce({ sha: 'blob-a' })
+        .mockResolvedValueOnce({ sha: 'blob-b' });
+      vi.mocked(createTree).mockResolvedValueOnce({ sha: 'tree-sha' });
+      vi.mocked(createCommit).mockResolvedValueOnce({ sha: 'commit-sha' });
+      vi.mocked(updateRef).mockResolvedValueOnce(undefined);
+
+      const out = await commitMultipleFiles(TOKEN, OWNER, REPO, 'main', 'msg', [
+        { path: 'a.md', content: 'A' },
+        { path: 'b.md', content: 'B' },
+      ]);
+      expect(out).toEqual({ commitSha: 'commit-sha' });
+      expect(getBranchSha).toHaveBeenCalledWith(TOKEN, OWNER, REPO, 'main');
+      expect(createBlob).toHaveBeenCalledTimes(2);
+      expect(createTree).toHaveBeenCalledWith(TOKEN, OWNER, REPO, 'base-sha', [
+        { path: 'a.md', sha: 'blob-a' },
+        { path: 'b.md', sha: 'blob-b' },
+      ]);
+      expect(createCommit).toHaveBeenCalledWith(TOKEN, OWNER, REPO, 'msg', 'tree-sha', ['base-sha']);
+      expect(updateRef).toHaveBeenCalledWith(TOKEN, OWNER, REPO, 'heads/main', 'commit-sha');
+    });
+  });
+
+  describe('publishBulkCommit', () => {
+    it('commitea atómicamente sobre default_branch', async () => {
+      vi.mocked(getRepo).mockResolvedValueOnce({ default_branch: 'main' } as any);
+      vi.mocked(getBranchSha).mockResolvedValueOnce('base-sha');
+      vi.mocked(createBlob).mockResolvedValue({ sha: 'blob-x' });
+      vi.mocked(createTree).mockResolvedValueOnce({ sha: 'tree-sha' });
+      vi.mocked(createCommit).mockResolvedValueOnce({ sha: 'commit-sha' });
+      vi.mocked(updateRef).mockResolvedValueOnce(undefined);
+
+      const out = await publishBulkCommit(TOKEN, OWNER, REPO, [{ path: 'a.md', content: 'A' }]);
+      expect(out.commitSha).toBe('commit-sha');
+      // Verifica que el branch final es la default_branch
+      expect(updateRef).toHaveBeenCalledWith(TOKEN, OWNER, REPO, 'heads/main', 'commit-sha');
+    });
+  });
+
+  describe('publishBulkDraftPr', () => {
+    it('crea rama docs/bulk-{now}, commitea y abre Draft PR', async () => {
+      vi.mocked(getRepo).mockResolvedValueOnce({ default_branch: 'main' } as any);
+      vi.mocked(getBranchSha).mockResolvedValueOnce('base-sha');
+      vi.mocked(createBranch).mockResolvedValueOnce({} as any);
+      vi.mocked(createBlob).mockResolvedValue({ sha: 'blob-y' });
+      vi.mocked(createTree).mockResolvedValueOnce({ sha: 'tree-sha' });
+      vi.mocked(createCommit).mockResolvedValueOnce({ sha: 'commit-sha' });
+      vi.mocked(updateRef).mockResolvedValueOnce(undefined);
+      vi.mocked(createPullRequest).mockResolvedValueOnce({ number: 7, html_url: 'https://x' } as any);
+
+      const out = await publishBulkDraftPr(TOKEN, OWNER, REPO, [{ path: 'a.md', content: 'A' }], 12345);
+      expect(createBranch).toHaveBeenCalledWith(TOKEN, OWNER, REPO, 'docs/bulk-12345', 'base-sha');
+      expect(createPullRequest).toHaveBeenCalledWith(
+        TOKEN, OWNER, REPO,
+        expect.any(String),
+        'docs/bulk-12345', 'main',
+        expect.any(String),
+        true
+      );
+      expect(out.pr.number).toBe(7);
+      expect(out.branchName).toBe('docs/bulk-12345');
+    });
+  });
+
+  describe('buildBulkPrBody', () => {
+    it('lista los paths y cita N archivos', () => {
+      const body = buildBulkPrBody([{ path: 'a.md', content: 'x' }, { path: 'b.md', content: 'y' }]);
+      expect(body).toContain('2 archivos');
+      expect(body).toContain('`a.md`');
+      expect(body).toContain('`b.md`');
+    });
+    it('con signature, lo cita en el cuerpo', () => {
+      const body = buildBulkPrBody([{ path: 'a.md', content: 'x' }], 'Creado por @x y documentado por IA');
+      expect(body).toContain('Creado por @x');
+    });
   });
 });

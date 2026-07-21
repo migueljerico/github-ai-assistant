@@ -26,6 +26,7 @@ describe('useDocTargetSelector', () => {
       specificRepoInput: '',
       specificPath: '',
       extraInstructions: '',
+      bulkPaths: [],
       updatedAt: 0,
     });
   });
@@ -55,6 +56,7 @@ describe('useDocTargetSelector', () => {
       specificRepoInput: '',
       specificPath: '',
       extraInstructions: '',
+      bulkPaths: [],
       updatedAt: 0,
     });
     // La clave se elimina al detectar JSON inválido, pero luego se reescribe el default
@@ -147,6 +149,7 @@ describe('useDocTargetSelector', () => {
       specificRepoInput: '',
       specificPath: '',
       extraInstructions: '',
+      bulkPaths: [],
       updatedAt: 0,
     });
     // clear() elimina la clave, pero el useEffect subsiguiente guarda el estado por defecto
@@ -157,6 +160,7 @@ describe('useDocTargetSelector', () => {
       specificRepoInput: '',
       specificPath: '',
       extraInstructions: '',
+      bulkPaths: [],
       updatedAt: 0,
     });
   });

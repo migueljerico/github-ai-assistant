@@ -9,9 +9,10 @@ import {
   runSend, runConfirmAction, runCancelAction, runAttachFile,
   runGenerateFileDoc, runCreateRepo, runCreateRepoAndDocument, runGenerateSpecificDoc,
 runPublishSpecificDoc, runStartPublish, runPublishFileDocByKind, formatConversation,
-fetchExistingFileDoc,
+fetchExistingFileDoc, runPublishBulk,
 } from './services/assistantActions';
 import type { RepoContext, FileContext, PublishTarget, StartPublishResult, CodeHealth, GenerateSpecificResult } from './services/assistantActions';
+import type { DocTarget } from './services/docPublisher';
 import { serializeConversation, parseConversation, conversationFilename } from './utils/conversationIO';
 import Header from './components/layout/Header';
 import SessionWarningBanner from './components/layout/SessionWarningBanner';
@@ -300,6 +301,21 @@ const flowReleaseSpecific = useCallback(async (doc: string, path: string): Promi
   await runPublishSpecificDoc(deps, user.login, user.login, path, doc, 'release');
 }, [token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading]);
 
+// #58 (a): bulk multi-archivo atómico. Recibe (owner, repo, targets) explícitos
+// (a diferencia de flowCommitSpecific que hardcodea user.login — limitación prexistente,
+// no tocada aquí). El destino lo resuelve el modal en el paso 4.
+const flowCommitBulk = useCallback(async (owner: string, repo: string, targets: DocTarget[]): Promise<void> => {
+  if (!token || !user) return;
+  const deps = { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading };
+  await runPublishBulk(deps, owner, repo, targets, 'commit');
+}, [token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading]);
+
+const flowDraftPrBulk = useCallback(async (owner: string, repo: string, targets: DocTarget[]): Promise<void> => {
+  if (!token || !user) return;
+  const deps = { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading };
+  await runPublishBulk(deps, owner, repo, targets, 'draftpr');
+}, [token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading]);
+
 // ── Send message to AI (Opción D - con detección de modo) ──────────────────
   // Con un archivo adjunto, resolveMode (en runSend) fuerza SIEMPRE chat: el archivo
   // se conversa/analiza. Documentar/publicar es EXPLÍCITO (botón "📄 Documentar repo",
@@ -529,6 +545,9 @@ const flowReleaseSpecific = useCallback(async (doc: string, path: string): Promi
     onCommitSpecific={flowCommitSpecific}
     onDraftPrSpecific={flowDraftPrSpecific}
     onReleaseSpecific={flowReleaseSpecific}
+    // #58 (a): bulk multi-archivo atómico (commit directo + Draft PR)
+    onCommitBulk={flowCommitBulk}
+    onDraftPrBulk={flowDraftPrBulk}
     repoFileTree={repoContext?.fileTree}
     onCancel={closeDocumentFlow}
         />

@@ -41,6 +41,9 @@ function baseProps(overrides: Partial<Props> = {}): Props {
  onCommitSpecific: vi.fn(),
  onDraftPrSpecific: vi.fn(),
  onReleaseSpecific: vi.fn(),
+ // #58 (a): bulk multi-archivo atómico
+ onCommitBulk: vi.fn().mockResolvedValue(undefined),
+ onDraftPrBulk: vi.fn().mockResolvedValue(undefined),
  repoFileTree: undefined,
  // #58 Fase 3: selectividad
  extraInstructions: '',
@@ -450,5 +453,106 @@ describe('DocumentFlowModal — #58 (b) diff en paso 3 scope repo', () => {
 
     await screen.findByText('README CONTENT');
     expect(screen.queryByTestId('diff-viewer-mock')).not.toBeInTheDocument();
+  });
+});
+
+// ── #58 (a): scope bulk multi-archivo atómico ────────────────────────────────
+describe('#58 (a) bulk multi-archivo', () => {
+  it('Paso 1: muestra el botón de alcance bulk', () => {
+    setup();
+    expect(screen.getByRole('button', { name: /Varios archivos a la vez/ })).toBeInTheDocument();
+  });
+
+  it('Paso 2 bulk: multi-select de paths + botón Generar deshabilitado sin selección', async () => {
+    setup({
+      repoFileTree: [{ path: 'src/a.ts' }, { path: 'src/b.ts' }],
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Varios archivos a la vez/ }));
+    // Hay un input para el repo
+    fireEvent.change(screen.getByPlaceholderText(/owner\/repo o repo/), { target: { value: 'owner/repo' } });
+    // El árbol muestra los dos paths como checkboxes
+    expect(screen.getByText('src/a.ts')).toBeInTheDocument();
+    expect(screen.getByText('src/b.ts')).toBeInTheDocument();
+    // Botón de generar está deshabilitado mientras no se seleccione nada ni haya adjuntos
+    expect(screen.getByRole('button', { name: /Generar documentación/ })).toBeDisabled();
+  });
+
+  it('Flujo bulk con paths IA: selecciona → genera → commit directo llama onCommitBulk', async () => {
+    const props = setup({
+      repoFileTree: [{ path: 'src/a.ts' }, { path: 'src/b.ts' }],
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Varios archivos a la vez/ }));
+    fireEvent.change(screen.getByPlaceholderText(/owner\/repo o repo/), { target: { value: 'owner/repo' } });
+
+    // Marca los 2 paths
+    const checkboxes = screen.getAllByRole('checkbox');
+    checkboxes.forEach(cb => fireEvent.click(cb));
+
+    const genBtn = screen.getByRole('button', { name: /Generar documentación/ });
+    fireEvent.click(genBtn);
+
+    // Tras generar, va al paso 3 (resumen). Esperamos ver el resumen.
+    await waitFor(() => {
+      expect(props.onGenerateSpecific).toHaveBeenCalledTimes(2);
+    });
+
+    // Continúa al paso 4
+    fireEvent.click(screen.getByRole('button', { name: /Continuar/ }));
+    // Rellena destino (pre-llenado con el repo del paso 2, pero forzamos valor)
+    const dest = screen.getByPlaceholderText(/owner\/repo o repo/);
+    fireEvent.change(dest, { target: { value: 'owner/repo' } });
+
+    // Click en Commit directo
+    fireEvent.click(screen.getByRole('button', { name: /Commit directo/ }));
+    await waitFor(() => expect(props.onCommitBulk).toHaveBeenCalled());
+    const [ownerArg, repoArg, targetsArg] = (props.onCommitBulk as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(ownerArg).toBe('owner');
+    expect(repoArg).toBe('repo');
+    expect(targetsArg).toHaveLength(2);
+    expect(targetsArg[0]).toMatchObject({ path: 'src/a.ts', content: 'specific doc' });
+  });
+
+  it('Flujo bulk con Draft PR llama onDraftPrBulk', async () => {
+    const props = setup({
+      repoFileTree: [{ path: 'src/x.ts' }],
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Varios archivos a la vez/ }));
+    fireEvent.change(screen.getByPlaceholderText(/owner\/repo o repo/), { target: { value: 'owner/repo' } });
+    fireEvent.click(screen.getByRole('checkbox'));
+
+    fireEvent.click(screen.getByRole('button', { name: /Generar documentación/ }));
+    await waitFor(() => expect(props.onGenerateSpecific).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole('button', { name: /Continuar/ }));
+    fireEvent.change(screen.getByPlaceholderText(/owner\/repo o repo/), { target: { value: 'owner/repo' } });
+    fireEvent.click(screen.getByRole('button', { name: /Draft PR/ }));
+    await waitFor(() => expect(props.onDraftPrBulk).toHaveBeenCalled());
+  });
+
+  it('Mezcla: paths IA + adjuntos → targets combina ambos', async () => {
+    const fc: FileContext = { name: 'notas.txt', contextText: 'NOTAS RAW', file: mockFile('notas.txt', 'NOTAS RAW') };
+    const props = setup({
+      repoFileTree: [{ path: 'src/y.ts' }],
+      hasAttachedFile: true,
+      allAttachedFiles: [fc],
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Varios archivos a la vez/ }));
+    fireEvent.change(screen.getByPlaceholderText(/owner\/repo o repo/), { target: { value: 'owner/repo' } });
+    fireEvent.click(screen.getByRole('checkbox'));
+
+    fireEvent.click(screen.getByRole('button', { name: /Generar documentación/ }));
+    await waitFor(() => expect(props.onGenerateSpecific).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole('button', { name: /Continuar/ }));
+    fireEvent.change(screen.getByPlaceholderText(/owner\/repo o repo/), { target: { value: 'owner/repo' } });
+    fireEvent.click(screen.getByRole('button', { name: /Commit directo/ }));
+
+    await waitFor(() => expect(props.onCommitBulk).toHaveBeenCalled());
+    const targetsArg = (props.onCommitBulk as ReturnType<typeof vi.fn>).mock.calls[0][2];
+    expect(targetsArg).toHaveLength(2);
+    const paths = targetsArg.map((t: { path: string }) => t.path);
+    expect(paths).toContain('src/y.ts');
+    expect(paths).toContain('notas.txt');
+    // El contenido del adjunto es el texto del File
+    const notasTarget = targetsArg.find((t: { path: string }) => t.path === 'notas.txt');
+    expect(notasTarget.content).toBe('NOTAS RAW');
   });
 });

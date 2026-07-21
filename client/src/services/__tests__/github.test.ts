@@ -32,6 +32,10 @@ import {
   listBranches,
   createBranch,
   deleteBranch,
+  createBlob,
+  createTree,
+  createCommit,
+  updateRef,
   listWorkflows,
   listWorkflowRuns,
   triggerWorkflowRun,
@@ -905,6 +909,57 @@ describe('github.ts', () => {
         'https://api.github.com/repos/o/r/git/refs/heads/feature',
         expect.objectContaining({ method: 'DELETE' })
       );
+    });
+
+    // ── #58 (a): Git Data API (bulk atómico) ──
+    it('createBlob hace POST a git/blobs con content + encoding', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ sha: 'blob-sha-1' }) } as any);
+      const out = await createBlob('tok', 'o', 'r', 'contenido');
+      expect(out).toEqual({ sha: 'blob-sha-1' });
+      const [, init] = vi.mocked(fetch).mock.calls[0];
+      expect(init).toMatchObject({ method: 'POST' });
+      expect(JSON.parse((init as RequestInit).body as string)).toEqual({ content: 'contenido', encoding: 'utf-8' });
+    });
+
+    it('createTree hace POST a git/trees con base_tree + tree[]', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ sha: 'tree-sha-1' }) } as any);
+      const out = await createTree('tok', 'o', 'r', 'base-sha', [{ path: 'a.md', sha: 'blobA' }, { path: 'b.md', sha: 'blobB' }]);
+      expect(out).toEqual({ sha: 'tree-sha-1' });
+      const [, init] = vi.mocked(fetch).mock.calls[0];
+      expect(init).toMatchObject({ method: 'POST' });
+      const body = JSON.parse((init as RequestInit).body as string);
+      expect(body.base_tree).toBe('base-sha');
+      expect(body.tree).toEqual([
+        { path: 'a.md', mode: '100644', type: 'blob', sha: 'blobA' },
+        { path: 'b.md', mode: '100644', type: 'blob', sha: 'blobB' },
+      ]);
+    });
+
+    it('createTree con baseTreeSha=null omite base_tree', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ sha: 'tree-sha-2' }) } as any);
+      await createTree('tok', 'o', 'r', null, [{ path: 'x.md', sha: 'blobX' }]);
+      const body = JSON.parse((vi.mocked(fetch).mock.calls[0][1] as RequestInit).body as string);
+      expect(body.base_tree).toBeUndefined();
+      expect(body.tree[0]).toMatchObject({ path: 'x.md', sha: 'blobX' });
+    });
+
+    it('createCommit hace POST a git/commits con message + tree + parents', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ sha: 'commit-sha-1' }) } as any);
+      const out = await createCommit('tok', 'o', 'r', 'msg', 'tree-sha', ['parent-sha']);
+      expect(out).toEqual({ sha: 'commit-sha-1' });
+      const body = JSON.parse((vi.mocked(fetch).mock.calls[0][1] as RequestInit).body as string);
+      expect(body).toEqual({ message: 'msg', tree: 'tree-sha', parents: ['parent-sha'] });
+    });
+
+    it('updateRef hace PATCH a git/refs/{ref} con sha + force:false', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({}) } as any);
+      await updateRef('tok', 'o', 'r', 'heads/main', 'commit-sha-1');
+      expect(fetch).toHaveBeenCalledWith(
+        'https://api.github.com/repos/o/r/git/refs/heads/main',
+        expect.objectContaining({ method: 'PATCH' })
+      );
+      const body = JSON.parse((vi.mocked(fetch).mock.calls[0][1] as RequestInit).body as string);
+      expect(body).toEqual({ sha: 'commit-sha-1', force: false });
     });
 
     it('listWorkflows desenvuelve workflows[]', async () => {

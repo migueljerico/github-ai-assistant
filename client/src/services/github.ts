@@ -793,6 +793,88 @@ export async function deleteBranch(
   });
 }
 
+// ── Git Data API (bulk atómico, #58 a) ────────────────────────────────────────
+// Estos 4 wrappers permiten escribir N archivos en 1 commit atómico:
+// createBlob (por archivo) → createTree → createCommit → updateRef.
+
+/**
+ * Crea un blob (contenido de un archivo) y devuelve su SHA.
+ * #58 (a): primer paso del commit atómico multi-archivo.
+ */
+export async function createBlob(
+  token: string,
+  owner: string,
+  repo: string,
+  content: string,
+  encoding: string = 'utf-8'
+): Promise<{ sha: string }> {
+  return ghFetch<{ sha: string }>(token, `/repos/${owner}/${repo}/git/blobs`, {
+    method: 'POST',
+    body: JSON.stringify({ content, encoding }),
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+/**
+ * Crea un tree apuntando a N blobs, opcionalmente sobre un base_tree.
+ * #58 (a): segundo paso del commit atómico. `baseTreeSha` permite heredar
+ * el árbol actual del repo (para no reescribir archivos que no se tocan).
+ */
+export async function createTree(
+  token: string,
+  owner: string,
+  repo: string,
+  baseTreeSha: string | null,
+  items: { path: string; sha: string; mode?: string }[]
+): Promise<{ sha: string }> {
+  const tree = items.map((it) => ({ path: it.path, mode: it.mode ?? '100644', type: 'blob', sha: it.sha }));
+  const body: Record<string, unknown> = { tree };
+  if (baseTreeSha) body.base_tree = baseTreeSha;
+  return ghFetch<{ sha: string }>(token, `/repos/${owner}/${repo}/git/trees`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+/**
+ * Crea un commit sobre un tree y uno o más parents.
+ * #58 (a): tercer paso del commit atómico.
+ */
+export async function createCommit(
+  token: string,
+  owner: string,
+  repo: string,
+  message: string,
+  treeSha: string,
+  parentShas: string[]
+): Promise<{ sha: string }> {
+  return ghFetch<{ sha: string }>(token, `/repos/${owner}/${repo}/git/commits`, {
+    method: 'POST',
+    body: JSON.stringify({ message, tree: treeSha, parents: parentShas }),
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+/**
+ * Actualiza un ref (típicamente heads/{branch}) al SHA de un commit nuevo.
+ * #58 (a): cuarto y último paso del commit atómico. `force: false` para que
+ * falle (en lugar de sobreescribir) si el ref avanzó mientras tanto.
+ */
+export async function updateRef(
+  token: string,
+  owner: string,
+  repo: string,
+  ref: string,
+  sha: string
+): Promise<void> {
+  await ghFetch(token, `/repos/${owner}/${repo}/git/refs/${ref}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ sha, force: false }),
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
 // ── Workflows ─────────────────────────────────────────────────────────────────
 
 /**

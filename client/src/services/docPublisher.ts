@@ -12,6 +12,10 @@ import {
   getBranchSha,
   createBranch,
   createPullRequest,
+  createBlob,
+  createTree,
+  createCommit,
+  updateRef,
 } from './github';
 import type { GitHubPullRequest } from '../types';
 
@@ -296,5 +300,126 @@ export async function createDocsDraftPr(
     true
   );
 
+  return { pr, branchName };
+}
+
+// ── #58 (a) Bulk multi-archivo atómico (Git Data API) ─────────────────────────
+// A diferencia de writeDocTargets (1 commit PUT por archivo, en serie), estas
+// funciones escriben N archivos en 1 único commit atómico vía Git Data API:
+// createBlob (1 por archivo, en paralelo) → createTree → createCommit → updateRef.
+// Si cualquier paso falla, el repo queda intacto (no se actualiza el ref).
+
+/** Resultado de un bulk commit: SHA del commit creado. */
+export interface BulkCommitResult {
+  commitSha: string;
+}
+
+/**
+ * Commit atómico de N `{path, content}` en 1 solo commit sobre `branch`.
+ * #58 (a): orquesta los 4 pasos de Git Data API. Los blobs se crean en paralelo
+ * (Promise.all); tree, commit y ref son secuenciales (dependen del anterior).
+ *
+ * @param branch - Rama destino (debe existir previamente).
+ * @param message - Mensaje del commit.
+ * @param files - Lista de `{path, content}` a escribir.
+ * @returns SHA del commit creado.
+ */
+export async function commitMultipleFiles(
+  token: string,
+  owner: string,
+  repo: string,
+  branch: string,
+  message: string,
+  files: { path: string; content: string }[]
+): Promise<BulkCommitResult> {
+  const baseSha = await getBranchSha(token, owner, repo, branch);
+  // 1. Crear un blob por archivo (en paralelo para reducir latencia total).
+  const blobs = await Promise.all(
+    files.map((f) => createBlob(token, owner, repo, f.content))
+  );
+  // 2. Construir el tree apuntando a los blobs, sobre el árbol base actual.
+  const items = files.map((f, i) => ({ path: f.path, sha: blobs[i].sha }));
+  const tree = await createTree(token, owner, repo, baseSha, items);
+  // 3. Crear el commit sobre el tree, con la rama base como parent.
+  const commit = await createCommit(token, owner, repo, message, tree.sha, [baseSha]);
+  // 4. Mover el ref al nuevo commit (force:false → falla si avanzó, sin sobrescribir).
+  await updateRef(token, owner, repo, `heads/${branch}`, commit.sha);
+  return { commitSha: commit.sha };
+}
+
+/** Construye el cuerpo del Draft PR de bulk listando los paths afectados. */
+export function buildBulkPrBody(targets: DocTarget[], signature?: string): string {
+  const byLine = signature ? `, generada por ${signature}` : ', generada por el Asistente de IA';
+  const docs = targets.map((t) => `- \`${t.path}\``).join('\n');
+  const plural = targets.length !== 1;
+  return [
+    '## 📄 Documentación bulk generada automáticamente',
+    '',
+    `Este Draft PR añade/actualiza **${targets.length} archivo${plural ? 's' : ''}**${byLine} en un único commit atómico.`,
+    '',
+    '### Archivos',
+    docs,
+    '',
+    '> Revisa el contenido antes de marcar el PR como *Ready for review* y mergear.',
+  ].join('\n');
+}
+
+/** Mensaje estándar para un commit bulk de N archivos. */
+function bulkCommitMessage(targets: DocTarget[], signature?: string): string {
+  const plural = targets.length !== 1;
+  const tail = signature ? ` — ${signature}` : '';
+  return `docs: bulk de ${targets.length} archivo${plural ? 's' : ''}${tail}`;
+}
+
+/**
+ * Bulk commit directo a la rama por defecto del repo.
+ * #58 (a): escribe N archivos en 1 commit atómico sobre `default_branch`.
+ */
+export async function publishBulkCommit(
+  token: string,
+  owner: string,
+  repo: string,
+  targets: DocTarget[],
+  signature?: string
+): Promise<BulkCommitResult> {
+  const repoInfo = await getRepo(token, owner, repo);
+  return commitMultipleFiles(
+    token, owner, repo, repoInfo.default_branch,
+    bulkCommitMessage(targets, signature), targets
+  );
+}
+
+/**
+ * Bulk como Draft PR: crea rama `docs/bulk-{now}`, commitea atómicamente N
+ * archivos y abre el PR contra la rama por defecto.
+ * #58 (a): paralelo a `createDocsDraftPr` pero para N archivos en 1 commit.
+ *
+ * @param now - Timestamp para el nombre de la rama (inyectable para tests).
+ */
+export async function publishBulkDraftPr(
+  token: string,
+  owner: string,
+  repo: string,
+  targets: DocTarget[],
+  now: number = Date.now(),
+  signature?: string
+): Promise<DocsDraftPrResult> {
+  const repoInfo = await getRepo(token, owner, repo);
+  const baseBranch = repoInfo.default_branch;
+  const baseSha = await getBranchSha(token, owner, repo, baseBranch);
+  const branchName = `docs/bulk-${now}`;
+  await createBranch(token, owner, repo, branchName, baseSha);
+  await commitMultipleFiles(
+    token, owner, repo, branchName,
+    bulkCommitMessage(targets, signature), targets
+  );
+  const plural = targets.length !== 1;
+  const pr = await createPullRequest(
+    token, owner, repo,
+    `docs: bulk de ${targets.length} archivo${plural ? 's' : ''}`,
+    branchName, baseBranch,
+    buildBulkPrBody(targets, signature),
+    true
+  );
   return { pr, branchName };
 }
