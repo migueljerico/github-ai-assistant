@@ -13,7 +13,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "diff": "^5.2.0",
+    "diff": "^9.0.0",
     "diff2html": "^3.4.47",
     "fflate": "^0.8.3",
     "react": "^19.2.7",
