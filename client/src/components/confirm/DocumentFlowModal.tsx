@@ -137,8 +137,6 @@ const [specificDoc, setSpecificDoc] = useState<string | null>(null);
 // #58 (b): contenido actual del documento en el repo (para diff). `undefined`
 // cuando es un alta nueva; `string` cuando ya existía y se va a actualizar.
 const [specificExistingContent, setSpecificExistingContent] = useState<string | undefined>(undefined);
-const [specificMissing, setSpecificMissing] = useState<{ owner: string; repo: string } | null>(null);
-
 // Paso 3 (revisión)
   const [activeTab, setActiveTab] = useState<'readme' | 'manual'>('readme');
 
@@ -324,17 +322,10 @@ const handleGenerateSpecific = async () => {
  setBusy(true);
  try {
  const result = await onGenerateSpecific(specificRepoInput.trim(), specificPath.trim(), extraInstructions);
- // #58 (b): soporta tanto el retorno nuevo {doc, currentContent} como el
- // legacy 'repo-missing' (defensa ante callers que aún lo emitan). El `as any`
- // evita el narrowing TS2367: el tipo declarado nunca incluye 'repo-missing',
- // pero callers externos podrían emitirlo.
- if ((result as unknown) === 'repo-missing') {
- const ref = resolveRepoRef(specificRepoInput.trim(), currentUserLogin);
- setSpecificMissing({ owner: ref.owner, repo: ref.repo });
- } else if (result && typeof result === 'object' && result.doc != null) {
+ // #58 (b): result es siempre GenerateSpecificResult | null. `currentContent`
+ // es `undefined` cuando el documento es nuevo → el paso 3 muestra <pre> sin diff.
+ if (result && typeof result === 'object' && result.doc != null) {
  setSpecificDoc(result.doc);
- // #58 (b): guardar el contenido actual para el diff en paso 3. Si es
- // `undefined` (alta nueva), el paso 3 muestra <pre> sin diff.
  setSpecificExistingContent(result.currentContent);
  setStep(3);
  }
@@ -595,11 +586,6 @@ return (
       >
         {busy ? t('modal.flow.generating') : t('modal.flow.generateSpecific')}
       </button>
-      {specificMissing && (
-        <div style={{ marginTop: '8px', padding: '8px 10px', borderRadius: '6px', fontSize: '0.85rem', background: 'rgba(234,179,8,0.12)', border: '1px solid rgba(234,179,8,0.4)' }}>
-          {t('modal.flow.repoMissing', { repo: `${specificMissing.owner}/${specificMissing.repo}` })}
-        </div>
-      )}
     </div>
   </>
 )}
