@@ -30,7 +30,7 @@ describe('AuthContext - Zero-Storage Architecture', () => {
   });
 
   afterEach(() => {
-    window.location = originalLocation;
+    (window as any).location = originalLocation;
   });
 
   it('debería iniciar desautenticado por defecto', () => {
