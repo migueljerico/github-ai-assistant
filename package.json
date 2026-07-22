@@ -27,6 +27,9 @@
     "supertest": "^7.0.0",
     "vitest": "^4.1.10"
   },
+  "overrides": {
+    "shell-quote": ">=1.9.0"
+  },
   "engines": {
     "node": ">=20"
   }
