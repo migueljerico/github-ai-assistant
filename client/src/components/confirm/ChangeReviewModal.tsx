@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import type { PendingAction } from '../../types';
 import DiffViewer from './DiffViewer';
 import { useModalDialog } from '../../hooks/useModalDialog';
@@ -34,12 +34,12 @@ export default function ChangeReviewModal({
   const acceptedCount = accepted.filter(Boolean).length;
 
   // Sincronizar accepted[] cuando cambia el número de acciones
-  useMemo(() => {
+  useEffect(() => {
     setAccepted(prev => {
       if (prev.length === actions.length) return prev;
       return actions.map((_, i) => prev[i] ?? true);
     });
-  }, [actions.length]);
+  }, [actions.length, actions]);
 
   const handleAccept = (index: number) => {
     setAccepted(prev => { const n = [...prev]; n[index] = true; return n; });
