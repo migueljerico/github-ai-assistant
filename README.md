@@ -19,7 +19,7 @@
 ![Versión](https://img.shields.io/badge/Versión-v3.54.0-blue?style=for-the-badge)
 [![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)](./LICENSE)
 [![CI & Coverage](https://github.com/migueljerico/github-ai-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/migueljerico/github-ai-assistant/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg)](https://codecov.io/gh/migueljerico/github-ai-assistant)
+[![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/branch/main/graph/badge.svg?token=B1VDL0Y04G)](https://codecov.io/gh/migueljerico/github-ai-assistant)
 
 
 > **Asistente Zero-Storage para analizar, documentar y gestionar repositorios de GitHub mediante lenguaje natural.**
