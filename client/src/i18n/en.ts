@@ -432,4 +432,18 @@ export const en = {
   'tmpl_panel.tmpl_license-gpl.name': 'GPL 3.0',
   'tmpl_panel.tmpl_license-gpl.description': 'GNU GPL v3.0 License',
   'tmpl_panel.tmpl_license-gpl.instruction': 'Create a LICENSE file with the full text of the GNU General Public License version 3.0 (GPL-3.0). Include the standard note at the beginning of the file with the program name as a placeholder.',
+
+  // #58 (c) — Review mode
+  'modal.review.title': 'Review Mode',
+  'modal.review.ariaLabel': 'Review proposed changes',
+  'modal.review.accepted': 'Accepted',
+  'modal.review.rejected': 'Rejected',
+  'modal.review.pending': 'Pending',
+  'modal.review.applyAccepted': 'Apply accepted',
+  'modal.review.applying': 'Applying',
+  'modal.review.clearAll': '🗑️ Clear all',
+  'modal.review.noPreview': 'No preview available',
+  'modal.review.selectItem': 'Select a change on the left to see details',
+  'modal.review.of': 'of',
+  'modal.review.selected': 'selected',
 };

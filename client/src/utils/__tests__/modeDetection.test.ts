@@ -61,4 +61,14 @@ describe('modeDetection', () => {
       expect(resolveMode('crea un issue', 'action', false, true)).toBe('action');
     });
   });
+
+  // #58 (c) — review mode
+  describe('review override', () => {
+    it('review se comporta como action (necesita JSON)', () => {
+      expect(resolveMode('crea un issue', 'review', false, false)).toBe('action');
+    });
+    it('review fuerza action incluso con contexto de repo', () => {
+      expect(resolveMode('actualiza el readme', 'review', true, false)).toBe('action');
+    });
+  });
 });

@@ -511,6 +511,58 @@ export function parseGeminiAction(rawText: string): GeminiAction | null {
 }
 
 /**
+ * #58 (c): extrae TODOS los objetos JSON válidos de la respuesta del modelo.
+ * A diferencia de parseGeminiAction (que devuelve solo el primero), este parser
+ * busca múltiples acciones cuando el usuario pide varios cambios a la vez.
+ * Retrocompatible: si solo hay 1 JSON, devuelve array de 1 elemento.
+ */
+export function parseGeminiActions(rawText: string): GeminiAction[] {
+  const results: GeminiAction[] = [];
+  const cleaned = rawText
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '')
+    .replace(/<reflection>[\s\S]*?<\/reflection>/gi, '')
+    .trim();
+  let searchFrom = 0;
+  while (searchFrom < cleaned.length) {
+    const start = cleaned.indexOf('{', searchFrom);
+    if (start === -1) break;
+    const balanced = firstBalancedJsonObjectFrom(cleaned, start);
+    if (!balanced) break;
+    try {
+      const parsed = JSON.parse(balanced);
+      if (isValidAction(parsed)) results.push(parsed as GeminiAction);
+    } catch { /* skip malformed */ }
+    searchFrom = start + balanced.length;
+  }
+  return results;
+}
+
+/** Busca el primer objeto JSON balanceado desde una posición dada. */
+function firstBalancedJsonObjectFrom(text: string, start: number): string | null {
+  if (start >= text.length || text[start] !== '{') return null;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === '\\') escaped = true;
+      else if (ch === '"') inString = false;
+    } else if (ch === '"') {
+      inString = true;
+    } else if (ch === '{') {
+      depth++;
+    } else if (ch === '}') {
+      depth--;
+      if (depth === 0) return text.slice(start, i + 1);
+    }
+  }
+  return null;
+}
+
+/**
  * Extrae posibles substrings JSON de la respuesta del modelo, en orden de
  * preferencia: (1) la cadena entera sin fences, (2) el primer bloque `{...}`
  * balanceado (para modelos que envuelven el JSON en prosa).

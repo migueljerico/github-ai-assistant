@@ -127,6 +127,8 @@ export function buildSignature(
 export interface SendDeps extends ChatDeps {
   setConversationHistory: (history: Array<{ role: 'user' | 'assistant'; content: string }>) => void;
   setPendingAction: (action: PendingAction | null) => void;
+  /** #58 (c): acumula acciones en modo revisión en vez de abrir ConfirmModal. */
+  addReviewAction?: (action: PendingAction) => void;
 }
 
 /**
@@ -153,7 +155,7 @@ export interface FileContext {
 export interface SendParams {
   userText: string;
   conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>;
-  modeOverride: 'auto' | 'chat' | 'action';
+  modeOverride: 'auto' | 'chat' | 'action' | 'review';
   repoContext: RepoContext | null;
   /** #57 Tanda B: ahora multi-archivo (array, vacío = ninguno). */
   fileContext: FileContext[];
@@ -161,6 +163,8 @@ export interface SendParams {
   selectedRepos: GitHubRepo[];
   /** #40: si se pasa, permite cancelar la generación en curso (botón Detener). */
   signal?: AbortSignal;
+  /** #58 (c): cuando es true, las acciones de escritura se acumulan en vez de abrir ConfirmModal. */
+  reviewMode?: boolean;
 }
 
 /**
@@ -916,6 +920,28 @@ export async function runSend(deps: SendDeps, config: AIProviderConfig, params: 
 
     if (enrichedAction.requiereConfirmacion) {
       const repos = multiRepoEnabled && selectedRepos.length > 0 ? selectedRepos : [];
+
+      // #58 (c): en modo revisión, acumular la acción en vez de abrir ConfirmModal.
+      if (params.reviewMode && deps.addReviewAction) {
+        let commitMessage: string | undefined;
+        const isWriteAction = (enrichedAction.metodo === 'PUT' || enrichedAction.metodo === 'DELETE')
+          && !!enrichedAction.archivo;
+        if (isWriteAction && config.apiKey && config.model) {
+          try {
+            const parsed = parseRepoTarget(enrichedAction.repo, user);
+            const repoRef = repos.length === 1
+              ? { owner: repos[0].owner.login, name: repos[0].name }
+              : { owner: parsed.owner, name: parsed.repo };
+            commitMessage = await suggestCommitMessage({
+              action: enrichedAction, token, repoOwner: repoRef.owner, repoName: repoRef.name,
+              provider: config.provider, apiKey: config.apiKey, model: config.model, lang: deps.lang,
+            });
+          } catch { /* best-effort */ }
+        }
+        deps.addReviewAction({ action: enrichedAction, targetRepos: repos, commitMessage });
+        updateMessage(loadingId, { content: `📋 ${enrichedAction.accion} — añadido a revisión`, isLoading: false });
+        return;
+      }
 
       // #53 (v3.50.0): sugerir un mensaje de commit semántico ANTES de abrir el
       // modal, para que el usuario vea una propuesta editable. Best-effort: si

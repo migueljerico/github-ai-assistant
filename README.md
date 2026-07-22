@@ -65,7 +65,7 @@ Todo bajo el principio:
 | 🧠 Modelos disponibles | Gemini, Llama, Nemotron, GLM, Grok, DeepSeek, Qwen, MiniMax y más vía OpenRouter/NIM/Zenmux/OpenCode/Cloudflare/Ollama/Ai& |
 | ⚡ Latencia observada | ~400ms Groq / ~1.2s Gemini, variable según modelo y contexto |
 | 🛡️ Seguridad | Zero-Storage: credenciales solo en memoria React |
-| 🧪 Tests | 709 tests automatizados |
+| 🧪 Tests | 792 tests automatizados |
 | 🌍 Deploy | Google Cloud Run |
 | 📦 Stack | React + TypeScript + Express + Vite |
 
@@ -218,7 +218,7 @@ Ver detalle en ./docs/SEGURIDAD.md.
 
 El proyecto usa **Vitest**, **React Testing Library**, **GitHub Actions** y **Codecov**.
 
-- **709 tests automatizados**
+- **792 tests automatizados**
 - Tests unitarios, integración y componentes
 - Tests del servidor
 - CI con lint + tests + cobertura

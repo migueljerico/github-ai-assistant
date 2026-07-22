@@ -21,6 +21,7 @@ import TemplatePanel from './components/templates/TemplatePanel';
 import ChatArea from './components/chat/ChatArea';
 import ChatInput from './components/chat/ChatInput';
 import ConfirmModal from './components/confirm/ConfirmModal';
+import ChangeReviewModal from './components/confirm/ChangeReviewModal';
 import DocumentFlowModal from './components/confirm/DocumentFlowModal';
 import CodeHealthModal from './components/dashboard/CodeHealthModal';
 import type { ChatMessage, GitHubRepo, PendingAction, RepoAnalysis } from './types';
@@ -70,9 +71,11 @@ export default function App() {
   // #28 - Archivos locales adjuntos como contexto del chat (#57 Tanda B: multi-archivo)
   const [fileContext, setFileContext] = useState<FileContext[]>([]);
 
-  // 🔥 OPCIÓN D - Modo override: 'auto' | 'chat' | 'action'
-  // El setter aún no está cableado a la UI; de momento queda fijado en 'auto'.
-  const [modeOverride] = useState<'auto' | 'chat' | 'action'>('auto');
+  // 🔥 OPCIÓN D - Modo override: 'auto' | 'chat' | 'action' | 'review'
+  const [modeOverride, setModeOverride] = useState<'auto' | 'chat' | 'action' | 'review'>('auto');
+
+  // #58 (c) - Modo revisión: acumula acciones para revisión uno-a-uno
+  const [reviewActions, setReviewActions] = useState<PendingAction[]>([]);
 
   const addMessage = useCallback((msg: Omit<ChatMessage, 'id' | 'timestamp'>): string => {
     const id = uid();
@@ -333,9 +336,9 @@ const flowDraftPrBulk = useCallback(async (owner: string, repo: string, targets:
     abortRef.current = controller;
 
     await runSend(
-      { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading, setConversationHistory, setPendingAction },
+      { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading, setConversationHistory, setPendingAction, addReviewAction: (pa) => setReviewActions(prev => [...prev, pa]) },
       { provider, apiKey, model, accountId },
-      { userText, conversationHistory, modeOverride, repoContext, fileContext, multiRepoEnabled, selectedRepos, signal: controller.signal },
+      { userText, conversationHistory, modeOverride, repoContext, fileContext, multiRepoEnabled, selectedRepos, signal: controller.signal, reviewMode: modeOverride === 'review' },
     );
   }, [inputValue, token, user, provider, apiKey, model, providerName, t, lang, conversationHistory, multiRepoEnabled, selectedRepos, modeOverride, repoContext, fileContext, addMessage, updateMessage, addEntry, updateEntry, accountId]);
 
@@ -505,6 +508,8 @@ const flowDraftPrBulk = useCallback(async (owner: string, repo: string, targets:
             onAttachFiles={handleAttachFiles}
             onClearFileAt={handleClearFileAt}
             onClearAllFiles={handleClearAllFiles}
+            modeOverride={modeOverride}
+            onModeOverrideChange={setModeOverride}
           />
         </div>
 
@@ -517,6 +522,22 @@ const flowDraftPrBulk = useCallback(async (owner: string, repo: string, targets:
           pendingAction={pendingAction}
           onConfirm={handleConfirm}
           onCancel={handleCancel}
+          isExecuting={isExecuting}
+        />
+      )}
+
+      {/* #58 (c) - Review mode modal */}
+      {reviewActions.length > 0 && (
+        <ChangeReviewModal
+          actions={reviewActions}
+          onAccept={() => {}}
+          onReject={() => {}}
+          onApplyAccepted={async () => {
+            // TODO: ejecutar acciones aceptadas via executeAction
+            setReviewActions([]);
+          }}
+          onClear={() => setReviewActions([])}
+          onCancel={() => setReviewActions([])}
           isExecuting={isExecuting}
         />
       )}

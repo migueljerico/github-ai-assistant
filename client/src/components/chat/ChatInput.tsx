@@ -49,8 +49,8 @@ interface ChatInputProps {
   onClearFileAt: (index: number) => void;
   onClearAllFiles: () => void;
   // 🔥 OPCIÓN D - Props para el selector de modo (opcionales para retrocompatibilidad)
-  modeOverride?: 'auto' | 'chat' | 'action';
-  onModeOverrideChange?: (mode: 'auto' | 'chat' | 'action') => void;
+  modeOverride?: 'auto' | 'chat' | 'action' | 'review';
+  onModeOverrideChange?: (mode: 'auto' | 'chat' | 'action' | 'review') => void;
 }
 
 export default function ChatInput({
@@ -100,7 +100,7 @@ export default function ChatInput({
     }
   };
 
-  const handleModeChange = (newMode: 'auto' | 'chat' | 'action') => {
+  const handleModeChange = (newMode: 'auto' | 'chat' | 'action' | 'review') => {
     if (onModeOverrideChange) {
       onModeOverrideChange(newMode);
     }
@@ -125,7 +125,7 @@ export default function ChatInput({
       {/* 🔥 OPCIÓN D - Selector visual de modo */}
       {onModeOverrideChange && (
         <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', fontSize: '0.85rem' }}>
-          {(['auto', 'chat', 'action'] as const).map((mode) => (
+          {(['auto', 'chat', 'action', 'review'] as const).map((mode) => (
             <button
               key={mode}
               type="button"
@@ -144,7 +144,7 @@ export default function ChatInput({
                 transition: 'all 0.2s ease',
               }}
             >
-              {mode === 'auto' ? `🤖 ${t('chat.mode.auto')}` : mode === 'chat' ? `💬 ${t('chat.mode.chat')}` : `️ ${t('chat.mode.action')}`}
+              {mode === 'auto' ? `🤖 ${t('chat.mode.auto')}` : mode === 'chat' ? `💬 ${t('chat.mode.chat')}` : mode === 'review' ? `📋 ${t('modal.review.title')}` : `️ ${t('chat.mode.action')}`}
             </button>
           ))}
         </div>

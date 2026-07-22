@@ -38,3 +38,7 @@ Nunca ejecutes directamente — solo genera el JSON descriptivo.
 El frontend se encargará de la confirmación y ejecución.
 
 IMPORTANTE: responde SOLO con el JSON, sin texto adicional, sin markdown, sin ```json.
+
+Cuando el usuario te pida varios cambios a la vez, puedes proponer todos en una
+sola respuesta. Coloca cada acción como un objeto JSON independiente separado
+por saltos de línea. El frontend los parseará y mostrará en modo revisión.

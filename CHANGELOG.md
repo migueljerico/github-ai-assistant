@@ -5,6 +5,100 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.54.0] — 2026-07-22
+
+> **#58 (c) — Modo revisión uno-a-uno (ChangeReviewModal).**
+> Nuevo componente `ChangeReviewModal` que permite acumular múltiples acciones
+> propuestas por la IA y revisarlas una a una antes de aplicar. Incluye parser
+> `parseGeminiActions` para extraer múltiples JSONs de una sola respuesta,
+> toggle de modo "Revisión" en ChatInput, y branch dedicado en `runSend`.
+
+### Added
+- **`ChangeReviewModal.tsx`** — componente nuevo con lista de acciones a la
+  izquierda (✓ aceptado / ✗ rechazado por item) y DiffViewer a la derecha.
+  Footer con "Aplicar aceptados", "Limpiar todo" y "Cerrar".
+- **`parseGeminiActions`** en `gemini.ts` — extrae TODOS los objetos JSON
+  válidos de la respuesta del modelo (retrocompatible: 1 JSON → array de 1).
+- **Modo `review`** en `modeDetection.ts` — `ModeOverride` ampliado con
+  `'review'`, `resolveMode` retorna `'action'` (necesita JSON).
+- **Toggle "Revisión"** en `ChatInput.tsx` — cuarto botón en el selector de
+  modo (auto / chat / action / review).
+- **Branch de review en `runSend`** (`assistantActions.ts`) — cuando
+  `reviewMode` es true, las acciones de escritura se acumulan en
+  `reviewActions` en vez de abrir `ConfirmModal`.
+- **`action-system.md`** — nota indicando que el modelo puede proponer N
+  acciones en una sola respuesta.
+- **i18n** — bloque `modal.review.*` (~12 claves) en es.ts y en.ts.
+- **Tests** — 9 tests de `ChangeReviewModal`, 4 de `parseGeminiActions`,
+  2 de `resolveMode` con override `'review'`. Total: 792/792 (58 suites).
+
+### Changed
+- `modeDetection.ts` — `ModeOverride = 'auto' | ChatMode | 'review'`.
+- `assistantActions.ts` — `SendParams.modeOverride` ampliado, `SendDeps`
+  incluye `addReviewAction` opcional.
+- `App.tsx` — `modeOverride` ahora tiene setter cableado, `reviewActions`
+  state, render condicional de `ChangeReviewModal`.
+
+Por ZCode (GLM-5.2).
+
+## [3.53.0] — 2026-07-21
+
+> **#58 (a) — Bulk multi-archivo atómico vía Git Data API.**
+> Nuevo scope `bulk` en `DocumentFlowModal` que permite generar documentación
+> para múltiples archivos del repo y publicarlos en 1 commit atómico.
+
+### Added
+- **Git Data API wrappers** en `github.ts` — `createBlob`, `createTree`,
+  `createCommit`, `updateRef` para commits atómicos.
+- **`commitMultipleFiles`** en `docPublisher.ts` — orquestador atómico:
+  `getBranchSha → Promise.all(createBlob) → createTree → createCommit → updateRef`.
+- **`publishBulkCommit` / `publishBulkDraftPr`** — commit directo o Draft PR
+  para N archivos en 1 operación.
+- **Scope `bulk`** en `DocumentFlowModal` — paso 1: selector de scope, paso 2:
+  multi-select de paths + archivos adjuntos, paso 3: resumen, paso 4: publicación.
+- **`runPublishBulk`** en `assistantActions.ts` — orquestador con UI feedback.
+- **i18n** — bloque `modal.flow.bulk.*` (~22 claves) en es.ts y en.ts.
+- **Tests** — 6 de Git Data API, 4 de docPublisher bulk, 9+ de
+  DocumentFlowModal bulk. Total: 781 tests.
+
+Por ZCode (GLM-5.2).
+
+## [3.52.2] — 2026-07-21
+
+> **#58 (b) — Diff incremental en documentación de repo (scope repo).**
+> v3.52.2 cierra el diff incremental en los 3 scopes del Flujo B.
+
+### Added
+- Diff en paso 3 del scope `repo` — `runDocumentRepo` ahora hace 2 fetches
+  en paralelo del contenido actual SOLO cuando `alreadyDocumented=true`.
+- `RepoAnalysis` ampliado con `readmeActual?` y `manualActual?` (opcionales).
+- `README_PATH` / `MANUAL_PATH` exportadas de `docPublisher.ts`.
+
+Por ZCode (GLM-5.2).
+
+## [3.52.1] — 2026-07-21
+
+> **#58 (b) — Diff incremental en documentación de archivo (scope file).**
+
+### Added
+- Diff en paso 4 del scope `file` — `fetchExistingFileDoc` (nueva función
+  exportada) fetcha `docs/{base}.md` al cambiar el repo destino.
+- Estados: loading / found (`<DiffViewer>`) / notfound / error.
+- 3 claves i18n nuevas: `fetchingExisting`, `newDocNotice`, `fetchExistingError`.
+
+Por ZCode (GLM-5.2).
+
+## [3.52.0] — 2026-07-21
+
+> **#58 (b) — Diff incremental en documentación específica (scope specific).**
+
+### Added
+- Diff en paso 3 "Revisar" del scope `specific` — `runGenerateSpecificDoc`
+  ahora devuelve `GenerateSpecificResult { doc, currentContent }`.
+- `DiffViewer` renderizado condicionalmente cuando hay contenido existente.
+
+Por ZCode (GLM-5.2).
+
 ## [3.51.0] — 2026-07-19
 
 > **Gate de cobertura al 70% en CI — CIERRA #26.**

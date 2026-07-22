@@ -5,7 +5,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 export type ChatMode = 'chat' | 'action';
-export type ModeOverride = 'auto' | ChatMode;
+export type ModeOverride = 'auto' | ChatMode | 'review';
 
 // Palabras que sugieren conversación / petición de opinión.
 const CONVERSATION_KEYWORDS = [
@@ -69,6 +69,9 @@ export function resolveMode(
   hasRepoContext: boolean,
   hasFileContext = false,
 ): ChatMode {
+  // #58 (c): 'review' se comporta como 'action' (necesita JSON) pero el flag
+  // reviewMode en runSend acumula las acciones en vez de abrir ConfirmModal.
+  if (override === 'review') return 'action';
   if (override !== 'auto') return override;
 
   if (hasFileContext) return 'chat';

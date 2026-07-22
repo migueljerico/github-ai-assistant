@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
  parseGeminiAction,
+ parseGeminiActions,
  detectPrimaryLanguage,
  callAI,
  buildRepoContextSummary,
@@ -140,6 +141,38 @@ Constructing the JSON:
       expect(result?.tipo).toBe('listado');
       expect(result?.endpoint).toBe('/user/repos');
       expect(result?.accion).toBe('Listar los repositorios del usuario autenticado');
+    });
+  });
+
+  // #58 (c) — parseGeminiActions (múltiples JSONs)
+  describe('parseGeminiActions', () => {
+    const validAction = (accion: string) => JSON.stringify({
+      tipo: 'lectura', accion, metodo: 'GET', endpoint: '/user', requiereConfirmacion: false,
+    });
+
+    it('extrae una sola acción válida', () => {
+      const result = parseGeminiActions(validAction('Leer perfil'));
+      expect(result).toHaveLength(1);
+      expect(result[0].accion).toBe('Leer perfil');
+    });
+
+    it('extrae múltiples acciones válidas separadas por saltos de línea', () => {
+      const raw = validAction('Acción 1') + '\n' + validAction('Acción 2') + '\n' + validAction('Acción 3');
+      const result = parseGeminiActions(raw);
+      expect(result).toHaveLength(3);
+      expect(result.map(a => a.accion)).toEqual(['Acción 1', 'Acción 2', 'Acción 3']);
+    });
+
+    it('devuelve array vacío si no hay JSONs válidos', () => {
+      expect(parseGeminiActions('No hay acciones aquí')).toEqual([]);
+    });
+
+    it('ignora JSONs malformados y extrae los válidos', () => {
+      const raw = validAction('Buena') + '\n{broken json}\n' + validAction('Otra buena');
+      const result = parseGeminiActions(raw);
+      expect(result).toHaveLength(2);
+      expect(result[0].accion).toBe('Buena');
+      expect(result[1].accion).toBe('Otra buena');
     });
   });
 
