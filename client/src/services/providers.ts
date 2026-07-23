@@ -54,7 +54,7 @@ export interface ProviderDef {
 // Catálogo FIJO de Gemini. El listado dinámico vía proxy fue retirado: la API
 // de Google no era fiable en prod (CORS/fallo del proxy), devolvía modelos
 // incompatibles y el usuario no veía los modelos correctos. Esta lista es la
-// fuente única de verdad — contiene exactamente los modelos operativos.
+// fuente única de verdad — contiene exactamente los 18 modelos operativos a día de hoy.
 const GEMINI_MODELS: ModelOption[] = [
   {
     value: 'gemini-2.5-flash',
@@ -68,9 +68,49 @@ const GEMINI_MODELS: ModelOption[] = [
     description: 'provider.gemini.model.proDesc',
   },
   {
-    value: 'gemini-3.5-flash',
-    label: 'provider.gemini.model.flash35',
-    description: 'provider.gemini.model.flash35Desc',
+    value: 'gemini-2.0-flash',
+    label: 'provider.gemini.model.flash20',
+    description: 'provider.gemini.model.flash20Desc',
+  },
+  {
+    value: 'gemini-2.0-flash-lite',
+    label: 'provider.gemini.model.flash20Lite',
+    description: 'provider.gemini.model.flash20LiteDesc',
+  },
+  {
+    value: 'gemma-4-26b-a4b-it',
+    label: 'provider.gemini.model.gemma26b',
+    description: 'provider.gemini.model.gemma26bDesc',
+  },
+  {
+    value: 'gemma-4-31b-it',
+    label: 'provider.gemini.model.gemma',
+    description: 'provider.gemini.model.gemmaDesc',
+  },
+  {
+    value: 'gemini-flash-latest',
+    label: 'provider.gemini.model.flashLatest',
+    description: 'provider.gemini.model.flashLatestDesc',
+  },
+  {
+    value: 'gemini-flash-lite-latest',
+    label: 'provider.gemini.model.flashLiteLatest',
+    description: 'provider.gemini.model.flashLiteLatestDesc',
+  },
+  {
+    value: 'gemini-pro-latest',
+    label: 'provider.gemini.model.proLatest',
+    description: 'provider.gemini.model.proLatestDesc',
+  },
+  {
+    value: 'gemini-2.5-flash-lite',
+    label: 'provider.gemini.model.flash25Lite',
+    description: 'provider.gemini.model.flash25LiteDesc',
+  },
+  {
+    value: 'gemini-3-pro-preview',
+    label: 'provider.gemini.model.pro3Preview',
+    description: 'provider.gemini.model.pro3PreviewDesc',
   },
   {
     value: 'gemini-3-flash-preview',
@@ -78,19 +118,34 @@ const GEMINI_MODELS: ModelOption[] = [
     description: 'provider.gemini.model.flashPreviewDesc',
   },
   {
+    value: 'gemini-3.1-pro-preview',
+    label: 'provider.gemini.model.pro31Preview',
+    description: 'provider.gemini.model.pro31PreviewDesc',
+  },
+  {
+    value: 'gemini-3.1-flash-lite-preview',
+    label: 'provider.gemini.model.flash31LitePreview',
+    description: 'provider.gemini.model.flash31LitePreviewDesc',
+  },
+  {
     value: 'gemini-3.1-flash-lite',
     label: 'provider.gemini.model.flash31Lite',
     description: 'provider.gemini.model.flash31LiteDesc',
   },
   {
-    value: 'gemini-2.0-flash',
-    label: 'provider.gemini.model.flash20',
-    description: 'provider.gemini.model.flash20Desc',
+    value: 'gemini-3.5-flash',
+    label: 'provider.gemini.model.flash35',
+    description: 'provider.gemini.model.flash35Desc',
   },
   {
-    value: 'gemma-4-31b-it',
-    label: 'provider.gemini.model.gemma',
-    description: 'provider.gemini.model.gemmaDesc',
+    value: 'gemini-3.5-flash-lite',
+    label: 'provider.gemini.model.flash35Lite',
+    description: 'provider.gemini.model.flash35LiteDesc',
+  },
+  {
+    value: 'gemini-3.6-flash',
+    label: 'provider.gemini.model.flash36',
+    description: 'provider.gemini.model.flash36Desc',
   },
 ];
 

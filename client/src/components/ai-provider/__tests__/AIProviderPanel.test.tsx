@@ -129,7 +129,7 @@ describe('AIProviderPanel — recuerda proveedor/modelo (#40)', () => {
 });
 
 describe('AIProviderPanel — catálogo fijo de Gemini (v3.24.0)', () => {
-  it('muestra los 6 modelos fijos sin hacer ningún fetch dinámico', () => {
+  it('muestra los 18 modelos fijos sin hacer ningún fetch dinámico', () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
 
@@ -141,15 +141,26 @@ describe('AIProviderPanel — catálogo fijo de Gemini (v3.24.0)', () => {
     expect(select).toBeInTheDocument();
 
     const values = Array.from(select.options).map(o => o.value);
-    // Los 7 modelos operativos del catálogo fijo (incl. gemini-3-flash-preview).
+    // Los 18 modelos operativos del catálogo fijo a día de hoy.
     expect(values).toEqual([
       'gemini-2.5-flash',
       'gemini-2.5-pro',
-      'gemini-3.5-flash',
-      'gemini-3-flash-preview',
-      'gemini-3.1-flash-lite',
       'gemini-2.0-flash',
+      'gemini-2.0-flash-lite',
+      'gemma-4-26b-a4b-it',
       'gemma-4-31b-it',
+      'gemini-flash-latest',
+      'gemini-flash-lite-latest',
+      'gemini-pro-latest',
+      'gemini-2.5-flash-lite',
+      'gemini-3-pro-preview',
+      'gemini-3-flash-preview',
+      'gemini-3.1-pro-preview',
+      'gemini-3.1-flash-lite-preview',
+      'gemini-3.1-flash-lite',
+      'gemini-3.5-flash',
+      'gemini-3.5-flash-lite',
+      'gemini-3.6-flash',
     ]);
 
     // No hay catálogo dinámico: fetch nunca se llama para Gemini.

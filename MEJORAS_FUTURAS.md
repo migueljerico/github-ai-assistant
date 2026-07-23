@@ -2,7 +2,7 @@
 
 Estado del código, mejoras realizadas y pendientes del proyecto.
 
-**Actualizado a:** v3.50.5 · Julio 2026
+**Actualizado a:** v3.55.0 · Julio 2026
 
 ---
 
@@ -223,16 +223,68 @@ GitHub. Por eso sube de esfuerzo y complejidad.
 
 ---
 
+#### #66 — Revisión periódica del catálogo Gemini (cada 2-3 meses)
+**Esfuerzo:** ~1h cada revisión · **Prioridad:** 🟢 Baja
+
+**Contexto (v3.55.0, 2026-07-23):** el catálogo de Gemini es **estático**
+(`GEMINI_MODELS` en `client/src/services/providers.ts`, 18 modelos). El fetch
+dinámico se retiró en v3.24.0 por falta de fiabilidad en producción y porque
+la API devuelve muchos modelos no-chat. Como contrapartida, el catálogo estático
+puede desfasarse cuando Google añade modelos de chat nuevos. Esta es la
+revisión periódica que lo mantiene al día sin reactivar el riesgo del fetch
+automático.
+
+**Análisis cuantitativo de la API (consulta real `GET /v1beta/models`, 2026-07-23):**
+- **56** modelos totales devueltos por la API.
+- **41** con `generateContent` en `supportedGenerationMethods`.
+- **23** de esos 41 **NO son de chat** aunque expongan `generateContent`:
+  imagen (`*-image*`, "Nano Banana"), TTS (`*-tts*`), música (`lyria-*`),
+  robótica (`gemini-robotics-er-*`), agentes (`antigravity`, `deep-research`,
+  `computer-use`, `customtools`, `omni`), y versiones pinned redundantes (`-001`).
+- Los **18 modelos curados** coinciden exactamente con el subconjunto óptimo
+  tras filtrar el ruido. Ninguno es ficticio (el viejo problema de v3.23.x,
+  donde `gemini-2.5-flash-lite` no existía, ya no aplica).
+- **Hallazgo:** el campo `supportedGenerationMethods` **nunca** lista
+  `streamGenerateContent` (solo `generateContent` + `countTokens`); no sirve
+  para distinguir modelos con streaming.
+
+**Procedimiento de revisión (cada 2-3 meses):**
+1. Consultar la API vía el endpoint ya existente del backend
+   (`GET /api/gemini/models` en `server/index.js:261`, con una `Bearer` key
+   válida) — o directamente `GET https://generativelanguage.googleapis.com/v1beta/models`.
+2. Comparar la lista devuelta (filtrando el ruido con el denylist de abajo)
+   contra los 18 `GEMINI_MODELS` actuales.
+3. Añadir/retirar modelos del array estático + su i18n (`provider.gemini.model.*`
+   en `es.ts`/`en.ts`) + `modelLabels.ts` + los 2 tests (`providers.test.ts`,
+   `AIProviderPanel.test.tsx`).
+4. Bump de versión (minor) + entrada en `CHANGELOG.md`.
+
+**Denylist que haría falta si en el futuro se decide reactivar el catálogo
+dinámico** (filtro adicional al `generateContent` requerido):
+`['image', 'tts', 'robotics', 'lyria', 'nano-banana', 'antigravity',
+'deep-research', 'computer-use', 'customtools', 'omni', '-001']`.
+El denylist actual (`['embed', 'vision', 'aqa', 'imagen', 'chirp']`) **no**
+filtra ninguno de los 23 modelos ruidosos de hoy — habría que expandirlo.
+
+**Beneficio:** catálogo fiable al 100% (sin los riesgos de v3.23.x) y siempre
+actualizado con los modelos de chat reales de Google.
+
+**Caveat:** la revisión es manual; si se quiere automatizar, conviene esperar
+a que Google publique una forma fiable de distinguir modelos de chat (hoy no
+la hay: ni `streamGenerateContent` ni un campo `task`/`type` fiable en la API).
+
+---
+
 ## 📊 Resumen
 
 | Prioridad | ✅ Resueltos | ⏳ Pendientes |
 |---|---|---|
 | 🔴 Alta | #1, #2, #13, #14, #15, #27, #28, #45, #62, #63 | #26 (en progreso, continuo) |
 | 🟡 Media | #12, #17, #18, #19, #20, #21, #22, #32, #34, #37, #38, #39, #40, #41, #42, #44, #46, #48, #49, #50, #51, #55, #56, #57, #59, #60, #61, #64 | — |
-| 🟢 Baja | #23, #24, #25, #52, #53, #58 | — |
+| 🟢 Baja | #23, #24, #25, #52, #53, #58 | #66 (revisión periódica catálogo Gemini) |
 | 🗑️ Descartados | — | #33, #35 (descartados en v3.22.3), #36 (descartado en v3.41.0) |
 
-> **Cómputo:** 49 ítems resueltos + 1 pendiente + 3 descartados = 53 referencias (algunos issues como `#28`, `#57`, `#58` generan varias filas por sus fases). Los pendientes reales accionables son: **#26** (continuo, cobertura). **#58 cerrado completo en v3.54.0** (bulk v3.53.0, diff incremental v3.52.0/.1/.2, modo revisión v3.54.0). **#53 resuelto en v3.50.0** (sugerencia de commit semántico vía `commitSuggester.ts` + few-shot con commits recientes + fallback determinista; documentado en el roadmap en v3.50.3). **#25 cerrado completo en v3.41.0** (logs v3.39.0 + healthcheck v3.40.0 + deploy.sh v3.41.0). **#52 resuelto en v3.42.0** (Modo Auditoría de Seguridad: botón 🛡️ + plantilla + `runSecurityAudit` + prompt dedicado, lectura-only). **#36 descartado en v3.41.0** (rompe zero-storage, costo alto, beneficio marginal en single-user).
+> **Cómputo:** 49 ítems resueltos + 2 pendientes + 3 descartados = 54 referencias (algunos issues como `#28`, `#57`, `#58` generan varias filas por sus fases). Los pendientes reales accionables son: **#26** (continuo, cobertura) y **#66** (revisión periódica cada 2-3 meses del catálogo Gemini estático). **#58 cerrado completo en v3.54.0** (bulk v3.53.0, diff incremental v3.52.0/.1/.2, modo revisión v3.54.0). **#53 resuelto en v3.50.0** (sugerencia de commit semántico vía `commitSuggester.ts` + few-shot con commits recientes + fallback determinista; documentado en el roadmap en v3.50.3). **#25 cerrado completo en v3.41.0** (logs v3.39.0 + healthcheck v3.40.0 + deploy.sh v3.41.0). **#52 resuelto en v3.42.0** (Modo Auditoría de Seguridad: botón 🛡️ + plantilla + `runSecurityAudit` + prompt dedicado, lectura-only). **#36 descartado en v3.41.0** (rompe zero-storage, costo alto, beneficio marginal en single-user).
 
 > **#28** cubierto en su norte por las Fases 1 (v3.0.0, adjuntar como contexto) y 2 (v3.1.0, documentar→publicar). Más formatos: Fase 3a (v3.2.0, Excel/CSV), Fase 3b MVP (v3.3.0, Power BI .pbix/.pbit) y Fase 3b-bis (v3.4.0, Power Query M del `DataMashup`). Única limitación restante: en un `.pbix` moderno el M va en el modelo binario (no legible) → exporta `.pbit`. Word `.docx` (v3.11.0): texto de `word/document.xml`. Imágenes/visión: descartada.
 
