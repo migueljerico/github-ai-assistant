@@ -6,13 +6,25 @@
  * devuelve el id tal cual, de modo que añadir modelos nuevos nunca rompe nada.
  */
 export const MODEL_LABELS: Record<string, string> = {
-  // ── Gemini / Google AI (catálogo fijo) ──
+  // ── Gemini / Google AI (catálogo fijo: 18 modelos a día de hoy) ──
   'gemini-2.5-flash': 'Gemini 2.5 Flash',
   'gemini-2.5-pro': 'Gemini 2.5 Pro',
   'gemini-3.5-flash': 'Gemini 3.5 Flash',
   'gemini-3.1-flash-lite': 'Gemini 3.1 Flash Lite',
   'gemini-2.0-flash': 'Gemini 2.0 Flash',
   'gemma-4-31b-it': 'Gemma 4 31B',
+  'gemini-2.0-flash-lite': 'Gemini 2.0 Flash Lite',
+  'gemma-4-26b-a4b-it': 'Gemma 4 26B A4B',
+  'gemini-flash-latest': 'Gemini Flash Latest',
+  'gemini-flash-lite-latest': 'Gemini Flash Lite Latest',
+  'gemini-pro-latest': 'Gemini Pro Latest',
+  'gemini-2.5-flash-lite': 'Gemini 2.5 Flash Lite',
+  'gemini-3-pro-preview': 'Gemini 3 Pro Preview',
+  'gemini-3-flash-preview': 'Gemini 3 Flash Preview',
+  'gemini-3.1-pro-preview': 'Gemini 3.1 Pro Preview',
+  'gemini-3.1-flash-lite-preview': 'Gemini 3.1 Flash Lite Preview',
+  'gemini-3.5-flash-lite': 'Gemini 3.5 Flash Lite',
+  'gemini-3.6-flash': 'Gemini 3.6 Flash',
   // ── Groq ──
   'llama-3.3-70b-versatile': 'Llama 3.3 70B',
   'llama-3.1-8b-instant': 'Llama 3.1 8B',

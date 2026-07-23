@@ -5,6 +5,60 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.55.0] — 2026-07-23
+
+> **Catálogo Gemini estático ampliado de 7 → 18 modelos.**
+> Revisión de la fuente de verdad del catálogo FIJO de Gemini (`GEMINI_MODELS`
+> en `providers.ts`). Se confirma, consultando la API real de Google
+> (`/v1beta/models`), que los 18 modelos curados existen todos hoy y
+> coinciden con el subconjunto óptimo de los 41 modelos que la API marca como
+> `generateContent` (los 23 restantes no son de chat: imagen/TTS/música/
+> robótica/agentes). Se mantiene el catálogo **estático** (no se reactiva el
+> fetch dinámico, retirado en v3.24.0 por falta de fiabilidad en producción) y
+> se documenta una **revisión periódica** cada 2-3 meses en `MEJORAS_FUTURAS.md` (#66).
+
+### Added
+- **11 modelos nuevos** en `GEMINI_MODELS` (`client/src/services/providers.ts`):
+  - `gemini-2.0-flash-lite`
+  - `gemma-4-26b-a4b-it`
+  - `gemini-flash-latest`
+  - `gemini-flash-lite-latest`
+  - `gemini-pro-latest`
+  - `gemini-2.5-flash-lite`
+  - `gemini-3-pro-preview`
+  - `gemini-3.1-pro-preview`
+  - `gemini-3.1-flash-lite-preview`
+  - `gemini-3.5-flash-lite`
+  - `gemini-3.6-flash`
+- **i18n ES/EN** — claves `provider.gemini.model.*` (label + descripción) para
+  los 11 modelos nuevos en `client/src/i18n/{es,en}.ts`.
+- **`modelLabels.ts`** — 12 entradas nuevas con nombres amigables.
+- **`MEJORAS_FUTURAS.md`** — ítem `#66` (🟢 Baja): revisión periódica del
+  catálogo Gemini cada 2-3 meses, con el análisis cuantitativo de la API
+  (56 modelos totales, 41 con `generateContent`, 23 no-chat) y el denylist
+  que haría falta (`image/tts/robotics/lyria/nano-banana/antigravity/deep-
+  research/computer-use/customtools/omni/-001`) si en el futuro se decide
+  reactivar el catálogo dinámico.
+
+### Removed
+- **`gemini-3.1-flash-image-preview`** — modelo de generación de imágenes
+  (familia "Nano Banana"), no procede en un catálogo de chat.
+
+### Changed
+- `GEMINI_MODELS` pasa de 7 → 18 entradas; comentario de cabecera corregido
+  (decía "17 modelos", ahora "18").
+- **Tests actualizados** a 18 modelos:
+  - `client/src/components/ai-provider/__tests__/AIProviderPanel.test.tsx`
+    (espera 18 modelos, antes 6).
+  - `client/src/services/__tests__/providers.test.ts` (lista esperada del
+    catálogo fijo de Gemini, ahora 18 valores; antes 7).
+
+### Notas
+- **Sin cambios en el backend**: `/api/gemini/models` (`server/index.js:261`)
+  sigue intacto y operativo "por compatibilidad/observabilidad y por si en el
+  futuro se quiere volver a un catálogo dinámico" (decisión v3.24.0).
+- **Zero-Storage intacto**: no se tocan credenciales ni storage.
+
 ## [3.54.0] — 2026-07-22
 
 > **#58 (c) — Modo revisión uno-a-uno (ChangeReviewModal).**
