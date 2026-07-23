@@ -622,12 +622,13 @@ Responsabilidades:
 | `GET /auth/github` | Inicia flujo OAuth con GitHub |
 | `GET /auth/callback` | Recibe callback y completa OAuth |
 | `POST /api/gemini` | Proxy hacia Gemini (SDK, bloqueo EEA) |
+| `GET /api/gemini/models` | Listado de modelos Gemini vía proxy (mantenido, sin uso por el frontend desde v3.24.0 — catálogo estático) |
 | `POST /api/nim` | Proxy hacia NVIDIA NIM (sin CORS upstream) |
 | `POST /api/openzen` | Proxy hacia OpenCode Zen (sin CORS upstream) |
 | `POST /api/cloudflare` | Proxy hacia Cloudflare Workers AI (sin CORS upstream) |
 | `POST /api/ollama` | Proxy hacia Ollama Cloud (sin CORS upstream) |
 | `POST /api/aiand` | Proxy hacia Ai& (sin CORS upstream) |
-| `GET /api/*/models` | Catálogos de modelos de NIM, Ollama y Ai& vía proxy |
+| `GET /api/nim/models` · `/api/ollama/models` · `/api/aiand/models` | Catálogos dinámicos de modelos de NIM, Ollama y Ai& vía proxy |
 | `GET /health` | Health check |
 | `GET /*` | Sirve frontend en producción |
 

@@ -31,7 +31,7 @@ reemplazan. Saltarse este paso es la causa nº1 de trabajar en bucle.
 
 ## 1. Visión general
 
-**GitHub AI Assistant** (v3.42.1) es una app web que permite operar la **GitHub
+**GitHub AI Assistant** (v3.55.0) es una app web que permite operar la **GitHub
 REST API en lenguaje natural** a través de un proveedor de IA (Google Gemini,
 Groq Cloud, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI,
 Ollama Cloud o Ai&). El usuario escribe una instrucción,
@@ -345,7 +345,7 @@ Ejecutar **un solo test**: `cd client && npm run test:run -- src/services/github
   GitHub, log interno del historial, contexto que va al LLM) se dejan en español a propósito.
 - **Proveedores de IA — registro central (#15):** todos los proveedores viven en
   `services/providers.ts` como entradas del registro `PROVIDERS`. Añadir uno nuevo = una
-  entrada más, sin tocar más ficheros. Los 10 proveedores actuales y su transporte:
+  entrada más, sin tocar más ficheros. Los 9 proveedores actuales y su transporte:
   - `transport: 'openai-compatible'` con `chatEndpoint` absoluto (fetch **directo**
     desde navegador, sí envían CORS): **Groq Cloud, OpenRouter, Zenmux**.
   - `transport: 'openai-compatible'` con `chatEndpoint` relativo (proxy backend,

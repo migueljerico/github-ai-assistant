@@ -1,6 +1,6 @@
 # 📖 Manual Técnico — GitHub AI Assistant
 
-**Versión:** v3.38.1 · Julio 2026
+**Versión:** v3.55.0 · Julio 2026
 
 ---
 
@@ -85,7 +85,7 @@ github-ai-assistant/
 │       │   └── en.ts
 │       ├── services/
 │       │   ├── github.ts           # Wrapper GitHub REST API v3
-│       │   ├── providers.ts        # Registro de los 10 proveedores de IA
+│       │   ├── providers.ts        # Registro de los 9 proveedores de IA
 │       │   ├── gemini.ts           # Cliente unificado (callAI, OpenAI-compatible + proxy)
 │       │   ├── assistantActions.ts # Orquestación del chat (runSend/Confirm/Cancel + botones) #42;
 │       │   │                        #   documentar+publicar archivo (commit/Draft PR/Release + fuente/extras) #28
@@ -519,7 +519,7 @@ de arriba.
 - **CI:** GitHub Actions (`.github/workflows/ci.yml`) ejecuta en cada push/PR a `main`
   el lint, los tests del cliente con cobertura y los tests del servidor
   (job `server-test`). Ver "Pipeline CI/CD" en la sección de despliegue.
-- **Cobertura actual:** ~60% (ver Codecov para el valor exacto) · 569 tests en el cliente + 24 en el servidor (593 totales)
+- **Cobertura actual:** ~60% (ver Codecov para el valor exacto) · 792 tests en el cliente + 44 en el servidor (836 totales)
 
 ### Módulos testeados
 
