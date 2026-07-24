@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.56.1] — 2026-07-24
+
+> **Hotfix de lint: CI roto por 2 errores `no-unused-vars` de v3.56.0.**
+> La release v3.56.0 passó lint en local (config distintas) pero rompió el job
+> `test` del CI por dos variables sin usar que introdujo el refactor del Modo
+> Revisión. Fix cosmético, sin cambio de comportamiento.
+
+### Fixed
+- `assistantActions.ts:811` — `params` se desestructuraba en `processReviewActions`
+  pero no se usaba en el cuerpo (queda en el tipo del argumento, ignorado).
+- `assistantActions.test.ts:112` — import de `parseGeminiActions` sin usar (el test
+  ejercita el flujo vía el mock de fábrica, no importa el símbolo directamente).
+
+### Notes
+- Tests: 816 cliente + 44 servidor, 0 fallos. Lint: 0 errores (2 warnings
+  preexistentes en ChangeReviewModal/DocumentFlowModal, `set-state-in-effect`,
+  no bloqueantes). Build limpio.
+- Cambio de código por ZCode (GLM-5.2).
+
 ## [3.56.0] — 2026-07-24
 
 > **UX de los 4 modos de chat + fixes del Modo Revisión + rutina de cierre formalizada.**

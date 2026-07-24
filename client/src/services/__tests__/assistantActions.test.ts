@@ -109,7 +109,7 @@ vi.mock('../../utils/powerbiReader', () => ({ readPowerBI: vi.fn() }));
 vi.mock('../../utils/docxReader', () => ({ readDocx: vi.fn() }));
 vi.mock('../changelogGenerator', () => ({ generateChangelog: vi.fn() }));
 
-import { generateRepoDocs, generateFileDoc, generateSpecificDoc, buildRepoContextSummary, callAI, parseGeminiAction, parseGeminiActions, parseGeminiActionWithReason, chatPromptWithContext } from '../gemini';
+import { generateRepoDocs, generateFileDoc, generateSpecificDoc, buildRepoContextSummary, callAI, parseGeminiAction, parseGeminiActionWithReason, chatPromptWithContext } from '../gemini';
 import { assertSupportedFile, readFileContent } from '../../utils/pdfReader';
 import { readSpreadsheet } from '../../utils/spreadsheetReader';
 import { readPowerBI } from '../../utils/powerbiReader';

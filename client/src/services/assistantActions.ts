@@ -808,7 +808,7 @@ async function processReviewActions(args: {
   multiRepoEnabled: boolean;
   selectedRepos: GitHubRepo[];
 }): Promise<void> {
-  const { rawResponse, deps, config, params, newHistory, loadingId, consultedUpdate, user, token, multiRepoEnabled, selectedRepos } = args;
+  const { rawResponse, deps, config, newHistory, loadingId, consultedUpdate, user, token, multiRepoEnabled, selectedRepos } = args;
   const { updateMessage, setConversationHistory, setIsChatLoading } = deps;
 
   const actions = parseGeminiActions(rawResponse);
