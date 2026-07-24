@@ -166,6 +166,96 @@ GitHub. Por eso sube de esfuerzo y complejidad.
 
 ---
 
+#### #67 — Normalización de acentos/ñ en el tokenizador de `contextRanker.ts`
+**Esfuerzo:** ~1-2h · **Prioridad:** 🟡 Media
+
+**Contexto (v3.56.2, 2026-07-24):** el ranker de archivos (#49, BM25, v3.15.0)
+tokeniza con `text.toLowerCase().match(/[a-z0-9]+/gi)` en
+`client/src/utils/contextRanker.ts:22`. El rango `[a-z]` **no incluye letras
+acentuadas ni `ñ`** (la flag `i` no extiende el rango a `á`-`ú`), así que los
+acentos actúan como separadores. Consecuencias en español técnico:
+
+| Consulta | Tokens resultantes |
+|---|---|
+| `autenticación` | `['autenticaci']` (truncado) |
+| `envío` | `['env']` (roto) |
+| `más` | `[]` (desaparece) |
+| `configuración` | `['configuraci']` (truncado) |
+
+Casi todo el léxico técnico en `-ción` se trunca a `-ci`. Como los identificadores
+del código van **sin acento** (`autenticacion`, `configuracion`), el token
+truncado `autenticaci` **no coincide** con el identificador real → el archivo
+correcto no sube en el ranking aunque el usuario pregunte por él.
+
+**Fix:** normalizar antes de tokenizar:
+`text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ñ/g,'n').toLowerCase()`.
+Una sola línea; convierte `autenticación`→`autenticacion`, que ya coincide con el
+código. Arregla una familia entera de fallos, sin diccionario manual.
+
+**Beneficio:** corrige toda la clase de fallos de acentuación (mucho más común en
+español que el cruce de idioma de #68); cero coste/latencia; función pura → fácil
+de testear. Complementario de #68 (este cubre acentos; #68 cubre sinónimos
+ES↔EN).
+
+**Origen:** análisis derivado de evaluar por **dogfooding** la propuesta de
+Gemini Flash 3.6 sobre `contextRanker.ts` (ver #68); redacción por [GLM-5.2].
+
+---
+
+#### #70 — Activar `SyncRepoStatus` (#48): el botón 🔄 está huérfano
+**Esfuerzo:** ~2-4h · **Prioridad:** 🟡 Media
+
+**Contexto (v3.56.2):** el servicio `runSyncRepoStatus`
+(`client/src/services/assistantActions.ts:453`) y el botón
+`client/src/components/chat/SyncRepoStatusButton.tsx` están **completos** y con
+i18n ES/EN (`syncRepo.title`/`tooltip`/`prompt`/`noCommits`), pero **no se
+cablean** en `ChatInput.tsx` ni en `App.tsx` — el componente nunca se importa y el
+servicio nunca se invoca. Es capacidad construida, sin estrenar (aparece listado
+como implementado en #48 por la fila de la tabla ✅, pero la conexión con la UI
+falta).
+
+**Tareas:**
+1. Importar `SyncRepoStatusButton` en `ChatInput.tsx` y colocarlo junto al resto
+   de botones de acción (`ThreadSummaryButton`, `ChangelogButton`, …).
+2. Añadir prop `onSyncRepoStatus` a `ChatInput` (opcional, para retrocompat con
+   tests parciales, como ya hace `onOpenSecurityAudit`).
+3. En `App.tsx`, cablear el handler a `runSyncRepoStatus`.
+4. **Escribir tests** (hoy cero): el servicio `runSyncRepoStatus` no tiene suite
+   — riesgo directo de codecov/patch (lección v3.56.1/v3.56.2). Antes de
+   commitear: cubrir ramas (sin repo, sin commits, lote de commits, error con
+   reason).
+
+**Beneficio:** análisis bajo demanda de commits recientes con IA (pull, no
+webhooks — compatible con Cloud Run escala-a-cero), ya construido.
+
+**Caveat:** sin los tests del servicio, el CI fallará por codecov/patch; esta
+mejora **no** es de bajo riesgo como #69.
+
+---
+
+#### #73 — Timeout automático en llamadas a la IA
+**Esfuerzo:** ~2-3h · **Prioridad:** 🟡 Media
+
+**Contexto (v3.56.2):** hoy la única cancelación de una llamada IA es manual, vía
+el `AbortSignal` del botón "Detener" (`client/src/utils/retry.ts` +
+`ChatInput.tsx`). **No hay timeout automático:** si un proveedor cuelga (conexión
+abierta sin respuesta), el spinner queda girando indefinidamente hasta que el
+usuario pulse Detener o recargue.
+
+**Fix:** añadir un `AbortController` con timeout por defecto (p. ej. 60s) y
+componerlo con el `AbortSignal` manual existente (`AbortSignal.any([...])`),
+reutilizando la maquinaria de `withTransientRetry` para tratar el timeout como
+error transitorio. Mensaje de usuario accionable ("la IA tardó demasiado; reintentando…").
+
+**Beneficio:** resiliencia ante proveedores lentos/colgados sin intervención del
+usuario; cierres limpios en lugar de spinners infinitos.
+
+**Caveat:** elegir el timeout con cuidado (los modelos de razonamiento como los
+de Ai& a 8192 tokens pueden tardar >30s legítimamente); quizá configurable por
+proveedor en `ProviderDef`. Cero cambios de arquitectura.
+
+---
+
 ### 🟢 Baja Prioridad
 
 #### #25 — Mejorar DX y pipeline de despliegue
@@ -275,34 +365,155 @@ la hay: ni `streamGenerateContent` ni un campo `task`/`type` fiable en la API).
 
 ---
 
+#### #68 — Expansión léxica ES↔EN en `contextRanker.ts` (glosario agnóstico de repo)
+**Esfuerzo:** ~2-3h · **Prioridad:** 🟢 Baja
+
+**Origen:** propuesta de **Gemini Flash 3.6** vía **dogfooding**, **refinada**.
+Su idea original (añadir sinónimos al ranking de archivos) es correcta; sus
+*ejemplos* eran arquitectónicamente erróneos.
+
+**Contexto (v3.56.2):** idea original de Gemini: enriquecer el BM25 de
+`contextRanker.ts` con una capa de sinónimos/conceptos antes de puntuar, para
+que una pregunta en castellano coloquial encuentre código con identificadores en
+inglés. El usuario no técnico escribe *"¿cómo se limita la cantidad de mensajes
+que puedo enviar?"* y el ranker debe conectar con `rateLimit`, `retry`, `rateLimiter`.
+
+**Refinamiento (error en la propuesta original):** Gemini mapeaba conceptos a
+**identificadores de esta propia app** (`"seguridad"`→`['Zero-Storage',
+'AuthContext', 'rateLimitHandler']`). Pero `contextRanker` rankea los archivos
+**del repo que el usuario cargue** (`repoContext.files`, verificado en
+`assistantActions.ts:949`), no el código de github-ai-assistant. Si el usuario
+analiza un repo Django o Python, mapear a `AuthContext` no sirve. La versión
+correcta es un **glosario de programación genérico** (agnóstico de repo):
+`enviar`→`send`, `mensaje`→`message`, `error`→`error/retry/catch`,
+`seguridad`→`security/auth/token`, `pantalla`→`screen/view/ui`…
+
+**Fix:** función pura `expandQuery(query)` en `contextRanker.ts` que devuelva la
+consulta enriquecida con sinónimos EN antes de pasarla a `rankFilesByQuery`.
+Glosario como `const` estático, sin dependencias ni red (Zero-Storage intacto,
+cero latencia). Cubre el cruce de idioma; los **acentos** se cubren aparte en
+#67 (mejor relación coste/beneficio, hacer primero).
+
+**Beneficio:** rankea mejor para usuarios no técnicos que preguntan en español.
+**Caveat:** el glosario es manual y nunca será exhaustivo; beneficio marginal si
+se hace #67 antes.
+
+---
+
+#### #69 — Activar el autocomplete de instrucciones (#22): componente `InstructionSuggestions` huérfano
+**Esfuerzo:** ~1-2h · **Prioridad:** 🟢 Baja
+
+**Contexto (v3.56.2):** `client/src/components/chat/InstructionSuggestions.tsx`
+es un popover de autocomplete de instrucciones (navegación por teclado completa:
+`↑↓` navegar, `Enter` seleccionar, `Esc` cerrar) con **CSS propio**
+(`InstructionSuggestions.css`), **i18n ES/EN** (`chat.suggestions.title`/`hint` +
+18 plantillas `tmpl.*` vía `buildTemplates(t)`) y **15 tests verdes**
+(`InstructionSuggestions.test.tsx`, v3.50.2). Pero **nunca se importa** en
+`ChatInput.tsx`: está desconectado de la UI. Capacidad lista, sin estrenar.
+
+**Tareas:**
+1. Importar `InstructionSuggestions` + `useState` para el popover en
+   `ChatInput.tsx`.
+2. Renderizarlo dentro de `.chat-textarea-wrap` (flotante sobre el textarea).
+3. `onSelectTemplate` → `onChange(template.template)` + cerrar popover.
+4. Reconciliar el `Enter` (el componente ya captura `Enter` con selección; sin
+   selección, el `handleKeyDown` de `ChatInput` envía el mensaje).
+5. Smoke test de integración en un `ChatInput.test.tsx` nuevo (hoy no existe).
+
+**Beneficio:** reduce fricción en una app que se vende como "opera GitHub en
+lenguaje natural"; descubribilidad de las 18 acciones. **Bajo riesgo:** el
+componente ya está testeado, la integración está aislada en `ChatInput.tsx` y no
+toca lógica nueva → cero riesgo de codecov/patch (la mejora de mejor
+valor/esfuerzo del roadmap).
+
+---
+
+#### #71 — Tema claro / toggle de tema
+**Esfuerzo:** ~3-4h · **Prioridad:** 🟢 Baja
+
+**Contexto (v3.56.2):** la app es **solo tema oscuro**. Los tokens CSS viven en
+`:root` (`client/src/index.css:10`, paleta `--bg-*`/`--text-*`). No hay
+`prefers-color-scheme`, no hay atributo `data-theme`, no hay toggle. Quien
+prefiere tema claro no tiene opción.
+
+**Fix:** duplicar los tokens bajo `[data-theme="light"]` (o
+`@media (prefers-color-scheme: light)`), añadir un toggle 🌙/☀️ en `Header`, y
+persistir la preferencia en `sessionStorage` (patrón ya usado por
+`providerPrefs.ts` — sin tocar Zero-Storage, que solo prohíbe persistir
+credenciales).
+
+**Beneficio:** accesibilidad/confort visual; cumplimiento de preferencia del SO.
+**Caveat:** esfuerzo proporcional al nº de tokens y componentes con colores
+hardcodeados inline (hay varios `style={{ ... }}` con hex en `ChatInput.tsx`).
+
+---
+
+#### #72 — a11y: focus rings visibles + `prefers-reduced-motion`
+**Esfuerzo:** ~1-2h · **Prioridad:** 🟢 Baja
+
+**Contexto (v3.56.2):** `client/src/index.css:207` y `:631` declaran
+`outline: none`, con lo que **no hay anillo de foco visible** al navegar con
+Teclado. Además **no existe** soporte de `prefers-reduced-motion`, así que las
+transiciones (`transition: all 0.2s ease` en varios botones) se animan siempre,
+incluso para usuarios sensibles al movimiento.
+
+**Fix:**
+1. Sustituir `outline: none` por `:focus-visible` con un anillo tokenizado
+   (`--focus-ring`), para que solo aparezca en navegación por teclado, no en clic.
+2. Añadir `@media (prefers-reduced-motion: reduce)` que desactive
+   `transition`/`animation` globalmente.
+
+**Beneficio:** conformidad WCAG 2.1 (criterios 2.4.7 Foco visible y 2.3.3
+Animación de interacciones); navegación por teclado usable. Sin cambios de
+comportamiento para usuarios de ratón.
+
+---
+
 ## 📊 Resumen
 
 | Prioridad | ✅ Resueltos | ⏳ Pendientes |
 |---|---|---|
 | 🔴 Alta | #1, #2, #13, #14, #15, #27, #28, #45, #62, #63 | #26 (en progreso, continuo) |
-| 🟡 Media | #12, #17, #18, #19, #20, #21, #22, #32, #34, #37, #38, #39, #40, #41, #42, #44, #46, #48, #49, #50, #51, #55, #56, #57, #59, #60, #61, #64 | — |
-| 🟢 Baja | #23, #24, #25, #52, #53, #58 | #66 (revisión periódica catálogo Gemini) |
+| 🟡 Media | #12, #17, #18, #19, #20, #21, #22, #32, #34, #37, #38, #39, #40, #41, #42, #44, #46, #48, #49, #50, #51, #55, #56, #57, #59, #60, #61, #64 | #67 (acentos en `contextRanker`), #70 (`SyncRepoStatus` huérfano), #73 (timeout IA) |
+| 🟢 Baja | #23, #24, #25, #52, #53, #58 | #66 (revisión catálogo Gemini), #68 (glosario ES↔EN), #69 (autocomplete `InstructionSuggestions`), #71 (tema claro), #72 (a11y focus/motion) |
 | 🗑️ Descartados | — | #33, #35 (descartados en v3.22.3), #36 (descartado en v3.41.0) |
 
-> **Cómputo:** 49 ítems resueltos + 2 pendientes + 3 descartados = 54 referencias (algunos issues como `#28`, `#57`, `#58` generan varias filas por sus fases). Los pendientes reales accionables son: **#26** (continuo, cobertura) y **#66** (revisión periódica cada 2-3 meses del catálogo Gemini estático). **#58 cerrado completo en v3.54.0** (bulk v3.53.0, diff incremental v3.52.0/.1/.2, modo revisión v3.54.0). **#53 resuelto en v3.50.0** (sugerencia de commit semántico vía `commitSuggester.ts` + few-shot con commits recientes + fallback determinista; documentado en el roadmap en v3.50.3). **#25 cerrado completo en v3.41.0** (logs v3.39.0 + healthcheck v3.40.0 + deploy.sh v3.41.0). **#52 resuelto en v3.42.0** (Modo Auditoría de Seguridad: botón 🛡️ + plantilla + `runSecurityAudit` + prompt dedicado, lectura-only). **#36 descartado en v3.41.0** (rompe zero-storage, costo alto, beneficio marginal en single-user).
+> **Cómputo:** 49 ítems resueltos + 9 pendientes + 3 descartados = 61 referencias (algunos issues como `#28`, `#57`, `#58` generan varias filas por sus fases). Los pendientes reales accionables son: **#26** (continuo, cobertura), **#66** (revisión periódica cada 2-3 meses del catálogo Gemini estático), y las 7 entradas nuevas **#67**–**#73** añadidas en v3.56.2 (análisis por dogfooding de la propuesta de Gemini Flash 3.6 sobre `contextRanker.ts` + inventario de features huérfanas). **#58 cerrado completo en v3.54.0** (bulk v3.53.0, diff incremental v3.52.0/.1/.2, modo revisión v3.54.0). **#53 resuelto en v3.50.0** (sugerencia de commit semántico vía `commitSuggester.ts` + few-shot con commits recientes + fallback determinista; documentado en el roadmap en v3.50.3). **#25 cerrado completo en v3.41.0** (logs v3.39.0 + healthcheck v3.40.0 + deploy.sh v3.41.0). **#52 resuelto en v3.42.0** (Modo Auditoría de Seguridad: botón 🛡️ + plantilla + `runSecurityAudit` + prompt dedicado, lectura-only). **#36 descartado en v3.41.0** (rompe zero-storage, costo alto, beneficio marginal en single-user).
 
 > **#28** cubierto en su norte por las Fases 1 (v3.0.0, adjuntar como contexto) y 2 (v3.1.0, documentar→publicar). Más formatos: Fase 3a (v3.2.0, Excel/CSV), Fase 3b MVP (v3.3.0, Power BI .pbix/.pbit) y Fase 3b-bis (v3.4.0, Power Query M del `DataMashup`). Única limitación restante: en un `.pbix` moderno el M va en el modelo binario (no legible) → exporta `.pbit`. Word `.docx` (v3.11.0): texto de `word/document.xml`. Imágenes/visión: descartada.
 
 ---
 
-## 🎯 Próximo enfoque (post-v3.50.5)
+## 🎯 Próximo enfoque (post-v3.56.2)
 
-Con #53 cerrado (docs), el roadmap queda con dos únicos pendientes accionables:
+Con #53/#58 cerrados, el roadmap pasa de 2 a **9 pendientes accionables** tras
+añadir el análisis por dogfooding de la propuesta de Gemini Flash 3.6
+(`contextRanker.ts`) y el inventario de features huérfanas. Orden recomendado por
+valor/esfuerzo y riesgo:
 
-1. **#26 — Cobertura de tests (🔴 Alta, continuo).** Tras v3.50.5 el proyecto
-   suma **709 tests** (cliente 665 en 57 suites + servidor 44 en 5). Con
-   `DiffViewer` ya cubierto, quedan: edge cases de servicios existentes, y
-   configurar un **umbral mínimo de cobertura en CI** (fail si < 70%). `App.tsx`
-   y `main.tsx` se dejan fuera (bajo valor, opcional).
-2. **#58 — Extensiones de publicación flexible (🟢 Baja, fuera de alcance
-   inmediato).** Bulk de varios archivos, edición incremental con diff contra
-   doc existente, y modo "revisión de doc existente" (la IA sugiere, el usuario
-   confirma uno a uno).
+1. **#69 — Activar autocomplete de instrucciones (🟢, ~1-2h).** Mejor
+   relación valor/esfuerzo: componente ya completo y **testeado (15 tests)**,
+   solo falta importarlo en `ChatInput.tsx`. **Bajo riesgo** (no toca lógica
+   nueva → cero riesgo de codecov/patch). Empezar por aquí.
+2. **#67 — Normalización de acentos/ñ en `contextRanker.ts` (🟡, ~1-2h).** Una
+   línea que arregla toda la familia de fallos del español técnico en `-ción`.
+   Función pura, fácil de testear. Hacerlo **antes** que #68 (mayor impacto y
+   más simple).
+3. **#26 — Cobertura de tests (🔴 Alta, continuo).** El proyecto suma **709
+   tests** (cliente 665 en 57 suites + servidor 44 en 5). Quedan: edge cases de
+   servicios existentes y configurar un **umbral mínimo de cobertura en CI**
+   (fail si < 70%). `App.tsx` y `main.tsx` se dejan fuera (bajo valor, opcional).
+4. **#70 — Activar `SyncRepoStatus` (#48, 🟡, ~2-4h).** Servicio y botón ya
+   construidos, pero **sin tests** (riesgo codecov/patch → escribirlos antes de
+   commitear). Tras #69, segunda feature huérfana a recuperar.
+5. **#73 — Timeout automático en llamadas IA (🟡, ~2-3h).** Resiliencia ante
+   proveedores colgados.
+6. **#68 — Glosario ES↔EN en `contextRanker.ts` (🟢, ~2-3h).** Refinamiento de
+   la propuesta de Gemini; complementario a #67 (este va después).
+7. **#72 / #71 — a11y focus/motion (~1-2h) y tema claro (~3-4h).** Limpieza de
+   UX/accesibilidad, baja urgencia.
+8. **#66 — Revisión periódica del catálogo Gemini (🟢, ~1h c/2-3 meses).** No
+   urgente (última v3.55.0, 2026-07-23; próxima ~sept-2026).
 
 Fuera de roadmap: vigilar si aparece parche para la vuln `xlsx` (GHSA-4r6h-8v6p-xvw6
 + GHSA-5pgg-2g8v-p4x9, *No fix available*, mitigada en v3.36.1).
