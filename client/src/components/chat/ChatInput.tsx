@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import type { GitHubRepo } from '../../types';
 import { useLanguage } from '../../context/LanguageContext';
 import MultiRepoSelector from '../multi-repo/RepoSelector';
@@ -84,6 +84,8 @@ export default function ChatInput({
 }: ChatInputProps) {
   const { t } = useLanguage();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // v3.56.0: toggle de la guía completa de modos (botón [?] del selector).
+  const [showModesGuide, setShowModesGuide] = useState(false);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -124,29 +126,78 @@ export default function ChatInput({
 
       {/* 🔥 OPCIÓN D - Selector visual de modo */}
       {onModeOverrideChange && (
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', fontSize: '0.85rem' }}>
-          {(['auto', 'chat', 'action', 'review'] as const).map((mode) => (
+        <div>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '6px', fontSize: '0.85rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            {(['auto', 'chat', 'action', 'review'] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => handleModeChange(mode)}
+                disabled={disabled}
+                title={t(`chat.modeTip.${mode}`)}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '16px',
+                  border: '1px solid',
+                  borderColor: modeOverride === mode ? 'var(--primary-color, #007bff)' : 'var(--border-color, #ccc)',
+                  backgroundColor: modeOverride === mode ? 'var(--primary-color, #007bff)' : 'transparent',
+                  color: modeOverride === mode ? 'white' : 'var(--text-color, #333)',
+                  cursor: 'pointer',
+                  opacity: disabled ? 0.5 : 1,
+                  fontWeight: modeOverride === mode ? 'bold' : 'normal',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                {mode === 'auto' ? `🤖 ${t('chat.mode.auto')}` : mode === 'chat' ? `💬 ${t('chat.mode.chat')}` : mode === 'review' ? `📋 ${t('modal.review.title')}` : `⚡ ${t('chat.mode.action')}`}
+              </button>
+            ))}
+            {/* v3.56.0: botón [?] que despliega la guía completa de los 4 modos. */}
             <button
-              key={mode}
               type="button"
-              onClick={() => handleModeChange(mode)}
+              onClick={() => setShowModesGuide(v => !v)}
               disabled={disabled}
+              title={t('chat.modesGuide.toggle')}
+              aria-label={t('chat.modesGuide.toggle')}
+              aria-expanded={showModesGuide}
               style={{
-                padding: '6px 14px',
+                padding: '6px 10px',
                 borderRadius: '16px',
-                border: '1px solid',
-                borderColor: modeOverride === mode ? 'var(--primary-color, #007bff)' : 'var(--border-color, #ccc)',
-                backgroundColor: modeOverride === mode ? 'var(--primary-color, #007bff)' : 'transparent',
-                color: modeOverride === mode ? 'white' : 'var(--text-color, #333)',
+                border: '1px solid var(--border-color, #ccc)',
+                background: 'transparent',
+                color: 'var(--text-color, #333)',
                 cursor: 'pointer',
                 opacity: disabled ? 0.5 : 1,
-                fontWeight: modeOverride === mode ? 'bold' : 'normal',
+                fontWeight: 'bold',
                 transition: 'all 0.2s ease',
               }}
             >
-              {mode === 'auto' ? `🤖 ${t('chat.mode.auto')}` : mode === 'chat' ? `💬 ${t('chat.mode.chat')}` : mode === 'review' ? `📋 ${t('modal.review.title')}` : `️ ${t('chat.mode.action')}`}
+              {showModesGuide ? '✕' : '?'}
             </button>
-          ))}
+          </div>
+          {/* Línea de ayuda dinámica: explica el modo ACTIVO en una sola línea. */}
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted, #666)', marginBottom: showModesGuide ? '8px' : '0' }}>
+            {t(`chat.modeHelp.${modeOverride}`)}
+          </div>
+          {/* Guía completa (colapsable): qué hace cada modo y cuándo usarlo. */}
+          {showModesGuide && (
+            <div style={{
+              background: 'var(--bg-elevated, #f6f8fa)',
+              border: '1px solid var(--border-color, #ccc)',
+              borderRadius: '8px',
+              padding: '10px 14px',
+              marginBottom: '8px',
+              fontSize: '0.8rem',
+              lineHeight: 1.6,
+            }}>
+              <div style={{ fontWeight: 700, marginBottom: '6px' }}>{t('chat.modesGuide.title')}</div>
+              <ul style={{ margin: 0, paddingLeft: '18px' }}>
+                <li style={{ marginBottom: '4px' }}>{t('chat.modesGuide.auto')}</li>
+                <li style={{ marginBottom: '4px' }}>{t('chat.modesGuide.chat')}</li>
+                <li style={{ marginBottom: '4px' }}>{t('chat.modesGuide.action')}</li>
+                <li>{t('chat.modesGuide.review')}</li>
+              </ul>
+            </div>
+          )}
         </div>
       )}
 

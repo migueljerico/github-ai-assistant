@@ -9,7 +9,7 @@
  * núcleo del chat `runSend`/`runConfirmAction`/`runCancelAction` (Fase 3).
  */
 
-import { generateRepoDocs, generateFileDoc, generateSpecificDoc, buildRepoContextSummary, buildSecurityAuditContext, callAI, parseGeminiAction, isAbortError, CHAT_PROMPT, ACTION_PROMPT, SECURITY_PROMPT, chatPromptWithContext, withLangDirective } from './gemini';
+import { generateRepoDocs, generateFileDoc, generateSpecificDoc, buildRepoContextSummary, buildSecurityAuditContext, callAI, parseGeminiAction, parseGeminiActions, parseGeminiActionWithReason, isAbortError, CHAT_PROMPT, ACTION_PROMPT, SECURITY_PROMPT, chatPromptWithContext, withLangDirective } from './gemini';
 import type { Language } from '../context/LanguageContext';
 import type { AIProviderConfig } from './gemini';
 import { getProvider, modelLabel, type AIProviderType } from './providers';
@@ -27,7 +27,7 @@ import { executeAction, executeActionMultiRepo, parseRepoTarget } from './action
 import { suggestCommitMessage } from './commitSuggester';
 import { createGitHubRelease, suggestNextVersion } from '../utils/releaseGenerator';
 import { uploadReleaseAsset, getMimeType } from '../utils/releaseAssets';
-import { resolveMode } from '../utils/modeDetection';
+import { resolveMode, detectModeMismatch } from '../utils/modeDetection';
 import { resolveRepoRef } from '../utils/repoRef';
 import { readFileContent, formatFileContentForAI, assertSupportedFile } from '../utils/pdfReader';
 import { readSpreadsheet, SPREADSHEET_SAMPLE_ROWS } from '../utils/spreadsheetReader';
@@ -784,6 +784,105 @@ export async function runCreateRepoRelease(
 // ── Núcleo del chat (Fase 3) ────────────────────────────────────────────────────
 
 /**
+ * #58 (c) + v3.56.0: procesa la respuesta de la IA en MODO REVISIÓN.
+ *
+ * A diferencia del path de acción única, aquí el modelo puede proponer VARIAS acciones
+ * en una sola respuesta (parseGeminiActions, plural). Cada acción confirmable se
+ * encola en `reviewActions` (vía `addReviewAction`) para que el usuario la revise
+ * una a una en ChangeReviewModal. Las de solo lectura se ejecutan directamente
+ * (no tienen sentido encolarlas: no hay nada que confirmar).
+ *
+ * Antes de v3.56.0 esto usaba parseGeminiAction (singular) y se perdían todas las
+ * acciones excepto la primera cuando el modelo proponía un lote.
+ */
+async function processReviewActions(args: {
+  rawResponse: string;
+  deps: SendDeps;
+  config: AIProviderConfig;
+  params: SendParams;
+  newHistory: Array<{ role: 'user' | 'assistant'; content: string }>;
+  loadingId: string;
+  consultedUpdate: Partial<ChatMessage>;
+  user: { login: string };
+  token: string;
+  multiRepoEnabled: boolean;
+  selectedRepos: GitHubRepo[];
+}): Promise<void> {
+  const { rawResponse, deps, config, params, newHistory, loadingId, consultedUpdate, user, token, multiRepoEnabled, selectedRepos } = args;
+  const { updateMessage, setConversationHistory, setIsChatLoading } = deps;
+
+  const actions = parseGeminiActions(rawResponse);
+  if (actions.length === 0) {
+    // El modelo no devolvió ninguna acción válida: mismo diagnóstico útil que en modo acción.
+    const reason = parseGeminiActionWithReason(rawResponse);
+    const notice = deps.t('chat.actionParseFailed.reason', { reason: reason.action ? '' : reason.error });
+    const content = `${notice}\n\n---\n${rawResponse}`;
+    updateMessage(loadingId, { content, isLoading: false, ...consultedUpdate });
+    setConversationHistory([...newHistory, { role: 'assistant', content }]);
+    setIsChatLoading(false);
+    return;
+  }
+
+  const repos = multiRepoEnabled && selectedRepos.length > 0 ? selectedRepos : [];
+  const queued: string[] = [];
+
+  for (const action of actions) {
+    // Para updates de archivo, traer el contenido actual para mostrar el diff.
+    let enrichedAction = action;
+    if (action.metodo === 'PUT' && action.repo && action.archivo && !action.contenidoActual) {
+      try {
+        const { owner, repo } = resolveRepoRef(action.repo, user.login);
+        const file = await getFileContents(token, owner, repo, action.archivo);
+        if (file.content) {
+          enrichedAction = { ...action, contenidoActual: decodeBase64(file.content) };
+        }
+      } catch {
+        // El archivo no existe aún — es una creación.
+      }
+    }
+
+    // Las acciones de solo lectura se ejecutan en el acto (no hay nada que confirmar).
+    if (!enrichedAction.requiereConfirmacion) {
+      const histId = deps.addEntry({ status: 'pending', description: enrichedAction.accion, repo: enrichedAction.repo });
+      const result = await executeAction(token, user, enrichedAction, undefined, deps.t);
+      deps.updateEntry(histId, { status: result.success ? 'completed' : 'error', description: result.message });
+      if (result.success && result.data) {
+        deps.addMessage({ role: 'assistant', content: `✅ ${result.message}\n\n${formatResultData(result.data)}` });
+      }
+      continue;
+    }
+
+    // Acción confirmable: sugerir commit (best-effort) y encolar para revisión.
+    let commitMessage: string | undefined;
+    const isWriteAction = (enrichedAction.metodo === 'PUT' || enrichedAction.metodo === 'DELETE')
+      && !!enrichedAction.archivo;
+    if (isWriteAction && config.apiKey && config.model) {
+      try {
+        const parsed = parseRepoTarget(enrichedAction.repo, user);
+        const repoRef = repos.length === 1
+          ? { owner: repos[0].owner.login, name: repos[0].name }
+          : { owner: parsed.owner, name: parsed.repo };
+        commitMessage = await suggestCommitMessage({
+          action: enrichedAction, token, repoOwner: repoRef.owner, repoName: repoRef.name,
+          provider: config.provider, apiKey: config.apiKey, model: config.model, lang: deps.lang,
+        });
+      } catch { /* best-effort */ }
+    }
+    deps.addReviewAction!({ action: enrichedAction, targetRepos: repos, commitMessage });
+    queued.push(enrichedAction.accion);
+  }
+
+  const summary = queued.length === 0
+    ? deps.t('chat.actionParseFailed.reason', { reason: 'ninguna acción era confirmable' })
+    : queued.length === 1
+      ? `📋 ${queued[0]} — ${deps.t('modal.review.accepted').toLowerCase()}`
+      : `📋 ${queued.length} ${deps.t('modal.review.title').toLowerCase()} → ${queued.join(' · ')}`;
+  updateMessage(loadingId, { content: summary, isLoading: false, ...consultedUpdate });
+  setConversationHistory([...newHistory, { role: 'assistant', content: rawResponse }]);
+  setIsChatLoading(false);
+}
+
+/**
  * Envía el mensaje del usuario a la IA y procesa la respuesta (Opción D):
  * - Modo chat → muestra texto (bloquea JSON; si la IA devuelve acción, extrae texto).
  * - Modo acción → parsea la acción; si requiere confirmación abre el modal
@@ -799,6 +898,25 @@ export async function runSend(deps: SendDeps, config: AIProviderConfig, params: 
   const loadingId = addMessage({ role: 'assistant', content: '', isLoading: true });
 
   const newHistory = [...conversationHistory, { role: 'user' as const, content: userText }];
+
+  // v3.56.0: si el usuario forzó un modo pero lo que escribió encaja claramente con el
+  // otro, no llamamos al modelo. Sugerimos cambiar de modo con un botón de 1 clic en el
+  // propio mensaje (actionMode). Más rápido, más barato y más didáctico que ejecutar a
+  // ciegas en el modo equivocado.
+  const mismatch = detectModeMismatch(userText, modeOverride);
+  if (mismatch) {
+    const content = mismatch.suggestMode === 'action'
+      ? deps.t('chat.modeMismatch.toAction')
+      : deps.t('chat.modeMismatch.toChat');
+    updateMessage(loadingId, {
+      content,
+      isLoading: false,
+      actionMode: { mode: mismatch.suggestMode, retryText: mismatch.retryText },
+    });
+    setConversationHistory([...newHistory, { role: 'assistant', content }]);
+    setIsChatLoading(false);
+    return;
+  }
 
   // #41/#28: si hay repo y/o archivo como contexto, resolveMode sesga a chat (salvo
   // acción explícita) y se combinan ambos contextos en el prompt.
@@ -888,18 +1006,30 @@ export async function runSend(deps: SendDeps, config: AIProviderConfig, params: 
     }
 
     // Modo acción: procesar JSON.
-    const action = parseGeminiAction(rawResponse);
-    if (!action) {
+    // v3.56.0: en modo revisión el modelo puede proponer VARIAS acciones en una sola
+    // respuesta (#58 c). Usamos el parser plural y encolamos todas. En el resto de los
+    // modos seguimos esperando una única acción, pero ahora con diagnóstico (reason).
+    if (params.reviewMode && deps.addReviewAction) {
+      await processReviewActions({
+        rawResponse, deps, config, params, newHistory, loadingId, consultedUpdate,
+        user, token, multiRepoEnabled, selectedRepos,
+      });
+      return;
+    }
+
+    const parseResult = parseGeminiActionWithReason(rawResponse);
+    if (!parseResult.action) {
       // v3.22.2: antes esto fallaba en silencio (mostraba el texto crudo sin explicar).
-      // Ahora avisamos al usuario de que el modelo no devolvió una acción válida,
-      // para que sepa que puede probar otro modelo o reformular.
-      const notice = deps.t('chat.actionParseFailed');
+      // v3.56.0: ahora mostramos la causa concreta (JSON truncado, campo inválido, ...)
+      // para que el usuario sepa qué reformular o si conviene cambiar de modelo.
+      const notice = deps.t('chat.actionParseFailed.reason', { reason: parseResult.error });
       const content = `${notice}\n\n---\n${rawResponse}`;
       updateMessage(loadingId, { content, isLoading: false, ...consultedUpdate });
       setConversationHistory([...newHistory, { role: 'assistant', content }]);
       setIsChatLoading(false);
       return;
     }
+    const action = parseResult.action;
 
     // Para updates de archivo, traer el contenido actual para el diff.
     let enrichedAction = action;
@@ -921,27 +1051,9 @@ export async function runSend(deps: SendDeps, config: AIProviderConfig, params: 
     if (enrichedAction.requiereConfirmacion) {
       const repos = multiRepoEnabled && selectedRepos.length > 0 ? selectedRepos : [];
 
-      // #58 (c): en modo revisión, acumular la acción en vez de abrir ConfirmModal.
-      if (params.reviewMode && deps.addReviewAction) {
-        let commitMessage: string | undefined;
-        const isWriteAction = (enrichedAction.metodo === 'PUT' || enrichedAction.metodo === 'DELETE')
-          && !!enrichedAction.archivo;
-        if (isWriteAction && config.apiKey && config.model) {
-          try {
-            const parsed = parseRepoTarget(enrichedAction.repo, user);
-            const repoRef = repos.length === 1
-              ? { owner: repos[0].owner.login, name: repos[0].name }
-              : { owner: parsed.owner, name: parsed.repo };
-            commitMessage = await suggestCommitMessage({
-              action: enrichedAction, token, repoOwner: repoRef.owner, repoName: repoRef.name,
-              provider: config.provider, apiKey: config.apiKey, model: config.model, lang: deps.lang,
-            });
-          } catch { /* best-effort */ }
-        }
-        deps.addReviewAction({ action: enrichedAction, targetRepos: repos, commitMessage });
-        updateMessage(loadingId, { content: `📋 ${enrichedAction.accion} — añadido a revisión`, isLoading: false });
-        return;
-      }
+      // NOTA: el camino de modo revisión (#58 c) se gestiona antes, en el early-return
+      // a processReviewActions (plural). Aquí solo llega el path normal de una sola
+      // acción confirmable → abrir ConfirmModal.
 
       // #53 (v3.50.0): sugerir un mensaje de commit semántico ANTES de abrir el
       // modal, para que el usuario vea una propuesta editable. Best-effort: si

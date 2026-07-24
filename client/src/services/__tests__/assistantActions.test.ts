@@ -2,23 +2,37 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { es } from '../../i18n/es';
 
 // Mock de los servicios de los que dependen las acciones
-vi.mock('../gemini', () => ({
-  generateRepoDocs: vi.fn(),
-  generateFileDoc: vi.fn(),
-  generateSpecificDoc: vi.fn(),
-  buildRepoContextSummary: vi.fn(() => 'GENERAL_CTX'),
-  buildSecurityAuditContext: vi.fn(() => 'AUDIT_CTX'),
-  callAI: vi.fn(),
-  parseGeminiAction: vi.fn(),
-  isAbortError: (err: unknown) => (err as { name?: string })?.name === 'AbortError',
-  chatPromptWithContext: vi.fn(() => 'CTX_PROMPT'),
-  // #24 Fase 3: helper real (devuelve el prompt con la directiva de idioma).
-  withLangDirective: (prompt: string, lang: string) =>
-    prompt + (lang === 'en' ? '\n\nIMPORTANT: Respond to the user in English.' : '\n\nIMPORTANTE: Responde al usuario en español.'),
-  CHAT_PROMPT: 'CHAT_PROMPT',
-  ACTION_PROMPT: 'ACTION_PROMPT',
-  SECURITY_PROMPT: 'SECURITY_PROMPT',
-}));
+vi.mock('../gemini', () => {
+  const parseGeminiAction = vi.fn();
+  return {
+    generateRepoDocs: vi.fn(),
+    generateFileDoc: vi.fn(),
+    generateSpecificDoc: vi.fn(),
+    buildRepoContextSummary: vi.fn(() => 'GENERAL_CTX'),
+    buildSecurityAuditContext: vi.fn(() => 'AUDIT_CTX'),
+    callAI: vi.fn(),
+    parseGeminiAction,
+    // v3.56.0: por defecto, el parser con diagnóstico delega en parseGeminiAction.
+    // Si devuelve acción, ok; si no, error genérico. Los tests nuevos pueden sobrescribir.
+    parseGeminiActionWithReason: vi.fn((raw: string) => {
+      const action = parseGeminiAction(raw);
+      return action ? { action } : { action: null, error: 'no se encontró JSON de acción válido' };
+    }),
+    // v3.56.0: parser plural — por defecto envuelve el singular en un array.
+    parseGeminiActions: vi.fn((raw: string) => {
+      const action = parseGeminiAction(raw);
+      return action ? [action] : [];
+    }),
+    isAbortError: (err: unknown) => (err as { name?: string })?.name === 'AbortError',
+    chatPromptWithContext: vi.fn(() => 'CTX_PROMPT'),
+    // #24 Fase 3: helper real (devuelve el prompt con la directiva de idioma).
+    withLangDirective: (prompt: string, lang: string) =>
+      prompt + (lang === 'en' ? '\n\nIMPORTANT: Respond to the user in English.' : '\n\nIMPORTANTE: Responde al usuario en español.'),
+    CHAT_PROMPT: 'CHAT_PROMPT',
+    ACTION_PROMPT: 'ACTION_PROMPT',
+    SECURITY_PROMPT: 'SECURITY_PROMPT',
+  };
+});
 vi.mock('../github', () => {
   class GitHubAPIError extends Error {
     status: number;
@@ -75,7 +89,12 @@ vi.mock('../actionExecutor', () => ({
     return { owner: user.login, repo: repoFullName };
   }),
 }));
-vi.mock('../../utils/modeDetection', () => ({ resolveMode: vi.fn() }));
+vi.mock('../../utils/modeDetection', () => ({
+  resolveMode: vi.fn(),
+  // v3.56.0: por defecto sin mismatch (comportamiento previo). Los tests que quieran
+  // ejercitar la detección de desajuste lo sobrescriben con vi.mocked(...).
+  detectModeMismatch: vi.fn(() => null),
+}));
 vi.mock('../../utils/formatResult', () => ({ formatResultData: vi.fn(() => 'FORMATTED') }));
 vi.mock('../../utils/pdfReader', () => ({
   assertSupportedFile: vi.fn(),
@@ -90,7 +109,7 @@ vi.mock('../../utils/powerbiReader', () => ({ readPowerBI: vi.fn() }));
 vi.mock('../../utils/docxReader', () => ({ readDocx: vi.fn() }));
 vi.mock('../changelogGenerator', () => ({ generateChangelog: vi.fn() }));
 
-import { generateRepoDocs, generateFileDoc, generateSpecificDoc, buildRepoContextSummary, callAI, parseGeminiAction, chatPromptWithContext } from '../gemini';
+import { generateRepoDocs, generateFileDoc, generateSpecificDoc, buildRepoContextSummary, callAI, parseGeminiAction, parseGeminiActions, parseGeminiActionWithReason, chatPromptWithContext } from '../gemini';
 import { assertSupportedFile, readFileContent } from '../../utils/pdfReader';
 import { readSpreadsheet } from '../../utils/spreadsheetReader';
 import { readPowerBI } from '../../utils/powerbiReader';
@@ -102,7 +121,7 @@ import { generateChangelog } from '../changelogGenerator';
 import { executeAction, executeActionMultiRepo } from '../actionExecutor';
 import { createGitHubRelease, suggestNextVersion } from '../../utils/releaseGenerator';
 import { uploadReleaseAsset } from '../../utils/releaseAssets';
-import { resolveMode } from '../../utils/modeDetection';
+import { resolveMode, detectModeMismatch } from '../../utils/modeDetection';
 import {
   runDocumentRepo,
   runLoadRepoContext,
@@ -554,17 +573,19 @@ describe('runSend', () => {
     expect(resolveMode).toHaveBeenCalledWith('háblame del PBIX que acabo de subir', 'auto', false, true);
   });
 
-  it('modo acción sin JSON: muestra aviso + texto plano (v3.22.2)', async () => {
+  it('modo acción sin JSON: muestra aviso con diagnóstico + texto plano (v3.56.0)', async () => {
     vi.mocked(resolveMode).mockReturnValue('action');
     vi.mocked(callAI).mockResolvedValue('texto');
     vi.mocked(parseGeminiAction).mockReturnValue(null);
+    // v3.56.0: el parser con diagnóstico ahora devuelve un reason legible.
+    vi.mocked(parseGeminiActionWithReason).mockReturnValue({ action: null, error: 'método "FETCH" no permitido' });
     const deps = makeDeps();
 
     await runSend(deps, CONFIG, SEND_PARAMS);
 
-    // v3.22.2: ahora se antepone un aviso (chat.actionParseFailed) al texto crudo,
-    // para que el usuario entienda que el modelo no devolvió una acción válida.
-    const notice = deps.t('chat.actionParseFailed');
+    // v3.56.0: el aviso usa chat.actionParseFailed.reason con el diagnóstico concreto,
+    // para que el usuario sepa por qué se rechazó (no solo "JSON mal formado").
+    const notice = deps.t('chat.actionParseFailed.reason', { reason: 'método "FETCH" no permitido' });
     expect(deps.updateMessage).toHaveBeenCalledWith('msg-2', { content: `${notice}\n\n---\ntexto`, isLoading: false });
     expect(deps.setPendingAction).not.toHaveBeenCalled();
   });
@@ -572,7 +593,9 @@ describe('runSend', () => {
   it('modo acción con requiereConfirmacion: abre el modal (setPendingAction)', async () => {
     vi.mocked(resolveMode).mockReturnValue('action');
     vi.mocked(callAI).mockResolvedValue('{...}');
-    vi.mocked(parseGeminiAction).mockReturnValue({ accion: 'Crear repo', metodo: 'POST', repo: 'r', requiereConfirmacion: true } as any);
+    const action = { accion: 'Crear repo', metodo: 'POST', repo: 'r', requiereConfirmacion: true } as any;
+    vi.mocked(parseGeminiAction).mockReturnValue(action);
+    vi.mocked(parseGeminiActionWithReason).mockReturnValue({ action });
     const deps = makeDeps();
 
     await runSend(deps, CONFIG, { ...SEND_PARAMS, multiRepoEnabled: false });
@@ -584,7 +607,9 @@ describe('runSend', () => {
   it('modo acción de solo lectura: ejecuta directo y muestra el resultado', async () => {
     vi.mocked(resolveMode).mockReturnValue('action');
     vi.mocked(callAI).mockResolvedValue('{...}');
-    vi.mocked(parseGeminiAction).mockReturnValue({ accion: 'Listar', metodo: 'GET', repo: 'r', requiereConfirmacion: false } as any);
+    const action = { accion: 'Listar', metodo: 'GET', repo: 'r', requiereConfirmacion: false } as any;
+    vi.mocked(parseGeminiAction).mockReturnValue(action);
+    vi.mocked(parseGeminiActionWithReason).mockReturnValue({ action });
     vi.mocked(executeAction).mockResolvedValue({ success: true, message: 'OK', data: [1, 2] } as any);
     const deps = makeDeps();
 
@@ -598,7 +623,9 @@ describe('runSend', () => {
   it('enriquece un PUT con el contenido actual para el diff', async () => {
     vi.mocked(resolveMode).mockReturnValue('action');
     vi.mocked(callAI).mockResolvedValue('{...}');
-    vi.mocked(parseGeminiAction).mockReturnValue({ accion: 'Actualizar', metodo: 'PUT', repo: 'o/r', archivo: 'README.md', requiereConfirmacion: true } as any);
+    const action = { accion: 'Actualizar', metodo: 'PUT', repo: 'o/r', archivo: 'README.md', requiereConfirmacion: true } as any;
+    vi.mocked(parseGeminiAction).mockReturnValue(action);
+    vi.mocked(parseGeminiActionWithReason).mockReturnValue({ action });
     vi.mocked(getFileContents).mockResolvedValue({ content: 'base64' } as any);
     const deps = makeDeps();
 
@@ -750,6 +777,37 @@ describe('runSend', () => {
     await runSend(deps, CONFIG, SEND_PARAMS);
 
     expect(deps.updateMessage).toHaveBeenLastCalledWith('msg-2', { content: 'texto parcial\n\n⏹️ _(detenido)_', isLoading: false });
+  });
+
+  // v3.56.0 — detección de desajuste de modo (botón 1-clic)
+  it('mismatch de modo: inyecta mensaje con actionMode SIN llamar a la IA (v3.56.0)', async () => {
+    vi.mocked(resolveMode).mockReturnValue('chat');
+    vi.mocked(detectModeMismatch).mockReturnValue({ suggestMode: 'action', retryText: 'crea un README' });
+    const callAIMock = vi.mocked(callAI);
+    const deps = makeDeps();
+
+    await runSend(deps, CONFIG, SEND_PARAMS);
+
+    // No se llama al modelo: ahorro de tokens y latencia.
+    expect(callAIMock).not.toHaveBeenCalled();
+    // El mensaje asistente lleva la sugerencia accionable.
+    expect(deps.updateMessage).toHaveBeenCalledWith('msg-2', expect.objectContaining({
+      actionMode: { mode: 'action', retryText: 'crea un README' },
+      isLoading: false,
+    }));
+  });
+
+  it('sin mismatch: flujo normal, no se añade actionMode al mensaje', async () => {
+    vi.mocked(resolveMode).mockReturnValue('chat');
+    vi.mocked(detectModeMismatch).mockReturnValue(null);
+    vi.mocked(callAI).mockResolvedValue('opinión normal');
+    const deps = makeDeps();
+
+    await runSend(deps, CONFIG, SEND_PARAMS);
+
+    const calls = vi.mocked(deps.updateMessage).mock.calls;
+    const lastUpdate = calls[calls.length - 1][1];
+    expect(lastUpdate.actionMode).toBeUndefined();
   });
 });
 

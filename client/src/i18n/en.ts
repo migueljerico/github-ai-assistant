@@ -20,6 +20,27 @@ export const en = {
   'chat.mode.auto': 'Auto',
   'chat.mode.chat': 'Opinion',
   'chat.mode.action': 'Action',
+  // Dynamic help for the mode selector (text shown under the buttons).
+  'chat.modeHelp.auto': '💡 **Auto**: I decide whether to give you an opinion or take an action, based on what you write. Easiest.',
+  'chat.modeHelp.chat': '💡 **Opinion**: ask me, I analyze and advise. In this mode I **do not touch your repos**.',
+  'chat.modeHelp.action': '💡 **Action**: I create, edit or delete in your repo. I always ask for confirmation first.',
+  'chat.modeHelp.review': '💡 **Review**: like Action, but for **several changes at once**. You review them one by one before applying.',
+  // Short native tooltips (title=) when hovering each button.
+  'chat.modeTip.auto': 'I detect opinion vs action from your phrase.',
+  'chat.modeTip.chat': 'Ask for my opinion, analysis or advice. I do not modify your repos.',
+  'chat.modeTip.action': 'Create, edit or delete in your repo. Requires confirmation.',
+  'chat.modeTip.review': 'Several changes at once: you review them one by one before applying.',
+  // [?] button and full modes guide.
+  'chat.modesGuide.toggle': 'What does each button do?',
+  'chat.modesGuide.title': 'What is each mode for?',
+  'chat.modesGuide.auto': '🤖 **Auto** — I detect from your phrase whether you want an opinion or an action. Recommended if you are unsure.',
+  'chat.modesGuide.chat': '💬 **Opinion** — Ask me, I analyze code or data, I advise. I do not change anything in your repos here.',
+  'chat.modesGuide.action': '⚡ **Action** — I create, edit or delete files and resources in your repo. I always ask for confirmation before touching anything.',
+  'chat.modesGuide.review': '📋 **Review** — Like Action, but for several changes at once. I propose them all and you review them one by one before applying.',
+  'chat.modesGuide.close': 'Close guide',
+  // Mode-change suggestion (1-click button in the message).
+  'chat.modeSuggest.toAction.title': '⚡ Switch to Action mode',
+  'chat.modeSuggest.toChat.title': '💬 Switch to Opinion mode',
   'chat.ariaLabel': 'Instruction for the assistant',
   'chat.ariaStop': 'Stop generation',
   'chat.ariaSend': 'Send instruction',
@@ -269,7 +290,11 @@ export const en = {
   'chat.attachDocHint': 'When you want to **document and publish it**, press the **📄 Document repo** button (below): there you choose the scope and publishing method (commit, Draft PR or Release).',
   'chat.fileTextExtractFailed': 'I couldn\'t extract text from the file (is it a scanned PDF or an image?). Try a text-based PDF or a text/code file.',
   'chat.unknownError': 'Unknown error',
-  'chat.actionParseFailed': '⚠️ The model didn\'t return a valid action (likely malformed JSON). Try another model or rephrase the instruction. Received response:',
+  'chat.actionParseFailed': '⚠️ The model didn\'t return a valid action. Try another model or rephrase the instruction. Received response:',
+  'chat.actionParseFailed.reason': '⚠️ I couldn\'t interpret the action: **{reason}**. Try another model or rephrase the instruction. Received response:',
+  // AI messages when the selected mode does not match what the user asks for.
+  'chat.modeMismatch.toAction': 'To create, edit or delete something in your repository I need **Action mode**. Right now you are in Opinion, where I only chat and analyze without touching anything.\n\nClick the button and I will switch the mode for you, then I repeat your request:',
+  'chat.modeMismatch.toChat': 'That sounds like an **opinion or analysis**, not a repo action. You are in Action mode, where I try to generate a GitHub operation.\n\nTo chat use Opinion mode. Click the button and I will switch for you, then I repeat your question:',
   // #50: context still too large even after the retry with fewer files.
   'chat.contextTooLarge': '⚠️ The repository context is still too large for this model (tokens-per-minute limit). I already tried shrinking it automatically. Try a smaller repo, another model (e.g. Gemini), or switch provider.',
   'chat.contactError': 'Error contacting the assistant',

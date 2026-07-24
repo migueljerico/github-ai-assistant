@@ -5,6 +5,70 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.56.0] — 2026-07-24
+
+> **UX de los 4 modos de chat + fixes del Modo Revisión + rutina de cierre formalizada.**
+> Los botones Auto/Opinión/Acción/Revisión (añadidos en v3.54.0, #58 c) llegaron
+> sin explicación de uso: un usuario no técnico no sabía para qué servía cada uno
+> ni en cuál estaba. Esta versión hace que la UI se explique sola y que la IA
+> redirija al usuario al modo correcto cuando detecta desajuste. Cierra además
+> tres bugs detectados al investigar esos botones y endurece el parser de
+> acciones. Incluye `AGENTS.md` para que la rutina de cierre (CLAUDE.md §8) se
+> ejecute automáticamente en sesiones futuras.
+
+### Added
+- **Ayuda contextual en el selector de modo** (`ChatInput.tsx`): línea de texto
+  dinámica bajo los botones que explica el modo activo (cambia al pulsar),
+  tooltip nativo (`title=`) en cada botón, y un botón **[?]** que despliega la
+  guía completa de los 4 modos (qué hace cada uno y cuándo usarlo).
+- **Detección de desajuste de modo con botón 1-clic** (`modeDetection.ts`,
+  `assistantActions.ts`, `ChatMessage.tsx`): si el usuario fuerza un modo pero lo
+  que escribe encaja con el otro (p. ej. está en Opinión y pide "crea un
+  archivo"), la IA responde en lenguaje natural explicándolo y añade un botón
+  `[⚡ Cambiar a modo Acción]` en el mensaje que cambia el modo y reenvía la
+  petición automáticamente. Sin llamada al modelo (ahorro de tokens y latencia).
+- **`AGENTS.md`** en la raíz del repo: formaliza la rutina de cierre automática
+  (bump → changelog → commit → push → tag → release → deploy → handoff) para
+  que futuras sesiones de ZCode la ejecuten sin que se la pidan, ya que ZCode
+  carga `AGENTS.md` al arranque (no `CLAUDE.md`).
+
+### Changed
+- **Parser de acciones más tolerante** (`gemini.ts`): `normalizeJsonText`
+  repara trailing commas, comillas tipográficas (“ ”) y comentarios JS (`//`,
+  `/* */`) antes de descartar el JSON. Aplica al parser singular y al plural.
+- **Diagnóstico en el error de acción**: el mensaje `chat.actionParseFailed`
+  ahora indica la causa concreta (`método "FETCH" no permitido`, `endpoint debe
+  empezar por /`, `la respuesta se cortó`, ...) vía `parseGeminiActionWithReason`
+  e i18n `chat.actionParseFailed.reason` con `{reason}`, en vez del "JSON mal
+  formado" genérico de antes. `isValidAction` pasa a devolver `{ok, reason}`.
+- **Prompts redirigen al modo correcto**: `chat.md` indica cómo sugerir cambiar a
+  Acción; `action-system.md` indica cómo sugerir Opinión y refuerza las reglas
+  de JSON válido (sin comentarios, trailing commas ni comillas tipográficas).
+
+### Fixed
+- **Emoji ⚡ roto en el botón Acción** (`ChatInput.tsx:147`): había un variation
+  selector (U+FE0F) sin emoji base; ahora muestra `⚡ Acción`.
+- **"Aplicar aceptados" del Modo Revisión era un stub** (`App.tsx`,
+  `ChangeReviewModal.tsx`): el handler solo hacía `setReviewActions([])` con un
+  `// TODO`. Ahora `onApplyAccepted(acceptedIndices)` ejecuta de verdad las
+  acciones aceptadas vía `runConfirmAction` (single/multi-repo + historial), y
+  deja las rechazadas sin tocar.
+- **Parser plural no se usaba en Modo Revisión** (`assistantActions.ts`):
+  `runSend` llamaba solo a `parseGeminiAction` (singular), así que si el modelo
+  proponía varios cambios en una respuesta solo se capturaba el primero.
+  Extraído `processReviewActions` que usa `parseGeminiActions` y encola todas.
+- **Eliminado `HANDOFF-NEXT-SESSION.md`**: violaba la regla anti-handoff
+  documentada (CLAUDE.md §5 / METODOLOGIA_IA.md §2.7). El handoff vuelve a ser
+  un mensaje en el chat.
+- **Renombrado `ChatInput.test.tsx` → `ChatArea.test.tsx`**: el archivo testeba
+  `ChatArea` pero estaba mal nombrado.
+
+### Notes
+- Tests: **792 → 821** (+29 nuevos: 8 ChatInputModes, 5 ChatMessage, 7 gemini
+  tolerancia, 7 modeDetection mismatch, 2 ChangeReviewModal apply).
+- Build TypeScript estricto limpio.
+- Cambio de código por ZCode (GLM-5.2).
+
 ## [3.55.0] — 2026-07-23
 
 > **Catálogo Gemini estático ampliado de 7 → 18 modelos.**

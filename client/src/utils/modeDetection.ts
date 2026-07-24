@@ -48,6 +48,51 @@ export function isActionRequest(message: string): boolean {
 }
 
 /**
+ * Resultado de la detección de desajuste de modo (v3.56.0). Si el usuario FORZÓ un modo
+ * con el selector pero lo que escribió encaja claramente con el otro, sugerimos
+ * cambiar con un botón de 1 clic. `suggestMode` es el modo recomendado; `retryText`
+ * es la frase original para reenviarla automáticamente tras el cambio.
+ */
+export interface ModeMismatch {
+  suggestMode: 'chat' | 'action';
+  retryText: string;
+}
+
+/**
+ * v3.56.0: detecta cuando el modo seleccionado a mano no encaja con la intención del
+ * mensaje. Solo aplica a overrides explícitos (`chat`/`action`/`review`); en `auto`
+ * nunca hay mismatch porque auto ya decide por sí mismo.
+ *
+ * Reglas (simétricas, basadas en las keyword lists existentes):
+ *  - Está en `chat`/`opinión` y pide claramente una ACCIÓN (verbo de acción y ningún
+ *    verbo de opinión) → sugerir `action`.
+ *  - Está en `action`/`review` y pide claramente una OPINIÓN (verbo de opinión y ningún
+ *    verbo de acción) → sugerir `chat`.
+ *
+ * La exigencia de "y no el otro" evita falsos positivos en frases ambiguas: si la
+ * intención no está clara, no sugerimos nada (devolvemos null) y dejamos que el modo
+ * seleccionado siga su curso.
+ */
+export function detectModeMismatch(
+  message: string,
+  override: ModeOverride,
+): ModeMismatch | null {
+  if (override === 'auto') return null;
+  const isConversation = isConversationRequest(message);
+  const isAction = isActionRequest(message);
+
+  // En modo opinión forzado, pero claramente pide una acción → sugerir acción.
+  if (override === 'chat' && isAction && !isConversation) {
+    return { suggestMode: 'action', retryText: message };
+  }
+  // En modo acción/revisión forzado, pero claramente pide opinión → sugerir opinión.
+  if ((override === 'action' || override === 'review') && isConversation && !isAction) {
+    return { suggestMode: 'chat', retryText: message };
+  }
+  return null;
+}
+
+/**
  * Decide el modo final.
  * - Si hay override manual ('chat'/'action'), se respeta.
  * - En 'auto':

@@ -1,0 +1,100 @@
+# AGENTS.md — Instrucciones para asistentes de IA
+
+> **Fuente de verdad:** este archivo es un **punto de entrada** que ZCode carga al
+> arrancar. La guía técnica completa vive en `CLAUDE.md` y la metodología de
+> colaboración humano↔IA en `METODOLOGIA_IA.md`. **Lee ambos antes de tocar código**
+> (§0 de CLAUDE.md). Lo de abajo NO los sustituye; los referencia y refuerza.
+
+---
+
+## Idioma
+
+- UI, comentarios y mensajes al usuario: **español**.
+- Identificadores (variables, funciones, tipos): **inglish**.
+- Dirígete al usuario en el chat **siempre en castellano**.
+
+---
+
+## Rutina de cierre automática (OBLIGATORIA al terminar una gestión)
+
+**Cuándo:** al cerrar una gestión con **tests verdes y build limpio**.
+**Cómo:** ejecútala **sin pedir permiso** (lo pidió el autor, v3.23.2). El único
+motivo para frenar es que tests o build fallen, o que el usuario pidiera algo fuera
+de esta rutina.
+
+Orden exacto (regla de oro: commit + push + tag + release + deploy van **siempre
+juntos**; nunca commitees sin pushear, ni pushees sin tagear, ni tagees sin publicar
+el release):
+
+1. **Bump de versión** `X.Y.Z` → siguiente. Editar:
+   `package.json` (línea 3), `client/package.json` (línea 4),
+   `README.md` (badge shields.io), `CLAUDE.md` (`(vX.Y.Z)`), `MANUAL_TECNICO.md`
+   (`**Versión:**`), `MEJORAS_FUTURAS.md` (`**Actualizado a:**`).
+   Luego `npm install` en raíz y en `client/` para regenerar lockfiles.
+2. **`CHANGELOG.md`**: entrada `## [X.Y.Z] — YYYY-MM-DD` (em-dash `—`, ISO date)
+   con blockquote de resumen + secciones `### Added/Changed/Fixed` + cierre
+   `Cambio de código por [asistente] ([modelo]).`
+3. **`README.md`** sincronizado (badge, métricas). Nunca pushear con el README
+   desfasado respecto a la versión publicada.
+4. **`MEJORAS_FUTURAS.md`**: versión + marcar ítems resueltos como ✅.
+5. **Verificar**: `npm test` (client) + `npm run test:server` + `npm run build`
+   (TS estricto). Si algo falla, **frena el cierre** y arréglalo.
+6. **Commit** convencional (`feat:`/`fix:`/`chore(vX.Y.Z):`) con TODOS los cambios
+   de la gestión (código + docs).
+7. **Push a `main`**: `git push origin main`.
+8. **Tag anotado**: `git tag -a vX.Y.Z -m "vX.Y.Z — <resumen>"` + `git push origin vX.Y.Z`.
+9. **GitHub release**: `gh release create vX.Y.Z --title "..." --notes-file <sección del CHANGELOG>`.
+   Incluir la línea `Cambio de código por [asistente] ([modelo])` en las notas.
+10. **Deploy a Cloud Run: automático.** El push a `main` dispara el trigger de Cloud
+    Build. No requiere `gcloud` manual. Verificar a los ~2-3 min que llegó a prod.
+11. **Handoff como MENSAJE en el chat** (último mensaje de la sesión). Ver §abajo.
+
+---
+
+## Regla anti-HANDOFF (v3.34.1, no negociable)
+
+El handoff es un **mensaje en el chat**, **NO un archivo en el repo**. No crees ni
+dejes archivos `HANDOFF_*.md`, `SESSION_*.md` ni notas personales de sesión en el
+repo a menos que el usuario lo pida explícitamente. Precedente: un asistente creó
+`HANDOFF_2026-07-13.md` sin que se lo pidieran → se borró y se registró la regla.
+
+### Formato del handoff (entregar como último mensaje, en un bloque de código)
+
+Compacto, para copiar/pegar en la siguiente sesión:
+
+```
+## Handoff — vX.Y.Z (YYYY-MM-DD)
+- **Repo:** github-ai-assistant · **Rama:** main · **HEAD:** <hash corto> · **Tag:** vX.Y.Z
+- **Cerrado:** <1-3 frases, con nº de issue y archivo clave>
+- **Próximo trabajo priorizado** (de MEJORAS_FUTURAS.md):
+  1. <ítem, con estimación>
+  2. <ítem>
+- **Reglas de sesión:** economía de contexto (subagentes Explore con informes
+  compactos, lecturas con offset/limit, outputs filtrados); push+tag automáticos;
+  crédito de modelo.
+```
+
+Si queda trabajo a medias (contra la regla de §2 de METODOLOGIA_IA.md), el handoff
+lo declara **sin inflar** lo conseguido.
+
+---
+
+## Reglas de sesión (economía de contexto)
+
+- **Subagentes Explore** para búsquedas amplias; pídeles informes compactos
+  (file:line + conclusión), no volcados de archivos.
+- Lee con `offset`/`limit` en archivos grandes; no los leas enteros.
+- Filtra outputs de bash (`grep`, `head`, `tail`); evita `cat` de archivos largos.
+- Crédito: atribuye siempre el modelo que hizo el trabajo (`Cambio de código por
+  ZCode (GLM-5.2)` en commit/release/changelog).
+
+---
+
+## Quick reference — comandos
+
+```bash
+npm test                  # tests client (vitest) — debe dar todo verde
+npm run test:server       # tests server
+npm run build             # build TS estricto (client) — debe estar limpio
+npm run deploy            # deploy manual puntual (NO para rutina normal; el CD es auto)
+```

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isConversationRequest, isActionRequest, resolveMode } from '../modeDetection';
+import { isConversationRequest, isActionRequest, resolveMode, detectModeMismatch } from '../modeDetection';
 
 describe('modeDetection', () => {
   describe('heurísticas', () => {
@@ -69,6 +69,51 @@ describe('modeDetection', () => {
     });
     it('review fuerza action incluso con contexto de repo', () => {
       expect(resolveMode('actualiza el readme', 'review', true, false)).toBe('action');
+    });
+  });
+
+  // v3.56.0 — detección de desajuste de modo (sugerencia de cambio 1-clic)
+  describe('detectModeMismatch (v3.56.0)', () => {
+    it('en modo auto nunca hay mismatch (auto decide solo)', () => {
+      expect(detectModeMismatch('crea un archivo', 'auto')).toBeNull();
+      expect(detectModeMismatch('¿qué opinas?', 'auto')).toBeNull();
+    });
+
+    it('en chat + petición claramente de acción → sugiere action', () => {
+      const r = detectModeMismatch('crea un archivo README.md en el repo', 'chat');
+      expect(r).not.toBeNull();
+      expect(r!.suggestMode).toBe('action');
+      expect(r!.retryText).toContain('README.md');
+    });
+
+    it('en action + petición claramente de opinión → sugiere chat', () => {
+      const r = detectModeMismatch('¿qué opinas de la arquitectura de este repo?', 'action');
+      expect(r).not.toBeNull();
+      expect(r!.suggestMode).toBe('chat');
+    });
+
+    it('en review + petición de opinión → sugiere chat', () => {
+      const r = detectModeMismatch('dame tu opinión sobre el código', 'review');
+      expect(r).not.toBeNull();
+      expect(r!.suggestMode).toBe('chat');
+    });
+
+    it('frase ambigua (acción + opinión a la vez) → no sugiere (evita falsos positivos)', () => {
+      // "analiza y crea un resumen" tiene ambos verbos: no debemos forzar el cambio.
+      expect(detectModeMismatch('analiza el repo y crea un resumen', 'chat')).toBeNull();
+      expect(detectModeMismatch('analiza el repo y crea un resumen', 'action')).toBeNull();
+    });
+
+    it('frase neutra sin verbos → no sugiere', () => {
+      expect(detectModeMismatch('hola', 'chat')).toBeNull();
+      expect(detectModeMismatch('gracias', 'action')).toBeNull();
+    });
+
+    it('retryText conserva el texto original del usuario', () => {
+      const original = 'Lista todos mis repositorios';
+      const r = detectModeMismatch(original, 'chat');
+      expect(r).not.toBeNull();
+      expect(r!.retryText).toBe(original);
     });
   });
 });

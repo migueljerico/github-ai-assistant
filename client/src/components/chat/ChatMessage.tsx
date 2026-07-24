@@ -2,7 +2,17 @@ import type { ChatMessage } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 
-export default function ChatMessageBubble({ message }: { message: ChatMessage }) {
+interface ChatMessageBubbleProps {
+  message: ChatMessage;
+  /**
+   * v3.56.0: callback del botón 1-clic "cambiar de modo". Se invoca cuando el mensaje
+   * lleva `actionMode` (sugerencia de la IA tras detectar que el modo seleccionado no
+   * encajaba con lo que pidió el usuario). Opcional por retrocompatibilidad.
+   */
+  onSwitchMode?: (mode: 'chat' | 'action', retryText: string) => void;
+}
+
+export default function ChatMessageBubble({ message, onSwitchMode }: ChatMessageBubbleProps) {
   const { user } = useAuth();
   const { t, lang } = useLanguage();
   const isUser = message.role === 'user';
@@ -64,6 +74,23 @@ export default function ChatMessageBubble({ message }: { message: ChatMessage })
                   ))}
                 </ul>
               </details>
+            )}
+
+            {/* v3.56.0: botón 1-clic para cambiar de modo cuando la IA detectó que el
+                seleccionado no encajaba con la petición del usuario. */}
+            {!isUser && message.actionMode && onSwitchMode && (
+              <div style={{ marginTop: '10px' }}>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => onSwitchMode(message.actionMode!.mode, message.actionMode!.retryText)}
+                  style={{ fontSize: '0.85rem', padding: '6px 14px' }}
+                >
+                  {message.actionMode.mode === 'action'
+                    ? t('chat.modeSuggest.toAction.title')
+                    : t('chat.modeSuggest.toChat.title')}
+                </button>
+              </div>
             )}
           </div>
         )}

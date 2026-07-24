@@ -93,11 +93,21 @@ describe('ChangeReviewModal', () => {
     expect(applyBtn).toBeDisabled();
   });
 
-  it('llama onApplyAccepted al pulsar aplicar', () => {
+  it('llama onApplyAccepted con los índices aceptados al pulsar aplicar (v3.56.0)', () => {
     render(<ChangeReviewModal {...defaultProps} />);
     const applyBtn = screen.getByTestId('review-apply-btn');
     fireEvent.click(applyBtn);
-    expect(defaultProps.onApplyAccepted).toHaveBeenCalled();
+    // Por defecto ambas están aceptadas → pasa [0, 1].
+    expect(defaultProps.onApplyAccepted).toHaveBeenCalledWith([0, 1]);
+  });
+
+  it('al rechazar una, onApplyAccepted recibe solo los índices aceptados (v3.56.0)', () => {
+    render(<ChangeReviewModal {...defaultProps} />);
+    // Rechazamos la segunda acción.
+    fireEvent.click(screen.getByTestId('review-reject-1'));
+    fireEvent.click(screen.getByTestId('review-apply-btn'));
+    // Ahora solo el índice 0 está aceptado.
+    expect(defaultProps.onApplyAccepted).toHaveBeenCalledWith([0]);
   });
 
   it('llama onClear al pulsar limpiar', () => {

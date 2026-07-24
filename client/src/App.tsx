@@ -326,11 +326,13 @@ const flowDraftPrBulk = useCallback(async (owner: string, repo: string, targets:
   // #40: controlador para cancelar la generación en curso (botón Detener).
   const abortRef = useRef<AbortController | null>(null);
 
-  const handleSend = useCallback(async () => {
-    // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto
-    if (!inputValue.trim() || !token || !user || !provider || !apiKey || !model) return;
-    const userText = inputValue.trim();
-    setInputValue('');
+  const handleSend = useCallback(async (overrideText?: string) => {
+    // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto.
+    // v3.56.0: overrideText permite reenviar una petición concreta (p. ej. tras un
+    // cambio de modo sugerido por la IA) sin depender del closure de inputValue.
+    const userText = (overrideText ?? inputValue).trim();
+    if (!userText || !token || !user || !provider || !apiKey || !model) return;
+    if (!overrideText) setInputValue('');
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -341,6 +343,19 @@ const flowDraftPrBulk = useCallback(async (owner: string, repo: string, targets:
       { userText, conversationHistory, modeOverride, repoContext, fileContext, multiRepoEnabled, selectedRepos, signal: controller.signal, reviewMode: modeOverride === 'review' },
     );
   }, [inputValue, token, user, provider, apiKey, model, providerName, t, lang, conversationHistory, multiRepoEnabled, selectedRepos, modeOverride, repoContext, fileContext, addMessage, updateMessage, addEntry, updateEntry, accountId]);
+
+  /**
+   * v3.56.0: handler del botón 1-clic "cambiar de modo" en un mensaje de la IA.
+   * Cambia el modo al sugerido y reenvía automáticamente la petición original en el
+   * modo correcto, sin que el usuario tenga que reescribirla ni recordar pulsar Enter.
+   */
+  const handleSwitchMode = useCallback((mode: 'chat' | 'action', retryText: string) => {
+    setModeOverride(mode);
+    // Dejamos el texto en el input por si el usuario quiere editarlo antes del reenvío,
+    // pero disparamos el envío de inmediato (handleSend usa overrideText, no inputValue).
+    setInputValue(retryText);
+    handleSend(retryText);
+  }, [handleSend]);
 
   // #40: cancela la petición en vuelo; runSend mostrará "⏹️ detenido".
   const handleStop = useCallback(() => abortRef.current?.abort(), []);
@@ -481,7 +496,7 @@ const flowDraftPrBulk = useCallback(async (owner: string, repo: string, targets:
         />
 
         <div className="chat-container">
-          <ChatArea messages={messages} />
+          <ChatArea messages={messages} onSwitchMode={handleSwitchMode} />
           <ChatInput
             value={inputValue}
             onChange={setInputValue}
@@ -532,9 +547,27 @@ const flowDraftPrBulk = useCallback(async (owner: string, repo: string, targets:
           actions={reviewActions}
           onAccept={() => {}}
           onReject={() => {}}
-          onApplyAccepted={async () => {
-            // TODO: ejecutar acciones aceptadas via executeAction
-            setReviewActions([]);
+          onApplyAccepted={async (acceptedIndices: number[]) => {
+            // v3.56.0: antes era un stub (TODO) que solo limpiaba la lista. Ahora
+            // ejecutamos de verdad las acciones aceptadas, una a una, con el mismo
+            // flujo que handleConfirm (runConfirmAction gestiona single/multi-repo,
+            // historial y mensajes de chat). Las rechazadas se quedan sin tocar.
+            if (!token || !user) return;
+            const toApply = acceptedIndices
+              .map(i => reviewActions[i])
+              .filter((pa): pa is PendingAction => !!pa);
+            setReviewActions(prev => prev.filter((_, i) => !acceptedIndices.includes(i)));
+            setIsExecuting(true);
+            try {
+              for (const pa of toApply) {
+                await runConfirmAction(
+                  { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+                  pa,
+                );
+              }
+            } finally {
+              setIsExecuting(false);
+            }
           }}
           onClear={() => setReviewActions([])}
           onCancel={() => setReviewActions([])}

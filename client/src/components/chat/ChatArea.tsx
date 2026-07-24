@@ -5,9 +5,11 @@ import { useLanguage } from '../../context/LanguageContext';
 
 interface ChatAreaProps {
   messages: ChatMessage[];
+  /** v3.56.0: propagado a ChatMessageBubble para el botón 1-clic de cambio de modo. */
+  onSwitchMode?: (mode: 'chat' | 'action', retryText: string) => void;
 }
 
-export default function ChatArea({ messages }: ChatAreaProps) {
+export default function ChatArea({ messages, onSwitchMode }: ChatAreaProps) {
   const { t } = useLanguage();
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -52,7 +54,7 @@ export default function ChatArea({ messages }: ChatAreaProps) {
   return (
     <div className="chat-messages" role="log" aria-live="polite" aria-label={t('chat.area.ariaLabel')}>
       {messages.map(msg => (
-        <ChatMessageBubble key={msg.id} message={msg} />
+        <ChatMessageBubble key={msg.id} message={msg} onSwitchMode={onSwitchMode} />
       ))}
       <div ref={bottomRef} />
     </div>

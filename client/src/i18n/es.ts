@@ -22,6 +22,27 @@ export const es = {
   'chat.mode.auto': 'Auto',
   'chat.mode.chat': 'Opinión',
   'chat.mode.action': 'Acción',
+  // Ayuda dinámica del selector de modo (texto que aparece bajo los botones).
+  'chat.modeHelp.auto': '💡 **Auto**: decido yo si te doy una opinión o hago una acción, según lo que escribas. Es lo más fácil.',
+  'chat.modeHelp.chat': '💡 **Opinión**: pregúntame, analizo y aconsejo. En este modo **no toco tus repos**.',
+  'chat.modeHelp.action': '💡 **Acción**: creo, edito o borro en tu repo. Siempre te pido confirmación antes.',
+  'chat.modeHelp.review': '💡 **Revisión**: como Acción, pero para **varios cambios a la vez**. Los revisas uno a uno antes de aplicar.',
+  // Tooltips cortos nativos (title=) al pasar el ratón sobre cada botón.
+  'chat.modeTip.auto': 'Detecto solo si quieres opinión o acción según tu frase.',
+  'chat.modeTip.chat': 'Pide mi opinión, análisis o consejo. No modifico tus repos.',
+  'chat.modeTip.action': 'Creo, edito o borro en tu repo. Requiere confirmación.',
+  'chat.modeTip.review': 'Varios cambios a la vez: los revisas uno a uno antes de aplicar.',
+  // Botón [?] y guía completa de modos.
+  'chat.modesGuide.toggle': '¿Qué hace cada botón?',
+  'chat.modesGuide.title': '¿Para qué sirve cada modo?',
+  'chat.modesGuide.auto': '🤖 **Auto** — Detecto por tu frase si quieres una opinión o una acción. Recomendado si no estás seguro.',
+  'chat.modesGuide.chat': '💬 **Opinión** — Pregúntame, analizo código o datos, aconsejo. Aquí no cambio nada en tus repos.',
+  'chat.modesGuide.action': '⚡ **Acción** — Creo, edito o borro archivos y recursos en tu repo. Siempre te pido confirmación antes de tocar nada.',
+  'chat.modesGuide.review': '📋 **Revisión** — Como Acción, pero para varios cambios a la vez. Los propongo todos y tú los revisas uno a uno antes de aplicar.',
+  'chat.modesGuide.close': 'Cerrar guía',
+  // Sugerencia de cambio de modo (botón 1-clic en el mensaje).
+  'chat.modeSuggest.toAction.title': '⚡ Cambiar a modo Acción',
+  'chat.modeSuggest.toChat.title': '💬 Cambiar a modo Opinión',
   'chat.ariaLabel': 'Instrucción para el asistente',
   'chat.ariaStop': 'Detener generación',
   'chat.ariaSend': 'Enviar instrucción',
@@ -271,7 +292,11 @@ export const es = {
   'chat.attachDocHint': 'Cuando quieras **documentarlo y publicarlo**, pulsa el botón **📄 Documentar repo** (abajo): ahí eliges el alcance y el método de publicación (commit, Draft PR o Release).',
   'chat.fileTextExtractFailed': 'No pude extraer texto del archivo (¿es un PDF escaneado o una imagen?). Prueba con un PDF de texto o un archivo de texto/código.',
   'chat.unknownError': 'Error desconocido',
-  'chat.actionParseFailed': '⚠️ El modelo no devolvió una acción válida (probablemente JSON mal formado). Prueba con otro modelo o reformula la instrucción. Respuesta recibida:',
+  'chat.actionParseFailed': '⚠️ El modelo no devolvió una acción válida. Prueba con otro modelo o reformula la instrucción. Respuesta recibida:',
+  'chat.actionParseFailed.reason': '⚠️ No pude interpretar la acción: **{reason}**. Prueba con otro modelo o reformula la instrucción. Respuesta recibida:',
+  // Mensajes de la IA cuando el modo seleccionado no encaja con lo que pide el usuario.
+  'chat.modeMismatch.toAction': 'Para crear, editar o borrar algo en tu repositorio necesito el **modo Acción**. Ahora mismo estás en Opinión, donde solo converso y analizo sin tocar nada.\n\nPulsa el botón y cambio el modo por ti, luego repito tu petición:',
+  'chat.modeMismatch.toChat': 'Eso suena a **opinión o análisis**, no a una acción sobre el repo. Estás en modo Acción, donde intento generar una operación de GitHub.\n\nPara conversar usa el modo Opinión. Pulsa el botón y cambio por ti, luego repito tu pregunta:',
   // #50: contexto demasiado grande incluso tras el reintento con menos archivos.
   'chat.contextTooLarge': '⚠️ El contexto del repositorio sigue siendo demasiado grande para este modelo (límite de tokens por minuto). Ya intenté reducirlo automáticamente. Prueba con un repo más pequeño, otro modelo (p. ej. Gemini) o cambia de proveedor.',
   'chat.contactError': 'Error al contactar con el asistente',

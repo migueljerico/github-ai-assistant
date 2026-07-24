@@ -474,40 +474,108 @@ export async function validateProviderKey(
 const ALLOWED_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
 const ALLOWED_TYPES = new Set(['lectura', 'escritura', 'creacion', 'listado', 'borrado']);
 
+type ValidationResult = { ok: true } | { ok: false; reason: string };
+
+/**
+ * Normaliza un fragmento de texto JSON antes de parsearlo. Algunos modelos devuelven
+ * JSON casi válido con defectos muy repetidos; en vez de descartarlo, lo reparo aquí
+ * cuando es seguro (no inventa datos):
+ *  - comentarios JS (`// ...` y `/* ... *\/`) → eliminados.
+ *  - trailing commas (`,}` o `,]`) → eliminadas.
+ *  - comillas tipográficas (“ ” ‘ ’) → comillas rectas estándar.
+ * Si el texto no es JSON repairable, se devuelve tal cual y JSON.parse dará el error.
+ */
+function normalizeJsonText(input: string): string {
+  return input
+    // comentarios de bloque y de línea (fuera de strings es seguro enough para LLM output)
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:])\/\/.*$/gm, '$1')
+    // comillas tipográficas → rectas
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    // trailing commas antes de } o ]
+    .replace(/,(\s*[}\]])/g, '$1');
+}
+
 /**
  * Valida la forma de una acción ya parseada (#40). Refuerza la garantía
  * propón→confirma→ejecuta: método y tipo dentro de una allowlist, y el endpoint —si
  * viene— debe ser un path RELATIVO (empieza por `/`, sin `://`) para que nunca apunte
- * a un host externo. Función pura.
+ * a un host externo. Función pura. Devuelve un resultado con `reason` legible para
+ * poder mostrar al usuario por qué se rechazó la acción.
  */
-function isValidAction(a: Record<string, unknown>): boolean {
-  if (!a.tipo || !a.accion || !a.metodo) return false;
-  if (typeof a.metodo !== 'string' || !ALLOWED_METHODS.has(a.metodo.toUpperCase())) return false;
-  if (typeof a.tipo !== 'string' || !ALLOWED_TYPES.has(a.tipo)) return false;
-  if (a.endpoint !== undefined && a.endpoint !== null) {
-    if (typeof a.endpoint !== 'string') return false;
-    if (a.endpoint.includes('://') || !a.endpoint.startsWith('/')) return false;
+function isValidAction(a: Record<string, unknown>): ValidationResult {
+  if (!a.tipo || !a.accion || !a.metodo) {
+    return { ok: false, reason: 'faltan campos obligatorios (tipo, accion o metodo)' };
   }
-  if (a.requiereConfirmacion !== undefined && typeof a.requiereConfirmacion !== 'boolean') return false;
-  return true;
+  if (typeof a.metodo !== 'string' || !ALLOWED_METHODS.has(a.metodo.toUpperCase())) {
+    return { ok: false, reason: `método "${a.metodo}" no permitido` };
+  }
+  if (typeof a.tipo !== 'string' || !ALLOWED_TYPES.has(a.tipo)) {
+    return { ok: false, reason: `tipo "${a.tipo}" no reconocido` };
+  }
+  if (a.endpoint !== undefined && a.endpoint !== null) {
+    if (typeof a.endpoint !== 'string') {
+      return { ok: false, reason: 'el campo endpoint no es texto' };
+    }
+    if (a.endpoint.includes('://') || !a.endpoint.startsWith('/')) {
+      return { ok: false, reason: `endpoint "${a.endpoint}" debe ser una ruta relativa (empezar por /)` };
+    }
+  }
+  if (a.requiereConfirmacion !== undefined && typeof a.requiereConfirmacion !== 'boolean') {
+    return { ok: false, reason: 'requiereConfirmacion debe ser true/false' };
+  }
+  return { ok: true };
+}
+
+/**
+ * Resultado del parseo de UNA acción con diagnóstico. Si `action` es null, `error`
+ * explica por qué (sintaxis inválida con posición, JSON truncado, o validación de
+ * schema fallida con la regla concreta). Pensado para mostrar al usuario un mensaje
+ * útil en vez del error genérico de antes.
+ */
+export type ParseOneResult = { action: GeminiAction } | { action: null; error: string };
+
+function parseOneWithDiagnostic(rawText: string): ParseOneResult {
+  const candidates = extractJsonCandidates(rawText);
+  let lastSchemaReason: string | null = null;
+  for (const candidate of candidates) {
+    const normalized = normalizeJsonText(candidate);
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(normalized);
+    } catch (err) {
+      // Detectamos truncamiento: string sin cerrar o objeto sin cerrar en el último
+      // candidato balanceado (probablemente el modelo cortó la respuesta por tamaño).
+      const msg = (err as Error).message;
+      const looksTruncated = /unexpected end|EOF/i.test(msg)
+        && (normalized.includes('"contenidoPropuesto"') || normalized.includes('"content"'));
+      if (looksTruncated) {
+        return { action: null, error: 'la respuesta se cortó (JSON truncado); prueba un contenido más corto o divide en varias acciones' };
+      }
+      // No es JSON válido; probamos el siguiente candidato pero guardamos el detalle.
+      continue;
+    }
+    const validation = isValidAction(parsed);
+    if (validation.ok) return { action: parsed as unknown as GeminiAction };
+    lastSchemaReason = validation.reason;
+  }
+  if (lastSchemaReason) {
+    return { action: null, error: lastSchemaReason };
+  }
+  return { action: null, error: 'no se encontró JSON de acción válido' };
 }
 
 export function parseGeminiAction(rawText: string): GeminiAction | null {
-  // v3.22.2: además de quitar fences, extraemos el primer bloque `{...}` balanceado.
-  // Algunos modelos (Qwen, Gemma) envuelven el JSON en prosa ("Aquí tienes: {...}");
-  // el parser anterior exigía que TODA la cadena fuera JSON y fallaba en silencio.
-  const candidates = extractJsonCandidates(rawText);
-  for (const candidate of candidates) {
-    try {
-      const parsed = JSON.parse(candidate);
-      // #40: validación estricta (allowlist de método/tipo + endpoint relativo). Si no
-      // cumple, se trata como respuesta conversacional (null), igual que un JSON inválido.
-      if (isValidAction(parsed)) return parsed as GeminiAction;
-    } catch {
-      // probamos el siguiente candidato
-    }
-  }
-  return null;
+  return parseOneWithDiagnostic(rawText).action;
+}
+
+/**
+ * Igual que parseGeminiAction pero devuelve el diagnóstico para que la UI lo muestre.
+ * Es la versión que debería usar runSend para dar feedback al usuario.
+ */
+export function parseGeminiActionWithReason(rawText: string): ParseOneResult {
+  return parseOneWithDiagnostic(rawText);
 }
 
 /**
@@ -515,6 +583,10 @@ export function parseGeminiAction(rawText: string): GeminiAction | null {
  * A diferencia de parseGeminiAction (que devuelve solo el primero), este parser
  * busca múltiples acciones cuando el usuario pide varios cambios a la vez.
  * Retrocompatible: si solo hay 1 JSON, devuelve array de 1 elemento.
+ *
+ * v3.56.0: aplica la misma normalización (comillas tipográficas, trailing commas,
+ * comentarios) que el parser singular, para que los JSON malformados comunes se
+ * reparen antes de descartarlos.
  */
 export function parseGeminiActions(rawText: string): GeminiAction[] {
   const results: GeminiAction[] = [];
@@ -530,8 +602,9 @@ export function parseGeminiActions(rawText: string): GeminiAction[] {
     const balanced = firstBalancedJsonObjectFrom(cleaned, start);
     if (!balanced) break;
     try {
-      const parsed = JSON.parse(balanced);
-      if (isValidAction(parsed)) results.push(parsed as GeminiAction);
+      const normalized = normalizeJsonText(balanced);
+      const parsed = JSON.parse(normalized);
+      if (isValidAction(parsed).ok) results.push(parsed as GeminiAction);
     } catch { /* skip malformed */ }
     searchFrom = start + balanced.length;
   }

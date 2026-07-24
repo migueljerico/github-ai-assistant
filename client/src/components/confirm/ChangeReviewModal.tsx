@@ -8,7 +8,12 @@ export interface ChangeReviewModalProps {
   actions: PendingAction[];
   onAccept: (index: number) => void;
   onReject: (index: number) => void;
-  onApplyAccepted: () => void;
+  /**
+   * Se invoca al pulsar "Aplicar aceptados". Recibe los ÍNDICES (en `actions`) que el
+   * usuario marcó como aceptados, para que App.tsx ejecute solo esos y deje los
+   * rechazados sin tocar. Antes de v3.56.0 era un stub que no hacía nada.
+   */
+  onApplyAccepted: (acceptedIndices: number[]) => void;
   onClear: () => void;
   onCancel: () => void;
   isExecuting: boolean;
@@ -245,7 +250,7 @@ export default function ChangeReviewModal({
           <button
             data-testid="review-apply-btn"
             className="btn btn-success"
-            onClick={onApplyAccepted}
+            onClick={() => onApplyAccepted(accepted.map((a, i) => a ? i : -1).filter(i => i >= 0))}
             disabled={isExecuting || acceptedCount === 0}
           >
             {isExecuting ? (

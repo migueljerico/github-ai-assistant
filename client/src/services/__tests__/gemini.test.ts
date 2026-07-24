@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
  parseGeminiAction,
  parseGeminiActions,
+ parseGeminiActionWithReason,
  detectPrimaryLanguage,
  callAI,
  buildRepoContextSummary,
@@ -173,6 +174,76 @@ Constructing the JSON:
       expect(result).toHaveLength(2);
       expect(result[0].accion).toBe('Buena');
       expect(result[1].accion).toBe('Otra buena');
+    });
+  });
+
+  // v3.56.0 — tolerancia del parser + diagnóstico (reason)
+  describe('parser tolerante (v3.56.0)', () => {
+    const validBase = {
+      tipo: 'lectura', accion: 'Leer perfil', metodo: 'GET',
+      endpoint: '/user', requiereConfirmacion: false,
+    };
+
+    it('acepta JSON con trailing commas', () => {
+      const raw = `{
+        "tipo": "lectura",
+        "accion": "Leer perfil",
+        "metodo": "GET",
+        "endpoint": "/user",
+        "requiereConfirmacion": false,
+      }`;
+      expect(parseGeminiAction(raw)).not.toBeNull();
+    });
+
+    it('acepta JSON con comillas tipográficas en valores', () => {
+      const raw = JSON.stringify(validBase).replace('"Leer perfil"', '“Leer perfil”');
+      const action = parseGeminiAction(raw);
+      expect(action).not.toBeNull();
+      expect(action!.accion).toBe('Leer perfil');
+    });
+
+    it('acepta JSON con comentarios de línea', () => {
+      const raw = `{
+        // comentario del modelo
+        "tipo": "lectura",
+        "accion": "Leer perfil",
+        "metodo": "GET",
+        "endpoint": "/user",
+        "requiereConfirmacion": false
+      }`;
+      expect(parseGeminiAction(raw)).not.toBeNull();
+    });
+
+    it('parseGeminiActionWithReason devuelve reason legible cuando falta un campo', () => {
+      const raw = JSON.stringify({ tipo: 'lectura', accion: 'x' /* sin metodo */ });
+      const result = parseGeminiActionWithReason(raw);
+      expect(result.action).toBeNull();
+      // Tras afirmar action === null, estrechamos al miembro con `error`.
+      if (result.action === null) {
+        expect(result.error).toContain('metodo');
+      }
+    });
+
+    it('parseGeminiActionWithReason indica endpoint inválido', () => {
+      const raw = JSON.stringify({
+        tipo: 'lectura', accion: 'x', metodo: 'GET', endpoint: 'http://evil.com/x',
+      });
+      const result = parseGeminiActionWithReason(raw);
+      expect(result.action).toBeNull();
+      if (result.action === null) {
+        expect(result.error).toContain('endpoint');
+      }
+    });
+
+    it('parseGeminiActionWithReason indica tipo no reconocido', () => {
+      const raw = JSON.stringify({
+        tipo: 'inventado', accion: 'x', metodo: 'GET', endpoint: '/user',
+      });
+      const result = parseGeminiActionWithReason(raw);
+      expect(result.action).toBeNull();
+      if (result.action === null) {
+        expect(result.error).toContain('tipo');
+      }
     });
   });
 

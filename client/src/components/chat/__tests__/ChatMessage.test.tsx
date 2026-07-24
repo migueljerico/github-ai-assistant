@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import ChatMessageBubble from '../ChatMessage';
 import type { ChatMessage } from '../../../types';
 
@@ -46,5 +46,56 @@ describe('ChatMessageBubble — archivos consultados (#51)', () => {
     expect(screen.queryByText(/Archivos consultados/)).not.toBeInTheDocument();
     rerender(<ChatMessageBubble message={msg({ content: 'x', consultedFiles: [] })} />);
     expect(screen.queryByText(/Archivos consultados/)).not.toBeInTheDocument();
+  });
+});
+
+describe('ChatMessageBubble — botón 1-clic de cambio de modo (v3.56.0)', () => {
+  it('no muestra el botón cuando el mensaje no lleva actionMode', () => {
+    render(<ChatMessageBubble message={msg({ content: 'Hola' })} onSwitchMode={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: /cambiar a modo/i })).not.toBeInTheDocument();
+  });
+
+  it('no muestra el botón aunque haya actionMode si no se pasa onSwitchMode', () => {
+    // Retrocompatibilidad: sin callback, no se renderiza el botón accionable.
+    render(<ChatMessageBubble message={msg({
+      content: 'Necesitas el modo Acción',
+      actionMode: { mode: 'action', retryText: 'crea un README' },
+    })} />);
+    expect(screen.queryByRole('button', { name: /cambiar a modo/i })).not.toBeInTheDocument();
+  });
+
+  it('muestra el botón "Cambiar a modo Acción" cuando actionMode.mode = action', () => {
+    render(<ChatMessageBubble
+      message={msg({
+        content: 'Para crear archivos necesito el modo Acción.',
+        actionMode: { mode: 'action', retryText: 'crea un archivo README.md' },
+      })}
+      onSwitchMode={vi.fn()}
+    />);
+    expect(screen.getByRole('button', { name: /⚡ Cambiar a modo Acción/i })).toBeInTheDocument();
+  });
+
+  it('muestra el botón "Cambiar a modo Opinión" cuando actionMode.mode = chat', () => {
+    render(<ChatMessageBubble
+      message={msg({
+        content: 'Eso suena a opinión.',
+        actionMode: { mode: 'chat', retryText: '¿qué opinas del repo?' },
+      })}
+      onSwitchMode={vi.fn()}
+    />);
+    expect(screen.getByRole('button', { name: /💬 Cambiar a modo Opinión/i })).toBeInTheDocument();
+  });
+
+  it('al pulsar el botón llama onSwitchMode con el modo y el retryText', () => {
+    const onSwitchMode = vi.fn();
+    render(<ChatMessageBubble
+      message={msg({
+        content: 'Para crear archivos necesito el modo Acción.',
+        actionMode: { mode: 'action', retryText: 'crea un archivo README.md' },
+      })}
+      onSwitchMode={onSwitchMode}
+    />);
+    fireEvent.click(screen.getByRole('button', { name: /cambiar a modo acción/i }));
+    expect(onSwitchMode).toHaveBeenCalledWith('action', 'crea un archivo README.md');
   });
 });

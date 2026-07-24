@@ -131,6 +131,16 @@ export interface ChatMessage {
   action?: GeminiAction; // parsed action from Gemini
   isLoading?: boolean;
   consultedFiles?: string[]; // #51: archivos del repo enviados al LLM para esta respuesta
+  /**
+   * Sugerencia 1-clic de cambio de modo. Se rellena cuando el usuario escribió
+   * algo que NO encaja con el modo que tenía seleccionado (p. ej. pide "crea un
+   * archivo" estando en Opinión). El mensaje muestra un botón que, al pulsarlo,
+   * cambia al modo correcto y reenvía `retryText`. Ver `detectModeMismatch`.
+   */
+  actionMode?: {
+    mode: 'chat' | 'action';
+    retryText: string;
+  };
 }
 
 // ── History ──────────────────────────────────────────────────────────────────
