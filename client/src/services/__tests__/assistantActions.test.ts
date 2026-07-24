@@ -109,7 +109,7 @@ vi.mock('../../utils/powerbiReader', () => ({ readPowerBI: vi.fn() }));
 vi.mock('../../utils/docxReader', () => ({ readDocx: vi.fn() }));
 vi.mock('../changelogGenerator', () => ({ generateChangelog: vi.fn() }));
 
-import { generateRepoDocs, generateFileDoc, generateSpecificDoc, buildRepoContextSummary, callAI, parseGeminiAction, parseGeminiActionWithReason, chatPromptWithContext } from '../gemini';
+import { generateRepoDocs, generateFileDoc, generateSpecificDoc, buildRepoContextSummary, callAI, parseGeminiAction, parseGeminiActions, parseGeminiActionWithReason, chatPromptWithContext } from '../gemini';
 import { assertSupportedFile, readFileContent } from '../../utils/pdfReader';
 import { readSpreadsheet } from '../../utils/spreadsheetReader';
 import { readPowerBI } from '../../utils/powerbiReader';
@@ -191,6 +191,8 @@ function makeDeps() {
     setIsChatLoading: vi.fn(),
     setConversationHistory: vi.fn(),
     setPendingAction: vi.fn(),
+    // v3.56.2: mock del acumulador de acciones en modo revisión (#58c).
+    addReviewAction: vi.fn(),
   };
 }
 
@@ -808,6 +810,69 @@ describe('runSend', () => {
     const calls = vi.mocked(deps.updateMessage).mock.calls;
     const lastUpdate = calls[calls.length - 1][1];
     expect(lastUpdate.actionMode).toBeUndefined();
+  });
+
+  // v3.56.2 — Modo Revisión: processReviewActions (parser plural + encolado)
+  describe('modo revisión (#58c + v3.56.2)', () => {
+    it('encola una acción confirmable vía addReviewAction (no abre ConfirmModal)', async () => {
+      vi.mocked(resolveMode).mockReturnValue('action');
+      vi.mocked(callAI).mockResolvedValue('{...}');
+      const action = { accion: 'Crear README', metodo: 'PUT', repo: 'r', archivo: 'README.md', requiereConfirmacion: true } as any;
+      vi.mocked(parseGeminiActions).mockReturnValue([action]);
+      const deps = makeDeps();
+
+      await runSend(deps, CONFIG, { ...SEND_PARAMS, modeOverride: 'review', reviewMode: true });
+
+      expect(deps.addReviewAction).toHaveBeenCalledTimes(1);
+      // La acción se enriquece (contenidoActual + commitMessage) antes de encolar;
+      // verificamos solo lo estable: la acción base y que va a la cola, no al modal.
+      expect(deps.addReviewAction).toHaveBeenCalledWith(expect.objectContaining({
+        action: expect.objectContaining({ accion: 'Crear README', metodo: 'PUT', archivo: 'README.md' }),
+      }));
+      expect(deps.setPendingAction).not.toHaveBeenCalled();
+    });
+
+    it('encola MÚLTIPLES acciones cuando el modelo propone un lote (v3.56.0 fix)', async () => {
+      vi.mocked(resolveMode).mockReturnValue('action');
+      vi.mocked(callAI).mockResolvedValue('{...}{...}');
+      const a1 = { accion: 'Crear A', metodo: 'PUT', repo: 'r', archivo: 'a.txt', requiereConfirmacion: true } as any;
+      const a2 = { accion: 'Actualizar B', metodo: 'PUT', repo: 'r', archivo: 'b.txt', requiereConfirmacion: true } as any;
+      vi.mocked(parseGeminiActions).mockReturnValue([a1, a2]);
+      const deps = makeDeps();
+
+      await runSend(deps, CONFIG, { ...SEND_PARAMS, modeOverride: 'review', reviewMode: true });
+
+      // Antes de v3.56.0 solo se encolaba la primera (parser singular).
+      expect(deps.addReviewAction).toHaveBeenCalledTimes(2);
+    });
+
+    it('ejecuta directamente las acciones de solo lectura (no las encola)', async () => {
+      vi.mocked(resolveMode).mockReturnValue('action');
+      vi.mocked(callAI).mockResolvedValue('{...}');
+      const readAction = { accion: 'Listar', metodo: 'GET', repo: 'r', requiereConfirmacion: false } as any;
+      vi.mocked(parseGeminiActions).mockReturnValue([readAction]);
+      vi.mocked(executeAction).mockResolvedValue({ success: true, message: 'OK', data: [1] } as any);
+      const deps = makeDeps();
+
+      await runSend(deps, CONFIG, { ...SEND_PARAMS, modeOverride: 'review', reviewMode: true });
+
+      expect(executeAction).toHaveBeenCalled();
+      expect(deps.addReviewAction).not.toHaveBeenCalled();
+    });
+
+    it('sin acciones válidas: muestra aviso con reason (no encola nada)', async () => {
+      vi.mocked(resolveMode).mockReturnValue('action');
+      vi.mocked(callAI).mockResolvedValue('texto sin json');
+      vi.mocked(parseGeminiActions).mockReturnValue([]);
+      vi.mocked(parseGeminiActionWithReason).mockReturnValue({ action: null, error: 'json ausente' });
+      const deps = makeDeps();
+
+      await runSend(deps, CONFIG, { ...SEND_PARAMS, modeOverride: 'review', reviewMode: true });
+
+      expect(deps.addReviewAction).not.toHaveBeenCalled();
+      const notice = deps.t('chat.actionParseFailed.reason', { reason: 'json ausente' });
+      expect(deps.updateMessage).toHaveBeenCalledWith('msg-2', expect.objectContaining({ content: expect.stringContaining(notice) }));
+    });
   });
 });
 

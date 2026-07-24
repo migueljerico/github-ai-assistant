@@ -37,8 +37,20 @@ el release):
 3. **`README.md`** sincronizado (badge, métricas). Nunca pushear con el README
    desfasado respecto a la versión publicada.
 4. **`MEJORAS_FUTURAS.md`**: versión + marcar ítems resueltos como ✅.
-5. **Verificar**: `npm test` (client) + `npm run test:server` + `npm run build`
-   (TS estricto). Si algo falla, **frena el cierre** y arréglalo.
+5. **Verificar TODO (frena el cierre si algo falla)**, en este orden:
+   - `npm run lint` en `client/` — **OBLIGATORIO antes de commitear**. El CI usa una
+     config de ESLint MÁS ESTRICTA que la local (caso real v3.56.0: pasó en local,
+     rompió el CI). Cero errores. Los warnings `set-state-in-effect` preexistentes
+     no bloquean, pero cualquier `error` sí.
+   - `npm test` (client) — todo verde.
+   - `npm run test:server` — todo verde.
+   - `npm run test:coverage` (client) — sin bajar del umbral global (70% en
+     lines/functions/branches/statements). Y **presta atención a la cobertura de las
+     líneas NUEVAS del diff**: Codecov `codecov/patch` exige ≥89% del diff cubierto.
+     Si añades código, añade tests que lo cubran. Los archivos de UI (componentes
+     con mucho JSX) son los que más cuesta cubrir; para lógica nueva extrae funciones
+     puras testeables (ver `modeDetection.ts`, `gemini.ts` parsers).
+   - `npm run build` (TS estricto).
 6. **Commit** convencional (`feat:`/`fix:`/`chore(vX.Y.Z):`) con TODOS los cambios
    de la gestión (código + docs).
 7. **Push a `main`**: `git push origin main`.

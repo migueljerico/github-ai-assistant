@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.56.2] — 2026-07-24
+
+> **Cobertura del patch + blindaje de la rutina de cierre.**
+> v3.56.0 dejó `codecov/patch` en 59.85% (objetivo 89.56%) porque el helper
+> `processReviewActions` (~50 líneas nuevas) no tenía tests directos. Se añaden
+> 4 tests de modo revisión que cubren el encolado de acciones (simple, lote,
+> solo-lectura y error). Además, `AGENTS.md` ahora exige `npm run lint` y
+> verificación de cobertura del diff antes de commitear, para que el patrón
+> "verde en local, rojo en CI" (lint + patch) no se repita.
+
+### Fixed
+- **Cobertura**: 4 tests nuevos para `processReviewActions` (modo revisión plural):
+  encola una acción confirmable, encola un lote de varias, ejecuta solo-lectura
+  directo, y muestra aviso con `reason` cuando no hay acciones válidas.
+- `parseGeminiActions` re-añadido al import del test (se quitó en v3.56.1 por
+  lint, pero los tests nuevos lo usan).
+
+### Changed
+- **`AGENTS.md`** paso 5 (verificación): ahora exige `npm run lint` (config del CI
+  más estricta que la local) + atención a `codecov/patch` (≥89% del diff cubierto)
+  + `test:coverage`, además de `test` + `build`. Lecciones v3.56.0/v3.56.1
+  registradas para que no se repitan.
+
+### Notes
+- Tests: 816 → 820 (+4 modo revisión). Lint: 0 errores. Build limpio.
+- Cambio de código por ZCode (GLM-5.2).
+
 ## [3.56.1] — 2026-07-24
 
 > **Hotfix de lint: CI roto por 2 errores `no-unused-vars` de v3.56.0.**
