@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.57.1] — 2026-07-25
+
+> **Normalización de acentos y `ñ` en el ranker de contexto (cierre del issue #67).**
+> El tokenizador de `contextRanker.ts` usaba el rango `[a-z0-9]`, que **excluye**
+> las vocales acentuadas y la `ñ`: el léxico técnico en `-ción` se truncaba
+> (`autenticación` → `autenticaci`) y no coincidía con los identificadores del
+> código, que van sin acento → el archivo correcto no subía en el ranking. Esta
+> release normaliza con NFD antes de tokenizar, arreglando toda la familia de
+> fallos de acentuación con un solo punto de cambio.
+
+### Fixed
+- **Normalización NFD en `tokenize()`** (`client/src/utils/contextRanker.ts`):
+  `text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()` descompone
+  los diacríticos y los elimina, dejando la letra base. Así `autenticación` →
+  `autenticacion` (coincide con el código), `ñoño` → `nono`, `más` → `mas`. El
+  rango `\u0300-\u036f` ya cubre la tilde de la `ñ` (U+0303) tras NFD, así que no
+  hace falta un `.replace(/ñ/g,'n')` aparte. Función pura: cero coste/latencia,
+  sin estado ni red (Zero-Storage intacto).
+- **5 tests nuevos** (`contextRanker.test.ts`): normalización de acentos (`á`),
+  de acentos + `ñ` + mayúsculas, no-pérdida de monosílabos (`más`), y ranking
+  `autenticación` ↔ contenido `autenticacion` (test que fallaba antes del fix).
+  Cubren las líneas nuevas para codecov/patch.
+
+### Notes
+- 1 punto de cambio: todo el matching (query, contenido+ruta, `pathTokens`) pasa
+  por `tokenize()`, así que normalizar ahí arregla la familia entera de una vez.
+- Función pura → riesgo bajo, sin cambios en servidor/CSS.
+
 ## [3.57.0] — 2026-07-25
 
 > **Autocomplete de instrucciones en el chat (cierre del issue #22).**

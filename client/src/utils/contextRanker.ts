@@ -20,7 +20,14 @@ const COMMON_EXTENSIONS = new Set([
 
 /** Tokeniza un texto en términos alfanuméricos en minúscula (longitud ≥ 2). */
 export function tokenize(text: string): string[] {
-  return (text.toLowerCase().match(/[a-z0-9]+/gi) || []).filter(t => t.length >= 2);
+  // NFD descompone los diacríticos (á→a+◌́, ñ→n+◌̃); el replace los elimina y queda
+  // la letra base sin acento. Así el léxico técnico en español ('autenticación')
+  // coincide con los identificadores del código, que van sin acento. #67
+  const normalized = text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+  return (normalized.match(/[a-z0-9]+/gi) || []).filter(t => t.length >= 2);
 }
 
 /** Tokeniza una ruta separando también por `/`, `.`, `_`, `-`. */
