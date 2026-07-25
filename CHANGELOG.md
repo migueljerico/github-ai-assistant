@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.57.2] — 2026-07-25
+
+> **Expansión léxica ES↔EN en el ranker de contexto (cierre del issue #68).**
+> El ranker hacía matching estricto por igualdad de strings: una pregunta en
+> castellano coloquial ("¿cómo limito los mensajes?") se tokenizaba como
+> `['limito','los','mensajes']`, ninguno presente en identificadores EN
+> (`rateLimit`, `message`) → el archivo correcto no subía. Esta release añade un
+> glosario ES→EN agnóstico de repo y expande el QUERY con sinónimos EN antes de
+> puntuar, manteniendo intacto el corpus (el IDF/avgLen del BM25 no se toca).
+
+### Added
+- **Glosario ES→EN `GLOSSARY`** (`client/src/utils/contextRanker.ts`): `const`
+  estático organizado por familias léxicas (formas flexivas: infinitivo +
+  conjugaciones + singulares + plurales) que se aplana a un `Map` en carga de
+  módulo. Ej.: la familia `['mensaje','mensajes'] → ['message']`,
+  `['limitar','limito','limita','limita'] → ['limit','rate','ratelimit']`. Cubre
+  ~34 familias de acciones y sustantivos de dominio de programación. Agnóstico
+  de repo (no mapea a identificadores de esta app), sin dependencias ni red
+  (Zero-Storage intacto).
+- **Función pura `expandQuery(query)`** (`contextRanker.ts`, exportada): devuelve
+  el query original seguido de los sinónimos EN de cada término ES presente en
+  el glosario, sin duplicar los ya presentes. Reutiliza `tokenize()` → los
+  acentos/ñ de las claves se normalizan vía NFD (#67) automáticamente.
+
+### Changed
+- **`rankFilesByQuery`**: `tokenize(query)` → `tokenize(expandQuery(query))`.
+  Un solo punto de cambio. Solo enriquece el QUERY; el corpus de archivos
+  (`docs`, `df`/IDF, `avgLen`) y el boost por nombre no se tocan → el BM25
+  conserva su semántica (query expansion estándar en IR).
+
+### Notes
+- 4 tests nuevos (`contextRanker.test.ts`, 10→14): 3 unitarios de `expandQuery`
+  (happy path, no-duplicar-presentes, no-op sin términos ES) + 1 de ranking
+  ES→EN (query "¿cómo limito la cantidad de mensajes?" ↔ archivo con
+  `rateLimit`/`Message`, que fallaba antes del fix). Client: 830→834.
+- Decisión de diseño (Opción A sobre B): expandir solo el query, no el corpus.
+  La alternativa (inyectar expansión dentro de `tokenize()`) habría contaminado
+  IDF/avgLen del BM25 — descartada por sus efectos colaterales en el scoring.
+- Complementario de #67 (resuelto en v3.57.1): #67 cubre acentos/ñ, #68 cubre
+  sinónimos ES↔EN. Ambos sobre el mismo archivo (`contextRanker.ts`).
+- Función pura → riesgo bajo, sin cambios en servidor/CSS.
+
 ## [3.57.1] — 2026-07-25
 
 > **Normalización de acentos y `ñ` en el ranker de contexto (cierre del issue #67).**

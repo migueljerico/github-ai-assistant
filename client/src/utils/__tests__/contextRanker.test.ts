@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { rankFilesByQuery, tokenize } from '../contextRanker';
+import { rankFilesByQuery, tokenize, expandQuery } from '../contextRanker';
 
 const mk = (path: string, content: string) => ({ path, content, size: 0 });
 
@@ -19,6 +19,33 @@ describe('contextRanker (#49)', () => {
 
     it('no descarta monosílabos acentuados como "más" o "él"', () => {
       expect(tokenize('Más')).toEqual(['mas']);
+    });
+  });
+
+  describe('expandQuery (#68)', () => {
+    it('añade sinónimos EN del glosario y mantiene los tokens originales', () => {
+      // 'limito' (1ª pers.) y 'mensajes' (plural) son formas flexivas que el
+      // glosario resuelve a sus sinónimos EN. Los acentos/ñ ya no importan porque
+      // expandQuery normaliza vía tokenize (#67).
+      const expanded = expandQuery('¿cómo limito los mensajes?');
+      const terms = new Set(tokenize(expanded));
+      expect(terms.has('mensajes')).toBe(true);  // original conservado
+      expect(terms.has('limito')).toBe(true);    // original conservado
+      expect(terms.has('message')).toBe(true);   // sinónimo añadido
+      expect(terms.has('limit')).toBe(true);     // sinónimo añadido
+      expect(terms.has('ratelimit')).toBe(true); // sinónimo añadido
+    });
+
+    it('no duplica sinónimos ya presentes en el query', () => {
+      // 'message' ya está → no se añade dos veces. El conteo de 'message' es 1.
+      const expanded = expandQuery('mensajes message');
+      const matches = tokenize(expanded).filter(t => t === 'message');
+      expect(matches).toHaveLength(1);
+    });
+
+    it('devuelve el query sin cambios si no hay términos ES del glosario', () => {
+      expect(expandQuery('how does rate limiting work')).toBe('how does rate limiting work');
+      expect(expandQuery('   ')).toBe('   ');
     });
   });
 
@@ -45,6 +72,19 @@ describe('contextRanker (#49)', () => {
       ];
       const ranked = rankFilesByQuery('¿cómo funciona la autenticación?', files67, 1);
       expect(ranked[0].path).toBe('client/src/services/auth.ts');
+    });
+
+    it('conecta una pregunta en español con identificadores EN del contenido (#68)', () => {
+      // Antes de #68: el query "¿cómo limito los mensajes?" se tokeniza como
+      // ['limito', 'los', 'mensajes'], ninguno presente en el contenido EN → el
+      // archivo correcto no gana. Con expandQuery se añaden 'message' y
+      // 'limit'/'rateLimit', que sí aparecen en el código → sube al #1.
+      const files68 = [
+        mk('client/src/App.tsx', 'export default function App() { return null }'),
+        mk('client/src/services/messageRateLimit.ts', 'export const rateLimit = (msgs: Message[]) => { /* throttle */ }'),
+      ];
+      const ranked = rankFilesByQuery('¿cómo limito la cantidad de mensajes?', files68, 1);
+      expect(ranked[0].path).toBe('client/src/services/messageRateLimit.ts');
     });
 
     it('rankea por contenido cuando no se menciona un archivo', () => {

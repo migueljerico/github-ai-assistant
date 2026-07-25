@@ -2,7 +2,7 @@
 
 Estado del código, mejoras realizadas y pendientes del proyecto.
 
-**Actualizado a:** v3.57.1 · Julio 2026
+**Actualizado a:** v3.57.2 · Julio 2026
 
 ---
 
@@ -379,7 +379,7 @@ la hay: ni `streamGenerateContent` ni un campo `task`/`type` fiable en la API).
 
 ---
 
-#### #68 — Expansión léxica ES↔EN en `contextRanker.ts` (glosario agnóstico de repo)
+#### #68 — Expansión léxica ES↔EN en `contextRanker.ts` (glosario agnóstico de repo) ✅ RESUELTO en v3.57.2
 **Esfuerzo:** ~2-3h · **Prioridad:** 🟢 Baja
 
 **Origen:** propuesta de **Gemini Flash 3.6** vía **dogfooding**, **refinada**.
@@ -501,32 +501,32 @@ comportamiento para usuarios de ratón.
 | 🟢 Baja | #23, #24, #25, #52, #53, #58, #69 | #66 (revisión catálogo Gemini), #68 (glosario ES↔EN), #71 (tema claro), #72 (a11y focus/motion) |
 | 🗑️ Descartados | — | #33, #35 (descartados en v3.22.3), #36 (descartado en v3.41.0) |
 
-> **Cómputo:** 51 ítems resueltos + 7 pendientes + 3 descartados = 61 referencias (algunos issues como `#28`, `#57`, `#58` generan varias filas por sus fases). Los pendientes reales accionables son: **#26** (continuo, cobertura), **#66** (revisión periódica cada 2-3 meses del catálogo Gemini estático), y las 5 entradas restantes **#68, #70, #71, #72, #73** (de las 7 añadidas en v3.56.2; **#67 resuelto en v3.57.1**, **#69 resuelto en v3.57.0**). **#67 cerrado en v3.57.1** (normalización de acentos/`ñ` en `tokenize()` de `contextRanker.ts` vía NFD: arregla toda la familia del léxico técnico en `-ción`). **#69 cerrado en v3.57.0** (autocomplete de instrucciones #22: popover `InstructionSuggestions` activado con trigger `/` en `ChatInput.tsx`). **#58 cerrado completo en v3.54.0** (bulk v3.53.0, diff incremental v3.52.0/.1/.2, modo revisión v3.54.0). **#53 resuelto en v3.50.0** (sugerencia de commit semántico vía `commitSuggester.ts` + few-shot con commits recientes + fallback determinista; documentado en el roadmap en v3.50.3). **#25 cerrado completo en v3.41.0** (logs v3.39.0 + healthcheck v3.40.0 + deploy.sh v3.41.0). **#52 resuelto en v3.42.0** (Modo Auditoría de Seguridad: botón 🛡️ + plantilla + `runSecurityAudit` + prompt dedicado, lectura-only). **#36 descartado en v3.41.0** (rompe zero-storage, costo alto, beneficio marginal en single-user).
+> **Cómputo:** 52 ítems resueltos + 6 pendientes + 3 descartados = 61 referencias (algunos issues como `#28`, `#57`, `#58` generan varias filas por sus fases). Los pendientes reales accionables son: **#26** (continuo, cobertura), **#66** (revisión periódica cada 2-3 meses del catálogo Gemini estático), y las 4 entradas restantes **#70, #71, #72, #73** (de las 7 añadidas en v3.56.2; **#67 resuelto en v3.57.1**, **#69 resuelto en v3.57.0**). **#67 cerrado en v3.57.1** (normalización de acentos/`ñ` en `tokenize()` de `contextRanker.ts` vía NFD: arregla toda la familia del léxico técnico en `-ción`). **#68 cerrado en v3.57.2** (glosario ES↔EN agnóstico de repo + `expandQuery()`: expande el query con sinónimos EN antes del BM25, manteniendo intacto el corpus; complementario de #67). **#69 cerrado en v3.57.0** (autocomplete de instrucciones #22: popover `InstructionSuggestions` activado con trigger `/` en `ChatInput.tsx`). **#58 cerrado completo en v3.54.0** (bulk v3.53.0, diff incremental v3.52.0/.1/.2, modo revisión v3.54.0). **#53 resuelto en v3.50.0** (sugerencia de commit semántico vía `commitSuggester.ts` + few-shot con commits recientes + fallback determinista; documentado en el roadmap en v3.50.3). **#25 cerrado completo en v3.41.0** (logs v3.39.0 + healthcheck v3.40.0 + deploy.sh v3.41.0). **#52 resuelto en v3.42.0** (Modo Auditoría de Seguridad: botón 🛡️ + plantilla + `runSecurityAudit` + prompt dedicado, lectura-only). **#36 descartado en v3.41.0** (rompe zero-storage, costo alto, beneficio marginal en single-user).
 
 > **#28** cubierto en su norte por las Fases 1 (v3.0.0, adjuntar como contexto) y 2 (v3.1.0, documentar→publicar). Más formatos: Fase 3a (v3.2.0, Excel/CSV), Fase 3b MVP (v3.3.0, Power BI .pbix/.pbit) y Fase 3b-bis (v3.4.0, Power Query M del `DataMashup`). Única limitación restante: en un `.pbix` moderno el M va en el modelo binario (no legible) → exporta `.pbit`. Word `.docx` (v3.11.0): texto de `word/document.xml`. Imágenes/visión: descartada.
 
 ---
 
-## 🎯 Próximo enfoque (post-v3.57.1)
+## 🎯 Próximo enfoque (post-v3.57.2)
 
-Con **#67 resuelto en v3.57.1** (normalización de acentos/`ñ` en `tokenize()` de
-`contextRanker.ts` vía NFD) y **#69 resuelto en v3.57.0**, el roadmap queda en **7
-pendientes accionables**. Orden recomendado por valor/esfuerzo y riesgo:
+Con **#68 resuelto en v3.57.2** (glosario ES↔EN + `expandQuery()` en
+`contextRanker.ts`, complementario de #67), **#67 resuelto en v3.57.1**
+(normalización de acentos/`ñ` vía NFD) y **#69 resuelto en v3.57.0**, el roadmap
+queda en **6 pendientes accionables**. Orden recomendado por valor/esfuerzo y riesgo:
 
-1. **#26 — Cobertura de tests (🔴 Alta, continuo).** El proyecto suma **709
-   tests** (cliente 665 en 57 suites + servidor 44 en 5). Quedan: edge cases de
-   servicios existentes y configurar un **umbral mínimo de cobertura en CI**
-   (fail si < 70%). `App.tsx` y `main.tsx` se dejan fuera (bajo valor, opcional).
+1. **#26 — Cobertura de tests (🔴 Alta, continuo).** El proyecto suma **878
+   tests** (cliente 834 en 59 suites + servidor 44 en 5). Cobertura global
+   **89.94%** líneas (umbral codecov/patch ≥89%). Quedan: edge cases de servicios
+   existentes y configurar un **umbral mínimo de cobertura en CI** (fail si
+   < 70%). `App.tsx` y `main.tsx` se dejan fuera (bajo valor, opcional).
 2. **#70 — Activar `SyncRepoStatus` (#48, 🟡, ~2-4h).** Servicio y botón ya
    construidos, pero **sin tests** (riesgo codecov/patch → escribirlos antes de
    commitear). Tras #69, segunda feature huérfana a recuperar.
 3. **#73 — Timeout automático en llamadas IA (🟡, ~2-3h).** Resiliencia ante
    proveedores colgados.
-4. **#68 — Glosario ES↔EN en `contextRanker.ts` (🟢, ~2-3h).** Refinamiento de
-   la propuesta de Gemini; complementario a #67 (ya resuelto en v3.57.1).
-5. **#72 / #71 — a11y focus/motion (~1-2h) y tema claro (~3-4h).** Limpieza de
+4. **#72 / #71 — a11y focus/motion (~1-2h) y tema claro (~3-4h).** Limpieza de
    UX/accesibilidad, baja urgencia.
-6. **#66 — Revisión periódica del catálogo Gemini (🟢, ~1h c/2-3 meses).** No
+5. **#66 — Revisión periódica del catálogo Gemini (🟢, ~1h c/2-3 meses).** No
    urgente (última v3.55.0, 2026-07-23; próxima ~sept-2026).
 
 Fuera de roadmap: vigilar si aparece parche para la vuln `xlsx` (GHSA-4r6h-8v6p-xvw6

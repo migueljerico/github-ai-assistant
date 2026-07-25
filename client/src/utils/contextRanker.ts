@@ -18,6 +18,56 @@ const COMMON_EXTENSIONS = new Set([
   'md', 'ts', 'tsx', 'js', 'jsx', 'json', 'css', 'html', 'yml', 'yaml', 'txt', 'py',
 ]);
 
+// Glosario ES→EN agnóstico de repo (#68). Las claves van SIN acento/ñ porque ya
+// pasan por tokenize() (que normaliza vía NFD, #67) antes de la consulta. Solo
+// se usa para expandir el QUERY (ver expandQuery), nunca el corpus de archivos,
+// para no contaminar el IDF/avgLen del BM25. Manual, no exhaustivo por diseño.
+//
+// Cada FAMILIA agrupa las formas flexivas (plurales + conjugaciones) que mapean
+// a los mismos sinónimos EN, para cubrir el caso real de uso (preguntas
+// coloquiales en español). Se aplana a un Map<string,string[]> al cargar el
+// módulo — explícito y predecible, sin stemming automático.
+const GLOSSARY_FAMILIES: Array<[string[], string[]]> = [
+  // Acciones (infinitivo + conjugaciones comunes)
+  [['enviar', 'envio', 'envia', 'envian'], ['send']],
+  [['guardar', 'guardo', 'guarda'], ['save', 'store']],
+  [['borrar', 'borro', 'borra'], ['delete', 'remove']],
+  [['eliminar', 'elimino', 'elimina'], ['delete', 'remove']],
+  [['crear', 'creo', 'crea'], ['create']],
+  [['editar', 'edito', 'edita'], ['update', 'edit']],
+  [['modificar', 'modifico', 'modifica'], ['update', 'edit']],
+  [['buscar', 'busco', 'busca'], ['search', 'find']],
+  [['mostrar', 'muestro', 'muestra'], ['show', 'list']],
+  [['iniciar', 'inicio', 'inicia'], ['login', 'signin', 'init']],
+  [['entrar', 'entro', 'entra'], ['login', 'signin']],
+  [['cerrar', 'cierro', 'cierra'], ['close', 'logout', 'signout']],
+  [['limitar', 'limito', 'limita', 'limitamos'], ['limit', 'rate', 'ratelimit']],
+  // Sustantivos de dominios (singular + plural)
+  [['mensaje', 'mensajes'], ['message']],
+  [['usuario', 'usuarios'], ['user']],
+  [['contrasena', 'contrasenas'], ['password', 'secret']],
+  [['sesion', 'sesiones'], ['session']],
+  [['seguridad', 'seguridades'], ['security', 'auth', 'token']],
+  [['pantalla', 'pantallas'], ['screen', 'view', 'ui']],
+  [['limite', 'limites'], ['limit', 'rate', 'ratelimit']],
+  [['error', 'errores'], ['retry', 'catch', 'error']],
+  [['fallo', 'fallos'], ['retry', 'catch', 'error']],
+  [['configuracion', 'configuraciones'], ['config', 'settings']],
+  [['dato', 'datos'], ['data', 'database', 'db']],
+  [['archivo', 'archivos'], ['file']],
+  [['carpeta', 'carpetas'], ['folder', 'directory']],
+  [['pagina', 'paginas'], ['page']],
+  [['boton', 'botones'], ['button']],
+  [['formulario', 'formularios'], ['form']],
+  [['enlace', 'enlaces'], ['link']],
+  [['imagen', 'imagenes'], ['image', 'img']],
+  [['prueba', 'pruebas'], ['test', 'spec']],
+  [['red', 'redes'], ['network', 'http']],
+];
+const GLOSSARY = new Map<string, string[]>(
+  GLOSSARY_FAMILIES.flatMap(([forms, syns]) => forms.map(f => [f, syns] as [string, string[]])),
+);
+
 /** Tokeniza un texto en términos alfanuméricos en minúscula (longitud ≥ 2). */
 export function tokenize(text: string): string[] {
   // NFD descompone los diacríticos (á→a+◌́, ñ→n+◌̃); el replace los elimina y queda
@@ -36,12 +86,42 @@ function pathTokens(path: string): string[] {
 }
 
 /**
+ * Expande el query con sinónimos EN del GLOSSARY (#68). Función pura: devuelve
+ * el texto original seguido de los sinónimos EN de cada término ES que se
+ * encuentre en el glosario (sin duplicar los ya presentes). Las claves del
+ * glosario se comparan ya normalizadas porque aquí tokenizamos antes de mirar.
+ *
+ * Solo enriquece el QUERY; el corpus de archivos no se toca, así el IDF/avgLen
+ * del BM25 se mantienen limpios. Pensado para envolver el query en
+ * rankFilesByQuery.
+ */
+export function expandQuery(query: string): string {
+  const terms = tokenize(query);
+  if (terms.length === 0) return query;
+  const present = new Set(terms);
+  const added: string[] = [];
+  for (const term of terms) {
+    const synonyms = GLOSSARY.get(term);
+    if (!synonyms) continue;
+    for (const syn of synonyms) {
+      if (!present.has(syn)) {
+        added.push(syn);
+        present.add(syn);
+      }
+    }
+  }
+  return added.length === 0 ? query : `${query} ${added.join(' ')}`;
+}
+
+/**
  * Devuelve los `topN` archivos más relevantes a `query`. Si la consulta no tiene
  * términos útiles, conserva el orden de entrada (que ya viene por prioridad).
  */
 export function rankFilesByQuery(query: string, files: RepoTreeFile[], topN: number): RepoTreeFile[] {
   if (files.length === 0) return [];
-  const queryTerms = tokenize(query);
+  // expandQuery (#68) añade sinónimos EN al query antes de tokenizar; los
+  // acentos/ñ ya se normalizan dentro de tokenize (#67).
+  const queryTerms = tokenize(expandQuery(query));
 
   // Sin términos de consulta → no hay señal: respeta el orden de entrada.
   if (queryTerms.length === 0) return files.slice(0, topN);
