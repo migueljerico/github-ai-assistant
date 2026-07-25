@@ -110,3 +110,19 @@ npm run test:server       # tests server
 npm run build             # build TS estricto (client) — debe estar limpio
 npm run deploy            # deploy manual puntual (NO para rutina normal; el CD es auto)
 ```
+
+---
+
+## Comunicación con el usuario (reglas de v3.57.2)
+
+- **Entrega el handoff a la primera.** Cuando cierres una gestión con rutina AUTO,
+  el handoff va como **mensaje de cierre explícito y destacado**, no embebido al
+  final del resumen ni omitido. El usuario lo pide explícitamente cada vez y se
+  frustra si no llega en cuanto termina el trabajo. Precedente: asistente que
+  entregaba el resumen y dejaba el handoff para "después" o lo omitía.
+- **`AskUserQuestion` no es fiable en este entorno.** A veces el canal falla y la
+  respuesta del usuario no llega al modelo. **Si falla, NO tomes decisiones
+  autónomas basándote en "continúa con tu mejor juicio"**: vuelve a preguntar en
+  **texto plano** y espera la respuesta. Asume que el canal puede fallar y no
+  dejes al usuario bloqueado sin poder elegir. No uses `AskUserQuestion` para
+  pedir aprobación del plan (para eso está `ExitPlanMode`).
