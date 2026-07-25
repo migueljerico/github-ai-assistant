@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.57.0] — 2026-07-25
+
+> **Autocomplete de instrucciones en el chat (cierre del issue #22).**
+> El componente `InstructionSuggestions.tsx` llevaba 6 versiones completo y
+> testeado (15 tests, v3.50.2) pero **desconectado** de la UI: capacidad lista,
+> sin estrenar. Esta release lo monta en `ChatInput.tsx` con un **trigger `/`**
+> (convención Slack/GitHub/Linear): el popover aparece solo al escribir `/`,
+> filtra las 18 plantillas de acciones y se inserta con `Enter`. Cierra **#22**
+> (Autocompletado de instrucciones) y el ítem de roadmap **#69**.
+
+### Added
+- **Autocomplete `/`** en el textarea del chat: al escribir `/` aparece un popover
+  con hasta 8 plantillas filtradas (crea README, lista issues, abre PR, etc.),
+  navegación `↑↓`, `Enter` selecciona, `Esc` cierra. Inserta el texto expandido;
+  el usuario pulsa `Enter` de nuevo para enviar.
+- **Guard de coordinación Enter/Popover**: cuando el popover está abierto, el
+  `Enter` del textarea cede el control al popover (evita doble-envío con texto
+  parcial tipo `/issue`). 1 línea en `handleKeyDown`.
+- **2 tests de integración** (`ChatInputSuggestions.test.tsx`): trigger `/` abre,
+  texto normal no abre, click inserta plantilla, `Enter` con popover abierto no
+  envía.
+
+### Changed
+- **`InstructionSuggestions.tsx`**: apertura por defecto (textarea vacío → popover
+  siempre visible) reemplazada por **trigger `/`**. Antes el popover aparecía al
+  cargar la página (UX invasiva); ahora solo al escribir `/`. La fuente única del
+  estado de apertura es `suggestions.length > 0` (delegada al `useMemo` de filtrado).
+- **15 tests del componente** actualizados al nuevo contrato (`inputValue: ''` →
+  `'/'`, `'a'` → `'/a'`) + 2 tests nuevos del comportamiento del trigger. Total:
+  16 tests verdes.
+- **Bump 6 archivos** a `3.57.0`: `package.json`, `client/package.json`, `README.md`
+  (badge), `CLAUDE.md`, `MANUAL_TECNICO.md`, `MEJORAS_FUTURAS.md` (#22 y #69 → ✅).
+
+### Notes
+- Tests: 826 cliente (+6) + 44 servidor = **870 totales**, 0 fallos. Cobertura:
+  `InstructionSuggestions.tsx` 100% (4 métricas), `All files` 89.89% líneas,
+  `components/chat` 94.32%. Lint: 0 errores. Build limpio.
+- Sin cambios en `App.tsx`, CSS ni lógica de servidor. Punto de integración aislado
+  en `.chat-textarea-wrap` (ya era `position: relative`).
+- Cambio de código por [asistente] ([GLM-5.2]).
+
 ## [3.56.2] — 2026-07-24
 
 > **Cobertura del patch + blindaje de la rutina de cierre.**

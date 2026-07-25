@@ -29,28 +29,31 @@ export default function InstructionSuggestions({
   // Plantillas traducidas al idioma activo (se reconstruyen si cambia el idioma).
   const templates = useMemo(() => buildTemplates(t), [t]);
 
-  // Suggestions deriva de inputValue + templates: sin setState, sin effect.
-  // Antes esto vivía en un effect que hacía setSuggestions (set-state-in-effect);
-  // al derivarlo con useMemo eliminamos el warning y el re-render en cascada.
+  // #69: trigger '/'. El popover solo ofrece sugerencias cuando el input empieza
+  // por '/'; cualquier otro texto (o input vacío) no produce coincidencias y por
+  // tanto mantiene el popover cerrado. Convención Slack/GitHub/Linear.
   const suggestions = useMemo<InstructionTemplate[]>(() => {
-    if (inputValue.trim().length === 0) {
-      return templates.slice(0, 5); // Show first 5 by default
+    const trimmed = inputValue.trim();
+    if (!trimmed.startsWith('/')) {
+      return [];
     }
-    const filtered = filterInstructions(inputValue, templates);
+    // La query de filtrado es lo que sigue a '/' (p.ej. '/issue' → 'issue').
+    const query = trimmed.slice(1);
+    if (query.length === 0) {
+      // Solo '/' → mostrar las primeras 5 como guía inicial.
+      return templates.slice(0, 5);
+    }
+    const filtered = filterInstructions(query, templates);
     return filtered.slice(0, 8); // Limit to 8 suggestions
   }, [inputValue, templates]);
 
   // Sincronizar la apertura del popover con el resultado del filtrado. Es un
   // side-effect sobre una prop callback del padre (no un setState local), así
-  // que no dispara set-state-in-effect.
+  // que no dispara set-state-in-effect. #69: solo abre con trigger '/' y si hay
+  // coincidencias reales (delega el cálculo en `suggestions`, fuente única).
   useEffect(() => {
-    if (inputValue.trim().length === 0) {
-      onOpenChange(true);
-    } else {
-      const filtered = filterInstructions(inputValue, templates);
-      onOpenChange(filtered.length > 0);
-    }
-  }, [inputValue, templates, onOpenChange]);
+    onOpenChange(suggestions.length > 0);
+  }, [suggestions, onOpenChange]);
 
   // Reset de la selección al cambiar el input. Legítimo: la selección anterior
   // ya no aplica a la lista nueva. Silenciamos in situ.

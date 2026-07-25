@@ -2,7 +2,7 @@
 
 Estado del código, mejoras realizadas y pendientes del proyecto.
 
-**Actualizado a:** v3.56.2 · Julio 2026
+**Actualizado a:** v3.57.0 · Julio 2026
 
 ---
 
@@ -400,8 +400,17 @@ se hace #67 antes.
 
 ---
 
-#### #69 — Activar el autocomplete de instrucciones (#22): componente `InstructionSuggestions` huérfano
+#### #69 — Activar el autocomplete de instrucciones (#22) ✅ RESUELTO en v3.57.0
 **Esfuerzo:** ~1-2h · **Prioridad:** 🟢 Baja
+
+> ✅ **Implementado en v3.57.0**: popover `InstructionSuggestions` montado en
+> `ChatInput.tsx` dentro de `.chat-textarea-wrap`. Apertura por **trigger `/`**
+> (convención Slack/GitHub/Linear): popover cerrado en carga, aparece al escribir
+> `/` y filtra las 18 plantillas. El adapter `(tpl) => onChange(tpl.template)`
+> inserta la plantilla; el `Enter` del textarea cede al popover cuando está abierto
+> (guard `suggestionsOpen`) para evitar doble-envío. 2 tests nuevos de integración
+> (`ChatInputSuggestions.test.tsx`) + 16 tests del componente actualizados al
+> trigger `/`. Cierre del issue original **#22** (Autocompletado de instrucciones).
 
 **Contexto (v3.56.2):** `client/src/components/chat/InstructionSuggestions.tsx`
 es un popover de autocomplete de instrucciones (navegación por teclado completa:
@@ -474,45 +483,40 @@ comportamiento para usuarios de ratón.
 | Prioridad | ✅ Resueltos | ⏳ Pendientes |
 |---|---|---|
 | 🔴 Alta | #1, #2, #13, #14, #15, #27, #28, #45, #62, #63 | #26 (en progreso, continuo) |
-| 🟡 Media | #12, #17, #18, #19, #20, #21, #22, #32, #34, #37, #38, #39, #40, #41, #42, #44, #46, #48, #49, #50, #51, #55, #56, #57, #59, #60, #61, #64 | #67 (acentos en `contextRanker`), #70 (`SyncRepoStatus` huérfano), #73 (timeout IA) |
-| 🟢 Baja | #23, #24, #25, #52, #53, #58 | #66 (revisión catálogo Gemini), #68 (glosario ES↔EN), #69 (autocomplete `InstructionSuggestions`), #71 (tema claro), #72 (a11y focus/motion) |
+| 🟡 Media | #12, #17, #18, #19, #20, #21, #32, #34, #37, #38, #39, #40, #41, #42, #44, #46, #48, #49, #50, #51, #55, #56, #57, #59, #60, #61, #64 | #67 (acentos en `contextRanker`), #70 (`SyncRepoStatus` huérfano), #73 (timeout IA) |
+| 🟢 Baja | #23, #24, #25, #52, #53, #58, #69 | #66 (revisión catálogo Gemini), #68 (glosario ES↔EN), #71 (tema claro), #72 (a11y focus/motion) |
 | 🗑️ Descartados | — | #33, #35 (descartados en v3.22.3), #36 (descartado en v3.41.0) |
 
-> **Cómputo:** 49 ítems resueltos + 9 pendientes + 3 descartados = 61 referencias (algunos issues como `#28`, `#57`, `#58` generan varias filas por sus fases). Los pendientes reales accionables son: **#26** (continuo, cobertura), **#66** (revisión periódica cada 2-3 meses del catálogo Gemini estático), y las 7 entradas nuevas **#67**–**#73** añadidas en v3.56.2 (análisis por dogfooding de la propuesta de Gemini Flash 3.6 sobre `contextRanker.ts` + inventario de features huérfanas). **#58 cerrado completo en v3.54.0** (bulk v3.53.0, diff incremental v3.52.0/.1/.2, modo revisión v3.54.0). **#53 resuelto en v3.50.0** (sugerencia de commit semántico vía `commitSuggester.ts` + few-shot con commits recientes + fallback determinista; documentado en el roadmap en v3.50.3). **#25 cerrado completo en v3.41.0** (logs v3.39.0 + healthcheck v3.40.0 + deploy.sh v3.41.0). **#52 resuelto en v3.42.0** (Modo Auditoría de Seguridad: botón 🛡️ + plantilla + `runSecurityAudit` + prompt dedicado, lectura-only). **#36 descartado en v3.41.0** (rompe zero-storage, costo alto, beneficio marginal en single-user).
+> **Cómputo:** 50 ítems resueltos + 8 pendientes + 3 descartados = 61 referencias (algunos issues como `#28`, `#57`, `#58` generan varias filas por sus fases). Los pendientes reales accionables son: **#26** (continuo, cobertura), **#66** (revisión periódica cada 2-3 meses del catálogo Gemini estático), y las 6 entradas restantes **#67, #68, #70, #71, #72, #73** (de las 7 añadidas en v3.56.2; **#69 resuelto en v3.57.0**). **#69 cerrado en v3.57.0** (autocomplete de instrucciones #22: popover `InstructionSuggestions` activado con trigger `/` en `ChatInput.tsx`). **#58 cerrado completo en v3.54.0** (bulk v3.53.0, diff incremental v3.52.0/.1/.2, modo revisión v3.54.0). **#53 resuelto en v3.50.0** (sugerencia de commit semántico vía `commitSuggester.ts` + few-shot con commits recientes + fallback determinista; documentado en el roadmap en v3.50.3). **#25 cerrado completo en v3.41.0** (logs v3.39.0 + healthcheck v3.40.0 + deploy.sh v3.41.0). **#52 resuelto en v3.42.0** (Modo Auditoría de Seguridad: botón 🛡️ + plantilla + `runSecurityAudit` + prompt dedicado, lectura-only). **#36 descartado en v3.41.0** (rompe zero-storage, costo alto, beneficio marginal en single-user).
 
 > **#28** cubierto en su norte por las Fases 1 (v3.0.0, adjuntar como contexto) y 2 (v3.1.0, documentar→publicar). Más formatos: Fase 3a (v3.2.0, Excel/CSV), Fase 3b MVP (v3.3.0, Power BI .pbix/.pbit) y Fase 3b-bis (v3.4.0, Power Query M del `DataMashup`). Única limitación restante: en un `.pbix` moderno el M va en el modelo binario (no legible) → exporta `.pbit`. Word `.docx` (v3.11.0): texto de `word/document.xml`. Imágenes/visión: descartada.
 
 ---
 
-## 🎯 Próximo enfoque (post-v3.56.2)
+## 🎯 Próximo enfoque (post-v3.57.0)
 
-Con #53/#58 cerrados, el roadmap pasa de 2 a **9 pendientes accionables** tras
-añadir el análisis por dogfooding de la propuesta de Gemini Flash 3.6
-(`contextRanker.ts`) y el inventario de features huérfanas. Orden recomendado por
-valor/esfuerzo y riesgo:
+Con **#69 resuelto en v3.57.0** (autocomplete de instrucciones #22 activado con
+trigger `/`), el roadmap queda en **8 pendientes accionables**. Orden recomendado
+por valor/esfuerzo y riesgo:
 
-1. **#69 — Activar autocomplete de instrucciones (🟢, ~1-2h).** Mejor
-   relación valor/esfuerzo: componente ya completo y **testeado (15 tests)**,
-   solo falta importarlo en `ChatInput.tsx`. **Bajo riesgo** (no toca lógica
-   nueva → cero riesgo de codecov/patch). Empezar por aquí.
-2. **#67 — Normalización de acentos/ñ en `contextRanker.ts` (🟡, ~1-2h).** Una
+1. **#67 — Normalización de acentos/ñ en `contextRanker.ts` (🟡, ~1-2h).** Una
    línea que arregla toda la familia de fallos del español técnico en `-ción`.
    Función pura, fácil de testear. Hacerlo **antes** que #68 (mayor impacto y
    más simple).
-3. **#26 — Cobertura de tests (🔴 Alta, continuo).** El proyecto suma **709
+2. **#26 — Cobertura de tests (🔴 Alta, continuo).** El proyecto suma **709
    tests** (cliente 665 en 57 suites + servidor 44 en 5). Quedan: edge cases de
    servicios existentes y configurar un **umbral mínimo de cobertura en CI**
    (fail si < 70%). `App.tsx` y `main.tsx` se dejan fuera (bajo valor, opcional).
-4. **#70 — Activar `SyncRepoStatus` (#48, 🟡, ~2-4h).** Servicio y botón ya
+3. **#70 — Activar `SyncRepoStatus` (#48, 🟡, ~2-4h).** Servicio y botón ya
    construidos, pero **sin tests** (riesgo codecov/patch → escribirlos antes de
    commitear). Tras #69, segunda feature huérfana a recuperar.
-5. **#73 — Timeout automático en llamadas IA (🟡, ~2-3h).** Resiliencia ante
+4. **#73 — Timeout automático en llamadas IA (🟡, ~2-3h).** Resiliencia ante
    proveedores colgados.
-6. **#68 — Glosario ES↔EN en `contextRanker.ts` (🟢, ~2-3h).** Refinamiento de
+5. **#68 — Glosario ES↔EN en `contextRanker.ts` (🟢, ~2-3h).** Refinamiento de
    la propuesta de Gemini; complementario a #67 (este va después).
-7. **#72 / #71 — a11y focus/motion (~1-2h) y tema claro (~3-4h).** Limpieza de
+6. **#72 / #71 — a11y focus/motion (~1-2h) y tema claro (~3-4h).** Limpieza de
    UX/accesibilidad, baja urgencia.
-8. **#66 — Revisión periódica del catálogo Gemini (🟢, ~1h c/2-3 meses).** No
+7. **#66 — Revisión periódica del catálogo Gemini (🟢, ~1h c/2-3 meses).** No
    urgente (última v3.55.0, 2026-07-23; próxima ~sept-2026).
 
 Fuera de roadmap: vigilar si aparece parche para la vuln `xlsx` (GHSA-4r6h-8v6p-xvw6

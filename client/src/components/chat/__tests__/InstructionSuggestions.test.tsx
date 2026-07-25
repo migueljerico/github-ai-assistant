@@ -8,13 +8,13 @@ import InstructionSuggestions from '../InstructionSuggestions';
 
 describe('InstructionSuggestions (componente) (#22, v3.50.2)', () => {
   const baseProps = {
-    inputValue: '',
+    inputValue: '/',
     onSelectTemplate: vi.fn(),
     isOpen: true,
     onOpenChange: vi.fn(),
   };
 
-  it('con input vacío muestra las primeras 5 plantillas por defecto', () => {
+  it('con solo "/" muestra las primeras 5 plantillas por defecto', () => {
     render(<InstructionSuggestions {...baseProps} />);
     // Cada sugerencia es un botón con clase .suggestion-item
     const items = screen.getAllByRole('button').filter(b =>
@@ -25,12 +25,12 @@ describe('InstructionSuggestions (componente) (#22, v3.50.2)', () => {
 
   it('filtra las plantillas según el input y limita a 8', () => {
     // query amplia para forzar el límite de 8
-    const { rerender } = render(<InstructionSuggestions {...baseProps} inputValue="a" />);
+    const { rerender } = render(<InstructionSuggestions {...baseProps} inputValue="/a" />);
     let items = screen.getAllByRole('button').filter(b => b.className.includes('suggestion-item'));
     expect(items.length).toBeLessThanOrEqual(8);
 
     // query específica: "readme" deja pocas coincidencias
-    rerender(<InstructionSuggestions {...baseProps} inputValue="readme" />);
+    rerender(<InstructionSuggestions {...baseProps} inputValue="/readme" />);
     items = screen.getAllByRole('button').filter(b => b.className.includes('suggestion-item'));
     expect(items.length).toBeGreaterThanOrEqual(1);
     expect(items.length).toBeLessThanOrEqual(8);
@@ -42,7 +42,7 @@ describe('InstructionSuggestions (componente) (#22, v3.50.2)', () => {
   });
 
   it('no renderiza nada si el filtrado no produce coincidencias', () => {
-    render(<InstructionSuggestions {...baseProps} inputValue="zzzzzzz-no-existe" />);
+    render(<InstructionSuggestions {...baseProps} inputValue="/zzzzzzz-no-existe" />);
     expect(screen.queryByText(/Sugerencias|suggestions/i)).not.toBeInTheDocument();
   });
 
@@ -138,7 +138,7 @@ describe('InstructionSuggestions (componente) (#22, v3.50.2)', () => {
   });
 
   it('cambiar el input resetea el índice de selección a -1', () => {
-    const { rerender } = render(<InstructionSuggestions {...baseProps} inputValue="" />);
+    const { rerender } = render(<InstructionSuggestions {...baseProps} inputValue="/" />);
 
     // Seleccionamos la primera
     fireEvent.keyDown(window, { key: 'ArrowDown' });
@@ -147,7 +147,7 @@ describe('InstructionSuggestions (componente) (#22, v3.50.2)', () => {
     expect(items()[0].className.includes('selected')).toBe(true);
 
     // Cambiamos el input → efecto resetea selectedIndex a -1
-    rerender(<InstructionSuggestions {...baseProps} inputValue="a" />);
+    rerender(<InstructionSuggestions {...baseProps} inputValue="/a" />);
     // En el nuevo renderizado ninguna debería estar seleccionada
     expect(items().find(i => i.className.includes('selected'))).toBeUndefined();
   });
@@ -172,5 +172,21 @@ describe('InstructionSuggestions (componente) (#22, v3.50.2)', () => {
     fireEvent.keyDown(window, { key: 'Enter' });
     fireEvent.keyDown(window, { key: 'ArrowDown' });
     expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('#69: sin trigger "/" no renderiza sugerencias (input normal de chat)', () => {
+    // Aunque isOpen=true, el input "explícame el repo" no empieza por '/' → 0 items.
+    render(<InstructionSuggestions {...baseProps} inputValue="explícame el repo" />);
+    const items = screen.queryAllByRole('button').filter(b =>
+      b.className.includes('suggestion-item'),
+    );
+    expect(items).toHaveLength(0);
+    expect(screen.queryByText(/Sugerencias|suggestions/i)).not.toBeInTheDocument();
+  });
+
+  it('#69: con trigger "/" pero isOpen forzado a false no renderiza nada', () => {
+    // El guard de isOpen tiene prioridad sobre la presencia de sugerencias.
+    render(<InstructionSuggestions {...baseProps} inputValue="/" isOpen={false} />);
+    expect(screen.queryByText(/Sugerencias|suggestions/i)).not.toBeInTheDocument();
   });
 });

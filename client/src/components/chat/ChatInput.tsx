@@ -9,6 +9,7 @@ import ChangelogButton from './ChangelogButton';
 import CodeHealthButton from './CodeHealthButton';
 import ConversationIOButton from './ConversationIOButton';
 import FileAttachButton from './FileAttachButton';
+import InstructionSuggestions from './InstructionSuggestions';
 import SecurityAuditButton from './SecurityAuditButton';
 
 interface ChatInputProps {
@@ -86,6 +87,10 @@ export default function ChatInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   // v3.56.0: toggle de la guía completa de modos (botón [?] del selector).
   const [showModesGuide, setShowModesGuide] = useState(false);
+  // #69: estado de apertura del popover de autocompletado. Lo controla el propio
+  // InstructionSuggestions (vía onOpenChange, según el resultado del filtrado del
+  // trigger '/'); aquí solo guardamos el valor para usarlo como guard de Enter.
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -96,6 +101,10 @@ export default function ChatInput({
   }, [value]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // #69: si el popover de sugerencias está abierto, el Enter lo gestiona el
+    // listener global del componente (insertar plantilla o no-op). El textarea cede
+    // para evitar un doble envío (plantilla + onSend con el texto parcial).
+    if (suggestionsOpen) return;
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       if (!disabled && !isLoading && value.trim()) onSend();
@@ -203,6 +212,16 @@ export default function ChatInput({
 
       <div className="chat-input-row">
         <div className="chat-textarea-wrap">
+          {/* #69: popover de autocompletado. Se ancla encima del textarea (CSS
+              absolute bottom:100%) y solo aparece con trigger '/'. El adapter
+              inserta la plantilla en el textarea controlado; el usuario envía con
+              Enter una vez cerrado el popover. */}
+          <InstructionSuggestions
+            inputValue={value}
+            onSelectTemplate={(tpl) => onChange(tpl.template)}
+            isOpen={suggestionsOpen}
+            onOpenChange={setSuggestionsOpen}
+          />
           <textarea
             id="chat-textarea"
             ref={textareaRef}
