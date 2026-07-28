@@ -22,6 +22,29 @@
 motivo para frenar es que tests o build fallen, o que el usuario pidiera algo fuera
 de esta rutina.
 
+### Punto de partida: SIEMPRE la rama remota, nunca la local (v3.58.0)
+
+Antes de crear la rama de trabajo o de mergear/pushear, **sincroniza contra el
+remoto** y parte de ahí. La copia local puede estar atrasada respecto a GitHub
+(merges de Dependabot aceptados fuera de la sesión, pushes de otras máquinas…).
+Partir de la local lleva a push rechazados, rebase tardío y, lo peor, a publicar
+sobre una base obsoleta.
+
+Flujo obligatorio al empezar una gestión:
+1. `git fetch origin` (trae el estado real del remoto).
+2. `git checkout main && git pull --ff-only origin main` (actualiza local al
+   remoto; `--ff-only` aborta si hay divergencia, señal de que algo no cuadra).
+3. **Solo entonces** crea la rama: `git checkout -b feat/...` desde ese `main`
+   recién sincronizado.
+
+Y al cerrar: si `origin/main` avanzó mientras trabajabas (Dependabot, etc.),
+**rebasea tu rama sobre `origin/main`** antes de mergear/pushear, re-verifica la
+rutina AUTO (las deps nuevas pueden romper tests/build) y, si moviste un tag tras
+el rebase, fuerzo el tag (`git tag -f`) y lo re-pushas (`git push -f <tag>`).
+Precedente: v3.58.0 partió de un `main` local atrasado → push rechazado por 10
+merges de Dependabot que no estaban en local; tag publicado apuntando a un commit
+fuera de la historia lineal.
+
 Orden exacto (regla de oro: commit + push + tag + release + deploy van **siempre
 juntos**; nunca commitees sin pushear, ni pushees sin tagear, ni tagees sin publicar
 el release):
