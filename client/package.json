@@ -18,7 +18,7 @@
     "fflate": "^0.8.3",
     "react": "^19.2.7",
     "react-dom": "^19.2.8",
-    "recharts": "^3.9.0",
+    "recharts": "^3.10.1",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
