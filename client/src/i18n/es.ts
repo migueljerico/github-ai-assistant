@@ -171,6 +171,9 @@ export const es = {
   'provider.aiand.cardDesc': 'Ai& · pasarela OpenAI-compatible con modelos de razonamiento (Qwen, DeepSeek, GLM…)',
   'provider.aiand.signupLabel': 'Obtener clave en aiand.com →',
 
+  'provider.kilo.cardDesc': 'Kilo · pasarela OpenAI-compatible con catálogo de modelos gratuitos (Ling, Laguna, Nex…)',
+  'provider.kilo.signupLabel': 'Obtener clave JWT en kilo.ai →',
+
   // ────── FASE 2: Modales ──────
   'modal.doc.title': 'Documentación generada para {repoName}',
   'modal.doc.subtitle': 'Analicé {filesAnalyzed} archivo',

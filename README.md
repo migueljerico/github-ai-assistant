@@ -14,9 +14,10 @@
 ![Cloudflare Workers AI](https://img.shields.io/badge/Cloudflare_Workers_AI-F38020?style=for-the-badge&logo=cloudflare&logoColor=white)
 ![Ollama Cloud](https://img.shields.io/badge/Ollama_Cloud-000000?style=for-the-badge&logo=ollama&logoColor=white)
 ![Ai&](https://img.shields.io/badge/Ai&-7C4DFF?style=for-the-badge)
+![Kilo](https://img.shields.io/badge/Kilo-00C896?style=for-the-badge)
 ![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
 ![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
-![Versión](https://img.shields.io/badge/Versión-v3.57.2-blue?style=for-the-badge)
+![Versión](https://img.shields.io/badge/Versión-v3.58.0-blue?style=for-the-badge)
 [![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)](./LICENSE)
 [![CI & Coverage](https://github.com/migueljerico/github-ai-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/migueljerico/github-ai-assistant/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/graph/badge.svg?token=B1VDL0Y04G)](https://codecov.io/gh/migueljerico/github-ai-assistant)
@@ -62,8 +63,8 @@ Todo bajo el principio:
 | Aspecto | Detalle |
 |---|---|
 | ⏱️ Tiempo de desarrollo | 30 días desde cero |
-| 🤖 Proveedores soportados | Groq · Google Gemini · OpenRouter · NVIDIA NIM · Zenmux · OpenCode Zen · Cloudflare Workers AI · Ollama Cloud · Ai& |
-| 🧠 Modelos disponibles | Gemini, Llama, Nemotron, GLM, Grok, DeepSeek, Qwen, MiniMax y más vía OpenRouter/NIM/Zenmux/OpenCode/Cloudflare/Ollama/Ai& |
+| 🤖 Proveedores soportados | Groq · Google Gemini · OpenRouter · NVIDIA NIM · Zenmux · OpenCode Zen · Cloudflare Workers AI · Ollama Cloud · Ai& · Kilo |
+| 🧠 Modelos disponibles | Gemini, Llama, Nemotron, GLM, Grok, DeepSeek, Qwen, MiniMax y más vía OpenRouter/NIM/Zenmux/OpenCode/Cloudflare/Ollama/Ai&/Kilo |
 | ⚡ Latencia observada | ~400ms Groq / ~1.2s Gemini, variable según modelo y contexto |
 | 🛡️ Seguridad | Zero-Storage: credenciales solo en memoria React |
 | 🧪 Tests | 792 tests automatizados |
@@ -133,7 +134,7 @@ Frontend React + TypeScript + Vite
   ├── GitHub API directa
   ├── Proveedores directos (con CORS): Groq · OpenRouter · Zenmux
   └── Proveedores vía proxy Express (sin CORS upstream):
-        Gemini · NVIDIA NIM · OpenCode Zen · Cloudflare · Ollama · Ai&
+        Gemini · NVIDIA NIM · OpenCode Zen · Cloudflare · Ollama · Ai& · Kilo
 
 Backend Express thin
   ├── OAuth GitHub
@@ -142,7 +143,7 @@ Backend Express thin
   └── Health check
 ```
 
-El backend es intencionalmente mínimo: gestiona OAuth, sirve el frontend en producción y actúa como proxy para los proveedores cuyas APIs **no envían cabeceras CORS** (Gemini por restricción regional; NVIDIA NIM, OpenCode Zen, Cloudflare Workers AI, Ollama y Ai& porque bloquean el navegador). Los demás proveedores (Groq, OpenRouter, Zenmux) sí permiten llamadas directas.
+El backend es intencionalmente mínimo: gestiona OAuth, sirve el frontend en producción y actúa como proxy para los proveedores cuyas APIs **no envían cabeceras CORS** (Gemini por restricción regional; NVIDIA NIM, OpenCode Zen, Cloudflare Workers AI, Ollama, Ai& y Kilo porque bloquean el navegador). Los demás proveedores (Groq, OpenRouter, Zenmux) sí permiten llamadas directas.
 
 Ver arquitectura completa en ./docs/ARQUITECTURA.md.
 

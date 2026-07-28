@@ -5,6 +5,70 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.58.0] — 2026-07-28
+
+> **Nuevo proveedor Kilo + roadmap de catálogos free/dinámicos (#74).**
+> Kilo (`api.kilo.ai/api/gateway`) es una pasarela OpenAI-compatible con un
+> catálogo **público** de modelos gratuitos (sufijo `:free`). Se integra con el
+> mismo patrón que el resto de proveedores sin CORS (NIM/OpenZen/Cloudflare/Ollama/
+> Ai&): un proxy backend `/api/kilo` reenvía la petición servidor→servidor, y la
+> API key (un JWT personal de Kilo.ai) viaja en memoria (Zero-Storage intacto).
+> Junto al proveedor se documenta el nuevo issue #74 —revisión periódica de los 6
+> catálogos dinámicos free—, generalización del #66 ya existente para Gemini.
+
+### Added
+- **Proveedor Kilo** (`client/src/services/providers.ts`): entrada `kilo` en el
+  registro `PROVIDERS` y nuevo tipo `'kilo'` en el union `AIProviderType`.
+  Transport `openai-compatible`, endpoints relativos `/api/kilo` y
+  `/api/kilo/models`, catálogo público (`modelsNeedKey: false`), key JWT
+  (`keyPrefix: 'eyJ'`). Fallback estático `KILO_FALLBACK` con los 3 modelos free
+  conocidos (`inclusionai/ling-3.0-flash:free`, `poolside/laguna-s-2.1:free`,
+  `nex-agi/nex-n2-pro:free`, todos con flag `free` → 🆓 en el selector).
+- **Rama propia en `fetchModels()` para Kilo**: el catálogo es `{ data: [{ id }] }`
+  estándar OpenAI, pero la rama genérica de Groq no marca `free`; como Kilo es
+  todo-free y el selector muestra 🆓 por flag, se añade una rama que filtra no-chat
+  y marca `free` por sufijo `:free`, ordenando free primero.
+- **Proxy backend `/api/kilo` + `/api/kilo/models`** (`server/index.js`): clon del
+  patrón OpenZen/Ai&. Valida `Authorization: Bearer`, reenvía a
+  `https://api.kilo.ai/api/gateway/{chat/completions,models}`, sanea headers
+  (ISO-8859-1), `pipeUpstream`. Rate limiter `kiloLimiter` (100/min). El catálogo
+  `/models` es público → no exige auth (se reenvía solo si llega). Rutas añadidas
+  al banner de arranque (`startup`) y a la lista `rateLimited`.
+- **i18n** (`client/src/i18n/{es,en}.ts`): claves `provider.kilo.cardDesc` y
+  `provider.kilo.signupLabel`.
+- **Roadmap #74** (`MEJORAS_FUTURAS.md`): "Revisión periódica de catálogos
+  free/dinámicos (cada 2-3 meses)". Documenta el estado de los 10 proveedores (6
+  dinámicos + 4 estáticos), la señal de free de cada uno y el checklist de
+  revisión. Generaliza #66 (Gemini) al resto.
+
+### Changed
+- **Bump de versión 3.57.2 → 3.58.0** (minor: nuevo proveedor). `package.json` y
+  `client/package.json`, badge del README, `CLAUDE.md`, `MANUAL_TECNICO.md` y
+  cabecera de `MEJORAS_FUTURAS.md`.
+- **README.md**: nuevo badge de Kilo, fila en "Proveedores soportados" y en el
+  diagrama de arquitectura (proxied). Diagrama y texto de CORS actualizados.
+- **CLAUDE.md**: lista de proveedores (9→10) y sección de transporte (Kilo vía
+  proxy `/api/kilo`).
+- **MEJORAS_FUTURAS.md**: recuento 52+6+3 → **53+7+3**; "Próximo enfoque"
+  actualizado a post-v3.58.0 (7 pendientes accionables).
+
+### Notes
+- **Decisión de diseño (proxy vs directo):** Kilo se sirve vía proxy backend
+  (`/api/kilo`) y no por llamada directa del navegador. Razón: la pasarela usa un
+  JWT personal y su comportamiento CORS es desconocido; el proxy funciona siempre
+  (CORS-agnóstico) y mantiene Zero-Storage (el JWT vive en memoria de React y se
+  reenvía por `Authorization`, se descarta al terminar). Si se verifica que Kilo
+  envía CORS, podría migrarse a directo como Groq/OpenRouter/Zenmux.
+- **Catálogo público:** `GET /api/kilo/models` no requiere auth (los modelos `:free`
+  son IP-rate-limited a 200 req/h sin key). Por eso `modelsNeedKey: false` → el
+  selector carga el catálogo sin esperar a que el usuario pegue la key.
+- 6 tests nuevos: `providers.test.ts` (registro + rama `fetchModels` de Kilo, +2)
+  y `AIProviderPanel.test.tsx` (tarjeta, catálogo dinámico con 🆓, fallback,
+  prefijo de clave, +4). Client: 834→840. Cobertura global 89.94%→89.96% líneas.
+- El proveedor 10.º; la arquitectura de registro único (`PROVIDERS`) confirma su
+  valor: el panel y el contexto consumen `Object.values(PROVIDERS)`, así que Kilo
+  aparece sin tocar esos ficheros.
+
 ## [3.57.2] — 2026-07-25
 
 > **Expansión léxica ES↔EN en el ranker de contexto (cierre del issue #68).**

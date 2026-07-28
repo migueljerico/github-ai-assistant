@@ -169,6 +169,9 @@ export const en = {
   'provider.aiand.cardDesc': 'Ai& · OpenAI-compatible gateway with reasoning models (Qwen, DeepSeek, GLM…)',
   'provider.aiand.signupLabel': 'Get API key at aiand.com →',
 
+  'provider.kilo.cardDesc': 'Kilo · OpenAI-compatible gateway with a catalog of free models (Ling, Laguna, Nex…)',
+  'provider.kilo.signupLabel': 'Get JWT key at kilo.ai →',
+
   // ────── PHASE 2: Modals ──────
   'modal.doc.title': 'Documentation generated for {repoName}',
   'modal.doc.subtitle': 'I analyzed {filesAnalyzed} file',

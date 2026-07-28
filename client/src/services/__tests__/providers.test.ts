@@ -3,7 +3,7 @@ import { PROVIDERS, getProvider, fetchModels, pickDefaultModel, modelLabel, reso
 
 describe('providers — registro', () => {
   it('los proveedores tienen su defaultModel dentro de staticModels', () => {
-    (['gemini', 'groq', 'openrouter', 'nvidia', 'zenmux', 'openzen', 'cloudflare', 'ollama', 'aiand'] as const).forEach(id => {
+    (['gemini', 'groq', 'openrouter', 'nvidia', 'zenmux', 'openzen', 'cloudflare', 'ollama', 'aiand', 'kilo'] as const).forEach(id => {
       const def = getProvider(id);
       expect(def.id).toBe(id);
       expect(def.staticModels.some(m => m.value === def.defaultModel)).toBe(true);
@@ -55,6 +55,24 @@ describe('providers — registro', () => {
     // Límite de salida preferido (modelos de razonamiento con salidas largas)
     expect(def.maxOutputTokens).toBe(8192);
     expect(def.keyPrefix).toBe('sk-');
+  });
+
+  it('kilo: openai-compatible vía proxy backend /api/kilo (sin CORS upstream), catálogo público, modelos free con sufijo :free', () => {
+    const def = PROVIDERS.kilo;
+    expect(def.transport).toBe('openai-compatible');
+    // Endpoints relativos (proxy backend — Kilo no envía CORS, igual que NIM/OpenZen/CF/Ollama/Ai&)
+    expect(def.chatEndpoint).toBe('/api/kilo');
+    expect(def.modelsEndpoint).toBe('/api/kilo/models');
+    // El catálogo de Kilo es PÚBLICO (GET /models no requiere auth)
+    expect(def.modelsNeedKey).toBe(false);
+    // Default dentro de staticModels
+    expect(def.staticModels.some(m => m.value === def.defaultModel)).toBe(true);
+    expect(def.defaultModel).toBe('inclusionai/ling-3.0-flash:free');
+    // La API key de Kilo es un JWT (HS256): empieza por "eyJ"
+    expect(def.keyPrefix).toBe('eyJ');
+    // Los 3 modelos free del fallback llevan flag free (render 🆓)
+    expect(def.staticModels.every(m => m.free === true)).toBe(true);
+    expect(def.staticModels.length).toBe(3);
   });
 });
 
@@ -309,6 +327,37 @@ describe('providers — fetchModels', () => {
       '@cf/qwen/qwen2.5-7b-instruct',
       '@cf/google/gemma-2-9b-it',
     ]);
+  });
+
+  it('kilo: catálogo público (no requiere key) parsea {data:[{id}]}, marca free por sufijo :free, ordena free primero', async () => {
+    // Kilo declara modelsEndpoint='/api/kilo/models' y modelsNeedKey=false → fetchModels
+    // SÍ hace la petición (sin key). Rama propia: marca free por sufijo :free.
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [
+        { id: 'inclusionai/ling-3.0-flash:free' },
+        { id: 'poolside/laguna-s-2.1:free' },
+        { id: 'nex-agi/nex-n2-pro:free' },
+        { id: 'paid/some-model' }, // paid (sin :free) → debe ir al final
+      ] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    // Sin API key (catálogo público): debe devolver la lista, no null
+    const list = await fetchModels(PROVIDERS.kilo);
+    expect(list).not.toBeNull();
+    const ids = list!.map(m => m.value);
+    // Free primero (alfabético entre ellos), luego paid
+    expect(ids).toEqual([
+      'inclusionai/ling-3.0-flash:free',
+      'nex-agi/nex-n2-pro:free',
+      'poolside/laguna-s-2.1:free',
+      'paid/some-model',
+    ]);
+    // Flags free correctos
+    expect(list!.find(m => m.value === 'inclusionai/ling-3.0-flash:free')!.free).toBe(true);
+    expect(list!.find(m => m.value === 'paid/some-model')!.free).toBe(false);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
 

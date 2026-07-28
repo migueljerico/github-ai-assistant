@@ -150,6 +150,16 @@ const aiandLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const kiloLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 100,
+  message: {
+    error: 'Demasiadas peticiones a Kilo. Por favor espera un minuto.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // URL base de la API de NVIDIA NIM (el proxy reenvía a ella).
 // NIM NO envía cabeceras CORS → el navegador bloquea las llamadas directas con
 // "Failed to fetch". Este proxy elude el bloqueo igual que el de Gemini (#58).
@@ -673,6 +683,81 @@ app.get('/api/aiand/models', aiandLimiter, async (req, res) => {
   }
 });
 
+// ─── Kilo Proxy (v3.58.0) ─────────────────────────────────────────────────────
+// Kilo (api.kilo.ai/api/gateway) es una pasarela OpenAI-compatible. No envía
+// cabeceras CORS → las llamadas directas del navegador fallan en prod con
+// "Failed to fetch" (No 'Access-Control-Allow-Origin' header). Mismo motivo y
+// patrón que NIM/OpenZen/Cloudflare/Ollama/Ai&: el backend reenvía la petición
+// servidor→servidor, donde CORS no aplica.
+//
+// La API key del usuario es un JWT personal de Kilo.ai y viaja en el header
+// Authorization (HTTPS cliente→backend); se descarta al terminar la petición —
+// nunca se persiste ni loguea (Zero-Storage intacto).
+app.post('/api/kilo', kiloLimiter, validateChatBody, async (req, res) => {
+  const auth = req.headers.authorization || '';
+  if (!auth.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Falta la API key de Kilo (header Authorization: Bearer eyJ...)' });
+  }
+  try {
+    const upstream = await fetch('https://api.kilo.ai/api/gateway/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': auth,
+        'Content-Type': 'application/json',
+        ...(req.headers['accept'] ? { 'Accept': req.headers['accept'] } : {}),
+      },
+      body: JSON.stringify(req.body),
+    });
+    log.info('upstream', { provider: 'kilo', flow: 'chat', status: upstream.status, ct: upstream.headers.get('content-type') || '-', requestId: req.id });
+    res.status(upstream.status);
+    const ct = upstream.headers.get('content-type');
+    if (ct) res.setHeader('Content-Type', ct);
+    await pipeUpstream(upstream, res);
+  } catch (err) {
+    log.error('proxy_error', { provider: 'kilo', flow: 'chat', requestId: req.id, error: err?.message || String(err) });
+    if (!res.headersSent) res.status(502).json({ error: 'Error al contactar con Kilo', detail: err?.message || String(err) });
+    else { try { res.end(); } catch { /* noop */ } }
+  }
+});
+
+// Catálogo de modelos Kilo vía proxy (evita CORS). OpenAI-compatible: { data: [...] }.
+// El catálogo de Kilo es PÚBLICO (no requiere auth), pero pedimos el header por
+// simetría con el resto de proxies y porque el frontend siempre lo envía si hay key.
+app.get('/api/kilo/models', kiloLimiter, async (req, res) => {
+  const auth = req.headers.authorization || '';
+  try {
+    const upstream = await fetch('https://api.kilo.ai/api/gateway/models', {
+      method: 'GET',
+      headers: {
+        // Auth opcional: si el cliente envía la key, la reenviamos.
+        ...(auth.startsWith('Bearer ') ? { 'Authorization': auth } : {}),
+        'Accept': 'application/json',
+      },
+    });
+    log.info('upstream', { provider: 'kilo', flow: 'models', status: upstream.status, ct: upstream.headers.get('content-type') || '-', requestId: req.id });
+    res.status(upstream.status);
+    const ct = upstream.headers.get('content-type');
+    if (ct) res.setHeader('Content-Type', ct);
+    // Saneamos headers (mismo defensivo que Ollama/Ai&)
+    const safeHeaders = {};
+    for (const [key, value] of upstream.headers.entries()) {
+      if (typeof value === 'string' && /^[\x00-\x7F]*$/.test(value)) {
+        safeHeaders[key] = value;
+      }
+    }
+    for (const [key, value] of Object.entries(safeHeaders)) {
+      res.setHeader(key, value);
+    }
+    res.removeHeader('content-encoding');
+    res.removeHeader('transfer-encoding');
+    await pipeUpstream(upstream, res);
+  } catch (err) {
+    log.error('proxy_error', { provider: 'kilo', flow: 'models', requestId: req.id, error: err?.message || String(err) });
+    if (!res.headersSent) res.status(502).json({ error: 'Error al contactar con Kilo (models)', detail: err?.message || String(err) });
+    else { try { res.end(); } catch { /* noop */ } }
+  }
+});
+
 // ─── GitHub OAuth ─────────────────────────────────────────────────────────────
 app.get('/auth/github', (req, res) => {
   if (!GITHUB_CLIENT_ID) {
@@ -789,10 +874,12 @@ app.listen(PORT, () => {
       'POST /api/openzen', 'POST /api/cloudflare',
       'POST /api/ollama', 'GET /api/ollama/models',
       'POST /api/aiand', 'GET /api/aiand/models',
+      'POST /api/kilo', 'GET /api/kilo/models',
     ],
     rateLimited: ['/api/gemini', '/api/gemini/models', '/api/nim', '/api/nim/models',
                   '/api/openzen', '/api/cloudflare', '/api/ollama', '/api/ollama/models',
-                  '/api/aiand', '/api/aiand/models'],
+                  '/api/aiand', '/api/aiand/models',
+                  '/api/kilo', '/api/kilo/models'],
     directFromBrowser: ['openrouter', 'zenmux', 'groq'],
   });
 });

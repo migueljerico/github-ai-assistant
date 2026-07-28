@@ -2,7 +2,7 @@
 
 Estado del código, mejoras realizadas y pendientes del proyecto.
 
-**Actualizado a:** v3.57.2 · Julio 2026
+**Actualizado a:** v3.58.0 · Julio 2026
 
 ---
 
@@ -492,31 +492,86 @@ comportamiento para usuarios de ratón.
 
 ---
 
+#### #74 — Revisión periódica de catálogos free/dinámicos (cada 2-3 meses)
+**Esfuerzo:** ~1-2h cada revisión · **Prioridad:** 🟢 Baja
+
+**Contexto (v3.58.0, 2026-07-28):** la app soporta **10 proveedores**. De ellos,
+**6 son dinámicos** —su catálogo se carga vía `fetchModels()` al seleccionarlos, y
+los modelos se marcan 🆓 cuando son gratuitos:
+
+| Proveedor | Catálogo | Señal de "free" | Origen de los modelos |
+|---|---|---|---|
+| Groq | dinámico | sin flag (todos son tier free) | `https://api.groq.com/openai/v1/models` |
+| OpenRouter | dinámico | sufijo `:free` **o** pricing a 0 | `https://openrouter.ai/api/v1/models` (público) |
+| Zenmux | dinámico | pricing a 0 | `https://zenmux.ai/api/v1/models` |
+| Ollama | dinámico | sin flag | `/api/ollama/models` (proxy) |
+| Ai& | dinámico | pricing `input_per_1m`/`output_per_1m` a 0 | `/api/aiand/models` (proxy, free-only) |
+| **Kilo** | dinámico | sufijo `:free` | `/api/kilo/models` (proxy, público) |
+
+Los otros **4 son estáticos** (catálogo fijo en `*_FALLBACK`, sin fetch dinámico):
+**Gemini** (`GEMINI_MODELS`, 18 modelos — ver #66), **NVIDIA NIM** (`NIM_FALLBACK`),
+**OpenCode Zen** (`OPENZEN_FALLBACK`) y **Cloudflare** (`CLOUDFLARE_FALLBACK`). La
+razón es siempre la misma: el endpoint de modelos es ruidoso o no envía CORS, así
+que se curatea a mano.
+
+Los arrays `*_FALLBACK` de los proveedores dinámicos son **red de seguridad**: se
+muestran solo si el fetch falla o mientras carga. El catálogo "vivo" es el que
+devuelve la API. Con el tiempo, los fallback se desfasan (modelos retirados,
+nuevos `:free` que no aparecen). Esta revisión los mantiene al día.
+
+**Procedimiento de revisión (cada 2-3 meses):**
+1. Para cada proveedor **dinámico**, consultar su endpoint real (con una key
+   válida del usuario o el proxy correspondiente) y comparar contra el array
+   `*_FALLBACK` actual. Si hay modelos nuevos estables o algún fallback ya
+   retirado, actualizar el array.
+2. Comprobar la **señal de free** de cada rama de `fetchModels()` (sufijo
+   `:free`, pricing a 0…): si el proveedor cambia su esquema, ajustar la
+   detección (ej. Zenmux/Ai& pasaron de strings a arrays de `{ value }`).
+3. Para **Gemini** (#66) y los demás estáticos, seguir su procedimiento propio
+   (consultar API, comparar, actualizar array + i18n + `modelLabels.ts` + tests).
+4. Bump de versión (patch o minor según volumen) + entrada en `CHANGELOG.md`.
+
+**Archivos a tocar:** `client/src/services/providers.ts` (arrays `*_FALLBACK` y
+rama de `fetchModels()`), `client/src/i18n/{es,en}.ts` (claves `provider.*.model.*`
+solo si se añaden modelos estáticos con label i18n), `client/src/utils/modelLabels.ts`
+(si se quiere etiqueta amigable en el badge), `client/src/services/__tests__/providers.test.ts`
+y `client/src/components/ai-provider/__tests__/AIProviderPanel.test.tsx` (recuentos).
+
+**Beneficio:** catálogos siempre útiles (sin modelos rotos/retirados en el
+fallback) y detección de free al día con cada proveedor.
+**Caveat:** la revisión es manual; automatizarla choca con que cada proveedor
+expone el "free" de forma distinta y varios requieren key. Cubre el mismo espíritu
+que #66 (Gemini) pero generalizado a los 6 proveedores dinámicos.
+
+---
+
 ## 📊 Resumen
 
 | Prioridad | ✅ Resueltos | ⏳ Pendientes |
 |---|---|---|
 | 🔴 Alta | #1, #2, #13, #14, #15, #27, #28, #45, #62, #63 | #26 (en progreso, continuo) |
 | 🟡 Media | #12, #17, #18, #19, #20, #21, #32, #34, #37, #38, #39, #40, #41, #42, #44, #46, #48, #49, #50, #51, #55, #56, #57, #59, #60, #61, #64, #67 | #70 (`SyncRepoStatus` huérfano), #73 (timeout IA) |
-| 🟢 Baja | #23, #24, #25, #52, #53, #58, #69 | #66 (revisión catálogo Gemini), #68 (glosario ES↔EN), #71 (tema claro), #72 (a11y focus/motion) |
+| 🟢 Baja | #23, #24, #25, #52, #53, #58, #69 | #66 (revisión catálogo Gemini), #68 (glosario ES↔EN), #71 (tema claro), #72 (a11y focus/motion), #74 (revisión catálogos free/dinámicos) |
 | 🗑️ Descartados | — | #33, #35 (descartados en v3.22.3), #36 (descartado en v3.41.0) |
 
-> **Cómputo:** 52 ítems resueltos + 6 pendientes + 3 descartados = 61 referencias (algunos issues como `#28`, `#57`, `#58` generan varias filas por sus fases). Los pendientes reales accionables son: **#26** (continuo, cobertura), **#66** (revisión periódica cada 2-3 meses del catálogo Gemini estático), y las 4 entradas restantes **#70, #71, #72, #73** (de las 7 añadidas en v3.56.2; **#67 resuelto en v3.57.1**, **#69 resuelto en v3.57.0**). **#67 cerrado en v3.57.1** (normalización de acentos/`ñ` en `tokenize()` de `contextRanker.ts` vía NFD: arregla toda la familia del léxico técnico en `-ción`). **#68 cerrado en v3.57.2** (glosario ES↔EN agnóstico de repo + `expandQuery()`: expande el query con sinónimos EN antes del BM25, manteniendo intacto el corpus; complementario de #67). **#69 cerrado en v3.57.0** (autocomplete de instrucciones #22: popover `InstructionSuggestions` activado con trigger `/` en `ChatInput.tsx`). **#58 cerrado completo en v3.54.0** (bulk v3.53.0, diff incremental v3.52.0/.1/.2, modo revisión v3.54.0). **#53 resuelto en v3.50.0** (sugerencia de commit semántico vía `commitSuggester.ts` + few-shot con commits recientes + fallback determinista; documentado en el roadmap en v3.50.3). **#25 cerrado completo en v3.41.0** (logs v3.39.0 + healthcheck v3.40.0 + deploy.sh v3.41.0). **#52 resuelto en v3.42.0** (Modo Auditoría de Seguridad: botón 🛡️ + plantilla + `runSecurityAudit` + prompt dedicado, lectura-only). **#36 descartado en v3.41.0** (rompe zero-storage, costo alto, beneficio marginal en single-user).
+> **Cómputo:** 53 ítems resueltos + 7 pendientes + 3 descartados = 63 referencias (algunos issues como `#28`, `#57`, `#58` generan varias filas por sus fases). Los pendientes reales accionables son: **#26** (continuo, cobertura), **#66** (revisión periódica cada 2-3 meses del catálogo Gemini estático), **#74** (revisión periódica de catálogos free/dinámicos, añadido en v3.58.0), y las 4 entradas restantes **#70, #71, #72, #73** (de las 7 añadidas en v3.56.2; **#67 resuelto en v3.57.1**, **#69 resuelto en v3.57.0**). **#67 cerrado en v3.57.1** (normalización de acentos/`ñ` en `tokenize()` de `contextRanker.ts` vía NFD: arregla toda la familia del léxico técnico en `-ción`). **#68 cerrado en v3.57.2** (glosario ES↔EN agnóstico de repo + `expandQuery()`: expande el query con sinónimos EN antes del BM25, manteniendo intacto el corpus; complementario de #67). **#69 cerrado en v3.57.0** (autocomplete de instrucciones #22: popover `InstructionSuggestions` activado con trigger `/` en `ChatInput.tsx`). **#58 cerrado completo en v3.54.0** (bulk v3.53.0, diff incremental v3.52.0/.1/.2, modo revisión v3.54.0). **#53 resuelto en v3.50.0** (sugerencia de commit semántico vía `commitSuggester.ts` + few-shot con commits recientes + fallback determinista; documentado en el roadmap en v3.50.3). **#25 cerrado completo en v3.41.0** (logs v3.39.0 + healthcheck v3.40.0 + deploy.sh v3.41.0). **#52 resuelto en v3.42.0** (Modo Auditoría de Seguridad: botón 🛡️ + plantilla + `runSecurityAudit` + prompt dedicado, lectura-only). **#36 descartado en v3.41.0** (rompe zero-storage, costo alto, beneficio marginal en single-user).
 
 > **#28** cubierto en su norte por las Fases 1 (v3.0.0, adjuntar como contexto) y 2 (v3.1.0, documentar→publicar). Más formatos: Fase 3a (v3.2.0, Excel/CSV), Fase 3b MVP (v3.3.0, Power BI .pbix/.pbit) y Fase 3b-bis (v3.4.0, Power Query M del `DataMashup`). Única limitación restante: en un `.pbix` moderno el M va en el modelo binario (no legible) → exporta `.pbit`. Word `.docx` (v3.11.0): texto de `word/document.xml`. Imágenes/visión: descartada.
 
 ---
 
-## 🎯 Próximo enfoque (post-v3.57.2)
+## 🎯 Próximo enfoque (post-v3.58.0)
 
-Con **#68 resuelto en v3.57.2** (glosario ES↔EN + `expandQuery()` en
-`contextRanker.ts`, complementario de #67), **#67 resuelto en v3.57.1**
-(normalización de acentos/`ñ` vía NFD) y **#69 resuelto en v3.57.0**, el roadmap
-queda en **6 pendientes accionables**. Orden recomendado por valor/esfuerzo y riesgo:
+Con **v3.58.0** (nuevo proveedor **Kilo** — pasarela OpenAI-compatible vía proxy
+`/api/kilo`, 3 modelos `:free` con catálogo público dinámico; roadmap ampliado con
+**#74**, revisión periódica de catálogos free/dinámicos), **#68 resuelto en v3.57.2**
+(glosario ES↔EN + `expandQuery()` en `contextRanker.ts`, complementario de #67),
+**#67 resuelto en v3.57.1** (normalización de acentos/`ñ` vía NFD) y **#69 resuelto
+en v3.57.0**, el roadmap queda en **7 pendientes accionables**. Orden recomendado:
 
-1. **#26 — Cobertura de tests (🔴 Alta, continuo).** El proyecto suma **878
-   tests** (cliente 834 en 59 suites + servidor 44 en 5). Cobertura global
-   **89.94%** líneas (umbral codecov/patch ≥89%). Quedan: edge cases de servicios
+1. **#26 — Cobertura de tests (🔴 Alta, continuo).** El proyecto suma **884
+   tests** (cliente 840 en 59 suites + servidor 44 en 5). Cobertura global
+   **89.96%** líneas (umbral codecov/patch ≥89%). Quedan: edge cases de servicios
    existentes y configurar un **umbral mínimo de cobertura en CI** (fail si
    < 70%). `App.tsx` y `main.tsx` se dejan fuera (bajo valor, opcional).
 2. **#70 — Activar `SyncRepoStatus` (#48, 🟡, ~2-4h).** Servicio y botón ya
@@ -528,6 +583,10 @@ queda en **6 pendientes accionables**. Orden recomendado por valor/esfuerzo y ri
    UX/accesibilidad, baja urgencia.
 5. **#66 — Revisión periódica del catálogo Gemini (🟢, ~1h c/2-3 meses).** No
    urgente (última v3.55.0, 2026-07-23; próxima ~sept-2026).
+6. **#74 — Revisión periódica de catálogos free/dinámicos (🟢, ~1-2h c/2-3 meses).**
+   Generaliza #66 a los 6 proveedores dinámicos (Groq, OpenRouter, Zenmux, Ollama,
+   Ai&, Kilo): refrescar los arrays `*_FALLBACK` y la detección de `free` en
+   `fetchModels()`. Añadido en v3.58.0 junto con Kilo.
 
 Fuera de roadmap: vigilar si aparece parche para la vuln `xlsx` (GHSA-4r6h-8v6p-xvw6
 + GHSA-5pgg-2g8v-p4x9, *No fix available*, mitigada en v3.36.1).

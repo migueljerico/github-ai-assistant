@@ -1,6 +1,6 @@
 # 📖 Manual Técnico — GitHub AI Assistant
 
-**Versión:** v3.57.2 · Julio 2026
+**Versión:** v3.58.0 · Julio 2026
 
 ---
 
@@ -85,7 +85,7 @@ github-ai-assistant/
 │       │   └── en.ts
 │       ├── services/
 │       │   ├── github.ts           # Wrapper GitHub REST API v3
-│       │   ├── providers.ts        # Registro de los 9 proveedores de IA
+│       │   ├── providers.ts        # Registro de los 10 proveedores de IA
 │       │   ├── gemini.ts           # Cliente unificado (callAI, OpenAI-compatible + proxy)
 │       │   ├── assistantActions.ts # Orquestación del chat (runSend/Confirm/Cancel + botones) #42;
 │       │   │                        #   documentar+publicar archivo (commit/Draft PR/Release + fuente/extras) #28

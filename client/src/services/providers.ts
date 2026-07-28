@@ -12,7 +12,7 @@
 // sessionStorage es la LISTA de modelos (catálogo), nunca la clave.
 // ────────────────────────────────────────────────────────────────────────────
 
-export type AIProviderType = 'gemini' | 'groq' | 'openrouter' | 'nvidia' | 'zenmux' | 'openzen' | 'cloudflare' | 'ollama' | 'aiand';
+export type AIProviderType = 'gemini' | 'groq' | 'openrouter' | 'nvidia' | 'zenmux' | 'openzen' | 'cloudflare' | 'ollama' | 'aiand' | 'kilo';
 export type ProviderTransport = 'gemini-proxy' | 'openai-compatible';
 
 export interface ModelOption {
@@ -275,6 +275,16 @@ const AIAND_FALLBACK: ModelOption[] = [
   { value: 'qwen/qwen3.6-27b', label: 'Qwen3.6 27B', recommended: true },
 ];
 
+// Fallback de Kilo (api.kilo.ai/api/gateway) mientras carga el catálogo o si falla.
+// Pasarela OpenAI-compatible con catálogo PÚBLICO (GET /models no requiere key) que
+// distingue modelos gratuitos por el sufijo ":free" en el id. Estos son los 3 modelos
+// free configurados hoy (262K contexto, solo texto). El selector marca 🆓 vía flag free.
+const KILO_FALLBACK: ModelOption[] = [
+  { value: 'inclusionai/ling-3.0-flash:free', label: 'Ling 3.0 Flash (free)', free: true, recommended: true },
+  { value: 'poolside/laguna-s-2.1:free', label: 'Laguna S 2.1 (free)', free: true },
+  { value: 'nex-agi/nex-n2-pro:free', label: 'Nex N2 Pro (free)', free: true },
+];
+
 export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
   gemini: {
     id: 'gemini',
@@ -466,6 +476,34 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     signupUrl: 'https://aiand.com',
     signupLabel: 'provider.aiand.signupLabel',
     maxOutputTokens: 8192,
+  },
+  // Kilo (api.kilo.ai/api/gateway): VA AL FINAL (último proveedor añadido, v3.58.0).
+  // Pasarela OpenAI-compatible. Acceso vía PROXY backend /api/kilo (sigue el mismo
+  // patrón que NIM/OpenZen/Cloudflare/Ollama/Ai& para eludir el bloqueo CORS del
+  // navegador). La API key es un JWT personal de Kilo.ai (cabecera "eyJ...", HS256)
+  // que viaja en memoria (Zero-Storage) y se reenvía por Authorization al server.
+  // El CATÁLOGO de modelos es PÚBLICO (GET /models no requiere auth → modelsNeedKey:
+  // false) y distingue los gratuitos por el sufijo ":free"; la rama genérica de
+  // fetchModels (else de Groq) los parsea sin necesidad de rama propia porque la
+  // respuesta es { data: [{ id }] } estándar OpenAI. Fallback estático KILO_FALLBACK.
+  kilo: {
+    id: 'kilo',
+    name: 'Kilo',
+    shortName: 'Kilo',
+    emoji: '⚖️',
+    cardDesc: 'provider.kilo.cardDesc',
+    transport: 'openai-compatible',
+    chatEndpoint: '/api/kilo',
+    modelsEndpoint: '/api/kilo/models',
+    modelsNeedKey: false, // el catálogo de Kilo es público (GET /models sin auth)
+    staticModels: KILO_FALLBACK,
+    defaultModel: KILO_FALLBACK[0].value, // 'inclusionai/ling-3.0-flash:free'
+    // La API key de Kilo es un JWT (HS256): empieza por "eyJ" (payload base64url).
+    // Validación ligera en cliente (no es validación real de la clave).
+    keyPlaceholder: 'eyJhbGciOi...',
+    keyPrefix: 'eyJ',
+    signupUrl: 'https://kilo.ai',
+    signupLabel: 'provider.kilo.signupLabel',
   },
 };
 
@@ -742,6 +780,21 @@ export async function fetchModels(
       // dinámico no trae ningún free, fetchModels lanza 'empty catalog' y el panel
       // cae en el fallback estático (AIAND_FALLBACK = solo qwen/qwen3.6-27b).
       .filter(m => m.free);
+  } else if (def.id === 'kilo') {
+    // Kilo (api.kilo.ai/api/gateway): pasarela OpenAI-compatible con catálogo público.
+    // Los modelos gratuitos se identifican por el sufijo ":free" (igual que OpenRouter/
+    // OpenZen). La API NO trae campo pricing en todos los items, así que el sufijo es la
+    // señal autoritativa. Filtramos modelos obviamente no-chat (embedding, whisper, tts…)
+    // y marcamos free por sufijo para que el selector muestre 🆓. free primero, luego alfabético.
+    const KILO_EXCLUDED = ['embed', 'whisper', 'tts', 'asr', 'rerank', 'vision', 'clip', 'audio'];
+    models = data.data
+      .filter((m: { id: string }) => !KILO_EXCLUDED.some(p => m.id.toLowerCase().includes(p)))
+      .map((m: { id: string }) => ({
+        value: m.id,
+        label: m.id,
+        free: m.id.toLowerCase().endsWith(':free'),
+      }))
+      .sort((a: ModelOption, b: ModelOption) => (Number(b.free) - Number(a.free)) || a.label.localeCompare(b.label));
   } else {
     // Groq (y cualquier OpenAI-compatible genérico): filtra no-chat
     models = data.data

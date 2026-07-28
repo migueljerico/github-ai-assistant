@@ -215,3 +215,63 @@ describe('AIProviderPanel — OpenRouter (#15)', () => {
     await waitFor(() => expect(select.value).toBe('google/gemma-4-31b-it:free'));
   });
 });
+
+describe('AIProviderPanel — Kilo (v3.58.0)', () => {
+  it('muestra la tarjeta Kilo con emoji ⚖️ y nombre', () => {
+    renderPanel();
+    expect(screen.getByText('⚖️')).toBeInTheDocument();
+    expect(screen.getByText('Kilo')).toBeInTheDocument();
+  });
+
+  it('muestra catálogo con 3 modelos free (🆓) cargados vía proxy y Ling 3.0 Flash por defecto', async () => {
+    // Kilo tiene modelsEndpoint → el panel carga el catálogo dinámicamente vía
+    // fetch (como OpenRouter). Stubeamos fetch con los 3 modelos free y esperamos.
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [
+        { id: 'inclusionai/ling-3.0-flash:free' },
+        { id: 'poolside/laguna-s-2.1:free' },
+        { id: 'nex-agi/nex-n2-pro:free' },
+      ] }),
+    }));
+
+    const { container } = renderPanel();
+    selectProvider(container, 'kilo');
+
+    const select = container.querySelector('#kilo-model-select') as HTMLSelectElement;
+    expect(select).toBeInTheDocument();
+
+    // Espera a que termine la carga (vuelve del estado "Cargando modelos...")
+    await waitFor(() => expect(select.disabled).toBe(false));
+
+    const labels = Array.from(select.options).map(o => o.textContent ?? '');
+    expect(labels).toContain('🆓 inclusionai/ling-3.0-flash:free');
+    expect(labels).toContain('🆓 poolside/laguna-s-2.1:free');
+    expect(labels).toContain('🆓 nex-agi/nex-n2-pro:free');
+    // La rama genérica de fetchModels marca free por sufijo :free (todos lo son)
+    Array.from(select.options).forEach(o => expect(o.textContent).toContain('🆓'));
+    expect(select.options.length).toBe(3);
+  });
+
+  it('cae al fallback estático (3 modelos) si el catálogo dinámico falla', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('sin red')));
+
+    const { container } = renderPanel();
+    selectProvider(container, 'kilo');
+
+    const select = container.querySelector('#kilo-model-select') as HTMLSelectElement;
+    await waitFor(() => expect(select.disabled).toBe(false));
+
+    // El fallback KILO_FALLBACK tiene los mismos 3 modelos free
+    expect(select.options.length).toBe(3);
+    expect(select.value).toBe('inclusionai/ling-3.0-flash:free');
+  });
+
+  it('valida prefijo de clave JWT (eyJ)', () => {
+    const { container } = renderPanel();
+    selectProvider(container, 'kilo');
+    const input = container.querySelector('#kilo-key-input') as HTMLInputElement;
+    expect(input).toBeInTheDocument();
+    expect(input.placeholder).toBe('eyJhbGciOi...');
+  });
+});
