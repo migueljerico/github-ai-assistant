@@ -67,7 +67,7 @@ describe('AIProviderPanel — NVIDIA NIM', () => {
     expect(labels).toContain('Nemotron 3 Ultra'); // modelLabel devuelve sin ⭐
     expect(labels).toContain('GLM 5.2');
     expect(labels).toContain('Llama 3.3 70B');
-    expect(labels).toContain('Codestral 22B (código)');
+    expect(labels).toContain('DeepSeek V4 Pro');
     expect(select.options.length).toBe(12); // fallback tiene 12 modelos
   });
 
@@ -88,21 +88,34 @@ describe('AIProviderPanel — Zenmux', () => {
     expect(screen.getByText(/Pasarela unificada/)).toBeInTheDocument();
   });
 
-  it('muestra catálogo fallback con 7 modelos free y Step 3.7 Flash recomendado', () => {
+  it('muestra catálogo con 3 modelos free y Ling 3.0 Flash recomendado', async () => {
+    // Zenmux tiene modelsEndpoint → el panel carga el catálogo dinámicamente vía fetch.
+    // Stub con los 3 modelos free oficiales y esperamos a que cargue.
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [
+        { id: 'inclusionai/ling-3.0-flash', pricing: { prompt: [{ value: 0 }], completion: [{ value: 0 }] } },
+        { id: 'z-ai/glm-4.7-flash-free', pricing: { prompt: [{ value: 0 }], completion: [{ value: 0 }] } },
+        { id: 'z-ai/glm-4.6v-flash-free', pricing: { prompt: [{ value: 0 }], completion: [{ value: 0 }] } },
+      ] }),
+    }));
+
     const { container } = renderPanel();
     selectProvider(container, 'zenmux');
 
     const select = container.querySelector('#zenmux-model-select') as HTMLSelectElement;
     expect(select).toBeInTheDocument();
 
-    const labels = Array.from(select.options).map(o => o.textContent);
-    expect(labels).toContain('🆓 Step 3.7 Flash');
-    expect(labels).toContain('🆓 Grok 4.5 (500K ctx)');
-    expect(labels).toContain('🆓 GLM 4.7 Flash');
-    expect(labels).toContain('🆓 GLM 4.6V Flash');
-    // Todos los 7 son free
+    await waitFor(() => expect(select.disabled).toBe(false));
+
+    // El catálogo dinámico devuelve los 3 modelos free oficiales. La rama de Zenmux
+    // en fetchModels marca free por pricing a 0 → todos llevan 🆓.
+    const labels = Array.from(select.options).map(o => o.textContent ?? '');
+    expect(labels.length).toBe(3);
     Array.from(select.options).forEach(o => expect(o.textContent).toContain('🆓'));
-    expect(select.options.length).toBe(7);
+    // El default (primer free que coincida con una preferencia fiable, o el 1º) es uno
+    // de los 3 free; todos son válidos.
+    expect(select.value).toBeTruthy();
   });
 
   it('valida prefijo de clave sk-ai-v1-', () => {

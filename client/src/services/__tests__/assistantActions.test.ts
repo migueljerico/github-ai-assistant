@@ -1495,7 +1495,7 @@ describe('buildSignature (v3.31.0)', () => {
       provider: 'groq',
       lang: 'es',
     });
-    expect(sig).toContain('Llama 3.1 8B (fast)');
+    expect(sig).toContain('Llama 3.1 8B (se retira 08-16)');
   });
 
   it('cae al value si el modelo no está en el catálogo estático', () => {

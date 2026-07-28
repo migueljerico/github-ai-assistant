@@ -290,14 +290,17 @@ describe('providers — fetchModels', () => {
     // El catálogo estático son los 5 modelos conocidos de OPENZEN_FALLBACK
     const values = PROVIDERS.openzen.staticModels.map(m => m.value);
     expect(values).toEqual([
-      'hy3-free',
-      'deepseek-v4-flash-free',
-      'mimo-v2.5-free',
+      'big-pickle',
+      'ling-3.0-flash-free',
       'nemotron-3-ultra-free',
+      'deepseek-v4-flash-free',
+      'laguna-s-2.1-free',
       'north-mini-code-free',
+      'mimo-v2.5-free',
     ]);
-    // Todos son free
+    // Todos son free (los 7 de la fuente oficial opencode.ai/docs/es/zen/)
     expect(PROVIDERS.openzen.staticModels.every(m => m.free)).toBe(true);
+    expect(PROVIDERS.openzen.staticModels.length).toBe(7);
   });
 
   it('cloudflare: devuelve null sin accountId (sin modelsEndpoint usa catálogo estático)', async () => {
@@ -315,17 +318,19 @@ describe('providers — fetchModels', () => {
     const list = await fetchModels(PROVIDERS.cloudflare, 'token_test', 'MY_ACCOUNT');
     expect(list).toBeNull(); // Sin modelsEndpoint, devuelve null
     expect(fetchMock).not.toHaveBeenCalled();
-    // El catálogo estático son los modelos de CLOUDFLARE_FALLBACK (configurados en ZCode)
+    // El catálogo estático son los modelos @cf/ actuales (developers.cloudflare.com, 2026-07-28)
     const values = PROVIDERS.cloudflare.staticModels.map(m => m.value);
     expect(values).toEqual([
       '@cf/moonshotai/kimi-k2.7-code',
+      '@cf/moonshotai/kimi-k2.6',
       '@cf/zai-org/glm-5.2',
-      '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b',
-      '@cf/meta/llama-3.1-8b-instruct',
-      '@cf/meta/llama-3.3-70b-instruct',
-      '@cf/mistral/mistral-7b-instruct-v0.1',
-      '@cf/qwen/qwen2.5-7b-instruct',
-      '@cf/google/gemma-2-9b-it',
+      '@cf/openai/gpt-oss-120b',
+      '@cf/openai/gpt-oss-20b',
+      '@cf/meta/llama-4-scout-17b-16e-instruct',
+      '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
+      '@cf/nvidia/nemotron-3-120b-a12b',
+      '@cf/google/gemma-4-26b-a4b-it',
+      '@cf/qwen/qwen3-30b-a3b-fp8',
     ]);
   });
 
@@ -373,8 +378,8 @@ describe('resolveEndpoint', () => {
 
 describe('modelLabel (v3.31.0)', () => {
   it('devuelve la .label legible si el modelo está en el catálogo y NO es clave i18n', () => {
-    // llama-3.1-8b-instant está en GROQ_FALLBACK con label literal "Llama 3.1 8B (fast)".
-    expect(modelLabel('groq', 'llama-3.1-8b-instant')).toBe('Llama 3.1 8B (fast)');
+    // openai/gpt-oss-20b está en GROQ_FALLBACK con label literal "GPT-OSS 20B (fast)".
+    expect(modelLabel('groq', 'openai/gpt-oss-20b')).toBe('GPT-OSS 20B (fast)');
   });
 
   it('cae al value si la label es una clave i18n (contiene un punto)', () => {
@@ -387,18 +392,18 @@ describe('modelLabel (v3.31.0)', () => {
     expect(modelLabel('openrouter', 'algún/modelo:free')).toBe('algún/modelo:free');
   });
 
-  it('nvidia: devuelve label legible para modelos en fallback (Nemotron, GLM, Codestral...)', () => {
+  it('nvidia: devuelve label legible para modelos en fallback (Nemotron, GLM, DeepSeek...)', () => {
     expect(modelLabel('nvidia', 'nvidia/nemotron-3-ultra-550b-a55b')).toBe('Nemotron 3 Ultra ⭐');
     expect(modelLabel('nvidia', 'z-ai/glm-5.2')).toBe('GLM 5.2');
-    expect(modelLabel('nvidia', 'mistralai/codestral-22b-instruct-v0.1')).toBe('Codestral 22B (código)');
+    expect(modelLabel('nvidia', 'deepseek-ai/deepseek-v4-pro')).toBe('DeepSeek V4 Pro');
     // Modelo dinámico no en fallback → value tal cual
     expect(modelLabel('nvidia', 'nuevo/modelo-dinamico')).toBe('nuevo/modelo-dinamico');
   });
 
   it('zenmux: devuelve label legible para modelos free en fallback', () => {
-    expect(modelLabel('zenmux', 'stepfun/step-3.7-flash-free')).toBe('Step 3.7 Flash');
-    expect(modelLabel('zenmux', 'x-ai/grok-4.5-free')).toBe('Grok 4.5 (500K ctx)');
+    expect(modelLabel('zenmux', 'inclusionai/ling-3.0-flash')).toBe('Ling 3.0 Flash');
     expect(modelLabel('zenmux', 'z-ai/glm-4.7-flash-free')).toBe('GLM 4.7 Flash');
+    expect(modelLabel('zenmux', 'z-ai/glm-4.6v-flash-free')).toBe('GLM 4.6V Flash');
     // Modelo dinámico no en fallback → value tal cual
     expect(modelLabel('zenmux', 'nuevo/modelo-zenmux')).toBe('nuevo/modelo-zenmux');
   });

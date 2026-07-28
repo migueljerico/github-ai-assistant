@@ -150,29 +150,39 @@ const GEMINI_MODELS: ModelOption[] = [
 ];
 
 // Fallback de OpenRouter mientras carga el catálogo o si la API falla.
-// Modelos gratuitos (:free) conocidos y estables.
+// Modelos gratuitos (:free, pricing 0/0) confirmados hoy en la fuente oficial
+// (https://openrouter.ai/models?order=pricing-low-to-high, 2026-07-28), más los
+// "routers" nuevos de OpenRouter (enrutadores dinámicos, no free pero útiles).
+// El catálogo dinámico es la fuente viva; esto es red de seguridad.
 const OPENROUTER_FALLBACK: ModelOption[] = [
-  { value: 'deepseek/deepseek-r1:free', label: 'DeepSeek R1 (free)', free: true },
-  { value: 'meta-llama/llama-3.3-70b-instruct:free', label: 'Llama 3.3 70B (free)', free: true },
-  { value: 'google/gemini-2.0-flash-exp:free', label: 'Gemini 2.0 Flash exp (free)', free: true },
-  { value: 'google/gemma-2-9b-it:free', label: 'Gemma 2 9B (free)', free: true },
-  { value: 'qwen/qwen-2.5-7b-instruct:free', label: 'Qwen 2.5 7B (free)', free: true },
-  { value: 'mistralai/mistral-7b-instruct:free', label: 'Mistral 7B (free)', free: true },
-  { value: 'nousresearch/hermes-3-llama-3.1-8b:free', label: 'Hermes 3 8B (free)', free: true },
+  // Modelos free individuales (chat/texto; pricing 0/0) — primero, para que el
+  // defaultModel ([0]) sea un free concreto y fiable, no un router.
+  { value: 'openai/gpt-oss-20b:free', label: 'GPT-OSS 20B (free)', free: true, recommended: true },
+  { value: 'nvidia/nemotron-3-ultra-550b-a55b:free', label: 'Nemotron 3 Ultra (free)', free: true },
+  { value: 'nvidia/nemotron-3-super-120b-a12b:free', label: 'Nemotron 3 Super (free)', free: true },
+  { value: 'inclusionai/ling-3.0-flash:free', label: 'Ling 3.0 Flash (free)', free: true },
+  { value: 'poolside/laguna-s-2.1:free', label: 'Laguna S 2.1 (free)', free: true },
+  { value: 'cohere/north-mini-code:free', label: 'North Mini Code (free)', free: true },
+  { value: 'google/gemma-4-26b-a4b-it:free', label: 'Gemma 4 26B A4B (free)', free: true },
+  // Routers (enrutamiento dinámico; NO son free — pricing -1/-1 salvo openrouter/free 0/0)
+  { value: 'openrouter/auto', label: 'Auto Router', description: 'provider.openrouter.model.autoDesc' },
+  { value: 'openrouter/free', label: 'Free Models Router (200K)', free: true },
+  { value: 'openrouter/pareto-code', label: 'Pareto Code Router', description: 'provider.openrouter.model.paretoDesc' },
 ];
 
 // Fallback de Groq mientras carga el catálogo o si la API falla.
-// Ordenado por relevancia en el tier gratuito. `llama-3.1-8b-instant` como default
-// (rápido y fiable). `llama-3.3-70b-versatile` queda segundo aunque se deprecie
-// en agosto — al recargar el catálogo desaparece solo del selector; aquí es red de
-// seguridad si la API falla.
+// Modelos PRODUCTION confirmados hoy en la fuente oficial (console.groq.com/docs/models,
+// 2026-07-28). Los dos Llama (`llama-3.1-8b-instant`, `llama-3.3-70b-versatile`) se
+// RETIRAN el 2026-08-16 (deprecation page) → default migrado a `openai/gpt-oss-20b`
+// (production, 131K, no deprecado). `qwen/qwen3-32b` ya retirado (2026-07-17).
+// `groq/compound` son sistemas agénticos sobre GPT-OSS+Llama+tools.
 const GROQ_FALLBACK: ModelOption[] = [
-  { value: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B (fast)' },
-  { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B (versatile)' },
-  { value: 'gemma2-9b-it', label: 'Gemma 2 9B' },
-  { value: 'llama3-70b-8192', label: 'Llama 3 70B' },
-  { value: 'llama3-8b-8192', label: 'Llama 3 8B' },
-  { value: 'mixtral-8x7b-32768', label: 'Mixtral 8x7B' },
+  { value: 'openai/gpt-oss-20b', label: 'GPT-OSS 20B (fast)', recommended: true },
+  { value: 'openai/gpt-oss-120b', label: 'GPT-OSS 120B' },
+  { value: 'groq/compound', label: 'Compound (agéntico)' },
+  { value: 'groq/compound-mini', label: 'Compound Mini (agéntico)' },
+  { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B (se retira 08-16)' },
+  { value: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B (se retira 08-16)' },
 ];
 
 // Prefijos de modelos Groq no-chat que se excluyen del selector.
@@ -195,75 +205,92 @@ export const NIM_EXCLUDED = [
 const NIM_FEATURED_URL = 'https://assets.ngc.nvidia.com/products/api-catalog/featured-models.json';
 
 // Fallback de NVIDIA NIM mientras carga el catálogo o si la API falla.
-// Incluye modelos destacados (featured) y modelos clave para documentación de código.
-// NIM no distingue gratis/pago en la API → sin flag free.
+// Modelos chat/código destacados confirmados hoy en la fuente oficial
+// (build.nvidia.com + featured-models.json, 2026-07-28). NIM NO distingue gratis/pago
+// en la API → sin flag free (el acceso free es un entitlement del programa Developer).
 const NIM_FALLBACK: ModelOption[] = [
   { value: 'nvidia/nemotron-3-ultra-550b-a55b', label: 'Nemotron 3 Ultra ⭐', recommended: true },
+  { value: 'nvidia/nemotron-3-super-120b-a12b', label: 'Nemotron 3 Super 120B' },
+  { value: 'nvidia/nemotron-3-nano-30b-a3b', label: 'Nemotron 3 Nano 30B' },
   { value: 'z-ai/glm-5.2', label: 'GLM 5.2' },
-  { value: 'meta/llama-3.3-70b-instruct', label: 'Llama 3.3 70B' },
-  { value: 'meta/llama-3.1-405b-instruct', label: 'Llama 3.1 405B' },
-  { value: 'mistralai/codestral-22b-instruct-v0.1', label: 'Codestral 22B (código)' },
   { value: 'deepseek-ai/deepseek-v4-pro', label: 'DeepSeek V4 Pro' },
-  { value: 'minimaxai/minimax-m3', label: 'Minimax M3' },
+  { value: 'deepseek-ai/deepseek-v4-flash', label: 'DeepSeek V4 Flash' },
   { value: 'qwen/qwen3-next-80b-a3b-instruct', label: 'Qwen3 Next 80B' },
-  { value: 'google/gemma-4-31b-it', label: 'Gemma 4 31B' },
-  { value: 'stepfun-ai/step-3.7-flash', label: 'Step 3.7 Flash' },
+  { value: 'minimaxai/minimax-m3', label: 'Minimax M3' },
+  { value: 'openai/gpt-oss-120b', label: 'GPT-OSS 120B' },
+  { value: 'moonshotai/kimi-k2.6', label: 'Kimi K2.6' },
+  { value: 'meta/llama-3.3-70b-instruct', label: 'Llama 3.3 70B' },
   { value: 'mistralai/mistral-medium-3.5-128b', label: 'Mistral Medium 3.5' },
-  { value: 'nvidia/llama-3.3-nemotron-super-49b-v1.5', label: 'Nemotron Super 49B' },
 ];
 
-// Fallback de Zenmux — TUS 7 modelos FREE confirmados (4 tuyos + 3 detectados en catálogo)
+// Fallback de Zenmux — los 3 modelos FREE confirmados hoy en la fuente oficial
+// (https://zenmux.ai/models?price_filter=free, 2026-07-28). El catálogo dinámico es la
+// fuente viva; este array es red de seguridad mientras carga o si la API falla.
+// `inclusionai/ling-3.0-flash` NO lleva sufijo -free (su pricing es 0/0 sin sufijo).
 const ZENMUX_FALLBACK: ModelOption[] = [
-  { value: 'stepfun/step-3.7-flash-free', label: 'Step 3.7 Flash', free: true, recommended: true },
-  { value: 'x-ai/grok-4.5-free', label: 'Grok 4.5 (500K ctx)', free: true },
+  { value: 'inclusionai/ling-3.0-flash', label: 'Ling 3.0 Flash', free: true, recommended: true },
   { value: 'z-ai/glm-4.7-flash-free', label: 'GLM 4.7 Flash', free: true },
   { value: 'z-ai/glm-4.6v-flash-free', label: 'GLM 4.6V Flash', free: true },
-  { value: 'inclusionai/ling-2.6-flash', label: 'Ling 2.6 Flash', free: true },
-  { value: 'minimax/minimax-m2.5-lightning', label: 'MiniMax M2.5 Lightning', free: true },
-  { value: 'qwen/qwen3-asr-flash', label: 'Qwen3 ASR Flash', free: true },
 ];
 
 // Fallback de OpenCode Zen mientras carga el catálogo dinámico o si la API falla.
-// El catálogo real es PÚBLICO y se filtra a los modelos gratuitos (sufijo "-free"),
-// pero dejamos unos cuantos conocidos como red de seguridad. Token keyless `public`.
+// Los 7 modelos FREE confirmados hoy en la fuente oficial
+// (https://opencode.ai/docs/es/zen/, 2026-07-28). El catálogo real es PÚBLICO y se
+// filtra a los gratuitos (sufijo "-free"); este fallback es red de seguridad.
+// `big-pickle` es la excepción sin sufijo. Token keyless `public`.
 const OPENZEN_FALLBACK: ModelOption[] = [
-  { value: 'hy3-free', label: 'Hy3 Flash (free)', free: true, recommended: true },
-  { value: 'deepseek-v4-flash-free', label: 'DeepSeek V4 Flash (free)', free: true },
-  { value: 'mimo-v2.5-free', label: 'Mimo 2.5 (free)', free: true },
+  { value: 'big-pickle', label: 'Big Pickle (free)', free: true, recommended: true },
+  { value: 'ling-3.0-flash-free', label: 'Ling 3.0 Flash (free)', free: true },
   { value: 'nemotron-3-ultra-free', label: 'Nemotron 3 Ultra (free)', free: true },
+  { value: 'deepseek-v4-flash-free', label: 'DeepSeek V4 Flash (free)', free: true },
+  { value: 'laguna-s-2.1-free', label: 'Laguna S 2.1 (free)', free: true },
   { value: 'north-mini-code-free', label: 'North Mini Code (free)', free: true },
+  { value: 'mimo-v2.5-free', label: 'MiMo-V2.5 (free)', free: true },
 ];
 
-// Fallback de Cloudflare Workers AI — modelos estables y útiles configurados en ZCode.
-// Catálogo ESTÁTICO (sin fetch dinámico que falla por CORS). El proxy /api/cloudflare
-// elude el bloqueo del navegador, pero la lista de modelos es fija: los que el usuario
-// tiene configurados aquí.
+// Fallback de Cloudflare Workers AI — modelos @cf/ text-generation actuales
+// (developers.cloudflare.com/workers-ai/models/, 2026-07-28). Catálogo ESTÁTICO (sin
+// fetch dinámico que falla por CORS); el proxy /api/cloudflare elude el navegador.
+// Modelos Llama 2/3 viejos y mistral-7b-v0.1 están DEPRECATED → sustituidos por los
+// nuevos 2026 (kimi-k2.6/2.7-code, gpt-oss, glm-5.2, llama-4-scout, nemotron-3-120b).
 const CLOUDFLARE_FALLBACK: ModelOption[] = [
   { value: '@cf/moonshotai/kimi-k2.7-code', label: 'Kimi K2.7 Code', recommended: true },
+  { value: '@cf/moonshotai/kimi-k2.6', label: 'Kimi K2.6' },
   { value: '@cf/zai-org/glm-5.2', label: 'GLM 5.2' },
-  { value: '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b', label: 'DeepSeek R1 Distill Qwen 32B' },
-  { value: '@cf/meta/llama-3.1-8b-instruct', label: 'Llama 3.1 8B' },
-  { value: '@cf/meta/llama-3.3-70b-instruct', label: 'Llama 3.3 70B' },
-  { value: '@cf/mistral/mistral-7b-instruct-v0.1', label: 'Mistral 7B' },
-  { value: '@cf/qwen/qwen2.5-7b-instruct', label: 'Qwen 2.5 7B' },
-  { value: '@cf/google/gemma-2-9b-it', label: 'Gemma 2 9B' },
+  { value: '@cf/openai/gpt-oss-120b', label: 'GPT-OSS 120B' },
+  { value: '@cf/openai/gpt-oss-20b', label: 'GPT-OSS 20B' },
+  { value: '@cf/meta/llama-4-scout-17b-16e-instruct', label: 'Llama 4 Scout 17B' },
+  { value: '@cf/meta/llama-3.3-70b-instruct-fp8-fast', label: 'Llama 3.3 70B FP8' },
+  { value: '@cf/nvidia/nemotron-3-120b-a12b', label: 'Nemotron 3 120B' },
+  { value: '@cf/google/gemma-4-26b-a4b-it', label: 'Gemma 4 26B A4B' },
+  { value: '@cf/qwen/qwen3-30b-a3b-fp8', label: 'Qwen3 30B A3B' },
 ];
 
-// Fallback curado con los 11 modelos verificados hoy en Ollama Cloud (free tier)
+// Fallback de Ollama Cloud — modelos cloud verificados hoy vía la API oficial
+// (GET https://ollama.com/v1/models, 2026-07-28, 19 modelos). La API NO expone
+// pricing ni flag free (el free es un entitlement del plan Free/Pro/Max por cuota),
+// así que marcamos todos como free: el tier Free llega a todos, limitado por cuota.
+// IDs antiguos inexistentes corregidos (qwen3-coder:480b, devstral-*, ministral-*).
 const OLLAMA_FALLBACK: ModelOption[] = [
-  // Free tier ilimitado (relativamente)
-  { value: 'minimax-m3', label: 'MiniMax M3', free: true, recommended: true },
-  { value: 'nemotron-3-super', label: 'Nemotron 3 Super', free: true },
-  { value: 'qwen3-coder-next', label: 'Qwen3 Coder Next', free: true },
-  { value: 'gemma4:31b', label: 'Gemma 4 31B', free: true },
-  { value: 'gpt-oss:20b', label: 'GPT-OSS 20B', free: true },
-  { value: 'ministral-3:14b', label: 'Ministral 3 14B', free: true },
-  // Free pero con límite de sesión bajo
+  { value: 'kimi-k3', label: 'Kimi K3', free: true, recommended: true },
+  { value: 'glm-5.2', label: 'GLM 5.2', free: true },
+  { value: 'glm-5.1', label: 'GLM 5.1', free: true },
+  { value: 'minimax-m3', label: 'MiniMax M3', free: true },
+  { value: 'minimax-m2.7', label: 'MiniMax M2.7', free: true },
+  { value: 'minimax-m2.5', label: 'MiniMax M2.5', free: true },
   { value: 'nemotron-3-ultra', label: 'Nemotron 3 Ultra', free: true },
-  { value: 'devstral-small-2:24b', label: 'Devstral Small 2 24B', free: true },
+  { value: 'nemotron-3-super', label: 'Nemotron 3 Super', free: true },
+  { value: 'nemotron-3-nano:30b', label: 'Nemotron 3 Nano 30B', free: true },
+  { value: 'deepseek-v4-pro', label: 'DeepSeek V4 Pro', free: true },
+  { value: 'deepseek-v4-flash', label: 'DeepSeek V4 Flash', free: true },
+  { value: 'qwen3.5:397b', label: 'Qwen 3.5 (397B)', free: true },
+  { value: 'kimi-k2.7-code', label: 'Kimi K2.7 Code', free: true },
+  { value: 'kimi-k2.6', label: 'Kimi K2.6', free: true },
+  { value: 'kimi-k2.5', label: 'Kimi K2.5', free: true },
+  { value: 'mistral-large-3:675b', label: 'Mistral Large 3', free: true },
+  { value: 'gemma4:31b', label: 'Gemma 4 31B', free: true },
   { value: 'gpt-oss:120b', label: 'GPT-OSS 120B', free: true },
-  { value: 'qwen3-coder:480b', label: 'Qwen3 Coder 480B', free: true },
-  { value: 'devstral-2:123b', label: 'Devstral 2 123B', free: true },
+  { value: 'gpt-oss:20b', label: 'GPT-OSS 20B', free: true },
 ];
 
 // Fallback de Ai& (api.aiand.com) mientras carga el catálogo dinámico o si falla.
@@ -442,7 +469,7 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     modelsEndpoint: '/api/ollama/models',
     modelsNeedKey: true,
     staticModels: OLLAMA_FALLBACK,
-    defaultModel: OLLAMA_FALLBACK[0].value, // 'minimax-m3'
+    defaultModel: OLLAMA_FALLBACK[0].value, // 'kimi-k3'
     keyPlaceholder: 'sk-ollama-...',
     keyPrefix: 'sk-ollama-',
     signupUrl: 'https://ollama.com',

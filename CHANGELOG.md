@@ -52,6 +52,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **MEJORAS_FUTURAS.md**: recuento 52+6+3 → **53+7+3**; "Próximo enfoque"
   actualizado a post-v3.58.0 (7 pendientes accionables).
 
+### Refresh de catálogos (fuentes oficiales, 2026-07-28)
+Revisión de los arrays `*_FALLBACK` de los 7 proveedores no-Gemini contra sus
+fuentes oficiales (no la config personal del usuario). Los fallback son red de
+seguridad mientras carga el catálogo dinámico o si la API falla; varios estaban
+desfasados con modelos retirados o inexistentes.
+
+- **Zenmux** (`zenmux.ai/models?price_filter=free`): 7→**3 free**. Eliminados los
+  que ya no son free en la fuente oficial (`stepfun/step-3.7-flash-free`,
+  `x-ai/grok-4.5-free`, `inclusionai/ling-2.6-flash`, `minimax-m2.5-lightning`,
+  `qwen3-asr-flash`). Default: `inclusionai/ling-3.0-flash` (free, sin sufijo).
+- **OpenRouter** (`openrouter.ai/models?order=pricing-low-to-high`): refresco a
+  los free actuales (`gpt-oss-20b:free`, `nemotron-3-ultra:free`, `ling-3.0-flash:free`,
+  `gemma-4-26b-a4b-it:free`...) más los nuevos **routers** dinámicos (`openrouter/auto`,
+  `openrouter/free`, `openrouter/pareto-code`). Default: `openai/gpt-oss-20b:free`.
+- **OpenCode Zen** (`opencode.ai/docs/es/zen/`): 5→**7 free**. Añadidos
+  `big-pickle`, `ling-3.0-flash-free`, `laguna-s-2.1-free`; retirado `hy3-free`
+  (ya no en el catálogo oficial). Default: `big-pickle`.
+- **Groq** (`console.groq.com/docs/models` + `/docs/deprecations`): default migrado
+  de `llama-3.1-8b-instant` a **`openai/gpt-oss-20b`** — los dos Llama (`llama-3.1-8b-instant`,
+  `llama-3.3-70b-versatile`) se **retiran el 2026-08-16**; `qwen/qwen3-32b` ya retirado.
+  Añadidos los sistemas agénticos `groq/compound`.
+- **NVIDIA NIM** (`build.nvidia.com` + `featured-models.json`): refresco a modelos
+  2026 — Nemotron 3 (Ultra/Super/Nano), GLM 5.2, DeepSeek V4, Qwen3 Next, GPT-OSS,
+  Kimi K2.6. Retirados modelos viejos (Llama 3.1 405B, Codestral, Nemotron Super 49B).
+- **Cloudflare** (`developers.cloudflare.com/workers-ai/models/`): 8→**10 modelos**.
+  Sustituidos los DEPRECATED (llama-3.1-8b, mistral-7b-v0.1, qwen2.5-7b, gemma-2-9b)
+  por los nuevos 2026 (kimi-k2.6, gpt-oss, llama-4-scout, nemotron-3-120b, gemma-4-26b).
+- **Ollama Cloud** (`GET https://ollama.com/v1/models`, API en vivo): 11→**19 modelos**.
+  Corregidos IDs inexistentes (`qwen3-coder:480b`, `devstral-*`, `ministral-3:14b`,
+  `qwen3-coder-next`); añadidos kimi-k3, glm-5.2/5.1, minimax-m2.5/m2.7, deepseek-v4-*,
+  qwen3.5, mistral-large-3. Default: `kimi-k3`.
+- **Ai&** (`docs.aiand.com/models/catalog/`): sin cambios — único free confirmado
+  sigue siendo `qwen/qwen3.6-27b`.
+
 ### Notes
 - **Decisión de diseño (proxy vs directo):** Kilo se sirve vía proxy backend
   (`/api/kilo`) y no por llamada directa del navegador. Razón: la pasarela usa un
