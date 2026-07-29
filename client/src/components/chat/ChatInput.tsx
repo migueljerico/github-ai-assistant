@@ -11,6 +11,7 @@ import ConversationIOButton from './ConversationIOButton';
 import FileAttachButton from './FileAttachButton';
 import InstructionSuggestions from './InstructionSuggestions';
 import SecurityAuditButton from './SecurityAuditButton';
+import SyncRepoStatusButton from './SyncRepoStatusButton';
 
 interface ChatInputProps {
   value: string;
@@ -36,6 +37,9 @@ interface ChatInputProps {
   // #52 - Modo Auditoría de Seguridad (lectura-only, lanza runSecurityAudit).
   // Opcional para retrocompatibilidad con tests que renderizan ChatInput parcialmente.
   onOpenSecurityAudit?: (initialRepo?: string) => void;
+  // #70/#48 - Sincronizar estado del repo (pull-based: lista commits recientes y
+  // los resume con IA). Opcional para retrocompatibilidad con tests de ChatInput.
+  onSyncRepoStatus?: (repo: string) => void;
   // #46 - Exportar/importar la conversación (Zero-Storage)
   onExportConversation: () => void;
   onImportConversation: (file: File) => void;
@@ -70,6 +74,7 @@ export default function ChatInput({
   onGenerateChangelog,
   onCodeHealth,
   onOpenSecurityAudit,
+  onSyncRepoStatus,
   onExportConversation,
   onImportConversation,
   hasMessages,
@@ -301,6 +306,15 @@ export default function ChatInput({
             disabled={disabled}
             onOpen={onOpenSecurityAudit}
             repoContextName={repoContextName}
+          />
+        )}
+
+        {/* #70/#48: SyncRepoStatus — resumen pull-based de los commits recientes.
+            onSyncRepoStatus es opcional; si no se pasa (tests), no se renderiza. */}
+        {onSyncRepoStatus && (
+          <SyncRepoStatusButton
+            disabled={disabled}
+            onSyncRepoStatus={onSyncRepoStatus}
           />
         )}
 

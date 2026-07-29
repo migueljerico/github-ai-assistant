@@ -311,7 +311,11 @@ export const en = {
   'chat.auditSecurity.disclaimer': '⚠️ Advisory help only, not a formal scanner: does not replace gitleaks, Dependabot, or CodeQL.',
   'chat.auditSecurity.userMessage': 'Audit the security of **{ref}**: review exposed secrets, outdated dependencies, and missing input validation. Cite the specific files you see.',
   'chat.attachFileMulti': '{count} files attached',
-// ────── #48 Sync Repo Status ──────  'syncRepo.title': '🔄 Sync repo status',  'syncRepo.tooltip': 'Analyzes recent commits and suggests improvements',  'syncRepo.prompt': 'Enter repository (owner/repo or name):',  'syncRepo.noCommits': 'ℹ️ No recent commits in **{ref}**.',
+  // ────── #48 Sync Repo Status ──────
+  'syncRepo.title': '🔄 Sync repo status',
+  'syncRepo.tooltip': 'Analyzes recent commits and suggests improvements',
+  'syncRepo.prompt': 'Enter repository (owner/repo or name):',
+  'syncRepo.noCommits': 'ℹ️ No recent commits in **{ref}**.',
   'chat.attachFileXlsxWarning': '⚠️ Only upload files from trusted sources. Malicious files are not analyzed. Limit: {maxMb} MB.',
 
   // ────── PHASE 2: Panels ──────
