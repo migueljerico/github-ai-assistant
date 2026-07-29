@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.59.1] — 2026-07-29
+
+> **Parche de cobertura del cableado de SyncRepoStatus.**
+> El check `codecov/patch` de v3.59.0 quedó en rojo (50% del diff cubierto,
+> target 90.33%): los tests existentes de `ChatInput` renderizaban el componente
+> **sin** la prop `onSyncRepoStatus`, de modo que el render condicional
+> `{onSyncRepoStatus && <SyncRepoStatusButton/>}` cortocircuitaba y esas líneas
+> del diff no se ejecutaban. Este parche añade la suite que las cubre.
+
+### Added
+- **`client/src/components/chat/__tests__/ChatInputSyncRepoStatus.test.tsx`:** 3
+  casos que renderizan `ChatInput` con/sin `onSyncRepoStatus` (cubre el render
+  condicional del diff) y verifican que el click propaga el repo al callback vía
+  `prompt`.
+
+> Cambio de código por ZCode (GLM-5.2).
+
 ## [3.59.0] — 2026-07-29
 
 > **Activado SyncRepoStatus (#70/#48).**

@@ -17,7 +17,7 @@
 ![Kilo](https://img.shields.io/badge/Kilo-00C896?style=for-the-badge)
 ![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
 ![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
-![Versión](https://img.shields.io/badge/Versión-v3.59.0-blue?style=for-the-badge)
+![Versión](https://img.shields.io/badge/Versión-v3.59.1-blue?style=for-the-badge)
 [![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)](./LICENSE)
 [![CI & Coverage](https://github.com/migueljerico/github-ai-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/migueljerico/github-ai-assistant/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/graph/badge.svg?token=B1VDL0Y04G)](https://codecov.io/gh/migueljerico/github-ai-assistant)
@@ -67,7 +67,7 @@ Todo bajo el principio:
 | 🧠 Modelos disponibles | Gemini, Llama, Nemotron, GLM, Grok, DeepSeek, Qwen, MiniMax y más vía OpenRouter/NIM/Zenmux/OpenCode/Cloudflare/Ollama/Ai&/Kilo |
 | ⚡ Latencia observada | ~400ms Groq / ~1.2s Gemini, variable según modelo y contexto |
 | 🛡️ Seguridad | Zero-Storage: credenciales solo en memoria React |
-| 🧪 Tests | 889 tests automatizados (845 cliente + 44 servidor) |
+| 🧪 Tests | 892 tests automatizados (848 cliente + 44 servidor) |
 | 🌍 Deploy | Google Cloud Run |
 | 📦 Stack | React + TypeScript + Express + Vite |
 
@@ -220,7 +220,7 @@ Ver detalle en ./docs/SEGURIDAD.md.
 
 El proyecto usa **Vitest**, **React Testing Library**, **GitHub Actions** y **Codecov**.
 
-- **889 tests automatizados (845 cliente + 44 servidor)**
+- **892 tests automatizados (848 cliente + 44 servidor)**
 - Tests unitarios, integración y componentes
 - Tests del servidor
 - CI con lint + tests + cobertura
