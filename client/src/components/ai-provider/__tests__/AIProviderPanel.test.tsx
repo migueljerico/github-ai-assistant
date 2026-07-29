@@ -288,3 +288,48 @@ describe('AIProviderPanel — Kilo (v3.58.0)', () => {
     expect(input.placeholder).toBe('eyJhbGciOi...');
   });
 });
+
+// #73: timeout automático configurable en el panel.
+describe('AIProviderPanel — timeout (#73)', () => {
+  it('renderiza el input de timeout al seleccionar un proveedor', () => {
+    const { container } = renderPanel();
+    selectProvider(container, 'groq');
+    const input = container.querySelector('#groq-timeout-input') as HTMLInputElement;
+    expect(input).toBeInTheDocument();
+    expect(input.type).toBe('number');
+    expect(input.placeholder).toBe('120'); // default
+  });
+
+  it('muestra la etiqueta y el hint traducidos', () => {
+    const { container } = renderPanel();
+    selectProvider(container, 'groq');
+    expect(screen.getByText('Timeout (segundos)')).toBeInTheDocument();
+    expect(screen.getByText(/La generación se cancela/)).toBeInTheDocument();
+  });
+
+  it('actualiza el valor del input al cambiarlo', () => {
+    const { container } = renderPanel();
+    selectProvider(container, 'groq');
+    const input = container.querySelector('#groq-timeout-input') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: '180' } });
+    expect(input.value).toBe('180');
+  });
+
+  it('vaciar el input lo deja vacío (default)', () => {
+    const { container } = renderPanel();
+    selectProvider(container, 'groq');
+    const input = container.querySelector('#groq-timeout-input') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: '180' } });
+    fireEvent.change(input, { target: { value: '' } });
+    expect(input.value).toBe('');
+  });
+
+  it('hidrata el valor guardado al montar (preferencia recordada)', () => {
+    // Pre-puebla sessionStorage con un timeout guardado.
+    sessionStorage.setItem('ai_provider_pref', JSON.stringify({ provider: 'groq', model: getProvider('groq').defaultModel, timeoutMs: 90000 }));
+    const { container } = renderPanel();
+    selectProvider(container, 'groq');
+    const input = container.querySelector('#groq-timeout-input') as HTMLInputElement;
+    expect(input.value).toBe('90'); // 90000ms → 90s
+  });
+});

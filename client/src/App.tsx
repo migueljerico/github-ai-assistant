@@ -34,7 +34,7 @@ export default function App() {
   const { token, user, isAuthenticated } = useAuth();
   const { addEntry, updateEntry } = useHistory();
   // 🔥 ZERO-STORAGE: Extraemos provider, apiKey Y model del contexto (no de sessionStorage)
-  const { provider, apiKey, model, accountId } = useAIProvider();
+  const { provider, apiKey, model, accountId, timeoutMs } = useAIProvider();
   const providerName = provider ? getProvider(provider).name : 'IA';
   const { t, lang } = useLanguage();
 
@@ -190,7 +190,7 @@ runCancelAction(
     if (!token || !user || !provider || !apiKey || !model) return null;
     return runDocumentRepo(
       { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
-      { provider, apiKey, model, accountId },
+      { provider, apiKey, model, accountId, timeoutMs },
       repoInput,
     );
   }, [token, user, provider, apiKey, model, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, accountId]);
@@ -203,7 +203,7 @@ runCancelAction(
     if (!primary || !token || !user || !provider || !apiKey || !model) return null;
     return runGenerateFileDoc(
       { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
-      { provider, apiKey, model, accountId },
+      { provider, apiKey, model, accountId, timeoutMs },
       primary,
       buildConversationText(),
     );
@@ -251,7 +251,7 @@ runCancelAction(
     if (!token || !user || !provider || !apiKey || !model) return null;
     return runCreateRepoAndDocument(
       { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
-      { provider, apiKey, model, accountId },
+      { provider, apiKey, model, accountId, timeoutMs },
       repoInput,
       files,
     );
@@ -283,7 +283,7 @@ const flowGenerateSpecific = useCallback(async (repoInput: string, targetPath: s
  token, user, providerName, model, provider, t, lang,
  addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading,
  };
- return runGenerateSpecificDoc(deps, { provider, apiKey, model, accountId }, repoInput, targetPath, undefined, extraInstructions);
+ return runGenerateSpecificDoc(deps, { provider, apiKey, model, accountId, timeoutMs }, repoInput, targetPath, undefined, extraInstructions);
 }, [token, user, providerName, model, provider, apiKey, accountId, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading]);
 
 const flowCommitSpecific = useCallback(async (doc: string, path: string): Promise<void> => {
@@ -339,7 +339,7 @@ const flowDraftPrBulk = useCallback(async (owner: string, repo: string, targets:
 
     await runSend(
       { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading, setConversationHistory, setPendingAction, addReviewAction: (pa) => setReviewActions(prev => [...prev, pa]) },
-      { provider, apiKey, model, accountId },
+      { provider, apiKey, model, accountId, timeoutMs },
       { userText, conversationHistory, modeOverride, repoContext, fileContext, multiRepoEnabled, selectedRepos, signal: controller.signal, reviewMode: modeOverride === 'review' },
     );
   }, [inputValue, token, user, provider, apiKey, model, providerName, t, lang, conversationHistory, multiRepoEnabled, selectedRepos, modeOverride, repoContext, fileContext, addMessage, updateMessage, addEntry, updateEntry, accountId]);
@@ -366,7 +366,7 @@ const flowDraftPrBulk = useCallback(async (owner: string, repo: string, targets:
     if (!token || !user || !provider || !apiKey || !model) return;
     await runSummarizeThread(
       { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
-      { provider, apiKey, model, accountId },
+      { provider, apiKey, model, accountId, timeoutMs },
       input,
       repoContext?.repoName ?? null,
     );
@@ -377,7 +377,7 @@ const flowDraftPrBulk = useCallback(async (owner: string, repo: string, targets:
     if (!token || !user || !provider || !apiKey || !model) return;
     await runGenerateChangelog(
       { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
-      { provider, apiKey, model, accountId },
+      { provider, apiKey, model, accountId, timeoutMs },
       input,
     );
   }, [token, user, provider, apiKey, model, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, accountId]);
@@ -428,7 +428,7 @@ const flowDraftPrBulk = useCallback(async (owner: string, repo: string, targets:
     abortRef.current = controller;
     await runSecurityAudit(
       { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
-      { provider, apiKey, model, accountId },
+      { provider, apiKey, model, accountId, timeoutMs },
       repoInput,
       { repoContext: ctx, signal: controller.signal },
     );
@@ -448,7 +448,7 @@ const flowDraftPrBulk = useCallback(async (owner: string, repo: string, targets:
     await runSyncRepoStatus(
       { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
       repoInput,
-      { provider, apiKey, model, accountId },
+      { provider, apiKey, model, accountId, timeoutMs },
     );
   }, [token, user, provider, apiKey, model, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, accountId]);
 

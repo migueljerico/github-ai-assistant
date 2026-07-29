@@ -2,7 +2,7 @@
 
 Estado del código, mejoras realizadas y pendientes del proyecto.
 
-**Actualizado a:** v3.59.1 · Julio 2026
+**Actualizado a:** v3.60.0 · Julio 2026
 
 ---
 
@@ -245,8 +245,8 @@ mejora **no** es de bajo riesgo como #69.
 
 ---
 
-#### #73 — Timeout automático en llamadas a la IA
-**Esfuerzo:** ~2-3h · **Prioridad:** 🟡 Media
+#### #73 — Timeout automático en llamadas a la IA ✅ (v3.60.0)
+**Esfuerzo:** ~2-3h · **Prioridad:** 🟡 Media · **Estado:** ✅ Resuelto en v3.60.0
 
 **Contexto (v3.56.2):** hoy la única cancelación de una llamada IA es manual, vía
 el `AbortSignal` del botón "Detener" (`client/src/utils/retry.ts` +
@@ -254,15 +254,29 @@ el `AbortSignal` del botón "Detener" (`client/src/utils/retry.ts` +
 abierta sin respuesta), el spinner queda girando indefinidamente hasta que el
 usuario pulse Detener o recargue.
 
-**Fix:** añadir un `AbortController` con timeout por defecto (p. ej. 60s) y
-componerlo con el `AbortSignal` manual existente (`AbortSignal.any([...])`),
-reutilizando la maquinaria de `withTransientRetry` para tratar el timeout como
-error transitorio. Mensaje de usuario accionable ("la IA tardó demasiado; reintentando…").
+**Resuelto en v3.60.0 (extremo a extremo, default 120 s configurable):**
+- `client/src/utils/retry.ts`: `DEFAULT_AI_TIMEOUT_MS` (120 s) + `combineSignals`
+  (combina el signal manual del usuario con `AbortSignal.timeout` vía
+  `AbortSignal.any`, con polyfill) + `isTimeoutAbortError`. Reutiliza
+  `withTransientRetry` sin tocarlo: el timeout dispara un abort que ya se propaga
+  sin reintentos.
+- `callAI` acepta `timeoutMs` (nuevo parámetro, retrocompatible); `AIProviderConfig`
+  lo añade y fluye por `App.tsx` → `runSend`/`runSecurityAudit`.
+- UI: input "Timeout (segundos)" en `AIProviderPanel` (10–600), persistido en
+  `sessionStorage` vía `providerPrefs`. Mensaje diferenciado timeout vs. Detener
+  (`chat.generationTimeout`).
+- **Server:** los 6 proxies POST + la ruta Gemini (SDK) aplican
+  `signal: upstreamSignal()` (defensa en profundidad: si el cliente desaparece,
+  el server suelta la conexión upstream); el `catch` responde **504** cuando el
+  error es de timeout.
 
-**Beneficio:** resiliencia ante proveedores lentos/colgados sin intervención del
-usuario; cierres limpios en lugar de spinners infinitos.
+**Caveat resuelto:** 120 s cubre modelos de razonamiento (Ai& 8192 tokens) y
+generación de docs (README+MANUAL); configurable por el usuario (subir/bajar en
+el panel) en vez de por proveedor, más sencillo y suficiente.
 
-**Caveat:** elegir el timeout con cuidado (los modelos de razonamiento como los
+---
+
+_Fuera de roadmap (pendiente):_ ✓ (movido a resueltos).
 de Ai& a 8192 tokens pueden tardar >30s legítimamente); quizá configurable por
 proveedor en `ProviderDef`. Cero cambios de arquitectura.
 

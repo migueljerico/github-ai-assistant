@@ -507,7 +507,8 @@ describe('Cancelación de la generación (#40)', () => {
     vi.stubGlobal('fetch', fetchMock);
     const controller = new AbortController();
 
-    await callAI([{ role: 'user', content: 'Hola' }], 'system', 'groq', 'k', 'm', 'chat', undefined, controller.signal);
+    // #73: timeoutMs=0 desactiva el timeout → el signal llega TAL CUAL al fetch.
+    await callAI([{ role: 'user', content: 'Hola' }], 'system', 'groq', 'k', 'm', 'chat', undefined, controller.signal, undefined, null, 0);
 
     const init = fetchMock.mock.calls[0][1] as RequestInit;
     expect(init.signal).toBe(controller.signal);
@@ -521,6 +522,66 @@ describe('Cancelación de la generación (#40)', () => {
       callAI([{ role: 'user', content: 'Hola' }], 'system', 'groq', 'k', 'm', 'chat'),
     ).rejects.toMatchObject({ name: 'AbortError' });
     expect(fetchMock).toHaveBeenCalledTimes(1); // sin reintentos
+  });
+});
+
+// #73: timeout automático en llamadas IA. callAI combina el signal manual con uno
+// de timeout (default 120s) y lo pasa al fetch. El timeout dispara el mismo camino
+// de abort que el botón Detener (withTransientRetry no reintenta).
+describe('Timeout automático (#73)', () => {
+  beforeEach(() => { vi.restoreAllMocks(); });
+
+  it('callAI aplica un signal combinado (no undefined) aunque no haya signal manual', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: 'ok' } }] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await callAI([{ role: 'user', content: 'Hola' }], 'system', 'groq', 'k', 'm', 'chat');
+
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    // Default timeout → siempre hay un signal combinado (aunque el usuario no pase manual).
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+    expect((init.signal as AbortSignal).aborted).toBe(false);
+  });
+
+  it('callAI respeta timeoutMs explícito (no el default) pasado como último arg', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: 'ok' } }] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    // Firma: (messages, system, provider, key, model, mode, onToken, signal, maxTokens, accountId, timeoutMs)
+    await callAI([{ role: 'user', content: 'Hola' }], 'system', 'groq', 'k', 'm', 'chat', undefined, undefined, undefined, null, 30000);
+
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it('timeoutMs <= 0 desactiva el timeout (signal solo si hay manual)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: 'ok' } }] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    // Sin manual y timeoutMs=0 → undefined (comportamiento histórico previo a #73).
+    await callAI([{ role: 'user', content: 'Hola' }], 'system', 'groq', 'k', 'm', 'chat', undefined, undefined, undefined, null, 0);
+
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    expect(init.signal).toBeUndefined();
+  });
+
+  it('un TimeoutError (timeout disparado) NO se reintenta: se propaga al instante', async () => {
+    const fetchMock = vi.fn().mockRejectedValue(Object.assign(new Error('The operation timed out'), { name: 'TimeoutError' }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      callAI([{ role: 'user', content: 'Hola' }], 'system', 'groq', 'k', 'm', 'chat'),
+    ).rejects.toMatchObject({ name: 'TimeoutError' });
+    expect(fetchMock).toHaveBeenCalledTimes(1); // sin reintentos, igual que el AbortError manual
   });
 });
 

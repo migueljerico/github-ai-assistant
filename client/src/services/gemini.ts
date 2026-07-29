@@ -28,7 +28,7 @@
 import type { GeminiAction } from '../types';
 import type { Language } from '../context/LanguageContext';
 import { getProvider, modelLabel, resolveEndpoint, type AIProviderType } from './providers';
-import { withTransientRetry, isAbortError, isTransientError } from '../utils/retry';
+import { withTransientRetry, isAbortError, isTransientError, combineSignals, DEFAULT_AI_TIMEOUT_MS } from '../utils/retry';
 // #23: los system prompts viven en archivos `.md` (mantenibilidad + base para i18n).
 // Se cargan como texto crudo con el import `?raw` de Vite. `.trimEnd()` evita que un
 // salto de línea final del archivo cambie el prompt respecto al literal original.
@@ -198,6 +198,8 @@ export interface AIProviderConfig {
   model: string;
   /** Solo Cloudflare Workers AI: account_id necesario en la ruta URL del endpoint. */
   accountId?: string | null;
+  /** #73: timeout de la llamada IA en ms (null/undefined = default 120s). */
+  timeoutMs?: number | null;
 }
 
 // ── Streaming (SSE) — helper compartido (#38) ─────────────────────────────────
@@ -400,6 +402,7 @@ export async function callAI(
   signal?: AbortSignal,  // ← #40: cancelación de la petición (botón Detener)
   maxTokens?: number,  // ← v3.31.0: límite de salida (docs usa 8192 para no truncar el JSON)
   accountId?: string | null,  // ← Cloudflare: sustituye {account_id} en el endpoint
+  timeoutMs?: number | null,  // ← #73: timeout automático (default DEFAULT_AI_TIMEOUT_MS si undefined/null)
 ): Promise<string> {
   const def = getProvider(provider);
   // v3.38.0: límite de salida efectivo. Resolución por prioridad:
@@ -409,6 +412,10 @@ export async function callAI(
   //   3) 4096 (default histórico; antes solo se aplicaba en la rama OpenAI-compat,
   //      ahora también en Gemini para coherencia entre transportes).
   const effectiveMaxTokens = maxTokens ?? def.maxOutputTokens ?? 4096;
+  // #73: combina el signal MANUAL del usuario con uno de TIMEOUT (120s por defecto).
+  // null/undefined → default; <=0 → desactiva el timeout en una llamada concreta.
+  const effectiveTimeout = timeoutMs ?? DEFAULT_AI_TIMEOUT_MS;
+  const combinedSignal = combineSignals(signal, effectiveTimeout);
   // Reintento ante errores transitorios del servidor (503 "high demand",
   // "Provider returned error"…). La validación de clave llama a las funciones
   // internas directamente, así que no se ve afectada por este reintento.
@@ -417,8 +424,8 @@ export async function callAI(
   const chatEndpoint = resolveEndpoint(def.chatEndpoint!, accountId);
   return withTransientRetry(() =>
     def.transport === 'gemini-proxy'
-      ? callGeminiDirect(apiKey, model, messages, systemPrompt, mode, onToken, signal, effectiveMaxTokens)
-      : callOpenAICompatible(chatEndpoint, apiKey, model, messages, systemPrompt, mode, def.extraHeaders, onToken, signal, effectiveMaxTokens, accountId),
+      ? callGeminiDirect(apiKey, model, messages, systemPrompt, mode, onToken, combinedSignal, effectiveMaxTokens)
+      : callOpenAICompatible(chatEndpoint, apiKey, model, messages, systemPrompt, mode, def.extraHeaders, onToken, combinedSignal, effectiveMaxTokens, accountId),
   );
 }
 
