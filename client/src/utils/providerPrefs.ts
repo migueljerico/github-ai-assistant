@@ -14,12 +14,16 @@ const STORAGE_KEY = 'ai_provider_pref';
 export interface ProviderPref {
   provider: AIProviderType;
   model: string;
+  /** #73: timeout de la llamada IA en ms. null/undefined = default (120s). */
+  timeoutMs?: number;
 }
 
 /** Guarda proveedor + modelo (no la key). Degradación silenciosa si no hay storage. */
-export function saveProviderPref(provider: AIProviderType, model: string): void {
+export function saveProviderPref(provider: AIProviderType, model: string, timeoutMs?: number): void {
   try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ provider, model }));
+    const pref: ProviderPref = { provider, model };
+    if (typeof timeoutMs === 'number') pref.timeoutMs = timeoutMs;
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(pref));
   } catch {
     /* sessionStorage no disponible (modo privado, etc.) — no es crítico */
   }
@@ -38,7 +42,10 @@ export function loadProviderPref(): ProviderPref | null {
       typeof parsed.model === 'string' &&
       parsed.model.length > 0
     ) {
-      return { provider: parsed.provider as AIProviderType, model: parsed.model };
+      const pref: ProviderPref = { provider: parsed.provider as AIProviderType, model: parsed.model };
+      // #73: solo conserva timeoutMs si es un número válido (>0).
+      if (typeof parsed.timeoutMs === 'number' && parsed.timeoutMs > 0) pref.timeoutMs = parsed.timeoutMs;
+      return pref;
     }
   } catch {
     /* JSON corrupto — se ignora */

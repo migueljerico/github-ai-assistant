@@ -10,6 +10,7 @@
  */
 
 import { generateRepoDocs, generateFileDoc, generateSpecificDoc, buildRepoContextSummary, buildSecurityAuditContext, callAI, parseGeminiAction, parseGeminiActions, parseGeminiActionWithReason, isAbortError, CHAT_PROMPT, ACTION_PROMPT, SECURITY_PROMPT, chatPromptWithContext, withLangDirective } from './gemini';
+import { isTimeoutAbortError } from '../utils/retry';
 import type { Language } from '../context/LanguageContext';
 import type { AIProviderConfig } from './gemini';
 import { getProvider, modelLabel, type AIProviderType } from './providers';
@@ -526,7 +527,7 @@ Responde en ${lang === 'es' ? 'español' : 'English'}.`;
     ];
 
     const loadingUpdateId = addMessage({ role: 'assistant', content: '🤖 Analizando con IA...', isLoading: true });
-    const aiResponse = await callAI(messages, systemPrompt, config.provider, config.apiKey, config.model, 'chat', undefined, undefined, undefined, config.accountId);
+    const aiResponse = await callAI(messages, systemPrompt, config.provider, config.apiKey, config.model, 'chat', undefined, undefined, undefined, config.accountId, config.timeoutMs);
     updateMessage(loadingUpdateId, { content: aiResponse, isLoading: false });
 
     updateMessage(loadingId, { content: `✅ Sync completado para **${ref}** — ${commitDetails.length} commits analizados.`, isLoading: false });
@@ -637,6 +638,7 @@ export async function runSecurityAudit(
       opts.signal,
       undefined,
       config.accountId,
+      config.timeoutMs,
     );
 
     // Modo chat: nunca se ejecuta nada. Si el modelo devolviera JSON por error,
@@ -649,9 +651,11 @@ export async function runSecurityAudit(
   } catch (err) {
     // #40: si el usuario pulsó Detener, conserva lo ya generado y márcalo como
     // detenido (sin burbuja de error roja). Mismo patrón que runSend.
-    if (isAbortError(err)) {
+    // #73: distinguir timeout automático (chat.generationTimeout) del botón Detener.
+    if (isAbortError(err) || isTimeoutAbortError(err)) {
+      const stopMsg = isTimeoutAbortError(err) ? t('chat.generationTimeout') : t('chat.generationStopped');
       updateMessage(loadingId, {
-        content: lastText ? `${lastText}\n\n⏹️ _(detenido)_` : t('chat.generationStopped'),
+        content: lastText ? `${lastText}\n\n⏹️ ${isTimeoutAbortError(err) ? '_(cancelado por timeout)_' : '_(detenido)_'}` : stopMsg,
         isLoading: false,
       });
       updateEntry(histId, { status: 'cancelled', description: t('history.cancelledAction', { action: t('chat.auditSecurity') }) });
@@ -966,7 +970,7 @@ export async function runSend(deps: SendDeps, config: AIProviderConfig, params: 
       // #24 Fase 3: la directiva de idioma SOLO aplica al modo chat (texto Markdown).
       const systemPrompt = finalMode === 'chat' ? withLangDirective(basePrompt, deps.lang) : basePrompt;
       try {
-        const rawResponse = await callAI(newHistory, systemPrompt, config.provider, config.apiKey, config.model, finalMode, onToken, params.signal, undefined, config.accountId);
+        const rawResponse = await callAI(newHistory, systemPrompt, config.provider, config.apiKey, config.model, finalMode, onToken, params.signal, undefined, config.accountId, config.timeoutMs);
         return { rawResponse, consultedPaths };
       } catch (err) {
         // #50: si el contexto es demasiado grande, reintentar con menos archivos (una sola vez).
@@ -1101,9 +1105,11 @@ export async function runSend(deps: SendDeps, config: AIProviderConfig, params: 
   } catch (err) {
     // #40: si el usuario pulsó Detener, no es un error: conserva lo ya generado
     // (si lo hay) y márcalo como detenido, sin burbuja de error roja.
-    if (isAbortError(err)) {
+    // #73: distinguir timeout automático (chat.generationTimeout) del botón Detener.
+    if (isAbortError(err) || isTimeoutAbortError(err)) {
+      const stopMsg = isTimeoutAbortError(err) ? deps.t('chat.generationTimeout') : deps.t('chat.generationStopped');
       updateMessage(loadingId, {
-        content: lastText ? `${lastText}\n\n⏹️ _(detenido)_` : deps.t('chat.generationStopped'),
+        content: lastText ? `${lastText}\n\n⏹️ ${isTimeoutAbortError(err) ? '_(cancelado por timeout)_' : '_(detenido)_'}` : stopMsg,
         isLoading: false,
       });
     } else if (isContextTooLargeError(err)) {

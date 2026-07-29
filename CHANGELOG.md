@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.60.0] — 2026-07-29
+
+> **Timeout automático en llamadas IA, extremo a extremo (#73).**
+> Hasta ahora, si un proveedor de IA colgaba, el spinner giraba indefinidamente:
+> la única cancelación era manual (botón "Detener"). Esta versión añade un
+> **timeout automático** que aborta la llamada a los 120 s por defecto, tanto en
+> cliente (`fetch`) como en server (proxies `fetch` upstream + SDK Gemini), y
+> distingue el mensaje cuando la cancelación viene por timeout del de botón.
+
+### Added
+- **Timeout automático de la llamada IA (#73):**
+  - `client/src/utils/retry.ts`: `DEFAULT_AI_TIMEOUT_MS` (120 s), `combineSignals`
+    (combina el signal manual del usuario con uno de timeout vía `AbortSignal.any`,
+    con polyfill para runtimes antiguos) e `isTimeoutAbortError`.
+  - `client/src/services/gemini.ts`: `callAI` acepta `timeoutMs` (nuevo parámetro)
+    y combina el signal antes de propagarlo al `fetch`; `AIProviderConfig` añade
+    `timeoutMs`.
+  - `client/src/components/ai-provider/AIProviderPanel.tsx`: input configurable
+    "Timeout (segundos)" (10–600), persistido en `sessionStorage` vía
+    `providerPrefs` y conectado al `AIProviderContext`.
+  - `client/src/utils/providerPrefs.ts` + `AIProviderContext.tsx`: persistencia y
+    exposición de `timeoutMs` (hidratación al conectar).
+  - `client/src/services/assistantActions.ts`: distingue timeout de botón Detener
+    en las ramas de abort de `runSend` y `runSecurityAudit` (mensaje propio).
+  - `client/src/i18n/{es,en}.ts`: claves `aipanel.timeoutLabel`/`timeoutHint` y
+    `chat.generationTimeout`.
+
+### Changed
+- **`server/index.js`:** los 6 proxies POST (`/api/nim`, `/openzen`, `/cloudflare`,
+  `/ollama`, `/aiand`, `/kilo`) y la ruta Gemini (SDK) aplican ahora
+  `signal: upstreamSignal()` (120 s, defensa en profundidad: si el cliente
+  desaparece, el server suelta la conexión upstream). El `catch` responde **504
+  Gateway Timeout** con mensaje accionable (en vez del 502 genérico) cuando el
+  error es de timeout.
+
+> Cambio de código por ZCode (GLM-5.2).
+
 ## [3.59.1] — 2026-07-29
 
 > **Parche de cobertura del cableado de SyncRepoStatus.**

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isContextTooLargeError, isTransientError, isAbortError, withTransientRetry } from '../retry';
+import { isContextTooLargeError, isTransientError, isAbortError, withTransientRetry, combineSignals, isTimeoutAbortError, DEFAULT_AI_TIMEOUT_MS } from '../retry';
 
 describe('retry (#40 / #50)', () => {
   describe('isAbortError', () => {
@@ -79,6 +79,71 @@ describe('retry (#40 / #50)', () => {
       };
       await expect(withTransientRetry(fn, 2, 1)).rejects.toThrow('aborted');
       expect(calls).toBe(1);
+    });
+  });
+
+  // ── #73: timeout automático en llamadas IA ────────────────────────────────
+  describe('combineSignals (#73)', () => {
+    it('expone DEFAULT_AI_TIMEOUT_MS = 120s', () => {
+      expect(DEFAULT_AI_TIMEOUT_MS).toBe(120_000);
+    });
+
+    it('devuelve undefined si no hay signal manual ni timeout', () => {
+      expect(combineSignals(undefined, undefined)).toBeUndefined();
+      expect(combineSignals(undefined, 0)).toBeUndefined();
+      expect(combineSignals(undefined, -5)).toBeUndefined();
+    });
+
+    it('devuelve el signal manual tal cual si no hay timeout', () => {
+      const ac = new AbortController();
+      expect(combineSignals(ac.signal, undefined)).toBe(ac.signal);
+    });
+
+    it('crea un signal de timeout puro cuando no hay manual', () => {
+      const sig = combineSignals(undefined, 50);
+      expect(sig).toBeInstanceOf(AbortSignal);
+      expect(sig!.aborted).toBe(false);
+    });
+
+    it('combina manual + timeout: aborta al dispararse el timeout', async () => {
+      const manual = new AbortController();
+      const sig = combineSignals(manual.signal, 50);
+      expect(sig!.aborted).toBe(false);
+      await new Promise(r => setTimeout(r, 80));
+      expect(sig!.aborted).toBe(true);
+      // El signal manual NO debe abortarse (el combine puente respeta cada signal).
+      expect(manual.signal.aborted).toBe(false);
+    });
+
+    it('combina manual + timeout: aborta al dispararse el manual', () => {
+      const manual = new AbortController();
+      const sig = combineSignals(manual.signal, 5000);
+      manual.abort();
+      expect(sig!.aborted).toBe(true);
+    });
+  });
+
+  describe('isTimeoutAbortError (#73)', () => {
+    it('detecta DOMException TimeoutError (AbortSignal.timeout)', () => {
+      const e = new DOMException('signal timed out', 'TimeoutError');
+      expect(isTimeoutAbortError(e)).toBe(true);
+    });
+
+    it('detecta error con reason TimeoutError', () => {
+      const e = Object.assign(new Error('aborted'), {
+        reason: new DOMException('timed out', 'TimeoutError'),
+      });
+      expect(isTimeoutAbortError(e)).toBe(true);
+    });
+
+    it('detecta mensaje con "timed out" / "timeout"', () => {
+      expect(isTimeoutAbortError(new Error('The operation timed out'))).toBe(true);
+      expect(isTimeoutAbortError(new Error('request timeout'))).toBe(true);
+    });
+
+    it('no confunde con un AbortError manual o un error normal', () => {
+      expect(isTimeoutAbortError(Object.assign(new Error('aborted'), { name: 'AbortError' }))).toBe(false);
+      expect(isTimeoutAbortError(new Error('Unauthorized'))).toBe(false);
     });
   });
 });

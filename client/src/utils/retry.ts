@@ -64,3 +64,78 @@ export async function withTransientRetry<T>(
     }
   }
 }
+
+// ── #73: timeout automático en llamadas IA ────────────────────────────────────
+// Si un proveedor cuelga, el spinner giraba indefinidamente: solo existía la
+// cancelación MANUAL (botón "Detener"). Ahora abortamos también por TIEMPOPO.
+//
+// Valor por defecto de 120s: cubre los casos legítimamente largos que ve la app
+//   • Modelos de razonamiento (p. ej. Ai& a 8192 tokens) que pueden tardar >30s.
+//   • Generación de documentos (README + MANUAL_TECNICO, maxTokens 8192).
+// 120s es un equilibrio: si a los 2 min no hay respuesta, asumimos cuelgue.
+//
+// Mecanismo: combinamos el signal MANUAL del usuario con un signal de TIMEOUT.
+// AbortSignal.any([...]) aborta si cualquiera de los dos se dispara. La lógica de
+// handling ya existe (runSend/SecurityAudit muestran "⏹️ detenido" y conservan el
+// texto parcial); un timeout simplemente dispara ese mismo camino de abort, que
+// withTransientRetry ya propaga sin reintentar (líneas de arriba).
+export const DEFAULT_AI_TIMEOUT_MS = 120_000;
+
+/** ¿El error viene de agotarse el timeout (AbortSignal.timeout)? Úsalo junto a
+ *  isAbortError para distinguir "detenido a mano" de "cancelado por timeout". */
+export function isTimeoutAbortError(err: unknown): boolean {
+  // AbortSignal.timeout rechaza con DOMException name 'TimeoutError' (web) o
+  // Error name 'AbortError' en algunos runtimes; el reason suele incluir "timed out".
+  const name = (err as { name?: string })?.name;
+  if (name === 'TimeoutError') return true;
+  const reason = (err as { reason?: unknown })?.reason;
+  const reasonName = (reason as { name?: string })?.name;
+  if (reasonName === 'TimeoutError') return true;
+  const msg = (err as { message?: string })?.message ?? '';
+  return /timed out|timeout/i.test(msg);
+}
+
+/** Crea un AbortSignal que se aborta tras `timeoutMs` ms. Polyfill para runtimes
+ *  sin AbortSignal.timeout (jsdom antiguo); prioriza el nativo cuando existe. */
+function createTimeoutSignal(timeoutMs: number): AbortSignal {
+  const timeoutCtor = (AbortSignal as unknown as {
+    timeout?: (ms: number) => AbortSignal;
+  }).timeout;
+  if (typeof timeoutCtor === 'function') return timeoutCtor.call(AbortSignal, timeoutMs);
+  // Polyfill: controller manual abortado por setTimeout.
+  const controller = new AbortController();
+  setTimeout(() => controller.abort(new DOMException('signal timed out', 'TimeoutError')), timeoutMs);
+  return controller.signal;
+}
+
+/**
+ * Combina el signal MANUAL del usuario (botón Detener) con uno de TIMEOUT (#73).
+ * - Sin manual ni timeout → undefined (comportamiento histórico).
+ * - Solo manual → el manual tal cual.
+ * - Con timeout → AbortSignal.any([manual?, timeout]) si está disponible, o un
+ *   controller puente que aborta cuando cualquiera se dispara (polyfill).
+ * El timeout nunca aplica a llamadas que pasen timeoutMs explícito <= 0.
+ */
+export function combineSignals(
+  manual?: AbortSignal,
+  timeoutMs?: number,
+): AbortSignal | undefined {
+  const hasTimeout = typeof timeoutMs === 'number' && timeoutMs > 0;
+  if (!manual && !hasTimeout) return undefined;
+  if (hasTimeout && !manual) return createTimeoutSignal(timeoutMs!);
+  if (!hasTimeout && manual) return manual;
+  // Ambos: usar AbortSignal.any si existe (Chromium ≥116, Node 20+).
+  const anyCtor = (AbortSignal as unknown as {
+    any?: (signals: AbortSignal[]) => AbortSignal;
+  }).any;
+  if (typeof anyCtor === 'function') {
+    return anyCtor.call(AbortSignal, [manual!, createTimeoutSignal(timeoutMs!)]);
+  }
+  // Polyfill: controller puente que aborta al primer disparo de cualquiera.
+  const bridge = new AbortController();
+  const abort = (reason?: unknown) => bridge.abort(reason);
+  manual!.addEventListener('abort', () => abort((manual as AbortSignal & { reason?: unknown }).reason));
+  const timeoutSignal = createTimeoutSignal(timeoutMs!);
+  timeoutSignal.addEventListener('abort', () => abort((timeoutSignal as AbortSignal & { reason?: unknown }).reason));
+  return bridge.signal;
+}

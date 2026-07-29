@@ -45,8 +45,10 @@ describe('SessionWarningBanner', () => {
       apiKey: 'test-key',
       model: 'gemini-2.5-flash',
       accountId: null,
+      timeoutMs: null,
       connect: vi.fn(),
       disconnect: vi.fn(),
+      setTimeoutMs: vi.fn(),
     });
 
     render(<SessionWarningBanner />);
@@ -75,8 +77,10 @@ describe('SessionWarningBanner', () => {
       apiKey: 'test-key',
       model: 'gemini-2.5-flash',
       accountId: null,
+      timeoutMs: null,
       connect: vi.fn(),
       disconnect: vi.fn(),
+      setTimeoutMs: vi.fn(),
     });
 
     render(<SessionWarningBanner />);
@@ -107,8 +111,10 @@ describe('SessionWarningBanner', () => {
       apiKey: 'test-key',
       model: 'gemini-2.5-flash',
       accountId: null,
+      timeoutMs: null,
       connect: vi.fn(),
       disconnect: vi.fn(),
+      setTimeoutMs: vi.fn(),
     });
 
     render(<SessionWarningBanner />);
@@ -138,8 +144,10 @@ describe('SessionWarningBanner', () => {
       apiKey: 'test-key',
       model: 'gemini-2.5-flash',
       accountId: null,
+      timeoutMs: null,
       connect: vi.fn(),
       disconnect: vi.fn(),
+      setTimeoutMs: vi.fn(),
     });
 
     render(<SessionWarningBanner />);
@@ -171,8 +179,10 @@ describe('SessionWarningBanner', () => {
       apiKey: 'test-key',
       model: 'gemini-2.5-flash',
       accountId: null,
+      timeoutMs: null,
       connect: vi.fn(),
       disconnect: vi.fn(),
+      setTimeoutMs: vi.fn(),
     });
 
     render(<SessionWarningBanner />);
@@ -203,8 +213,10 @@ describe('SessionWarningBanner', () => {
       apiKey: 'test-key',
       model: 'gemini-2.5-flash',
       accountId: null,
+      timeoutMs: null,
       connect: vi.fn(),
       disconnect: vi.fn(),
+      setTimeoutMs: vi.fn(),
     });
 
     const { rerender } = render(<SessionWarningBanner />);
@@ -233,8 +245,10 @@ describe('SessionWarningBanner', () => {
       apiKey: 'test-key',
       model: 'gemini-2.5-flash',
       accountId: null,
+      timeoutMs: null,
       connect: vi.fn(),
       disconnect: vi.fn(),
+      setTimeoutMs: vi.fn(),
     });
 
     render(<SessionWarningBanner />);

@@ -165,6 +165,28 @@ const kiloLimiter = rateLimit({
 // "Failed to fetch". Este proxy elude el bloqueo igual que el de Gemini (#58).
 const NIM_BASE_URL = 'https://integrate.api.nvidia.com/v1';
 
+// ─── #73: timeout automático en llamadas IA (defensa en profundidad server) ───
+// El cliente ya aborta su signal a los timeoutMs, pero si desaparece (pestaña
+// cerrada), el proxy soltaría la conexión upstream igualmente a este tope. 120s
+// cubre modelos de razonamiento y generación de docs largos (maxTokens 8192).
+const UPSTREAM_TIMEOUT_MS = 120_000;
+
+/** AbortSignal que se dispara a los UPSTREAM_TIMEOUT_MS. Fallback setTimeout si el
+ *  runtime carece de AbortSignal.timeout (Node <17.3). */
+function upstreamSignal() {
+  if (typeof AbortSignal?.timeout === 'function') return AbortSignal.timeout(UPSTREAM_TIMEOUT_MS);
+  const controller = new AbortController();
+  setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+  return controller.signal;
+}
+
+/** ¿El error del fetch upstream fue por agotarse el timeout (#73)? → 504. */
+function isUpstreamTimeout(err) {
+  const name = err?.name;
+  if (name === 'TimeoutError' || name === 'AbortError') return true;
+  return /timed out|timeout|abort/i.test(err?.message || String(err));
+}
+
 // ─── Gemini API Proxy (Opción D - Acepta 'mode' opcional) ─────────────────────
 // The Gemini API blocks direct browser requests from EU regions (EEA).
 // This proxy routes Gemini calls through the server, which is deployed in
@@ -220,9 +242,10 @@ const NIM_BASE_URL = 'https://integrate.api.nvidia.com/v1';
     const lastMessage = messages[messages.length - 1];
 
     // #38: streaming vía SSE. Obtenemos el stream ANTES de enviar cabeceras, para
-    // que un fallo de setup (clave/modelo inválidos) salga como JSON de error.
+    // que un fallo de setup (clave/modelo inválida) salga como JSON de error.
+    // #73: requestOptions.signal aplica el timeout de 120s al SDK de Gemini.
     if (stream) {
-      const result = await chat.sendMessageStream(lastMessage.content);
+      const result = await chat.sendMessageStream(lastMessage.content, { signal: upstreamSignal() });
       res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
@@ -235,7 +258,7 @@ const NIM_BASE_URL = 'https://integrate.api.nvidia.com/v1';
       return res.end();
     }
 
-    const result = await chat.sendMessage(lastMessage.content);
+    const result = await chat.sendMessage(lastMessage.content, { signal: upstreamSignal() });
     const text = result.response.text();
     res.json({ text });
   } catch (err) {
@@ -244,6 +267,10 @@ const NIM_BASE_URL = 'https://integrate.api.nvidia.com/v1';
     if (res.headersSent) {
       try { res.end(); } catch { /* noop */ }
       return;
+    }
+    // #73: si fue timeout del SDK, respondemos 504 con mensaje accionable.
+    if (isUpstreamTimeout(err)) {
+      return res.status(504).json({ error: 'Gemini tardó demasiado (timeout). Reintenta o sube el timeout en ⚙️.' });
     }
     // Surface the HTTP status from the Gemini SDK error when available
     const status = err?.status ?? err?.httpErrorCode ?? 500;
@@ -372,6 +399,7 @@ app.post('/api/nim', nimLimiter, validateChatBody, async (req, res) => {
         ...(req.headers['accept'] ? { 'Accept': req.headers['accept'] } : {}),
       },
       body: JSON.stringify(req.body),
+      signal: upstreamSignal(), // #73: timeout 120s (defensa en profundidad)
     });
     // Log de status upstream: los errores de NIM (401/403/404/429/5xx) dejan de ser
     // opacos. Solo el status (sin body ni auth) — zero-PII.
@@ -384,7 +412,10 @@ app.post('/api/nim', nimLimiter, validateChatBody, async (req, res) => {
     await pipeUpstream(upstream, res);
   } catch (err) {
     log.error('proxy_error', { provider: 'nim', flow: 'chat', requestId: req.id, error: err?.message || String(err) });
-    if (!res.headersSent) res.status(502).json({ error: 'Error al contactar con NVIDIA NIM', detail: err?.message || String(err) });
+    // #73: timeout upstream → 504 Gateway Timeout (mensaje accionable).
+    const status = isUpstreamTimeout(err) ? 504 : 502;
+    const error = isUpstreamTimeout(err) ? 'NVIDIA NIM tardó demasiado (timeout). Reintenta o sube el timeout en ⚙️.' : 'Error al contactar con NVIDIA NIM';
+    if (!res.headersSent) res.status(status).json({ error, detail: err?.message || String(err) });
     else { try { res.end(); } catch { /* noop */ } }
   }
 });
@@ -440,6 +471,7 @@ app.post('/api/openzen', openzenLimiter, validateChatBody, async (req, res) => {
         ...(req.headers['accept'] ? { 'Accept': req.headers['accept'] } : {}),
       },
       body: JSON.stringify(req.body),
+      signal: upstreamSignal(), // #73: timeout 120s (defensa en profundidad)
     });
     log.info('upstream', { provider: 'openzen', flow: 'chat', status: upstream.status, ct: upstream.headers.get('content-type') || '-', requestId: req.id });
     res.status(upstream.status);
@@ -448,7 +480,9 @@ app.post('/api/openzen', openzenLimiter, validateChatBody, async (req, res) => {
     await pipeUpstream(upstream, res);
   } catch (err) {
     log.error('proxy_error', { provider: 'openzen', flow: 'chat', requestId: req.id, error: err?.message || String(err) });
-    if (!res.headersSent) res.status(502).json({ error: 'Error al contactar con OpenCode Zen', detail: err?.message || String(err) });
+    const status = isUpstreamTimeout(err) ? 504 : 502;
+    const error = isUpstreamTimeout(err) ? 'OpenCode Zen tardó demasiado (timeout). Reintenta o sube el timeout en ⚙️.' : 'Error al contactar con OpenCode Zen';
+    if (!res.headersSent) res.status(status).json({ error, detail: err?.message || String(err) });
     else { try { res.end(); } catch { /* noop */ } }
   }
 });
@@ -488,6 +522,7 @@ app.post('/api/cloudflare', cloudflareLimiter, validateChatBody, async (req, res
         ...(req.headers['accept'] ? { 'Accept': req.headers['accept'] } : {}),
       },
       body: JSON.stringify(req.body),
+      signal: upstreamSignal(), // #73: timeout 120s (defensa en profundidad)
     });
     log.info('upstream', { provider: 'cloudflare', flow: 'chat', status: upstream.status, ct: upstream.headers.get('content-type') || '-', requestId: req.id });
 
@@ -512,7 +547,9 @@ app.post('/api/cloudflare', cloudflareLimiter, validateChatBody, async (req, res
     await pipeUpstream(upstream, res);
   } catch (err) {
     log.error('proxy_error', { provider: 'cloudflare', flow: 'chat', requestId: req.id, error: err?.message || String(err) });
-    if (!res.headersSent) res.status(502).json({ error: 'Error al contactar con Cloudflare Workers AI', detail: err?.message || String(err) });
+    const status = isUpstreamTimeout(err) ? 504 : 502;
+    const error = isUpstreamTimeout(err) ? 'Cloudflare Workers AI tardó demasiado (timeout). Reintenta o sube el timeout en ⚙️.' : 'Error al contactar con Cloudflare Workers AI';
+    if (!res.headersSent) res.status(status).json({ error, detail: err?.message || String(err) });
     else { try { res.end(); } catch { /* noop */ } }
   }
 });
@@ -549,6 +586,7 @@ app.post('/api/ollama', ollamaLimiter, validateChatBody, async (req, res) => {
         ...(req.headers['accept'] ? { 'Accept': req.headers['accept'] } : {}),
       },
       body: JSON.stringify(req.body),
+      signal: upstreamSignal(), // #73: timeout 120s (defensa en profundidad)
     });
     log.info('upstream', { provider: 'ollama', flow: 'chat', status: upstream.status, ct: upstream.headers.get('content-type') || '-', requestId: req.id });
     res.status(upstream.status);
@@ -569,7 +607,9 @@ app.post('/api/ollama', ollamaLimiter, validateChatBody, async (req, res) => {
     await pipeUpstream(upstream, res);
   } catch (err) {
     log.error('proxy_error', { provider: 'ollama', flow: 'chat', requestId: req.id, error: err?.message || String(err) });
-    if (!res.headersSent) res.status(502).json({ error: 'Error al contactar con Ollama Cloud', detail: err?.message || String(err) });
+    const status = isUpstreamTimeout(err) ? 504 : 502;
+    const error = isUpstreamTimeout(err) ? 'Ollama Cloud tardó demasiado (timeout). Reintenta o sube el timeout en ⚙️.' : 'Error al contactar con Ollama Cloud';
+    if (!res.headersSent) res.status(status).json({ error, detail: err?.message || String(err) });
     else { try { res.end(); } catch { /* noop */ } }
   }
 });
@@ -632,6 +672,7 @@ app.post('/api/aiand', aiandLimiter, validateChatBody, async (req, res) => {
         ...(req.headers['accept'] ? { 'Accept': req.headers['accept'] } : {}),
       },
       body: JSON.stringify(req.body),
+      signal: upstreamSignal(), // #73: timeout 120s (defensa en profundidad)
     });
     log.info('upstream', { provider: 'aiand', flow: 'chat', status: upstream.status, ct: upstream.headers.get('content-type') || '-', requestId: req.id });
     res.status(upstream.status);
@@ -640,7 +681,9 @@ app.post('/api/aiand', aiandLimiter, validateChatBody, async (req, res) => {
     await pipeUpstream(upstream, res);
   } catch (err) {
     log.error('proxy_error', { provider: 'aiand', flow: 'chat', requestId: req.id, error: err?.message || String(err) });
-    if (!res.headersSent) res.status(502).json({ error: 'Error al contactar con Ai&', detail: err?.message || String(err) });
+    const status = isUpstreamTimeout(err) ? 504 : 502;
+    const error = isUpstreamTimeout(err) ? 'Ai& tardó demasiado (timeout). Reintenta o sube el timeout en ⚙️.' : 'Error al contactar con Ai&';
+    if (!res.headersSent) res.status(status).json({ error, detail: err?.message || String(err) });
     else { try { res.end(); } catch { /* noop */ } }
   }
 });
@@ -707,6 +750,7 @@ app.post('/api/kilo', kiloLimiter, validateChatBody, async (req, res) => {
         ...(req.headers['accept'] ? { 'Accept': req.headers['accept'] } : {}),
       },
       body: JSON.stringify(req.body),
+      signal: upstreamSignal(), // #73: timeout 120s (defensa en profundidad)
     });
     log.info('upstream', { provider: 'kilo', flow: 'chat', status: upstream.status, ct: upstream.headers.get('content-type') || '-', requestId: req.id });
     res.status(upstream.status);
@@ -715,7 +759,9 @@ app.post('/api/kilo', kiloLimiter, validateChatBody, async (req, res) => {
     await pipeUpstream(upstream, res);
   } catch (err) {
     log.error('proxy_error', { provider: 'kilo', flow: 'chat', requestId: req.id, error: err?.message || String(err) });
-    if (!res.headersSent) res.status(502).json({ error: 'Error al contactar con Kilo', detail: err?.message || String(err) });
+    const status = isUpstreamTimeout(err) ? 504 : 502;
+    const error = isUpstreamTimeout(err) ? 'Kilo tardó demasiado (timeout). Reintenta o sube el timeout en ⚙️.' : 'Error al contactar con Kilo';
+    if (!res.headersSent) res.status(status).json({ error, detail: err?.message || String(err) });
     else { try { res.end(); } catch { /* noop */ } }
   }
 });

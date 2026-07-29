@@ -104,6 +104,9 @@ export const en = {
   'aipanel.footer3': '(Zero-Storage): it disappears when you reload or close the tab and is never saved. Only the',
   'aipanel.footer4': 'provider and model',
   'aipanel.footer5': 'are remembered (not the key) so you don\'t have to reselect them.',
+  // #73 — Automatic timeout on AI calls
+  'aipanel.timeoutLabel': 'Timeout (seconds)',
+  'aipanel.timeoutHint': 'Generation is cancelled if the provider takes too long. Empty = 120 s. Raise it (max 600) for reasoning models or long documents; lower it (min 10) if you notice a hang.',
   'provider.gemini.cardDesc': 'Gemini 2.5/3.x and Gemma · active free tier',
   'provider.gemini.signupLabel': 'Get free API key at aistudio.google.com →',
   'provider.gemini.model.recommended': 'Gemini 2.5 Flash ⭐ Recommended',
@@ -289,6 +292,8 @@ export const en = {
   'chat.repoNotFound': '❌ I couldn\'t determine the repository. Provide it as `owner/repo#42` or load a context repo first.',
   'chat.repoNeeded': '❌ No repository loaded. Tap **📂 Load repo** (below) to add one (e.g. `owner/repo` or just the repo name) and then try again.',
   'chat.generationStopped': '⏹️ Generation stopped.',
+  // #73: the AI took too long and was cancelled by timeout (different from the Stop button).
+  'chat.generationTimeout': '⏹️ The AI took too long and was cancelled automatically. Raise the timeout in ⚙️ or retry.',
   'chat.actionCancelled': '⏸️ Action cancelled.',
   'chat.attachDocHint': 'When you want to **document and publish it**, press the **📄 Document repo** button (below): there you choose the scope and publishing method (commit, Draft PR or Release).',
   'chat.fileTextExtractFailed': 'I couldn\'t extract text from the file (is it a scanned PDF or an image?). Try a text-based PDF or a text/code file.',

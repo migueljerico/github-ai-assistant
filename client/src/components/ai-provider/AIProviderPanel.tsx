@@ -21,7 +21,7 @@ const initCatalog = () => Object.fromEntries(PROVIDER_LIST.map(p => [p.id, p.sta
 const initLoaded = () => Object.fromEntries(PROVIDER_LIST.map(p => [p.id, false])) as Record<AIProviderType, boolean>;
 
 export default function AIProviderPanel() {
-  const { connect } = useAIProvider();
+  const { connect, setTimeoutMs: setCtxTimeoutMs } = useAIProvider();
   const { t } = useLanguage();
   // #40: arranca en el proveedor recordado (si lo hay) en vez de Gemini por defecto.
   const [selected, setSelected] = useState<AIProviderType>(() => loadProviderPref()?.provider ?? 'gemini');
@@ -32,6 +32,12 @@ export default function AIProviderPanel() {
   const [errorMsg, setErrorMsg] = useState('');
   // #Cloudflare: account_id aparte de la API key (Workers AI lo exige en la ruta URL).
   const [accountId, setAccountId] = useState('');
+  // #73: timeout de la llamada IA en segundos (120 por defecto). Se muestra vacío
+  // si el usuario quiere el default. Persiste vía providerPrefs (sessionStorage).
+  const [timeoutSec, setTimeoutSec] = useState<string>(() => {
+    const saved = loadProviderPref()?.timeoutMs;
+    return saved ? String(Math.round(saved / 1000)) : '';
+  });
 
   // Catálogo de modelos (dinámico para proveedores con modelsEndpoint)
   const [catalog, setCatalog] = useState<Record<AIProviderType, ModelOption[]>>(initCatalog);
@@ -110,6 +116,18 @@ export default function AIProviderPanel() {
     setSelected(id);
     setStatus('idle');
     if (id !== 'cloudflare') setAccountId('');
+  };
+
+  // #73: actualiza el timeout del contexto. Vacío → default (120s). Validado 10–600s.
+  const changeTimeout = (raw: string) => {
+    setTimeoutSec(raw);
+    const n = Number(raw);
+    if (raw.trim() === '' || Number.isNaN(n)) {
+      setCtxTimeoutMs(null); // default
+    } else {
+      const clamped = Math.min(600, Math.max(10, Math.round(n)));
+      setCtxTimeoutMs(clamped * 1000);
+    }
   };
 
   /** Texto de la opción: traduce si es clave, formatea si es literal. */
@@ -272,6 +290,30 @@ export default function AIProviderPanel() {
                       rel="noopener noreferrer" className="provider-link">
                       {t(p.signupLabel)}
                     </a>
+
+                    {/* #73: Timeout automático de la llamada IA (configurable). */}
+                    <label
+                      htmlFor={`${p.id}-timeout-input`}
+                      style={{ display: 'block', fontSize: '0.72rem', color: 'var(--color-text-muted)', margin: '10px 0 4px' }}
+                    >
+                      {t('aipanel.timeoutLabel')}
+                    </label>
+                    <input
+                      id={`${p.id}-timeout-input`}
+                      type="number"
+                      className="input"
+                      min={10}
+                      max={600}
+                      step={10}
+                      placeholder="120"
+                      value={timeoutSec}
+                      onChange={e => changeTimeout(e.target.value)}
+                      autoComplete="off"
+                      style={{ fontSize: '0.82rem' }}
+                    />
+                    <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', margin: '3px 0 6px', lineHeight: 1.45 }}>
+                      {t('aipanel.timeoutHint')}
+                    </p>
                   </div>
                 )}
               </div>
