@@ -49,6 +49,14 @@ Orden exacto (regla de oro: commit + push + tag + release + deploy van **siempre
 juntos**; nunca commitees sin pushear, ni pushees sin tagear, ni tagees sin publicar
 el release):
 
+> **Merge directo a `main` (v3.59.0):** tras commitear en la rama `feat/...`, se
+> hace merge a `main` y push a `origin/main` **sin preguntar al usuario** — el
+> deploy a Cloud Run lo dispara el CD automático (Cloud Build trigger en cada push
+> a `main`). No se usan PRs de revisión salvo que el usuario los pida
+> explícitamente. Flujo: `git checkout main && git pull --ff-only && git merge
+> --no-ff feat/... && git push origin main`. `main` **no** es algo que confirmar:
+> cada commit terminado va a producción por defecto.
+
 1. **Bump de versión** `X.Y.Z` → siguiente. Editar:
    `package.json` (línea 3), `client/package.json` (línea 4),
    `README.md` (badge shields.io), `CLAUDE.md` (`(vX.Y.Z)`), `MANUAL_TECNICO.md`
