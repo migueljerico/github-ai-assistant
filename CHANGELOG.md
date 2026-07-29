@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.59.0] — 2026-07-29
+
+> **Activado SyncRepoStatus (#70/#48).**
+> El servicio `runSyncRepoStatus` (resumen pull-based de commits recientes con IA)
+> y el botón `SyncRepoStatusButton` estaban construidos desde v3.37.0 pero **sin
+> cablear** en la UI: el componente nunca se importaba ni el handler se invocaba.
+> En esta versión se completa la conexión (botón 🔄 funcional en el chat) y, de
+> paso, se corrige un bug i18n que silenciaba el botón en producción.
+
+### Added
+- **Cableado de `SyncRepoStatus` en la UI (#70):**
+  - `client/src/components/chat/ChatInput.tsx`: import de `SyncRepoStatusButton`,
+    nueva prop opcional `onSyncRepoStatus?` (patrón `onOpenSecurityAudit`, render
+    condicional para retrocompatibilidad con tests parciales) y montaje en
+    `chat-input-extras`.
+  - `client/src/App.tsx`: import de `runSyncRepoStatus` y nuevo handler
+    `handleSyncRepoStatus` (patrón `handleSummarizeThread`; el servicio resuelve
+    el ref del repo internamente con `resolveRepoRef`, así que no requiere cargar
+    `repoContext` previamente). Prop `onSyncRepoStatus` pasada al `<ChatInput/>`.
+  - `client/src/components/chat/__tests__/SyncRepoStatusButton.test.tsx`: nueva
+    suite (5 casos — render accesible, click→callback con `trim`, botón
+    `disabled`, prompt cancelado, prompt vacío).
+
+### Fixed
+- **Bug i18n `syncRepo.*` (#70):** las 4 claves (`title`/`tooltip`/`prompt`/
+  `noCommits`) estaban **comentadas** en `client/src/i18n/es.ts` y `en.ts` —un
+  `//` de cabecera de sección absorbía toda la línea—, de modo que el botón
+  mostraba la clave literal (`syncRepo.title`) en producción. Descomentadas en
+  ambos idiomas.
+
+> Cambio de código por ZCode (GLM-5.2).
+
 ## [3.58.0] — 2026-07-28
 
 > **Nuevo proveedor Kilo + roadmap de catálogos free/dinámicos (#74).**

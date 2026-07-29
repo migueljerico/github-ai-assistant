@@ -5,7 +5,7 @@ import { useAIProvider } from './context/AIProviderContext';
 import { useLanguage } from './context/LanguageContext';
 import { getProvider } from './services/providers';
 import {
-  runDocumentRepo, runLoadRepoContext, runSummarizeThread, runGenerateChangelog, runCodeHealth, runCommitDocs, runCreateDraftPr, runCreateRepoRelease, runSecurityAudit,
+  runDocumentRepo, runLoadRepoContext, runSummarizeThread, runGenerateChangelog, runCodeHealth, runCommitDocs, runCreateDraftPr, runCreateRepoRelease, runSecurityAudit, runSyncRepoStatus,
   runSend, runConfirmAction, runCancelAction, runAttachFile,
   runGenerateFileDoc, runCreateRepo, runCreateRepoAndDocument, runGenerateSpecificDoc,
 runPublishSpecificDoc, runStartPublish, runPublishFileDocByKind, formatConversation,
@@ -434,6 +434,24 @@ const flowDraftPrBulk = useCallback(async (owner: string, repo: string, targets:
     );
   }, [token, user, provider, apiKey, model, providerName, t, lang, repoContext, addMessage, updateMessage, addEntry, updateEntry, accountId]);
 
+  // ── SyncRepoStatus (#70/#48) — resumen pull-based de commits recientes. ───────
+  // El servicio resuelve el ref del repo internamente (resolveRepoRef), así que no
+  // hace falta cargar repoContext antes: lista los últimos commits vía API de GitHub
+  // y los resume con la IA. Zero-Storage intacto: credenciales solo en memoria.
+  const handleSyncRepoStatus = useCallback(async (repoInput: string) => {
+    // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto
+    if (!token || !user || !provider || !apiKey || !model) return;
+    if (!repoInput.trim()) {
+      addMessage({ role: 'assistant', content: t('chat.repoNeeded') });
+      return;
+    }
+    await runSyncRepoStatus(
+      { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
+      repoInput,
+      { provider, apiKey, model, accountId },
+    );
+  }, [token, user, provider, apiKey, model, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, accountId]);
+
   // ── Exportar / importar conversación (#46, Zero-Storage) ─────────────────────
   const handleExportConversation = useCallback(() => {
     const json = serializeConversation(messages, conversationHistory, repoContext?.repoName ?? null);
@@ -513,6 +531,7 @@ const flowDraftPrBulk = useCallback(async (owner: string, repo: string, targets:
             onGenerateChangelog={handleGenerateChangelog}
             onCodeHealth={handleCodeHealth}
             onOpenSecurityAudit={handleSecurityAudit}
+            onSyncRepoStatus={handleSyncRepoStatus}
             onExportConversation={handleExportConversation}
             onImportConversation={handleImportConversation}
             hasMessages={messages.length > 0}

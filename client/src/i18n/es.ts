@@ -312,7 +312,11 @@ export const es = {
   'chat.auditSecurity.loading': 'Analizando la seguridad de **{ref}** con {provider}...',
   'chat.auditSecurity.disclaimer': '⚠️ Ayuda orientativa, no un escáner formal: no sustituye a gitleaks, Dependabot o CodeQL.',
   'chat.auditSecurity.userMessage': 'Audita la seguridad de **{ref}**: revisa secrets expuestos, dependencias obsoletas y falta de validación de inputs. Cita los archivos concretos que veas.',
-// ────── #48 Sync Repo Status ──────  'syncRepo.title': '🔄 Sincronizar estado del repo',  'syncRepo.tooltip': 'Analiza los commits recientes y sugiere mejoras',  'syncRepo.prompt': 'Introduce el repositorio (owner/repo o nombre):',  'syncRepo.noCommits': 'ℹ️ No hay commits recientes en **{ref}**.',
+  // ────── #48 Sync Repo Status ──────
+  'syncRepo.title': '🔄 Sincronizar estado del repo',
+  'syncRepo.tooltip': 'Analiza los commits recientes y sugiere mejoras',
+  'syncRepo.prompt': 'Introduce el repositorio (owner/repo o nombre):',
+  'syncRepo.noCommits': 'ℹ️ No hay commits recientes en **{ref}**.',
   'chat.attachFileMulti': '{count} archivos adjuntos',
   'chat.attachFileXlsxWarning': '⚠️ Solo suba archivos de fuentes confiables. No se analizan archivos maliciosos. Límite: {maxMb} MB.',
 
