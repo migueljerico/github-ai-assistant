@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { PROVIDERS, getProvider, fetchModels, pickDefaultModel, modelLabel, resolveEndpoint, type ModelOption } from '../providers';
+import { PROVIDERS, getProvider, fetchModels, pickDefaultModel, modelLabel, resolveEndpoint, NIM_EXCLUDED, type ModelOption } from '../providers';
 
 describe('providers — registro', () => {
   it('los proveedores tienen su defaultModel dentro de staticModels', () => {
@@ -363,6 +363,181 @@ describe('providers — fetchModels', () => {
     expect(list!.find(m => m.value === 'inclusionai/ling-3.0-flash:free')!.free).toBe(true);
     expect(list!.find(m => m.value === 'paid/some-model')!.free).toBe(false);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  // ── Cobertura de ramas dinámicas no cubiertas (L635-837) ──────────────────
+  // Algunos providers (gemini, nvidia, openzen, cloudflare) usan catálogo
+  // ESTÁTICO en producción (sin modelsEndpoint), así que sus ramas de parseo
+  // dinámico solo se ejercitan con un ProviderDef sintético que sí declare
+  // modelsEndpoint. Aquí se cubren esas ramas + los throw por error/catálogo vacío.
+
+  it('openrouter: pricing en formato array (new format) → free solo si todo a 0', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          // Ambos precios a 0 en formato array → free
+          { id: 'all/zero', name: 'Zero', pricing: { prompt: [{ value: 0 }], completion: [{ value: 0 }] } },
+          // Sin arrays de pricing (prompt/completion ausentes) → free (defensivo)
+          { id: 'no/pricing', name: 'NoP', pricing: {} },
+          // Algún precio > 0 → paid
+          { id: 'paid/one', name: 'Paid', pricing: { prompt: [{ value: 0.5 }], completion: [{ value: 0 }] } },
+        ],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const list = await fetchModels(PROVIDERS.openrouter);
+    expect(list!.find(m => m.value === 'all/zero')!.free).toBe(true);
+    expect(list!.find(m => m.value === 'no/pricing')!.free).toBe(true);
+    expect(list!.find(m => m.value === 'paid/one')!.free).toBe(false);
+  });
+
+  it('gemini (def con endpoint): filtra modelos no-generativos (GEMINI_EXCLUDED)', async () => {
+    const def = { ...PROVIDERS.gemini, modelsEndpoint: 'https://gemini/models' };
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [
+        { id: 'gemini-2.5-flash', name: 'Flash' },
+        { id: 'text-embedding-004', name: 'Embed' }, // embed → excluido
+        { id: 'imagen-4.0-generate', name: 'Imagen' }, // imagen → excluido
+      ] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const list = await fetchModels(def, 'AIzaSy_test');
+    const ids = list!.map(m => m.value);
+    expect(ids).toEqual(['gemini-2.5-flash']);
+  });
+
+  it('nvidia (def con endpoint): filtra no-chat, enriquece con featured-models y los prioriza', async () => {
+    const def = { ...PROVIDERS.nvidia, modelsEndpoint: 'https://nim/models' };
+    // 1ª llamada: catálogo NIM. 2ª llamada: featured-models.json (NGC).
+    // 'nemotron' es la familia principal de CHAT de NVIDIA: NO debe colarse en el
+    // filtro (regresión v3.60.1: 'nemo' era substring de 'nemotron').
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: [
+        { id: 'nvidia/nemotron-3-ultra-550b-a55b', name: 'Nemotron' }, // featured + chat
+        { id: 'deepseek-ai/deepseek-v4-pro', name: 'DeepSeek' },
+        { id: 'nvidia/nv-embed-v1', name: 'Embed' }, // embed → excluido
+      ] }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ 'featured-models': [{ model: 'nvidia/nemotron-3-ultra-550b-a55b' }] }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const list = await fetchModels(def, 'nvapi_test');
+    const ids = list!.map(m => m.value);
+    expect(ids).not.toContain('nvidia/nv-embed-v1'); // filtrado
+    // Nemotron NO se excluye (bug arreglado) y va primero por ser featured.
+    expect(ids[0]).toBe('nvidia/nemotron-3-ultra-550b-a55b');
+    expect(ids).toContain('deepseek-ai/deepseek-v4-pro');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('regresión NIM_EXCLUDED: NO excluye modelos de chat Nemotron (v3.60.1)', () => {
+    // El filtro es por substring: antes 'nemo' excluía 'nemotron' por error.
+    // Tras el fix, los Nemotron de chat deben pasar el filtro.
+    const isExcluded = (id: string) => NIM_EXCLUDED.some(p => id.toLowerCase().includes(p));
+    expect(isExcluded('nvidia/nemotron-3-ultra-550b-a55b')).toBe(false);
+    expect(isExcluded('nvidia/nemotron-3-nano-50b-a8b')).toBe(false);
+    // Pero los NeMo Retriever (retrieval) sí siguen excluidos por 'nemoretriever'/'retrieval'.
+    expect(isExcluded('nvidia/nemoretriever-nemotron')).toBe(true);
+    // Y el resto de no-chat (embed, whisper) sigue excluido.
+    expect(isExcluded('nvidia/nv-embed-v1')).toBe(true);
+    expect(isExcluded('openai/whisper-large')).toBe(true);
+  });
+
+  it('nvidia (def con endpoint): si featured-models falla (no-ok), usa orden alfabético', async () => {
+    const def = { ...PROVIDERS.nvidia, modelsEndpoint: 'https://nim/models' };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: [{ id: 'b-model' }, { id: 'a-model' }] }) })
+      .mockResolvedValueOnce({ ok: false, json: async () => ({}) }); // featured no-ok
+    vi.stubGlobal('fetch', fetchMock);
+
+    const list = await fetchModels(def, 'nvapi_test');
+    // Sin featured → orden alfabético
+    expect(list!.map(m => m.value)).toEqual(['a-model', 'b-model']);
+  });
+
+  it('openzen (def con endpoint): filtra solo modelos con sufijo -free', async () => {
+    const def = { ...PROVIDERS.openzen, modelsEndpoint: 'https://openzen/models' };
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [
+        { id: 'ling-3.0-flash-free' },
+        { id: 'nemotron-3-ultra-free' },
+        { id: 'paid-model' }, // sin -free → excluido
+      ] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const list = await fetchModels(def);
+    const ids = list!.map(m => m.value);
+    expect(ids).toEqual(['ling-3.0-flash-free', 'nemotron-3-ultra-free']);
+    expect(list!.every(m => m.free === true)).toBe(true);
+  });
+
+  it('cloudflare (def con endpoint): parsea el wrapper {result:[...]} y exige accountId', async () => {
+    const def = { ...PROVIDERS.cloudflare, modelsEndpoint: 'https://cf/{account_id}/models' };
+    // Sin accountId → null (guard de {account_id})
+    expect(await fetchModels(def, 'token', null)).toBeNull();
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ result: [
+        { name: '@cf/meta/llama-3.3-70b-instruct' },
+        { name: '@cf/meta/llama-4-scout' },
+        { description: 'sin name' }, // sin name → filtrado
+      ] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const list = await fetchModels(def, 'token', 'ACC');
+    // Ordenado por name; el sin-name queda fuera
+    expect(list!.map(m => m.value)).toEqual(['@cf/meta/llama-3.3-70b-instruct', '@cf/meta/llama-4-scout']);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('cloudflare (def con endpoint): cae a data.data si no hay wrapper result', async () => {
+    const def = { ...PROVIDERS.cloudflare, modelsEndpoint: 'https://cf/{account_id}/models' };
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [{ name: '@cf/x/y' }] }), // formato data.data alternativo
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const list = await fetchModels(def, 'token', 'ACC');
+    expect(list!.map(m => m.value)).toEqual(['@cf/x/y']);
+  });
+
+  it('aiand: input_per_1m y output_per_1m ambos undefined → free', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [
+        // pricing presente pero ambas claves undefined → free
+        { id: 'both-undef', display_name: 'BothUndef', pricing: {} },
+      ] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const list = await fetchModels(PROVIDERS.aiand, 'sk-test');
+    expect(list!.find(m => m.value === 'both-undef')!.free).toBe(true);
+  });
+
+  it('lanza "models endpoint error" si la respuesta no es ok', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 500, json: async () => ({}) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(fetchModels(PROVIDERS.openrouter, 'sk')).rejects.toThrow('models endpoint error 500');
+  });
+
+  it('lanza "empty catalog" si el catálogo dinámico queda vacío tras filtrar', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [{ id: 'whisper-large' }] }), // todos excluidos → vacío
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(fetchModels(PROVIDERS.groq, 'gsk_test')).rejects.toThrow('empty catalog');
   });
 });
 

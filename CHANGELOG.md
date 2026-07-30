@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.60.1] — 2026-07-30
+
+> **Parche de cobertura del diff de timeout (#73) + fix del filtro NIM y cobertura
+> de riesgos latentes.**
+> El check `codecov/patch` de v3.60.0 quedó en rojo (82.60% del diff cubierto,
+> target 90.36%): las ramas polyfill de `retry.ts` (que jsdom nunca ejecuta al
+> proveer `AbortSignal.timeout`/`any` nativos) y las ramas catch de timeout de
+> `assistantActions.ts` no tenían tests. Este parche las cubre. Aprovechando la
+> pasada se cubren también dos riesgos latentes (catálogo dinámico de `providers.ts`
+> y `releaseAssets.ts`, que estaba a 0%) y se corrige un bug descubierto por los
+> tests: el filtro `NIM_EXCLUDED` excluía por error los modelos de chat Nemotron.
+
+### Fixed
+- **`client/src/services/providers.ts`:** eliminada la entrada `'nemo'` de
+  `NIM_EXCLUDED`. El filtro funciona por substring, y `nemo` es substring de
+  `nemotron`, así que los modelos de **CHAT Nemotron** (familia principal de
+  NVIDIA) se excluían del catálogo dinámico. El caso NeMo Retriever queda
+  cubierto por `nemoretriever`/`retrieval`. Añadido test de regresión.
+
+### Added
+- **Cobertura del diff de timeout (#73) — `codecov/patch`:**
+  - `client/src/utils/__tests__/retry.test.ts`: suite que forcea los polyfills
+    de `createTimeoutSignal` y del bridge de `combineSignals` (L106-108 y L135-140
+    de `retry.ts`) eliminando temporalmente `AbortSignal.timeout`/`any` nativos.
+  - `client/src/services/__tests__/assistantActions.test.ts`: suites que cubren
+    las 4 combinaciones (causa × con/sin texto parcial) de las ramas catch de
+    `runSend` y `runSecurityAudit` (#73): timeout → `chat.generationTimeout`,
+    Detener → `chat.generationStopped`, y error no-abort → burbuja de error.
+- **Cobertura de riesgos latentes (blindan el gate del 70%, no afectan al check):**
+  - `client/src/services/__tests__/providers.test.ts`: ramas dinámicas no cubiertas
+    del catálogo (`fetchModels`): nvidia (+featured-models), gemini, openzen,
+    cloudflare (wrapper `{result:[...]}` + guard `{account_id}`), aiand, los throw
+    `models endpoint error` y `empty catalog`. `providers.ts` pasa de 72% → 96.3%.
+  - **NUEVO** `client/src/utils/__tests__/releaseAssets.test.ts`: el archivo estaba
+    a 0% y sin tests. Cubre `getMimeType`, `validateAssetFile`,
+    `addAssetsToReleaseNotes`, `uploadReleaseAsset` (ok/error) y
+    `uploadReleaseAssets` (progreso + propagación de error). 0% → 100%.
+
+> Cambio de código por ZCode (GLM-5.2).
+
 ## [3.60.0] — 2026-07-29
 
 > **Timeout automático en llamadas IA, extremo a extremo (#73).**

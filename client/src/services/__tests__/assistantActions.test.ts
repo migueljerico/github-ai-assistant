@@ -1876,3 +1876,138 @@ describe('fetchExistingFileDoc', () => {
     expect(content).toBe('decoded()');
   });
 });
+
+// ── #73: distinguir timeout automático del botón Detener (ramas catch) ────────
+// runSend y runSecurityAudit capturan el abort y muestran un mensaje distinto
+// según la causa: timeout (chat.generationTimeout / _(cancelado por timeout)_) o
+// botón Detener (chat.generationStopped / _(detenido)_). Estas suites cubren las
+// 4 combinaciones (causa × con/sin texto parcial) en ambos runners.
+describe('runSend — timeout vs Detener (#73)', () => {
+  it('timeout sin texto parcial → mensaje chat.generationTimeout', async () => {
+    vi.mocked(resolveMode).mockReturnValue('action');
+    vi.mocked(callAI).mockRejectedValue(new DOMException('signal timed out', 'TimeoutError'));
+    const deps = makeDeps();
+
+    await runSend(deps, CONFIG, SEND_PARAMS);
+
+    expect(deps.updateMessage).toHaveBeenLastCalledWith('msg-2', { content: '⏹️ La IA tardó demasiado y se canceló automáticamente. Súbelo el timeout en ⚙️ o reintenta.', isLoading: false });
+  });
+
+  it('timeout con texto parcial → conserva el texto + nota (cancelado por timeout)', async () => {
+    vi.mocked(resolveMode).mockReturnValue('chat');
+    vi.mocked(callAI).mockImplementation((async (...args: any[]) => {
+      const onToken = args[6] as ((t: string) => void) | undefined;
+      onToken?.('texto parcial del audit');
+      throw new DOMException('signal timed out', 'TimeoutError');
+    }) as any);
+    const deps = makeDeps();
+
+    await runSend(deps, CONFIG, SEND_PARAMS);
+
+    expect(deps.updateMessage).toHaveBeenLastCalledWith('msg-2', { content: 'texto parcial del audit\n\n⏹️ _(cancelado por timeout)_', isLoading: false });
+  });
+
+  it('Detener manual sin texto parcial → mensaje chat.generationStopped (#40 regresión)', async () => {
+    vi.mocked(resolveMode).mockReturnValue('action');
+    vi.mocked(callAI).mockRejectedValue(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+    const deps = makeDeps();
+
+    await runSend(deps, CONFIG, SEND_PARAMS);
+
+    expect(deps.updateMessage).toHaveBeenLastCalledWith('msg-2', { content: '⏹️ Generación detenida.', isLoading: false });
+  });
+
+  it('Detener manual con texto parcial → conserva el texto + nota (detenido)', async () => {
+    vi.mocked(resolveMode).mockReturnValue('chat');
+    vi.mocked(callAI).mockImplementation((async (...args: any[]) => {
+      const onToken = args[6] as ((t: string) => void) | undefined;
+      onToken?.('texto parcial');
+      throw Object.assign(new Error('aborted'), { name: 'AbortError' });
+    }) as any);
+    const deps = makeDeps();
+
+    await runSend(deps, CONFIG, SEND_PARAMS);
+
+    expect(deps.updateMessage).toHaveBeenLastCalledWith('msg-2', { content: 'texto parcial\n\n⏹️ _(detenido)_', isLoading: false });
+  });
+
+  it('error NO de abort → burbuja de error (no mensaje de detención)', async () => {
+    vi.mocked(resolveMode).mockReturnValue('action');
+    vi.mocked(callAI).mockRejectedValue(new Error('503 down'));
+    const deps = makeDeps();
+
+    await runSend(deps, CONFIG, SEND_PARAMS);
+
+    expect(deps.updateMessage).toHaveBeenLastCalledWith('msg-2', expect.objectContaining({ content: expect.stringContaining('503 down'), isLoading: false }));
+  });
+});
+
+describe('runSecurityAudit — timeout vs Detener (#73)', () => {
+  // Helper: configura los mocks de GitHub para que la auditoría llegue al callAI.
+  const setupGitHubOk = () => {
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [], totalScanned: 0, truncated: false, allPaths: [] } as any);
+    vi.mocked(getFileContents).mockResolvedValue({ content: btoa('x') } as any);
+  };
+
+  it('timeout sin texto parcial → mensaje chat.generationTimeout + historial cancelled', async () => {
+    setupGitHubOk();
+    vi.mocked(callAI).mockRejectedValue(new DOMException('signal timed out', 'TimeoutError'));
+
+    const deps = makeDeps();
+    await runSecurityAudit(deps, CONFIG, 'owner/repo');
+
+    expect(deps.updateMessage).toHaveBeenLastCalledWith(expect.any(String), { content: '⏹️ La IA tardó demasiado y se canceló automáticamente. Súbelo el timeout en ⚙️ o reintenta.', isLoading: false });
+    expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'cancelled' }));
+  });
+
+  it('timeout con texto parcial → conserva el texto + nota (cancelado por timeout)', async () => {
+    setupGitHubOk();
+    vi.mocked(callAI).mockImplementation((async (...args: any[]) => {
+      const onToken = args[6] as ((t: string) => void) | undefined;
+      onToken?.('auditoría a medias');
+      throw new DOMException('signal timed out', 'TimeoutError');
+    }) as any);
+
+    const deps = makeDeps();
+    await runSecurityAudit(deps, CONFIG, 'owner/repo');
+
+    expect(deps.updateMessage).toHaveBeenLastCalledWith(expect.any(String), { content: 'auditoría a medias\n\n⏹️ _(cancelado por timeout)_', isLoading: false });
+    expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'cancelled' }));
+  });
+
+  it('Detener manual sin texto parcial → mensaje chat.generationStopped + historial cancelled', async () => {
+    setupGitHubOk();
+    vi.mocked(callAI).mockRejectedValue(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+
+    const deps = makeDeps();
+    await runSecurityAudit(deps, CONFIG, 'owner/repo');
+
+    expect(deps.updateMessage).toHaveBeenLastCalledWith(expect.any(String), { content: '⏹️ Generación detenida.', isLoading: false });
+    expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'cancelled' }));
+  });
+
+  it('Detener manual con texto parcial → conserva el texto + nota (detenido)', async () => {
+    setupGitHubOk();
+    vi.mocked(callAI).mockImplementation((async (...args: any[]) => {
+      const onToken = args[6] as ((t: string) => void) | undefined;
+      onToken?.('auditoría a medias');
+      throw Object.assign(new Error('aborted'), { name: 'AbortError' });
+    }) as any);
+
+    const deps = makeDeps();
+    await runSecurityAudit(deps, CONFIG, 'owner/repo');
+
+    expect(deps.updateMessage).toHaveBeenLastCalledWith(expect.any(String), { content: 'auditoría a medias\n\n⏹️ _(detenido)_', isLoading: false });
+  });
+
+  it('error NO de abort → burbuja de error + historial error', async () => {
+    setupGitHubOk();
+    vi.mocked(callAI).mockRejectedValue(new Error('503 down'));
+
+    const deps = makeDeps();
+    await runSecurityAudit(deps, CONFIG, 'owner/repo');
+
+    expect(deps.updateMessage).toHaveBeenLastCalledWith(expect.any(String), expect.objectContaining({ content: expect.stringContaining('503 down'), isLoading: false }));
+    expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'error' }));
+  });
+});

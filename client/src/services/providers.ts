@@ -193,9 +193,12 @@ export const GROQ_EXCLUDED = ['whisper', 'distil-whisper', 'playai', 'llama-guar
 export const GEMINI_EXCLUDED = ['embed', 'vision', 'aqa', 'imagen', 'chirp'];
 
 // Modelos NIM no-chat a excluir del catálogo dinámico (embeddings, rerank, vision, safety, etc.)
+// Nota: 'nemo' se retiró (v3.60.1) porque el filtro es por substring y 'nemo' es substring de
+// 'nemotron' → excluía por error los modelos de CHAT Nemotron (familia principal de NVIDIA).
+// El caso NeMo Retriever queda cubierto por 'nemoretriever'.
 export const NIM_EXCLUDED = [
   'embed', 'rerank', 'ranking', 'vision', 'vlm', 'clip',
-  'nemo', 'guard', 'safety', 'audio', 'tts', 'asr', 'whisper',
+  'guard', 'safety', 'audio', 'tts', 'asr', 'whisper',
   'retrieval', 'embedding', 'detector', 'nemoretriever', 'parse',
   'neva', 'vila', 'riva', 'nv-embed', 'nvclip', 'content-safety',
   'reasoning', 'ising', 'gliner', 'calibration', 'translate',

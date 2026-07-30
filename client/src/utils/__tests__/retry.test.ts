@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { isContextTooLargeError, isTransientError, isAbortError, withTransientRetry, combineSignals, isTimeoutAbortError, DEFAULT_AI_TIMEOUT_MS } from '../retry';
 
 describe('retry (#40 / #50)', () => {
@@ -144,6 +144,75 @@ describe('retry (#40 / #50)', () => {
     it('no confunde con un AbortError manual o un error normal', () => {
       expect(isTimeoutAbortError(Object.assign(new Error('aborted'), { name: 'AbortError' }))).toBe(false);
       expect(isTimeoutAbortError(new Error('Unauthorized'))).toBe(false);
+    });
+  });
+
+  // ── #73: polyfills para runtimes sin AbortSignal.timeout/any ───────────────
+  // jsdom/Node modernos proveen ambas APIs nativas, así que las ramas polyfill
+  // de retry.ts (createTimeoutSignal/combineSignals bridge) nunca se ejecutan en
+  // un test normal. Aquí las forzamos eliminando temporalmente los constructores
+  // para cubrir esos caminos de fallback.
+  describe('polyfills (#73) — runtimes sin AbortSignal.timeout/any', () => {
+    const AS = AbortSignal as unknown as {
+      timeout?: (ms: number) => AbortSignal;
+      any?: (signals: AbortSignal[]) => AbortSignal;
+    };
+    const nativeTimeout = AS.timeout;
+    const nativeAny = AS.any;
+
+    afterEach(() => {
+      // Restaura los constructores nativos para no contaminar otros tests.
+      AS.timeout = nativeTimeout;
+      AS.any = nativeAny;
+    });
+
+    it('createTimeoutSignal polyfill: aborta con DOMException TimeoutError al vencerse', async () => {
+      // Sin AbortSignal.timeout nativo → polyfill manual (controller + setTimeout).
+      AS.timeout = undefined;
+      const sig = combineSignals(undefined, 40);
+      expect(sig).toBeInstanceOf(AbortSignal);
+      expect(sig!.aborted).toBe(false);
+      await new Promise(r => setTimeout(r, 70));
+      expect(sig!.aborted).toBe(true);
+      // El polyfill aborta con DOMException name 'TimeoutError' (razón accionable).
+      const reason = (sig as AbortSignal & { reason?: unknown }).reason as DOMException;
+      expect(reason).toBeInstanceOf(DOMException);
+      expect(reason.name).toBe('TimeoutError');
+    });
+
+    it('combineSignals bridge polyfill: aborta al dispararse el timeout', async () => {
+      // Sin AbortSignal.any nativo → controller puente que aborta al primer disparo.
+      AS.any = undefined;
+      const manual = new AbortController();
+      const sig = combineSignals(manual.signal, 40);
+      expect(sig!.aborted).toBe(false);
+      await new Promise(r => setTimeout(r, 70));
+      expect(sig!.aborted).toBe(true);
+      // El signal manual NO se ve afectado (el puente respeta cada signal).
+      expect(manual.signal.aborted).toBe(false);
+    });
+
+    it('combineSignals bridge polyfill: aborta al dispararse el manual y propaga su reason', () => {
+      AS.any = undefined;
+      const manual = new AbortController();
+      const sig = combineSignals(manual.signal, 5000);
+      manual.abort('usuario detuvo');
+      expect(sig!.aborted).toBe(true);
+      // El puente propaga la reason del signal que se disparó.
+      expect((sig as AbortSignal & { reason?: unknown }).reason).toBe('usuario detuvo');
+    });
+
+    it('combineSignals bridge polyfill: el reason del timeout se propaga al puente', async () => {
+      AS.any = undefined;
+      // createTimeoutSignal polyfill también entra en juego (sin timeout nativo).
+      AS.timeout = undefined;
+      const manual = new AbortController();
+      const sig = combineSignals(manual.signal, 40);
+      await new Promise(r => setTimeout(r, 70));
+      expect(sig!.aborted).toBe(true);
+      const reason = (sig as AbortSignal & { reason?: unknown }).reason as DOMException;
+      expect(reason).toBeInstanceOf(DOMException);
+      expect(reason.name).toBe('TimeoutError');
     });
   });
 });
