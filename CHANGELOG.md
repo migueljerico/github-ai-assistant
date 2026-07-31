@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.61.0] — 2026-07-31
+
+> **Primera batería de tests E2E (#75) + documentación del fix NIM de v3.60.1.**
+> El proyecto suma 911 tests unitarios (cliente) + 50 (servidor) pero no tenía
+> ningún test que validara el flujo completo del usuario en el navegador. Esta
+> versión añade Playwright sobre la **arquitectura real de producción** (Express
+> sirviendo el SPA construido) y cubre los 3 escenarios críticos de #75, con un
+> job de CI paralelo. Sin cambios en lógica de aplicación: funcionalidad aditiva y
+> retrocompatible (minor).
+
+### Added
+- **Tests E2E con Playwright (#75)** — `e2e/`, `playwright.config.ts`:
+  - `e2e/chat.spec.ts`: 3 specs del flujo crítico: (1) camino feliz de chat — auth
+    (mock) → proveedor → envío → respuesta visible; (2) acción confirmada con diff
+    → `ConfirmModal` → confirmar → ejecución (PUT a `api.github.com`); (3) proveedor
+    falla → error accionable en la UI (sin stack trace crudo).
+  - `e2e/fixtures.ts`: helpers para cruzar los dos gates (`AuthGate` vía hash
+    `#access_token=...` + mock `GET /user`; `AIProviderGate` vía mock del chat de
+    validación). El mock de `/api/gemini` reproduce el contrato SSE del proxy cuando
+    el body pide `stream:true` y `{text}` en caso contrario.
+  - `playwright.config.ts`: `webServer` que arranca Express en `:3300` (arquitectura
+    real: sirve `/api`, `/auth`, `/health` y el SPA desde `client/dist`). No fija
+    `NODE_ENV` (evitaría el `exit(1)` por `SESSION_SECRET` en producción). Serie.
+- **CI — job `e2e`** en `.github/workflows/ci.yml`: paralelo a `test`/`server-test`/
+  `security`. Instala Chromium, buildea el cliente, ejecuta Playwright y sube el
+  reporte como artefacto. No toca los jobs existentes.
+- `package.json` (raíz): `@playwright/test` + scripts `test:e2e` / `test:e2e:full`.
+
+### Documentado
+- **`METODOLOGIA_IA.md` §4:** nueva fila en "Lecciones aprendidas" (v3.60.1) con el
+  bug del filtro `NIM_EXCLUDED` (colisión de substring `'nemo'` con `'nemotron'`),
+  como ejemplo de "bug descubierto por cobertura".
+
 ## [3.60.1] — 2026-07-30
 
 > **Parche de cobertura del diff de timeout (#73) + fix del filtro NIM y cobertura

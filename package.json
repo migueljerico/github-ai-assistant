@@ -1,6 +1,6 @@
 {
   "name": "github-ai-assistant",
-  "version": "3.60.1",
+  "version": "3.61.0",
   "description": "Asistente de IA de GitHub",
   "type": "module",
   "main": "server/index.js",
@@ -13,7 +13,9 @@
     "deploy": "bash deploy.sh",
     "postinstall": "",
     "test:coverage": "vitest run --coverage",
-    "test:server": "vitest run server"
+    "test:server": "vitest run server",
+    "test:e2e": "playwright test",
+    "test:e2e:full": "npm run build && playwright test"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -23,6 +25,7 @@
     "express-session": "^1.17.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.49.0",
     "concurrently": "^10.0.4",
     "supertest": "^7.0.0",
     "vitest": "^4.1.10"
