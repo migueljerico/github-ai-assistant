@@ -17,7 +17,7 @@
 ![Kilo](https://img.shields.io/badge/Kilo-00C896?style=for-the-badge)
 ![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
 ![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
-![Versión](https://img.shields.io/badge/Versión-v3.63.0-blue?style=for-the-badge)
+![Versión](https://img.shields.io/badge/Versión-v3.64.0-blue?style=for-the-badge)
 [![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)](./LICENSE)
 [![CI & Coverage](https://github.com/migueljerico/github-ai-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/migueljerico/github-ai-assistant/actions/workflows/ci.yml)
 [![E2E Tests](https://img.shields.io/github/actions/workflow/status/migueljerico/github-ai-assistant/e2e.yml?style=for-the-badge&label=E2E%20Tests&logo=playwright&logoColor=white)](https://github.com/migueljerico/github-ai-assistant/actions/workflows/e2e.yml)
@@ -69,7 +69,7 @@ Todo bajo el principio:
 | 🧠 Modelos disponibles | Gemini, Llama, Nemotron, GLM, Grok, DeepSeek, Qwen, MiniMax y más vía OpenRouter/NIM/Zenmux/OpenCode/Cloudflare/Ollama/Ai&/Kilo |
 | ⚡ Latencia observada | ~400ms Groq / ~1.2s Gemini, variable según modelo y contexto |
 | 🛡️ Seguridad | Zero-Storage: credenciales solo en memoria React |
-| 🧪 Tests | 976 tests unitarios (926 cliente + 50 servidor) + 6 E2E (Playwright) |
+| 🧪 Tests | 976 tests unitarios (926 cliente + 50 servidor) + 13 E2E (Playwright) |
 | 🌍 Deploy | Google Cloud Run |
 | 📦 Stack | React + TypeScript + Express + Vite |
 
@@ -222,10 +222,10 @@ Ver detalle en ./docs/SEGURIDAD.md.
 
 El proyecto usa **Vitest**, **React Testing Library**, **Playwright**, **GitHub Actions** y **Codecov**.
 
-- **976 tests unitarios (926 cliente + 50 servidor)** + **6 tests E2E** con Playwright
+- **976 tests unitarios (926 cliente + 50 servidor)** + **13 tests E2E** con Playwright (5 specs)
 - Tests unitarios, integración y componentes
 - Tests del servidor
-- Tests E2E del flujo crítico en navegador real (auth → chat → acción confirmada)
+- Tests E2E del flujo crítico en navegador real (auth → chat → acción confirmada), del toggle de tema, de i18n, de persistencia y de accesibilidad (foco visible `:focus-visible` + `prefers-reduced-motion`, WCAG 2.4.7/2.3.3)
 - CI con lint + tests + cobertura
 - CD hacia Cloud Run
 

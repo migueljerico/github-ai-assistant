@@ -5,6 +5,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.64.0] — 2026-07-31
+
+> **Accesibilidad de foco y movimiento (#72, WCAG 2.4.7 y 2.3.3).**
+> Foco visible mediante `:focus-visible` tokenizado y respeto a
+> `prefers-reduced-motion`. Cero cambios en componentes: todo vive en `index.css`.
+> Los `<div tabIndex>` del badge de proveedor y las `.provider-card` —que antes no
+> tenían indicador de foco— ahora muestran anillo al recibir foco por teclado.
+> Acompañado de 3 specs E2E sobre la base consolidada en v3.63.0. Sin breaking
+> changes (minor).
+
+### Added
+- **Foco visible global (`:focus-visible`, WCAG 2.4.7)** — `client/src/index.css`:
+  nuevos tokens `--focus-ring-color/width/offset` en `:root` (resuelven a
+  `--accent-cyan`, idéntico en tema claro/oscuro) y regla global
+  `:focus-visible { outline + outline-offset }`. Solo aparece en navegación por
+  teclado, no en clic de mouse. Cubre botones, inputs y los `<div role="button"
+  tabIndex={0}>` (`AIProviderBadge`, `AIProviderPanel`) que antes eran foco
+  invisible al recibirlo por teclado.
+- **`@media (prefers-reduced-motion: reduce)` (WCAG 2.3.3)** — `client/src/index.css`:
+  bloque global (receta Mozilla) que neutraliza `animation-duration`,
+  `animation-iteration-count`, `transition-duration` y `scroll-behavior`. El
+  `!important` es intencional para sobreescribir también las animaciones/transition
+  inline de `UserBadge`, `ChatInput` y `ChangeReviewModal` sin tocar los
+  componentes. Detiene los bucles infinitos (`spin`, `pulse`, `blink`) vía
+  `iteration-count: 1`.
+- **`e2e/a11y.spec.ts`** (nuevo): 3 specs que validan #72 en la app autenticada.
+  Reutiliza `goAuthed` + `connectProvider` (igual que `theme.spec.ts`). Cubre: (1)
+  anillo `:focus-visible` en `#chat-textarea` por teclado, (2) foco visible en el
+  `<div tabIndex>` del badge (antes invisible), (3) `prefers-reduced-motion`
+  neutraliza animaciones (`pulse` en `.ai-badge-dot`) y transiciones (`.btn`).
+  Introduce el patrón `toHaveCSS` en la base E2E (antes solo `toHaveAttribute` y
+  `toContainText`).
+
+### Changed
+- **Eliminados los 2 `outline: none`** de `.input` (`index.css`) y `.chat-textarea`,
+  junto con su `box-shadow` glow cian hardcodeado (`rgba(34,211,238,0.08–0.1)`,
+  no tokenizado y tenue). Los inputs mantienen `border-color: var(--accent-cyan)`
+  al foco; el indicador accesible lo aporta la regla global `:focus-visible`.
+
+### Docs
+- **`MEJORAS_FUTURAS.md`**: #72 → resuelto (v3.64.0); cómputo actualizado
+  (56 resueltos + 5 pendientes). Reconciliada la **inconsistencia de #73**: estaba
+  resuelto en su propia sección (`✅ v3.60.0`) pero constaba como pendiente en la
+  tabla resumen, el cómputo y el "Próximo enfoque". Moviéndolo a resueltos
+  definitivamente y limpiado el fragmento de caveat huérfano que dejó colgado.
+- **`docs/TESTING_CALIDAD.md`**, **`MANUAL_TECNICO.md`**, **`README.md`**: cifras de
+  tests actualizadas a 976 unitarios + 13 E2E; añadida nota de accesibilidad
+  (foco visible + reduced-motion, WCAG 2.4.7/2.3.3).
+
 ## [3.63.0] — 2026-07-31
 
 > **Visibilidad y ampliación de los tests E2E (#75) + desatascado del roadmap.**

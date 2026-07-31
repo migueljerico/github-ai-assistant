@@ -2,7 +2,7 @@
 
 Estado del código, mejoras realizadas y pendientes del proyecto.
 
-**Actualizado a:** v3.63.0 · Julio 2026
+**Actualizado a:** v3.64.0 · Julio 2026
 
 ---
 
@@ -103,11 +103,11 @@ Ordenadas por prioridad. Cada ítem se mueve a la tabla ✅ al resolverse.
 #### #26 — Mantener y expandir cobertura de tests con Codecov
 **Esfuerzo:** Continuo (2-4h por sprint)
 
-**Progreso realizado (v3.50.4):** ✅ Infraestructura completa
+**Progreso realizado (v3.64.0):** ✅ Infraestructura completa
 - ✅ Vitest + Codecov + CI con GitHub Actions (cliente + servidor)
 - ✅ Badge de Codecov en README
-- ✅ Cobertura actual: ver Codecov (histórico ~60–64%)
-- ✅ **665 tests en el cliente (57 suites) + 44 en el servidor (5 suites)** = **709 totales, 62 suites**. Cobertura amplia de contextos, services, utils, hooks y componentes.
+- ✅ Cobertura actual: ver Codecov (~90% líneas)
+- ✅ **926 tests en el cliente (63 suites) + 50 en el servidor (6 suites)** = **976 unitarios** + **13 tests E2E** con Playwright (5 specs). Cobertura amplia de contextos, services, utils, hooks y componentes.
 
 **Pendiente:**
 - Aumentar cobertura del ~64% al 70% objetivo.
@@ -274,12 +274,6 @@ usuario pulse Detener o recargue.
 **Caveat resuelto:** 120 s cubre modelos de razonamiento (Ai& 8192 tokens) y
 generación de docs (README+MANUAL); configurable por el usuario (subir/bajar en
 el panel) en vez de por proveedor, más sencillo y suficiente.
-
----
-
-_Fuera de roadmap (pendiente):_ ✓ (movido a resueltos).
-de Ai& a 8192 tokens pueden tardar >30s legítimamente); quizá configurable por
-proveedor en `ProviderDef`. Cero cambios de arquitectura.
 
 ---
 
@@ -492,24 +486,41 @@ preferencia).
 
 ---
 
-#### #72 — a11y: focus rings visibles + `prefers-reduced-motion`
+#### #72 — a11y: focus rings visibles + `prefers-reduced-motion` ✅ RESUELTO (v3.64.0)
 **Esfuerzo:** ~1-2h · **Prioridad:** 🟢 Baja
 
-**Contexto (v3.56.2):** `client/src/index.css:207` y `:631` declaran
-`outline: none`, con lo que **no hay anillo de foco visible** al navegar con
-Teclado. Además **no existe** soporte de `prefers-reduced-motion`, así que las
-transiciones (`transition: all 0.2s ease` en varios botones) se animan siempre,
+> ✅ **Implementado en v3.64.0** (dogfooding GLM-5.2, 2026-07-31). Cero cambios en
+> componentes: todo en `client/src/index.css`.
+> - **Foco visible (WCAG 2.4.7):** nuevos tokens `--focus-ring-color/width/offset`
+>   en `:root` (resuelven a `--accent-cyan`, idéntico en claro/oscuro) + regla
+>   global `:focus-visible { outline + outline-offset }`. Solo aparece en
+>   navegación por teclado. **Eliminados los 2 `outline: none`** de `.input` y
+>   `.chat-textarea`, junto con su glow cian hardcodeado (no tokenizado); los
+>   inputs mantienen `border-color: var(--accent-cyan)` al foco. **Cubre los
+>   `<div tabIndex>` de `AIProviderBadge` y `AIProviderPanel`** —antes foco
+>   invisible al recibirlo por teclado.
+> - **Movimiento reducido (WCAG 2.3.3):** bloque `@media (prefers-reduced-motion:
+>   reduce)` con `!important` (receta Mozilla). Neutraliza animaciones y
+>   transiciones, incluidas las inline de `UserBadge`/`ChatInput`/`ChangeReviewModal`,
+>   sin tocar los componentes. `iteration-count: 1` detiene los infinitos (`spin`,
+>   `pulse`, `blink`).
+> - **Tests:** `e2e/a11y.spec.ts` (3 specs sobre la app autenticada, reutilizando
+>   `goAuthed` + `connectProvider`). Introduce el patrón `toHaveCSS` en la base E2E.
+>
+> **Honestidad sobre el proceso:** el primer test de reduced-motion falló por una
+> asunción del propio test (esperaba `animation-duration: 0s`, pero Chromium computa
+> `0.01ms` como `"1e-05s"` en notación científica). La app se comportó
+> correctamente en todo momento; se corrigió la aserción a `/^(0s|1e-05s)$/`.
+
+**Contexto (v3.56.2):** `client/src/index.css` declaraba `outline: none` en
+`.input` y `.chat-textarea`, con lo que **no había anillo de foco visible** al
+navegar con teclado (solo un glow tenue y no tokenizado). Además **no existía**
+soporte de `prefers-reduced-motion`, así que las transiciones se animaban siempre,
 incluso para usuarios sensibles al movimiento.
 
-**Fix:**
-1. Sustituir `outline: none` por `:focus-visible` con un anillo tokenizado
-   (`--focus-ring`), para que solo aparezca en navegación por teclado, no en clic.
-2. Añadir `@media (prefers-reduced-motion: reduce)` que desactive
-   `transition`/`animation` globalmente.
-
-**Beneficio:** conformidad WCAG 2.1 (criterios 2.4.7 Foco visible y 2.3.3
-Animación de interacciones); navegación por teclado usable. Sin cambios de
-comportamiento para usuarios de ratón.
+**Beneficio:** conformidad WCAG 2.4.7 (Foco visible) y 2.3.3 (Animación de
+interacciones); navegación por teclado usable. Sin cambios de comportamiento para
+usuarios de ratón (`:focus-visible` no dispara en clic).
 
 ---
 
@@ -604,40 +615,35 @@ existentes, no como sustituto.
 | Prioridad | ✅ Resueltos | ⏳ Pendientes |
 |---|---|---|
 | 🔴 Alta | #1, #2, #13, #14, #15, #27, #28, #45, #62, #63 | #26 (en progreso, continuo) |
-| 🟡 Media | #12, #17, #18, #19, #20, #21, #32, #34, #37, #38, #39, #40, #41, #42, #44, #46, #48, #49, #50, #51, #55, #56, #57, #59, #60, #61, #64, #67, #70 | #73 (timeout IA) |
-| 🟢 Baja | #23, #24, #25, #52, #53, #58, #69, #71, #75 | #66 (revisión catálogo Gemini), #68 (glosario ES↔EN), #72 (a11y focus/motion), #74 (revisión catálogos free/dinámicos) |
+| 🟡 Media | #12, #17, #18, #19, #20, #21, #32, #34, #37, #38, #39, #40, #41, #42, #44, #46, #48, #49, #50, #51, #55, #56, #57, #59, #60, #61, #64, #67, #70, #73 | — |
+| 🟢 Baja | #23, #24, #25, #52, #53, #58, #68, #69, #71, #72, #75 | #66 (revisión catálogo Gemini), #74 (revisión catálogos free/dinámicos) |
 | 🗑️ Descartados | — | #33, #35 (descartados en v3.22.3), #36 (descartado en v3.41.0) |
 
-> **Cómputo:** 55 ítems resueltos + 6 pendientes + 3 descartados = 64 referencias (algunos issues como `#28`, `#57`, `#58` generan varias filas por sus fases). Los pendientes reales accionables son: **#26** (continuo, cobertura), **#66** (revisión periódica cada 2-3 meses del catálogo Gemini estático), **#74** (revisión periódica de catálogos free/dinámicos, añadido en v3.58.0), y las 2 entradas restantes **#72, #73**. **#75 cerrado en v3.61.0** (tests E2E con Playwright: `e2e/chat.spec.ts` con 3 specs del flujo crítico + `e2e/fixtures.ts`; en v3.63.0 se ampliaron con 3 specs más de tema/i18n/persistencia y el job E2E se separó a su propio workflow `e2e.yml` con badge dedicado). **#71 cerrado en v3.62.0** (tema claro/oscuro/auto con `ThemeContext` + `localStorage` + anti-FOUC + toggle en `Header` + refactor de `InstructionSuggestions.css` a variables + 15 tests). **#70 cerrado en v3.59.0** (cableado de `SyncRepoStatus` en `ChatInput`/`App.tsx` + fix bug i18n `syncRepo.*` que estaban comentadas en `es.ts`/`en.ts` + suite `SyncRepoStatusButton.test.tsx`; dogfooding GLM-5.2). **#67 cerrado en v3.57.1** (normalización de acentos/`ñ` en `tokenize()` de `contextRanker.ts` vía NFD: arregla toda la familia del léxico técnico en `-ción`). **#68 cerrado en v3.57.2** (glosario ES↔EN agnóstico de repo + `expandQuery()`: expande el query con sinónimos EN antes del BM25, manteniendo intacto el corpus; complementario de #67). **#69 cerrado en v3.57.0** (autocomplete de instrucciones #22: popover `InstructionSuggestions` activado con trigger `/` en `ChatInput.tsx`). **#58 cerrado completo en v3.54.0** (bulk v3.53.0, diff incremental v3.52.0/.1/.2, modo revisión v3.54.0). **#53 resuelto en v3.50.0** (sugerencia de commit semántico vía `commitSuggester.ts` + few-shot con commits recientes + fallback determinista; documentado en el roadmap en v3.50.3). **#25 cerrado completo en v3.41.0** (logs v3.39.0 + healthcheck v3.40.0 + deploy.sh v3.41.0). **#52 resuelto en v3.42.0** (Modo Auditoría de Seguridad: botón 🛡️ + plantilla + `runSecurityAudit` + prompt dedicado, lectura-only). **#36 descartado en v3.41.0** (rompe zero-storage, costo alto, beneficio marginal en single-user).
+> **Cómputo:** 56 ítems resueltos + 3 pendientes + 3 descartados (algunos issues como `#28`, `#57`, `#58` generan varias filas por sus fases). Los pendientes reales accionables son: **#26** (continuo, cobertura), **#66** (revisión periódica cada 2-3 meses del catálogo Gemini estático) y **#74** (revisión periódica de catálogos free/dinámicos, añadido en v3.58.0). **#72 cerrado en v3.64.0** (a11y foco visible `:focus-visible` tokenizado + `prefers-reduced-motion`, WCAG 2.4.7/2.3.3; cero cambios en componentes, todo en `index.css`; 3 specs E2E `a11y.spec.ts`). **#75 cerrado en v3.61.0** (tests E2E con Playwright; en v3.63.0 ampliados con specs de tema/i18n/persistencia + job E2E separado a `e2e.yml` con badge dedicado; en v3.64.0 +1 spec de a11y → 13 E2E). **#71 cerrado en v3.62.0** (tema claro/oscuro/auto con `ThemeContext` + `localStorage` + anti-FOUC + toggle en `Header` + refactor de `InstructionSuggestions.css` a variables + 15 tests). **#73 cerrado en v3.60.0** (timeout automático en llamadas IA, default 120 s configurable, extremo a extremo: `retry.ts` `combineSignals` + `AbortSignal.timeout` + UI + proxies server 504). **#70 cerrado en v3.59.0** (cableado de `SyncRepoStatus` en `ChatInput`/`App.tsx` + fix bug i18n `syncRepo.*` que estaban comentadas en `es.ts`/`en.ts` + suite `SyncRepoStatusButton.test.tsx`; dogfooding GLM-5.2). **#67 cerrado en v3.57.1** (normalización de acentos/`ñ` en `tokenize()` de `contextRanker.ts` vía NFD). **#68 cerrado en v3.57.2** (glosario ES↔EN agnóstico de repo + `expandQuery()` antes del BM25). **#69 cerrado en v3.57.0** (autocomplete de instrucciones #22: popover `InstructionSuggestions` con trigger `/` en `ChatInput.tsx`). **#58 cerrado completo en v3.54.0** (bulk v3.53.0, diff incremental v3.52.0/.1/.2, modo revisión v3.54.0). **#53 resuelto en v3.50.0** (sugerencia de commit semántico vía `commitSuggester.ts` + few-shot + fallback determinista). **#25 cerrado completo en v3.41.0** (logs v3.39.0 + healthcheck v3.40.0 + deploy.sh v3.41.0). **#52 resuelto en v3.42.0** (Modo Auditoría de Seguridad: botón 🛡️ + `runSecurityAudit` + prompt dedicado, lectura-only). **#36 descartado en v3.41.0** (rompe zero-storage, costo alto, beneficio marginal en single-user).
+>
+> **Reconciliación de inconsistencias (v3.64.0):** igual que v3.63.0 corrigió #75 (listado como pendiente pese a estar resuelto desde v3.61.0), esta versión reconcilia **#73** (resuelto en v3.60.0 pero constaba como pendiente en la tabla resumen, el cómputo y el "Próximo enfoque") y confirma **#68** (resuelto en v3.57.2). El "Próximo enfoque" y los conteos reflejan ahora el estado real.
 
 > **#28** cubierto en su norte por las Fases 1 (v3.0.0, adjuntar como contexto) y 2 (v3.1.0, documentar→publicar). Más formatos: Fase 3a (v3.2.0, Excel/CSV), Fase 3b MVP (v3.3.0, Power BI .pbix/.pbit) y Fase 3b-bis (v3.4.0, Power Query M del `DataMashup`). Única limitación restante: en un `.pbix` moderno el M va en el modelo binario (no legible) → exporta `.pbit`. Word `.docx` (v3.11.0): texto de `word/document.xml`. Imágenes/visión: descartada.
 
 ---
 
-## 🎯 Próximo enfoque (post-v3.59.0)
+## 🎯 Próximo enfoque (post-v3.64.0)
 
-Con **v3.62.0** (**#71 resuelto**: tema claro/oscuro/auto), **v3.61.0**
-(**#75 resuelto**: tests E2E con Playwright, ampliado en v3.63.0 con specs de
-tema/i18n/persistencia + badge dedicado + workflow propio `e2e.yml`),
-**v3.59.0** (**#70 resuelto**: cableado de `SyncRepoStatus` en
-`ChatInput`/`App.tsx` + fix del bug i18n `syncRepo.*` que estaban comentadas en
-`es.ts`/`en.ts` + nueva suite `SyncRepoStatusButton.test.tsx`; dogfooding GLM-5.2),
-**v3.58.0** (proveedor **Kilo** + **#74**) y **#68/#67/#69** resueltos en v3.57.x,
-el roadmap queda en **6 pendientes accionables**. Orden recomendado:
+Con **v3.64.0** (**#72 resuelto**: a11y foco visible + reduced-motion), **v3.63.0**
+(ampliación E2E + workflow propio), **v3.62.0** (**#71 resuelto**: tema claro/oscuro),
+**v3.61.0** (**#75 resuelto**: tests E2E con Playwright), **v3.60.0** (**#73
+resuelto**: timeout automático IA) y **v3.59.0** (**#70 resuelto**: SyncRepoStatus),
+el roadmap queda en **3 pendientes accionables**. Orden recomendado:
 
 1. **#26 — Cobertura de tests (🔴 Alta, continuo).** El proyecto suma
    **976 tests unitarios** (cliente 926 en 63 suites + servidor 50 en 6) y
-   **6 tests E2E** con Playwright. Cobertura global ~90% líneas
-   (umbral codecov/patch ≥89%; umbral mínimo Vitest 70%). Quedan: edge cases de
-   servicios existentes y subir el umbral mínimo en CI. `App.tsx` y `main.tsx`
-   se dejan fuera (bajo valor, opcional).
-2. **#73 — Timeout automático en llamadas IA (🟡, ~2-3h).** Resiliencia ante
-   proveedores colgados.
-3. **#72 — a11y focus/motion (~1-2h).** Limpieza de UX/accesibilidad, baja
-   urgencia. (#71 tema claro ya cerrado en v3.62.0.)
-4. **#66 — Revisión periódica del catálogo Gemini (🟢, ~1h c/2-3 meses).** No
-   urgente (última v3.55.0, 2026-07-23; próxima ~sept-2026).
-5. **#74 — Revisión periódica de catálogos free/dinámicos (🟢, ~1-2h c/2-3 meses).**
+   **13 tests E2E** con Playwright (5 specs: chat, theme, i18n, persistence,
+   a11y). Cobertura global ~90% líneas (umbral codecov/patch ≥89%; umbral mínimo
+   Vitest 70%). Quedan: edge cases de servicios existentes y subir el umbral mínimo
+   en CI. `App.tsx` y `main.tsx` se dejan fuera (bajo valor, opcional).
+2. **#66 — Revisión periódica del catálogo Gemini (🟢, ~1h c/2-3 meses).** No
+   urgente (última v3.55.0, 2026-07-23; próxima ~oct-2026).
+3. **#74 — Revisión periódica de catálogos free/dinámicos (🟢, ~1-2h c/2-3 meses).**
    Generaliza #66 a los 6 proveedores dinámicos (Groq, OpenRouter, Zenmux, Ollama,
    Ai&, Kilo): refrescar los arrays `*_FALLBACK` y la detección de `free` en
    `fetchModels()`. Añadido en v3.58.0 junto con Kilo.

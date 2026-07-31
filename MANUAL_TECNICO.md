@@ -520,7 +520,7 @@ de arriba.
 - **CI:** GitHub Actions ejecuta en cada push/PR a `main`:
   - `.github/workflows/ci.yml` (`CI & Coverage`): lint + tests del cliente con cobertura + tests del servidor (job `server-test`) + escaneo de secretos (gitleaks).
   - `.github/workflows/e2e.yml` (`E2E`): tests E2E con Playwright sobre la arquitectura real (Express sirviendo el SPA construido). Workflow separado para tener un badge de estado dedicado en el README.
-- **Cobertura actual:** ~90% líneas (ver Codecov para el valor exacto; umbral mínimo Vitest 70%) · 926 tests en el cliente + 50 en el servidor (976 totales) + 6 tests E2E
+- **Cobertura actual:** ~90% líneas (ver Codecov para el valor exacto; umbral mínimo Vitest 70%) · 926 tests en el cliente + 50 en el servidor (976 totales) + 13 tests E2E con Playwright (5 specs, incluyendo `a11y.spec.ts` de foco visible y movimiento reducido desde v3.64.0)
 
 ### Módulos testeados
 

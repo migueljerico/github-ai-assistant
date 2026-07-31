@@ -22,8 +22,8 @@ El objetivo no es solo comprobar que la aplicación funciona, sino reducir regre
 |---|---|
 | Tests cliente | 926 (63 suites) |
 | Tests servidor | 50 (6 suites) |
-| Tests E2E | 6 con Playwright (`e2e/`) |
-| Archivos de test | 63 unitarios + 6 E2E |
+| Tests E2E | 13 con Playwright (`e2e/`, 5 specs) |
+| Archivos de test | 63 unitarios + 5 E2E |
 | Framework unitarios | Vitest |
 | Framework E2E | Playwright (chromium) |
 | Testing de componentes | React Testing Library |
@@ -631,7 +631,7 @@ Ideas futuras para reforzar calidad:
 - Crear fixtures realistas de repositorios.
 - Añadir tests visuales para modales y dashboards.
 - Medir rendimiento de lectura de archivos grandes.
-- Añadir pruebas de accesibilidad automatizadas (p.ej. axe-core en Playwright).
+- Añadir pruebas de accesibilidad automatizadas (p.ej. axe-core en Playwright). *Parcialmente cubierto en v3.64.0 (#72): specs E2E de foco visible (`:focus-visible`) y `prefers-reduced-motion` en `e2e/a11y.spec.ts`, pero sin auditoría completa de a11y con axe.*
 - Crear tests de contrato para proveedores IA.
 - Añadir matriz de compatibilidad de navegadores (actualmente solo chromium).
 

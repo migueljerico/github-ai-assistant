@@ -57,6 +57,11 @@
   --glow-cyan:  0 0 20px rgba(34, 211, 238, 0.15);
   --glow-purple: 0 0 20px rgba(168, 85, 247, 0.15);
 
+  /* Focus ring — accesibilidad WCAG 2.4.7 (#72). Mismo acento en claro/oscuro. */
+  --focus-ring-color: var(--accent-cyan);
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+
   /* Typography */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
@@ -136,6 +141,15 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* ── Focus visible — accesibilidad WCAG 2.4.7 (#72).
+   Anillo de foco global tokenizado que solo aparece en navegación por teclado,
+   no en clic de mouse. Cubre botones, inputs y elementos focusable no nativos
+   (<div tabIndex>) que antes no tenían indicador. ──────────────────────────── */
+:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
 }
 
 /* ── Scrollbars ───────────────────────────────────────────────────────────── */
@@ -245,12 +259,10 @@ code, pre { font-family: var(--font-mono); }
   font-family: var(--font-sans);
   font-size: 0.875rem;
   padding: 10px 14px;
-  transition: border-color var(--transition), box-shadow var(--transition);
-  outline: none;
+  transition: border-color var(--transition);
 }
 .input:focus {
   border-color: var(--accent-cyan);
-  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.1);
 }
 .input::placeholder { color: var(--text-muted); }
 
@@ -669,12 +681,10 @@ textarea.input { resize: none; line-height: 1.6; }
   font-size: 0.9rem;
   line-height: 1.5;
   resize: none;
-  transition: border-color var(--transition), box-shadow var(--transition);
-  outline: none;
+  transition: border-color var(--transition);
 }
 .chat-textarea:focus {
   border-color: var(--accent-cyan);
-  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.08);
 }
 .chat-textarea::placeholder { color: var(--text-muted); }
 
@@ -1653,4 +1663,18 @@ textarea.input { resize: none; line-height: 1.6; }
 .session-warning-dismiss:hover {
   color: var(--text-primary);
   background: var(--bg-elevated);
+}
+
+/* ── Movimiento reducido — accesibilidad WCAG 2.3.3 (#72).
+   Respeta la preferencia del SO "reducir movimiento". El !important es
+   intencional para neutralizar también las animaciones/transition inline de
+   los componentes (UserBadge, ChatInput, ChangeReviewModal). Receta Mozilla.
+   iteration-count: 1 detiene los bucles infinitos (spin, pulse, blink). ────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
