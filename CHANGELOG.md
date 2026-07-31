@@ -5,6 +5,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.63.0] — 2026-07-31
+
+> **Visibilidad y ampliación de los tests E2E (#75) + desatascado del roadmap.**
+> Playwright ya estaba integrado desde v3.61.0 (#75), pero no era visible en el
+> README y las docs lo seguían listando como mejora futura. Esta versión lo hace
+> explícito con badges, amplía la estructura de tests E2E de 3 a 6 specs
+> (incluyendo la verificación del toggle de tema #71 que no se había podido
+> confirmar en navegador por vivir tras el AuthGate), separa el job E2E a su
+> propio workflow para un badge de estado limpio, y corrige las incoherencias de
+> docs que mantenían #75 como pendiente. Sin breaking changes (minor).
+
+### Added
+- **Badges de Playwright en el README**: badge estático de stack
+  (`Tested with Playwright`, enlazando a `./e2e`) + badge dinámico de estado del
+  job E2E (apuntando a `e2e.yml`), ambos en `for-the-badge`.
+- **`e2e/theme.spec.ts`** (nuevo): 3 specs del toggle de tema #71 que no se
+  pudieron verificar visualmente en v3.62.0 (vive en el Header, tras AuthGate +
+  AIProviderGate). Cubre el ciclo claro→oscuro→auto, la persistencia en
+  `localStorage('app-theme')` y la reacción en vivo a `prefers-color-scheme`.
+  Reutiliza `goAuthed` + `connectProvider` de `e2e/fixtures.ts` para cruzar los
+  gates, y `test.use({ colorScheme })` para determinismo.
+- **`e2e/i18n.spec.ts`** (nuevo): 2 specs del selector de idioma ES↔EN (cambio en
+  caliente de los textos visibles del Header vía `t()` reactiva).
+- **`e2e/persistence.spec.ts`** (nuevo): 2 specs de persistencia tras recarga y
+  anti-FOUC (ejercitan el script inline pre-React de `index.html`).
+
+### Changed
+- **CI — job E2E separado a su propio workflow**: creado
+  `.github/workflows/e2e.yml` (`name: E2E`) con el mismo trigger y comportamiento
+  que el job `e2e` que vivía en `ci.yml`, para que el badge dinámico del README
+  refleje solo el resultado de los tests E2E. Eliminado el job `e2e` de
+  `ci.yml` (queda un comentario apuntando al nuevo workflow).
+
+### Docs
+- **`MEJORAS_FUTURAS.md`**: #75 movido de pendientes a resueltos en la tabla de
+  resumen, el cómputo (55 resueltos + 6 pendientes) y el "Próximo enfoque"
+  (donde además se actualizó el conteo de tests a 976 unitarios + 6 E2E). Era la
+  fuente de la confusión que llevó a plantear "añadir Playwright" cuando ya
+  existía.
+- **`docs/TESTING_CALIDAD.md`**: Playwright movido de "próximas mejoras" y
+  "límites actuales" a "estado actual"; cifras actualizadas (926 cliente / 50
+  servidor / 6 E2E).
+- **`MANUAL_TECNICO.md`**: sección Testing reescrita para reflejar Vitest +
+  Playwright, los dos workflows de CI (`ci.yml` + `e2e.yml`), el conteo real de
+  tests y los comandos de ejecución E2E. Añadida fila de E2E en la tabla de
+  módulos testeados.
+- **`README.md`**: cifras de tests actualizadas (976 unitarios + 6 E2E) en la
+  tabla de métricas y la sección de testing; Playwright en el stack.
+
 ## [3.62.0] — 2026-07-31
 
 > **Tema claro/oscuro/auto (#71) + limpieza completa de los warnings de lint.**

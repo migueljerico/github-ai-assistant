@@ -514,12 +514,13 @@ de arriba.
 
 ### Infraestructura
 
-- **Framework:** Vitest + React Testing Library (jsdom)
+- **Framework unitarios:** Vitest + React Testing Library (jsdom)
+- **Framework E2E:** Playwright (chromium) — tests del flujo crítico en navegador real
 - **Cobertura:** Codecov (badge en README)
-- **CI:** GitHub Actions (`.github/workflows/ci.yml`) ejecuta en cada push/PR a `main`
-  el lint, los tests del cliente con cobertura y los tests del servidor
-  (job `server-test`). Ver "Pipeline CI/CD" en la sección de despliegue.
-- **Cobertura actual:** ~60% (ver Codecov para el valor exacto) · 792 tests en el cliente + 44 en el servidor (836 totales)
+- **CI:** GitHub Actions ejecuta en cada push/PR a `main`:
+  - `.github/workflows/ci.yml` (`CI & Coverage`): lint + tests del cliente con cobertura + tests del servidor (job `server-test`) + escaneo de secretos (gitleaks).
+  - `.github/workflows/e2e.yml` (`E2E`): tests E2E con Playwright sobre la arquitectura real (Express sirviendo el SPA construido). Workflow separado para tener un badge de estado dedicado en el README.
+- **Cobertura actual:** ~90% líneas (ver Codecov para el valor exacto; umbral mínimo Vitest 70%) · 926 tests en el cliente + 50 en el servidor (976 totales) + 6 tests E2E
 
 ### Módulos testeados
 
@@ -545,12 +546,21 @@ de arriba.
 | Hooks | `useChat`, `useActions` | ✅ |
 | Componentes React | ChatArea, ChatInput, ChatMessage, ConfirmModal, Header, TemplatePanel, AIProviderPanel, AIProviderBadge, RepoContextButton, FileAttachButton, ThreadSummaryButton | ✅ |
 | Servidor | `rateLimit.test.js` (rate limiter del proxy), `logger.test.js` (logs estructurados #65), `health.test.js` (healthcheck extendido #25-parte2) | ✅ |
+| E2E (`e2e/`) | `chat.spec.ts` (auth → chat → acción confirmada → error accionable, #75), `theme.spec.ts` (toggle #71), `i18n.spec.ts` (ES↔EN), `persistence.spec.ts` (anti-FOUC + reload) | ✅ |
 
 ### Ejecutar tests localmente
 
 ```bash
+# Unitarios del cliente (con cobertura)
 cd client
 npm run test:coverage
+
+# Tests del servidor (desde la raíz)
+npm run test:server
+
+# Tests E2E con Playwright (desde la raíz). El webServer del playwright.config
+# arranca Express en :3300 sirviendo el SPA ya construido en client/dist.
+npm run test:e2e:full   # build + e2e   |   npm run test:e2e   # solo e2e
 ```
 
 ---

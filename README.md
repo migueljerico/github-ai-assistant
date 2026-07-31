@@ -17,10 +17,12 @@
 ![Kilo](https://img.shields.io/badge/Kilo-00C896?style=for-the-badge)
 ![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
 ![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
-![Versión](https://img.shields.io/badge/Versión-v3.62.0-blue?style=for-the-badge)
+![Versión](https://img.shields.io/badge/Versión-v3.63.0-blue?style=for-the-badge)
 [![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)](./LICENSE)
 [![CI & Coverage](https://github.com/migueljerico/github-ai-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/migueljerico/github-ai-assistant/actions/workflows/ci.yml)
+[![E2E Tests](https://img.shields.io/github/actions/workflow/status/migueljerico/github-ai-assistant/e2e.yml?style=for-the-badge&label=E2E%20Tests&logo=playwright&logoColor=white)](https://github.com/migueljerico/github-ai-assistant/actions/workflows/e2e.yml)
 [![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/graph/badge.svg?token=B1VDL0Y04G)](https://codecov.io/gh/migueljerico/github-ai-assistant)
+[![Tested with Playwright](https://img.shields.io/badge/Tested_with-Playwright-2EAD33?style=for-the-badge&logo=playwright&logoColor=white)](./e2e)
 
 
 > **Asistente Zero-Storage para analizar, documentar y gestionar repositorios de GitHub mediante lenguaje natural.**
@@ -67,7 +69,7 @@ Todo bajo el principio:
 | 🧠 Modelos disponibles | Gemini, Llama, Nemotron, GLM, Grok, DeepSeek, Qwen, MiniMax y más vía OpenRouter/NIM/Zenmux/OpenCode/Cloudflare/Ollama/Ai&/Kilo |
 | ⚡ Latencia observada | ~400ms Groq / ~1.2s Gemini, variable según modelo y contexto |
 | 🛡️ Seguridad | Zero-Storage: credenciales solo en memoria React |
-| 🧪 Tests | 892 tests automatizados (848 cliente + 44 servidor) |
+| 🧪 Tests | 976 tests unitarios (926 cliente + 50 servidor) + 6 E2E (Playwright) |
 | 🌍 Deploy | Google Cloud Run |
 | 📦 Stack | React + TypeScript + Express + Vite |
 
@@ -218,11 +220,12 @@ Ver detalle en ./docs/SEGURIDAD.md.
 
 ## 🧪 Testing y calidad
 
-El proyecto usa **Vitest**, **React Testing Library**, **GitHub Actions** y **Codecov**.
+El proyecto usa **Vitest**, **React Testing Library**, **Playwright**, **GitHub Actions** y **Codecov**.
 
-- **892 tests automatizados (848 cliente + 44 servidor)**
+- **976 tests unitarios (926 cliente + 50 servidor)** + **6 tests E2E** con Playwright
 - Tests unitarios, integración y componentes
 - Tests del servidor
+- Tests E2E del flujo crítico en navegador real (auth → chat → acción confirmada)
 - CI con lint + tests + cobertura
 - CD hacia Cloud Run
 
@@ -248,7 +251,8 @@ Ver detalle en ./docs/TESTING_CALIDAD.md.
 | Ollama Cloud | OpenAI-compatible vía proxy (sin CORS upstream) |
 | Ai& | Pasarela OpenAI-compatible vía proxy (sin CORS upstream, modelos de razonamiento) |
 | Recharts | Dashboard de salud del código |
-| Vitest | Testing |
+| Vitest | Testing (unitarios, integración) |
+| Playwright | Testing E2E (flujo crítico) |
 | Codecov | Cobertura |
 | Docker | Build de producción |
 | Google Cloud Run | Despliegue serverless |

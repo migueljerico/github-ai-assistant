@@ -2,7 +2,7 @@
 
 Estado del código, mejoras realizadas y pendientes del proyecto.
 
-**Actualizado a:** v3.62.0 · Julio 2026
+**Actualizado a:** v3.63.0 · Julio 2026
 
 ---
 
@@ -566,7 +566,7 @@ que #66 (Gemini) pero generalizado a los 6 proveedores dinámicos.
 
 ---
 
-#### #75 — Tests E2E (fin de flujo con Playwright) ✅ RESUELTO (v3.61.0)
+#### #75 — Tests E2E (fin de flujo con Playwright) ✅ RESUELTO (v3.61.0, ampliado v3.63.0)
 **Esfuerzo:** ~1 día · **Prioridad:** 🟢 Baja
 
 **Contexto (v3.58.0):** el proyecto suma 884 tests unitarios (792
@@ -605,10 +605,10 @@ existentes, no como sustituto.
 |---|---|---|
 | 🔴 Alta | #1, #2, #13, #14, #15, #27, #28, #45, #62, #63 | #26 (en progreso, continuo) |
 | 🟡 Media | #12, #17, #18, #19, #20, #21, #32, #34, #37, #38, #39, #40, #41, #42, #44, #46, #48, #49, #50, #51, #55, #56, #57, #59, #60, #61, #64, #67, #70 | #73 (timeout IA) |
-| 🟢 Baja | #23, #24, #25, #52, #53, #58, #69, #71 | #66 (revisión catálogo Gemini), #68 (glosario ES↔EN), #72 (a11y focus/motion), #74 (revisión catálogos free/dinámicos), #75 (tests E2E) |
+| 🟢 Baja | #23, #24, #25, #52, #53, #58, #69, #71, #75 | #66 (revisión catálogo Gemini), #68 (glosario ES↔EN), #72 (a11y focus/motion), #74 (revisión catálogos free/dinámicos) |
 | 🗑️ Descartados | — | #33, #35 (descartados en v3.22.3), #36 (descartado en v3.41.0) |
 
-> **Cómputo:** 54 ítems resueltos + 7 pendientes + 3 descartados = 64 referencias (algunos issues como `#28`, `#57`, `#58` generan varias filas por sus fases). Los pendientes reales accionables son: **#26** (continuo, cobertura), **#66** (revisión periódica cada 2-3 meses del catálogo Gemini estático), **#74** (revisión periódica de catálogos free/dinámicos, añadido en v3.58.0), **#75** (tests E2E, nuevo en dogfooding con ling-3.0-flash:free / 2026-07-28), y las 2 entradas restantes **#72, #73**. **#71 cerrado en v3.62.0** (tema claro/oscuro/auto con `ThemeContext` + `localStorage` + anti-FOUC + toggle en `Header` + refactor de `InstructionSuggestions.css` a variables + 15 tests). **#70 cerrado en v3.59.0** (cableado de `SyncRepoStatus` en `ChatInput`/`App.tsx` + fix bug i18n `syncRepo.*` que estaban comentadas en `es.ts`/`en.ts` + suite `SyncRepoStatusButton.test.tsx`; dogfooding GLM-5.2). **#67 cerrado en v3.57.1** (normalización de acentos/`ñ` en `tokenize()` de `contextRanker.ts` vía NFD: arregla toda la familia del léxico técnico en `-ción`). **#68 cerrado en v3.57.2** (glosario ES↔EN agnóstico de repo + `expandQuery()`: expande el query con sinónimos EN antes del BM25, manteniendo intacto el corpus; complementario de #67). **#69 cerrado en v3.57.0** (autocomplete de instrucciones #22: popover `InstructionSuggestions` activado con trigger `/` en `ChatInput.tsx`). **#58 cerrado completo en v3.54.0** (bulk v3.53.0, diff incremental v3.52.0/.1/.2, modo revisión v3.54.0). **#53 resuelto en v3.50.0** (sugerencia de commit semántico vía `commitSuggester.ts` + few-shot con commits recientes + fallback determinista; documentado en el roadmap en v3.50.3). **#25 cerrado completo en v3.41.0** (logs v3.39.0 + healthcheck v3.40.0 + deploy.sh v3.41.0). **#52 resuelto en v3.42.0** (Modo Auditoría de Seguridad: botón 🛡️ + plantilla + `runSecurityAudit` + prompt dedicado, lectura-only). **#36 descartado en v3.41.0** (rompe zero-storage, costo alto, beneficio marginal en single-user).
+> **Cómputo:** 55 ítems resueltos + 6 pendientes + 3 descartados = 64 referencias (algunos issues como `#28`, `#57`, `#58` generan varias filas por sus fases). Los pendientes reales accionables son: **#26** (continuo, cobertura), **#66** (revisión periódica cada 2-3 meses del catálogo Gemini estático), **#74** (revisión periódica de catálogos free/dinámicos, añadido en v3.58.0), y las 2 entradas restantes **#72, #73**. **#75 cerrado en v3.61.0** (tests E2E con Playwright: `e2e/chat.spec.ts` con 3 specs del flujo crítico + `e2e/fixtures.ts`; en v3.63.0 se ampliaron con 3 specs más de tema/i18n/persistencia y el job E2E se separó a su propio workflow `e2e.yml` con badge dedicado). **#71 cerrado en v3.62.0** (tema claro/oscuro/auto con `ThemeContext` + `localStorage` + anti-FOUC + toggle en `Header` + refactor de `InstructionSuggestions.css` a variables + 15 tests). **#70 cerrado en v3.59.0** (cableado de `SyncRepoStatus` en `ChatInput`/`App.tsx` + fix bug i18n `syncRepo.*` que estaban comentadas en `es.ts`/`en.ts` + suite `SyncRepoStatusButton.test.tsx`; dogfooding GLM-5.2). **#67 cerrado en v3.57.1** (normalización de acentos/`ñ` en `tokenize()` de `contextRanker.ts` vía NFD: arregla toda la familia del léxico técnico en `-ción`). **#68 cerrado en v3.57.2** (glosario ES↔EN agnóstico de repo + `expandQuery()`: expande el query con sinónimos EN antes del BM25, manteniendo intacto el corpus; complementario de #67). **#69 cerrado en v3.57.0** (autocomplete de instrucciones #22: popover `InstructionSuggestions` activado con trigger `/` en `ChatInput.tsx`). **#58 cerrado completo en v3.54.0** (bulk v3.53.0, diff incremental v3.52.0/.1/.2, modo revisión v3.54.0). **#53 resuelto en v3.50.0** (sugerencia de commit semántico vía `commitSuggester.ts` + few-shot con commits recientes + fallback determinista; documentado en el roadmap en v3.50.3). **#25 cerrado completo en v3.41.0** (logs v3.39.0 + healthcheck v3.40.0 + deploy.sh v3.41.0). **#52 resuelto en v3.42.0** (Modo Auditoría de Seguridad: botón 🛡️ + plantilla + `runSecurityAudit` + prompt dedicado, lectura-only). **#36 descartado en v3.41.0** (rompe zero-storage, costo alto, beneficio marginal en single-user).
 
 > **#28** cubierto en su norte por las Fases 1 (v3.0.0, adjuntar como contexto) y 2 (v3.1.0, documentar→publicar). Más formatos: Fase 3a (v3.2.0, Excel/CSV), Fase 3b MVP (v3.3.0, Power BI .pbix/.pbit) y Fase 3b-bis (v3.4.0, Power Query M del `DataMashup`). Única limitación restante: en un `.pbix` moderno el M va en el modelo binario (no legible) → exporta `.pbit`. Word `.docx` (v3.11.0): texto de `word/document.xml`. Imágenes/visión: descartada.
 
@@ -616,17 +616,21 @@ existentes, no como sustituto.
 
 ## 🎯 Próximo enfoque (post-v3.59.0)
 
-Con **v3.59.0** (**#70 resuelto**: cableado de `SyncRepoStatus` en
+Con **v3.62.0** (**#71 resuelto**: tema claro/oscuro/auto), **v3.61.0**
+(**#75 resuelto**: tests E2E con Playwright, ampliado en v3.63.0 con specs de
+tema/i18n/persistencia + badge dedicado + workflow propio `e2e.yml`),
+**v3.59.0** (**#70 resuelto**: cableado de `SyncRepoStatus` en
 `ChatInput`/`App.tsx` + fix del bug i18n `syncRepo.*` que estaban comentadas en
 `es.ts`/`en.ts` + nueva suite `SyncRepoStatusButton.test.tsx`; dogfooding GLM-5.2),
 **v3.58.0** (proveedor **Kilo** + **#74**) y **#68/#67/#69** resueltos en v3.57.x,
-el roadmap queda en **7 pendientes accionables**. Orden recomendado:
+el roadmap queda en **6 pendientes accionables**. Orden recomendado:
 
 1. **#26 — Cobertura de tests (🔴 Alta, continuo).** El proyecto suma
-   **889 tests** (cliente 845 en 60 suites + servidor 44 en 5). Cobertura global
-   **89.98%** líneas (umbral codecov/patch ≥89%). Quedan: edge cases de servicios
-   existentes y configurar un **umbral mínimo de cobertura en CI** (fail si
-   < 70%). `App.tsx` y `main.tsx` se dejan fuera (bajo valor, opcional).
+   **976 tests unitarios** (cliente 926 en 63 suites + servidor 50 en 6) y
+   **6 tests E2E** con Playwright. Cobertura global ~90% líneas
+   (umbral codecov/patch ≥89%; umbral mínimo Vitest 70%). Quedan: edge cases de
+   servicios existentes y subir el umbral mínimo en CI. `App.tsx` y `main.tsx`
+   se dejan fuera (bajo valor, opcional).
 2. **#73 — Timeout automático en llamadas IA (🟡, ~2-3h).** Resiliencia ante
    proveedores colgados.
 3. **#72 — a11y focus/motion (~1-2h).** Limpieza de UX/accesibilidad, baja
@@ -637,12 +641,6 @@ el roadmap queda en **7 pendientes accionables**. Orden recomendado:
    Generaliza #66 a los 6 proveedores dinámicos (Groq, OpenRouter, Zenmux, Ollama,
    Ai&, Kilo): refrescar los arrays `*_FALLBACK` y la detección de `free` en
    `fetchModels()`. Añadido en v3.58.0 junto con Kilo.
-6. **#75 — Tests E2E (fin de flujo con Playwright) (🟢, ~1 día).**
-   Configurar Playwright y escribir 2-3 tests del camino feliz
-   (auth → chat → acción confirmada), complementando los tests unitarios
-   existentes. No sustituye unitarios; protege contra regresiones de integración
-   en la UI. Prioridad baja: no bloquea ninguna feature, consolida la base de
-   tests.
 
 Fuera de roadmap: vigilar si aparece parche para la vuln `xlsx` (GHSA-4r6h-8v6p-xvw6
 + GHSA-5pgg-2g8v-p4x9, *No fix available*, mitigada en v3.36.1).

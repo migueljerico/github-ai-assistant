@@ -1,6 +1,6 @@
 # 🧪 Testing y calidad
 
-**GitHub AI Assistant** utiliza una estrategia de testing progresiva basada en **Vitest**, **React Testing Library**, mocks de APIs externas, CI/CD y monitorización de cobertura con **Codecov**.
+**GitHub AI Assistant** utiliza una estrategia de testing progresiva basada en **Vitest**, **React Testing Library**, **Playwright** (tests E2E), mocks de APIs externas, CI/CD y monitorización de cobertura con **Codecov**.
 
 El objetivo no es solo comprobar que la aplicación funciona, sino reducir regresiones en una app que integra:
 
@@ -20,12 +20,15 @@ El objetivo no es solo comprobar que la aplicación funciona, sino reducir regre
 
 | Métrica | Estado |
 |---|---|
-| Tests cliente | 792 |
-| Archivos de test | 58 archivos `.test.ts(x)` |
-| Framework principal | Vitest |
+| Tests cliente | 926 (63 suites) |
+| Tests servidor | 50 (6 suites) |
+| Tests E2E | 6 con Playwright (`e2e/`) |
+| Archivos de test | 63 unitarios + 6 E2E |
+| Framework unitarios | Vitest |
+| Framework E2E | Playwright (chromium) |
 | Testing de componentes | React Testing Library |
 | Cobertura | Monitorizada con Codecov |
-| CI | GitHub Actions |
+| CI | GitHub Actions (`ci.yml` + `e2e.yml`) |
 | CD | Cloud Build + Cloud Run |
 | Servidor | Tests específicos para endpoints y rate limiting |
 
@@ -611,7 +614,6 @@ Decisiones clave:
 
 Aunque la suite es amplia, hay áreas que podrían seguir mejorando:
 
-- Tests E2E completos en navegador real.
 - Tests contra sandbox real de GitHub.
 - Tests visuales de regresión.
 - Auditoría automatizada de accesibilidad más profunda.
@@ -625,13 +627,13 @@ Aunque la suite es amplia, hay áreas que podrían seguir mejorando:
 
 Ideas futuras para reforzar calidad:
 
-- Añadir Playwright o Cypress para E2E.
+- Ampliar la cobertura de tests E2E a más flujos (multi-repo, plantillas, publicaciones).
 - Crear fixtures realistas de repositorios.
 - Añadir tests visuales para modales y dashboards.
 - Medir rendimiento de lectura de archivos grandes.
-- Añadir pruebas de accesibilidad automatizadas.
+- Añadir pruebas de accesibilidad automatizadas (p.ej. axe-core en Playwright).
 - Crear tests de contrato para proveedores IA.
-- Añadir matriz de compatibilidad de navegadores.
+- Añadir matriz de compatibilidad de navegadores (actualmente solo chromium).
 
 ---
 
