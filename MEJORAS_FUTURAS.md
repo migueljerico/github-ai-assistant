@@ -2,7 +2,7 @@
 
 Estado del código, mejoras realizadas y pendientes del proyecto.
 
-**Actualizado a:** v3.61.0 · Julio 2026
+**Actualizado a:** v3.62.0 · Julio 2026
 
 ---
 
@@ -464,23 +464,31 @@ valor/esfuerzo del roadmap).
 
 ---
 
-#### #71 — Tema claro / toggle de tema
+#### #71 — Tema claro / toggle de tema ✅ RESUELTO (v3.62.0)
 **Esfuerzo:** ~3-4h · **Prioridad:** 🟢 Baja
 
-**Contexto (v3.56.2):** la app es **solo tema oscuro**. Los tokens CSS viven en
-`:root` (`client/src/index.css:10`, paleta `--bg-*`/`--text-*`). No hay
-`prefers-color-scheme`, no hay atributo `data-theme`, no hay toggle. Quien
-prefiere tema claro no tiene opción.
+**Contexto (v3.56.2):** la app era **solo tema oscuro**. Los tokens CSS vivían
+en `:root` (`client/src/index.css:10`, paleta `--bg-*`/`--text-*`). No había
+`prefers-color-scheme`, ni atributo `data-theme`, ni toggle. Quien prefería tema
+claro no tenía opción.
 
-**Fix:** duplicar los tokens bajo `[data-theme="light"]` (o
-`@media (prefers-color-scheme: light)`), añadir un toggle 🌙/☀️ en `Header`, y
-persistir la preferencia en `sessionStorage` (patrón ya usado por
-`providerPrefs.ts` — sin tocar Zero-Storage, que solo prohíbe persistir
-credenciales).
+**Implementado (v3.62.0):** sistema de theming de cero, aunque la base era
+favorable porque todo el CSS ya iba por variables `:root`.
+- `ThemeContext` con 3 estados (`light` | `dark` | `auto`) y persistencia en
+  `localStorage('app-theme')` (no `sessionStorage`: el tema debe sobrevivir a
+  recargas). `auto` resuelve contra `matchMedia('(prefers-color-scheme: dark)')`
+  y reacciona en vivo a cambios del SO.
+- Tokens claros en `:root[data-theme='light']` (paleta GitHub-light, manteniendo
+  el gradiente de acento). Anti-FOUC con script inline en `index.html`.
+- `ThemeToggle` cíclico (claro☀️ → oscuro🌙 → auto🌓) en el `Header`, junto al
+  selector de idioma.
+- Refactor de `InstructionSuggestions.css` (13 hex hardcodeados → variables):
+  era el único bloque de UI no temizable; ya responde al tema.
+- 15 tests unitarios del contexto (`ThemeContext.test.tsx`).
 
-**Beneficio:** accesibilidad/confort visual; cumplimiento de preferencia del SO.
-**Caveat:** esfuerzo proporcional al nº de tokens y componentes con colores
-hardcodeados inline (hay varios `style={{ ... }}` con hex en `ChatInput.tsx`).
+**Beneficio:** accesibilidad/confort visual; cumplimiento de la preferencia del
+SO. Default `'auto'` (para la mayoría = oscuro = estado previo, sin forzar
+preferencia).
 
 ---
 
@@ -597,10 +605,10 @@ existentes, no como sustituto.
 |---|---|---|
 | 🔴 Alta | #1, #2, #13, #14, #15, #27, #28, #45, #62, #63 | #26 (en progreso, continuo) |
 | 🟡 Media | #12, #17, #18, #19, #20, #21, #32, #34, #37, #38, #39, #40, #41, #42, #44, #46, #48, #49, #50, #51, #55, #56, #57, #59, #60, #61, #64, #67, #70 | #73 (timeout IA) |
-| 🟢 Baja | #23, #24, #25, #52, #53, #58, #69 | #66 (revisión catálogo Gemini), #68 (glosario ES↔EN), #71 (tema claro), #72 (a11y focus/motion), #74 (revisión catálogos free/dinámicos), #75 (tests E2E) |
+| 🟢 Baja | #23, #24, #25, #52, #53, #58, #69, #71 | #66 (revisión catálogo Gemini), #68 (glosario ES↔EN), #72 (a11y focus/motion), #74 (revisión catálogos free/dinámicos), #75 (tests E2E) |
 | 🗑️ Descartados | — | #33, #35 (descartados en v3.22.3), #36 (descartado en v3.41.0) |
 
-> **Cómputo:** 54 ítems resueltos + 7 pendientes + 3 descartados = 64 referencias (algunos issues como `#28`, `#57`, `#58` generan varias filas por sus fases). Los pendientes reales accionables son: **#26** (continuo, cobertura), **#66** (revisión periódica cada 2-3 meses del catálogo Gemini estático), **#74** (revisión periódica de catálogos free/dinámicos, añadido en v3.58.0), **#75** (tests E2E, nuevo en dogfooding con ling-3.0-flash:free / 2026-07-28), y las 3 entradas restantes **#71, #72, #73**. **#70 cerrado en v3.59.0** (cableado de `SyncRepoStatus` en `ChatInput`/`App.tsx` + fix bug i18n `syncRepo.*` que estaban comentadas en `es.ts`/`en.ts` + suite `SyncRepoStatusButton.test.tsx`; dogfooding GLM-5.2). **#67 cerrado en v3.57.1** (normalización de acentos/`ñ` en `tokenize()` de `contextRanker.ts` vía NFD: arregla toda la familia del léxico técnico en `-ción`). **#68 cerrado en v3.57.2** (glosario ES↔EN agnóstico de repo + `expandQuery()`: expande el query con sinónimos EN antes del BM25, manteniendo intacto el corpus; complementario de #67). **#69 cerrado en v3.57.0** (autocomplete de instrucciones #22: popover `InstructionSuggestions` activado con trigger `/` en `ChatInput.tsx`). **#58 cerrado completo en v3.54.0** (bulk v3.53.0, diff incremental v3.52.0/.1/.2, modo revisión v3.54.0). **#53 resuelto en v3.50.0** (sugerencia de commit semántico vía `commitSuggester.ts` + few-shot con commits recientes + fallback determinista; documentado en el roadmap en v3.50.3). **#25 cerrado completo en v3.41.0** (logs v3.39.0 + healthcheck v3.40.0 + deploy.sh v3.41.0). **#52 resuelto en v3.42.0** (Modo Auditoría de Seguridad: botón 🛡️ + plantilla + `runSecurityAudit` + prompt dedicado, lectura-only). **#36 descartado en v3.41.0** (rompe zero-storage, costo alto, beneficio marginal en single-user).
+> **Cómputo:** 54 ítems resueltos + 7 pendientes + 3 descartados = 64 referencias (algunos issues como `#28`, `#57`, `#58` generan varias filas por sus fases). Los pendientes reales accionables son: **#26** (continuo, cobertura), **#66** (revisión periódica cada 2-3 meses del catálogo Gemini estático), **#74** (revisión periódica de catálogos free/dinámicos, añadido en v3.58.0), **#75** (tests E2E, nuevo en dogfooding con ling-3.0-flash:free / 2026-07-28), y las 2 entradas restantes **#72, #73**. **#71 cerrado en v3.62.0** (tema claro/oscuro/auto con `ThemeContext` + `localStorage` + anti-FOUC + toggle en `Header` + refactor de `InstructionSuggestions.css` a variables + 15 tests). **#70 cerrado en v3.59.0** (cableado de `SyncRepoStatus` en `ChatInput`/`App.tsx` + fix bug i18n `syncRepo.*` que estaban comentadas en `es.ts`/`en.ts` + suite `SyncRepoStatusButton.test.tsx`; dogfooding GLM-5.2). **#67 cerrado en v3.57.1** (normalización de acentos/`ñ` en `tokenize()` de `contextRanker.ts` vía NFD: arregla toda la familia del léxico técnico en `-ción`). **#68 cerrado en v3.57.2** (glosario ES↔EN agnóstico de repo + `expandQuery()`: expande el query con sinónimos EN antes del BM25, manteniendo intacto el corpus; complementario de #67). **#69 cerrado en v3.57.0** (autocomplete de instrucciones #22: popover `InstructionSuggestions` activado con trigger `/` en `ChatInput.tsx`). **#58 cerrado completo en v3.54.0** (bulk v3.53.0, diff incremental v3.52.0/.1/.2, modo revisión v3.54.0). **#53 resuelto en v3.50.0** (sugerencia de commit semántico vía `commitSuggester.ts` + few-shot con commits recientes + fallback determinista; documentado en el roadmap en v3.50.3). **#25 cerrado completo en v3.41.0** (logs v3.39.0 + healthcheck v3.40.0 + deploy.sh v3.41.0). **#52 resuelto en v3.42.0** (Modo Auditoría de Seguridad: botón 🛡️ + plantilla + `runSecurityAudit` + prompt dedicado, lectura-only). **#36 descartado en v3.41.0** (rompe zero-storage, costo alto, beneficio marginal en single-user).
 
 > **#28** cubierto en su norte por las Fases 1 (v3.0.0, adjuntar como contexto) y 2 (v3.1.0, documentar→publicar). Más formatos: Fase 3a (v3.2.0, Excel/CSV), Fase 3b MVP (v3.3.0, Power BI .pbix/.pbit) y Fase 3b-bis (v3.4.0, Power Query M del `DataMashup`). Única limitación restante: en un `.pbix` moderno el M va en el modelo binario (no legible) → exporta `.pbit`. Word `.docx` (v3.11.0): texto de `word/document.xml`. Imágenes/visión: descartada.
 
@@ -621,8 +629,8 @@ el roadmap queda en **7 pendientes accionables**. Orden recomendado:
    < 70%). `App.tsx` y `main.tsx` se dejan fuera (bajo valor, opcional).
 2. **#73 — Timeout automático en llamadas IA (🟡, ~2-3h).** Resiliencia ante
    proveedores colgados.
-3. **#72 / #71 — a11y focus/motion (~1-2h) y tema claro (~3-4h).** Limpieza de
-   UX/accesibilidad, baja urgencia.
+3. **#72 — a11y focus/motion (~1-2h).** Limpieza de UX/accesibilidad, baja
+   urgencia. (#71 tema claro ya cerrado en v3.62.0.)
 4. **#66 — Revisión periódica del catálogo Gemini (🟢, ~1h c/2-3 meses).** No
    urgente (última v3.55.0, 2026-07-23; próxima ~sept-2026).
 5. **#74 — Revisión periódica de catálogos free/dinámicos (🟢, ~1-2h c/2-3 meses).**

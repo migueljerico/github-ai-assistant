@@ -10,6 +10,24 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <title>Asistente de IA de GitHub</title>
+    <!-- #71: anti-FOUC — aplica el tema ANTES del primer paint de React,
+         leyendo localStorage('app-theme') y, en 'auto', prefers-color-scheme.
+         El ThemeProvider re-aplicará el mismo valor al montar (sin flash). -->
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem('app-theme');
+          var valid = ['light', 'dark', 'auto'].indexOf(saved) !== -1 ? saved : 'auto';
+          var resolved =
+            valid === 'auto'
+              ? (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+              : valid;
+          document.documentElement.setAttribute('data-theme', resolved);
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

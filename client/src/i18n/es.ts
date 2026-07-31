@@ -11,6 +11,11 @@ export const es = {
   'header.history': 'Historial',
   'header.hideHistory': 'Ocultar historial',
   'header.showHistory': 'Mostrar historial',
+  // ────── #71: Tema claro/oscuro/auto ──────
+  'header.theme.light': 'Claro',
+  'header.theme.dark': 'Oscuro',
+  'header.theme.auto': 'Automático',
+  'header.theme.toggle': 'Cambiar tema (actual: {current})',
 
   // ────── #22: Session Warning Banner ──────
   'sessionWarning.message': 'Tu sesión lleva más de 8 horas activa. Por seguridad (Zero-Storage), las credenciales solo viven en memoria y se pierden al recargar. Considera reconectar.',

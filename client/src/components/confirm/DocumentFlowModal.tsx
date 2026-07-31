@@ -194,6 +194,7 @@ const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number }
   // la carga es asíncrona y depende del momento exacto de entrada al paso 4.
   useEffect(() => {
     if (step !== 4 || scope !== 'file' || !onFetchExistingDoc) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset a 'idle' fuera del paso 4/file (early-return del fetch síncrono)
       setFileExistingStatus('idle');
       setFileExistingContent(null);
       return;

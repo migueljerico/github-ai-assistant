@@ -5,6 +5,67 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.62.0] — 2026-07-31
+
+> **Tema claro/oscuro/auto (#71) + limpieza completa de los warnings de lint.**
+> La app era solo tema oscuro con la infraestructura de theming inexistente,
+> aunque todo el CSS ya iba canalizado por variables `:root`. Esta versión añade
+> un selector cíclico de 3 estados (claro / oscuro / auto), persistencia en
+> `localStorage`, anti-FOUC, reacción en vivo a `prefers-color-scheme` y
+> refactoriza el único componente con colores hardcodeados. Adicionalmente
+> elimina los 11 warnings de lint preexistentes (9 de dependencias de hooks + 2
+> de `set-state-in-effect`). Sin breaking changes: funcionalidad aditiva y
+> retrocompatible (minor).
+
+### Added
+- **Tema claro/oscuro/auto (#71)** — sistema de theming completo, de cero:
+  - **`client/src/context/ThemeContext.tsx`** (nuevo): `Theme = 'light' | 'dark' |
+    'auto'`. Persiste en `localStorage('app-theme')` (sobrevive a recargas, a
+    diferencia del idioma en `sessionStorage`); resuelve `'auto'` contra
+    `matchMedia('(prefers-color-scheme: dark)')` y reacciona en vivo a cambios
+    del SO. Aplica el tema escribiendo `data-theme` en `<html>` y actualizando
+    `<meta name="theme-color">`. Hook `useTheme` con guardia de provider.
+  - **`client/src/components/layout/ThemeToggle.tsx`** (nuevo): botón cíclico
+    claro☀️ → oscuro🌙 → auto🌓, mismo estilo (`btn btn-ghost btn-sm`) que los
+    toggles de plantillas/historial del header; solo-icono en móvil.
+  - **`client/src/index.css`**: bloque `:root[data-theme='light']` con paleta
+    GitHub-light (manteniendo el gradiente cyan→azul→púrpura de acento) +
+    `color-scheme: light`. El `:root` oscuro sigue siendo el default.
+  - **Anti-FOUC**: script inline en `client/index.html` (pre-React) que fija
+    `data-theme` antes del primer paint leyendo `localStorage` + `prefers`.
+  - **i18n**: claves `header.theme.light/dark/auto` y `header.theme.toggle` en
+    `es.ts` y `en.ts`.
+  - **Provider**: `ThemeProvider` montado como el provider más externo en
+    `main.tsx` (antes de `LanguageProvider`) para aplicar el tema desde el
+    primer render.
+  - **Tests**: `client/src/context/__tests__/ThemeContext.test.tsx` — 15 tests
+    del comportamiento (default auto, persistencia, resolución SO, ciclo de
+    toggle, reacción en vivo, aplicación al DOM, guardia). Con `vi.unmock` para
+    aislarlo del mock global de `test/setup.ts` (que ahora también mockea
+    `ThemeContext` como passthrough para los componentes que lo consumen).
+
+### Changed
+- **Refactor `client/src/components/chat/InstructionSuggestions.css`** (#71):
+    los 13 hex hardcodeados pasan a variables del design system (`--bg-elevated`,
+    `--border`, `--text-*`, etc.) para que el dropdown responda al tema. Antes
+    era el único bloque de UI no temizable.
+
+### Fixed
+- **Lint: 11 warnings → 0** (sin tocar errores, que ya eran 0):
+  - **9× `react-hooks/exhaustive-deps`** en `client/src/App.tsx`: `timeoutMs`
+    omitido en los arrays de dependencias de 9 `useCallback`, aunque se usaba en
+    `providerConfig` igual que `accountId` (que sí estaba listado). Omitión
+    inconsistente que dejaba closures stale (`timeoutMs` muta en runtime). Fix:
+    añadirlo a los 9 arrays (coherente con el patrón existente).
+  - **`react-hooks/set-state-in-effect`** en `ChangeReviewModal.tsx`: sustituido
+    el `useEffect` de sincronización por el patrón canónico de React "ajustar
+    estado durante el render" (guardando `prevActionsLen`), eliminando renders
+    en cascada.
+  - **`react-hooks/set-state-in-effect`** en `DocumentFlowModal.tsx`: marcado
+    con `// eslint-disable-next-line` + justificación, siguiendo la convención
+    ya establecida en el effect hermano (línea 186) del propio archivo; es un
+    fetch asíncrono legítimo con early-returns síncronos.
+
 ## [3.61.0] — 2026-07-31
 
 > **Primera batería de tests E2E (#75) + documentación del fix NIM de v3.60.1.**

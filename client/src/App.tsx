@@ -193,7 +193,7 @@ runCancelAction(
       { provider, apiKey, model, accountId, timeoutMs },
       repoInput,
     );
-  }, [token, user, provider, apiKey, model, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, accountId]);
+  }, [token, user, provider, apiKey, model, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, accountId, timeoutMs]);
 
   const flowGenerateFile = useCallback(async (): Promise<string | null> => {
     // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto
@@ -207,7 +207,7 @@ runCancelAction(
       primary,
       buildConversationText(),
     );
-  }, [fileContext, token, user, provider, apiKey, model, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, buildConversationText, accountId]);
+  }, [fileContext, token, user, provider, apiKey, model, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, buildConversationText, accountId, timeoutMs]);
 
   // #58 (b): trae el contenido actual de docs/{base}.md en el repo destino para
   // que el paso 4 del scope file muestre el diff old↔new antes de publicar.
@@ -255,7 +255,7 @@ runCancelAction(
       repoInput,
       files,
     );
-  }, [token, user, provider, apiKey, model, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading, accountId]);
+  }, [token, user, provider, apiKey, model, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading, accountId, timeoutMs]);
 
   // Publicación de la doc del archivo (destino elegido; maneja repo inexistente).
   const flowPublishFile = useCallback(async (target: PublishTarget): Promise<StartPublishResult> => {
@@ -284,7 +284,7 @@ const flowGenerateSpecific = useCallback(async (repoInput: string, targetPath: s
  addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading,
  };
  return runGenerateSpecificDoc(deps, { provider, apiKey, model, accountId, timeoutMs }, repoInput, targetPath, undefined, extraInstructions);
-}, [token, user, providerName, model, provider, apiKey, accountId, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading]);
+}, [token, user, providerName, model, provider, apiKey, accountId, timeoutMs, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading]);
 
 const flowCommitSpecific = useCallback(async (doc: string, path: string): Promise<void> => {
   if (!token || !user) return;
@@ -342,7 +342,7 @@ const flowDraftPrBulk = useCallback(async (owner: string, repo: string, targets:
       { provider, apiKey, model, accountId, timeoutMs },
       { userText, conversationHistory, modeOverride, repoContext, fileContext, multiRepoEnabled, selectedRepos, signal: controller.signal, reviewMode: modeOverride === 'review' },
     );
-  }, [inputValue, token, user, provider, apiKey, model, providerName, t, lang, conversationHistory, multiRepoEnabled, selectedRepos, modeOverride, repoContext, fileContext, addMessage, updateMessage, addEntry, updateEntry, accountId]);
+  }, [inputValue, token, user, provider, apiKey, model, providerName, t, lang, conversationHistory, multiRepoEnabled, selectedRepos, modeOverride, repoContext, fileContext, addMessage, updateMessage, addEntry, updateEntry, accountId, timeoutMs]);
 
   /**
    * v3.56.0: handler del botón 1-clic "cambiar de modo" en un mensaje de la IA.
@@ -370,7 +370,7 @@ const flowDraftPrBulk = useCallback(async (owner: string, repo: string, targets:
       input,
       repoContext?.repoName ?? null,
     );
-  }, [token, user, provider, apiKey, model, providerName, t, lang, repoContext, addMessage, updateMessage, addEntry, updateEntry, accountId]);
+  }, [token, user, provider, apiKey, model, providerName, t, lang, repoContext, addMessage, updateMessage, addEntry, updateEntry, accountId, timeoutMs]);
 
   // ── Generar changelog del repo (#34) ─────────────────────────────────────────
   const handleGenerateChangelog = useCallback(async (input: string) => {
@@ -380,7 +380,7 @@ const flowDraftPrBulk = useCallback(async (owner: string, repo: string, targets:
       { provider, apiKey, model, accountId, timeoutMs },
       input,
     );
-  }, [token, user, provider, apiKey, model, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, accountId]);
+  }, [token, user, provider, apiKey, model, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, accountId, timeoutMs]);
 
   // ── Salud del código — dashboard (#44) ───────────────────────────────────────
   const handleCodeHealth = useCallback(async (input: string) => {
@@ -432,7 +432,7 @@ const flowDraftPrBulk = useCallback(async (owner: string, repo: string, targets:
       repoInput,
       { repoContext: ctx, signal: controller.signal },
     );
-  }, [token, user, provider, apiKey, model, providerName, t, lang, repoContext, addMessage, updateMessage, addEntry, updateEntry, accountId]);
+  }, [token, user, provider, apiKey, model, providerName, t, lang, repoContext, addMessage, updateMessage, addEntry, updateEntry, accountId, timeoutMs]);
 
   // ── SyncRepoStatus (#70/#48) — resumen pull-based de commits recientes. ───────
   // El servicio resuelve el ref del repo internamente (resolveRepoRef), así que no
@@ -450,7 +450,7 @@ const flowDraftPrBulk = useCallback(async (owner: string, repo: string, targets:
       repoInput,
       { provider, apiKey, model, accountId, timeoutMs },
     );
-  }, [token, user, provider, apiKey, model, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, accountId]);
+  }, [token, user, provider, apiKey, model, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, accountId, timeoutMs]);
 
   // ── Exportar / importar conversación (#46, Zero-Storage) ─────────────────────
   const handleExportConversation = useCallback(() => {

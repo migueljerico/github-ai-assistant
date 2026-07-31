@@ -3,6 +3,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import UserBadge from '../auth/UserBadge';
 import AIProviderBadge from './AIProviderBadge';
 import LanguageSelector from './LanguageSelector';
+import ThemeToggle from './ThemeToggle';
 
 export default function Header({
   onToggleTemplates,
@@ -60,6 +61,9 @@ export default function Header({
 
         {/* Selector de idioma */}
         <LanguageSelector />
+
+        {/* #71: Toggle de tema claro/oscuro/auto */}
+        <ThemeToggle />
 
         {/* User badge */}
         {isAuthenticated && <UserBadge />}

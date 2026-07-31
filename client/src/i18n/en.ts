@@ -11,6 +11,11 @@ export const en = {
   'header.history': 'History',
   'header.hideHistory': 'Hide history',
   'header.showHistory': 'Show history',
+  // ────── #71: Tema claro/oscuro/auto ──────
+  'header.theme.light': 'Light',
+  'header.theme.dark': 'Dark',
+  'header.theme.auto': 'Auto',
+  'header.theme.toggle': 'Toggle theme (current: {current})',
   'sessionWarning.message': 'Your session has been active for over 8 hours. For security (Zero-Storage), credentials only live in memory and are lost on reload. Consider reconnecting.',
   'sessionWarning.dismiss': 'Dismiss warning',
   'chat.placeholder.disabled': 'Connect to GitHub to start…',

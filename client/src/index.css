@@ -1,6 +1,7 @@
 /* ─────────────────────────────────────────────────────────────────────────────
    Asistente de IA de GitHub — Design System
-   Dark mode glassmorphism with cyan-to-purple accent gradient
+   Glassmorphism with cyan-to-purple accent gradient.
+   Tema por defecto: oscuro. Tema claro vía [data-theme="light"] (#71).
 ───────────────────────────────────────────────────────────────────────────── */
 
 /* ── Google Fonts ─────────────────────────────────────────────────────────── */
@@ -63,6 +64,47 @@
   /* Transitions */
   --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── #71: Tema claro — redefine solo las variables de color/sombra.
+   Layout (--sidebar-width, --radius-*, --font-*, --transition*) se heredan
+   del :root oscuro, que sigue siendo el tema por defecto. El acento
+   cyan→azul→púrpura se mantiene para preservar la identidad visual. ─────────── */
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  /* Colors */
+  --bg-base:        #f6f8fa;
+  --bg-surface:     #ffffff;
+  --bg-elevated:    #f0f2f5;
+  --bg-glass:       rgba(255, 255, 255, 0.85);
+  --bg-glass-hover: rgba(240, 242, 245, 0.95);
+
+  --border:         rgba(208, 215, 222, 0.9);
+  --border-subtle:  rgba(208, 215, 222, 0.5);
+
+  --text-primary:   #1f2328;
+  --text-secondary: #59636e;
+  --text-muted:     #818b98;
+
+  /* Status colors — ajustados para contraste sobre fondo claro */
+  --success:        #1a7f37;
+  --error:          #cf222e;
+  --warning:        #9a6700;
+  --info:           #0969da;
+
+  /* Diff colors — fondos claros con tono verde/rojo suave */
+  --diff-add-bg:    #dafbe1;
+  --diff-add-border: #1a7f37;
+  --diff-del-bg:    #ffebe9;
+  --diff-del-border: #cf222e;
+
+  /* Shadows — sombras más suaves y difusas en claro */
+  --shadow-sm:  0 1px 3px rgba(31, 35, 40, 0.12);
+  --shadow-md:  0 4px 16px rgba(31, 35, 40, 0.15);
+  --shadow-lg:  0 8px 32px rgba(31, 35, 40, 0.18);
+  --glow-cyan:  0 0 20px rgba(34, 211, 238, 0.25);
+  --glow-purple: 0 0 20px rgba(168, 85, 247, 0.25);
 }
 
 /* ── Reset & Base ─────────────────────────────────────────────────────────── */

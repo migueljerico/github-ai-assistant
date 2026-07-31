@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { PendingAction } from '../../types';
 import DiffViewer from './DiffViewer';
 import { useModalDialog } from '../../hooks/useModalDialog';
@@ -38,13 +38,16 @@ export default function ChangeReviewModal({
   const selected = selectedIndex !== null ? actions[selectedIndex] : null;
   const acceptedCount = accepted.filter(Boolean).length;
 
-  // Sincronizar accepted[] cuando cambia el número de acciones
-  useEffect(() => {
-    setAccepted(prev => {
-      if (prev.length === actions.length) return prev;
-      return actions.map((_, i) => prev[i] ?? true);
-    });
-  }, [actions.length, actions]);
+  // Sincronizar accepted[] cuando cambia el número de acciones.
+  // Patrón canónico de React "ajustar estado durante el render" (docs: storing
+  // information from previous renders) en lugar de un useEffect con setState,
+  // que la regla react-hooks/set-state-in-effect desaconseja por causar renders
+  // en cascada. Se ejecuta solo si actions.length cambió desde el render previo.
+  const [prevActionsLen, setPrevActionsLen] = useState(actions.length);
+  if (actions.length !== prevActionsLen) {
+    setPrevActionsLen(actions.length);
+    setAccepted(actions.map((_, i) => accepted[i] ?? true));
+  }
 
   const handleAccept = (index: number) => {
     setAccepted(prev => { const n = [...prev]; n[index] = true; return n; });

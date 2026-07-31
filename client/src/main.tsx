@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from './context/AuthContext.tsx';
 import { HistoryProvider } from './context/HistoryContext.tsx';
 import { AIProviderContextProvider, useAIProvider } from './context/AIProviderContext.tsx';
 import { LanguageProvider, useLanguage } from './context/LanguageContext.tsx';
+import { ThemeProvider } from './context/ThemeContext.tsx';
 import LoginButton from './components/auth/LoginButton.tsx';
 import PatInput from './components/auth/PatInput.tsx';
 import AIProviderPanel from './components/ai-provider/AIProviderPanel.tsx';
@@ -87,16 +88,20 @@ function AIProviderGate() {
 // ── Root ──────────────────────────────────────────────────────────────────────
 // eslint-disable-next-line react-refresh/only-export-components -- raíz del árbol de providers
 function Root() {
+  // #71: ThemeProvider es el más externo para aplicar el tema desde el primer
+  // render y evitar FOUC (refuerza el script inline de index.html).
   return (
-    <LanguageProvider>
-      <AuthProvider>
-        <AIProviderContextProvider>
-          <HistoryProvider>
-            <AuthGate />
-          </HistoryProvider>
-        </AIProviderContextProvider>
-      </AuthProvider>
-    </LanguageProvider>
+    <ThemeProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <AIProviderContextProvider>
+            <HistoryProvider>
+              <AuthGate />
+            </HistoryProvider>
+          </AIProviderContextProvider>
+        </AuthProvider>
+      </LanguageProvider>
+    </ThemeProvider>
   );
 }
 
