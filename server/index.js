@@ -554,6 +554,82 @@ app.post('/api/cloudflare', cloudflareLimiter, validateChatBody, async (req, res
   }
 });
 
+// ─── Cloudflare Workers AI Models Proxy (v3.65.0) ─────────────────────────────
+// Catálogo DINÁMICO de modelos para Cloudflare Workers AI. La API de Cloudflare no
+// envía CORS → el navegador no puede llamarla directamente, así que este proxy la
+// elude (igual que /api/gemini/models y el chat /api/cloudflare). Requiere el API
+// token (Authorization: Bearer ...) y el account_id (header X-Account-Id), igual que
+// el proxy de chat. Llama a GET /accounts/{account_id}/ai/models/search.
+//
+// Normaliza server-side (centra el conocimiento de CF aquí, como hace Gemini):
+//   • filtra a modelos de chat (task.name === 'Text Generation'),
+//   • excluye los 3 modelos NO disponibles en el plan Free
+//     (kimi-k2.6, kimi-k2.7-code, glm-5.2) — developers.cloudflare.com/.../pricing/,
+//   • ordena por precio input ascendente (baratos = aptos para 10 000 Neurons/día),
+//   • devuelve { result: [{ name, description? }] } — la forma que fetchModels parsea.
+// Si el esquema upstream cambia o el parseo queda vacío, el cliente degrada al
+// fallback estático CLOUDFLARE_FALLBACK sin pérdida de UX.
+app.get('/api/cloudflare/models', cloudflareLimiter, async (req, res) => {
+  const auth = req.headers.authorization || '';
+  if (!auth.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Falta la API key de Cloudflare (header Authorization: Bearer ...)' });
+  }
+  // Cloudflare requiere account_id en la URL; llega como header X-Account-Id.
+  const accountId = req.headers['x-account-id'];
+  if (!accountId) {
+    return res.status(400).json({ error: 'Falta accountId (header X-Account-Id). Rellena el campo Account ID en el panel.' });
+  }
+
+  try {
+    const upstreamUrl = `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(accountId)}/ai/models/search`;
+    const upstream = await fetch(upstreamUrl, {
+      method: 'GET',
+      headers: { 'Authorization': auth },
+      signal: upstreamSignal(),
+    });
+    if (!upstream.ok) {
+      let message = 'Error al contactar con la API de Cloudflare';
+      try {
+        const body = await upstream.json();
+        message = body?.errors?.[0]?.message || body?.error?.message || body?.message || message;
+      } catch { /* respuesta no-JSON */ }
+      const safeStatus = (upstream.status >= 400 && upstream.status < 600) ? upstream.status : 500;
+      return res.status(safeStatus).json({ error: message });
+    }
+
+    const payload = await upstream.json();
+    const all = Array.isArray(payload?.result) ? payload.result : [];
+    // Modelos excluidos del plan Free (requieren Workers Paid).
+    const CF_NOT_FREE = ['kimi-k2.6', 'kimi-k2.7-code', 'glm-5.2'];
+    const isFreeExcluded = (name) => {
+      const low = String(name || '').toLowerCase();
+      return CF_NOT_FREE.some(nf => low.includes(nf));
+    };
+    // Precio input por M tokens (para ordenar baratos primero); 0 si no hay pricing.
+    const inputPrice = (m) => {
+      const props = Array.isArray(m?.properties) ? m.properties : [];
+      const price = props.find(p => p?.property_id === 'price');
+      const tiers = Array.isArray(price?.value) ? price.value : [];
+      const inp = tiers.find(t => String(t?.unit || '').includes('input'));
+      return Number(inp?.price ?? 0);
+    };
+    const chatModels = all
+      .filter(m => (m?.task?.name || '') === 'Text Generation')
+      .filter(m => !!m.name && !isFreeExcluded(m.name))
+      .map(m => ({ name: m.name, description: m.description, _price: inputPrice(m) }))
+      .sort((a, b) => (a._price - b._price) || String(a.name).localeCompare(String(b.name)))
+      .map(({ _price, ...rest }) => rest);
+
+    res.json({ result: chatModels });
+  } catch (err) {
+    log.error('proxy_error', { provider: 'cloudflare', flow: 'models', requestId: req.id, error: err?.message || String(err) });
+    const status = isUpstreamTimeout(err) ? 504 : 502;
+    const error = isUpstreamTimeout(err) ? 'Cloudflare Workers AI tardó demasiado (timeout). Reintenta o sube el timeout en ⚙️.' : 'Error al contactar con Cloudflare Workers AI';
+    if (!res.headersSent) res.status(status).json({ error, detail: err?.message || String(err) });
+    else { try { res.end(); } catch { /* noop */ } }
+  }
+});
+
 // ─── Ollama Cloud Proxy (v3.34.0) ──────────────────────────────────────────────
 // Ollama Cloud (ollama.com) NO envía cabeceras CORS → el navegador bloquea las
 // llamadas directas con "Failed to fetch". Este proxy elude el bloqueo igual que
@@ -917,13 +993,14 @@ app.listen(PORT, () => {
       '/health', '/auth/github', '/auth/callback',
       'POST /api/gemini', 'GET /api/gemini/models',
       'POST /api/nim', 'GET /api/nim/models',
-      'POST /api/openzen', 'POST /api/cloudflare',
+      'POST /api/openzen', 'POST /api/cloudflare', 'GET /api/cloudflare/models',
       'POST /api/ollama', 'GET /api/ollama/models',
       'POST /api/aiand', 'GET /api/aiand/models',
       'POST /api/kilo', 'GET /api/kilo/models',
     ],
     rateLimited: ['/api/gemini', '/api/gemini/models', '/api/nim', '/api/nim/models',
-                  '/api/openzen', '/api/cloudflare', '/api/ollama', '/api/ollama/models',
+                  '/api/openzen', '/api/cloudflare', '/api/cloudflare/models',
+                  '/api/ollama', '/api/ollama/models',
                   '/api/aiand', '/api/aiand/models',
                   '/api/kilo', '/api/kilo/models'],
     directFromBrowser: ['openrouter', 'zenmux', 'groq'],

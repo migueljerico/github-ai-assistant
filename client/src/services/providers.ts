@@ -226,12 +226,13 @@ const NIM_FALLBACK: ModelOption[] = [
   { value: 'mistralai/mistral-medium-3.5-128b', label: 'Mistral Medium 3.5' },
 ];
 
-// Fallback de Zenmux — los 3 modelos FREE confirmados hoy en la fuente oficial
-// (https://zenmux.ai/models?price_filter=free, 2026-07-28). El catálogo dinámico es la
+// Fallback de Zenmux — los 4 modelos FREE confirmados hoy en la fuente oficial
+// (https://zenmux.ai/models?price_filter=free, 2026-07-31). El catálogo dinámico es la
 // fuente viva; este array es red de seguridad mientras carga o si la API falla.
 // `inclusionai/ling-3.0-flash` NO lleva sufijo -free (su pricing es 0/0 sin sufijo).
 const ZENMUX_FALLBACK: ModelOption[] = [
-  { value: 'inclusionai/ling-3.0-flash', label: 'Ling 3.0 Flash', free: true, recommended: true },
+  { value: 'deepseek/deepseek-v4-flash-free', label: 'DeepSeek V4 Flash', free: true, recommended: true },
+  { value: 'inclusionai/ling-3.0-flash', label: 'Ling 3.0 Flash', free: true },
   { value: 'z-ai/glm-4.7-flash-free', label: 'GLM 4.7 Flash', free: true },
   { value: 'z-ai/glm-4.6v-flash-free', label: 'GLM 4.6V Flash', free: true },
 ];
@@ -251,22 +252,25 @@ const OPENZEN_FALLBACK: ModelOption[] = [
   { value: 'mimo-v2.5-free', label: 'MiMo-V2.5 (free)', free: true },
 ];
 
-// Fallback de Cloudflare Workers AI — modelos @cf/ text-generation actuales
-// (developers.cloudflare.com/workers-ai/models/, 2026-07-28). Catálogo ESTÁTICO (sin
-// fetch dinámico que falla por CORS); el proxy /api/cloudflare elude el navegador.
-// Modelos Llama 2/3 viejos y mistral-7b-v0.1 están DEPRECATED → sustituidos por los
-// nuevos 2026 (kimi-k2.6/2.7-code, gpt-oss, glm-5.2, llama-4-scout, nemotron-3-120b).
+// Fallback de Cloudflare Workers AI — modelos @cf/ text-generation verificados hoy
+// vía la API oficial (GET .../ai/models/search, 2026-07-31). El catálogo DINÁMICO es la
+// fuente viva (proxy /api/cloudflare/models); este array es red de seguridad mientras
+// carga o si la API falla. Ordenado por precio ascendente (baratos primero = aptos para
+// el plan Free de 10 000 Neurons/día). EXCLUIDOS del plan Free (caros, requieren Paid):
+// @cf/moonshotai/kimi-k2.6, @cf/moonshotai/kimi-k2.7-code y @cf/zai-org/glm-5.2
+// (developers.cloudflare.com/workers-ai/platform/pricing/). El recommended Qwen3 30B
+// equilibra calidad y bajo consumo de Neurons (0.05/0.33 $/M tokens).
 const CLOUDFLARE_FALLBACK: ModelOption[] = [
-  { value: '@cf/moonshotai/kimi-k2.7-code', label: 'Kimi K2.7 Code', recommended: true },
-  { value: '@cf/moonshotai/kimi-k2.6', label: 'Kimi K2.6' },
-  { value: '@cf/zai-org/glm-5.2', label: 'GLM 5.2' },
-  { value: '@cf/openai/gpt-oss-120b', label: 'GPT-OSS 120B' },
+  { value: '@cf/qwen/qwen3-30b-a3b-fp8', label: 'Qwen3 30B A3B', recommended: true },
+  { value: '@cf/meta/llama-3.2-3b-instruct', label: 'Llama 3.2 3B' },
+  { value: '@cf/meta/llama-3.2-1b-instruct', label: 'Llama 3.2 1B' },
+  { value: '@cf/meta/llama-3.1-8b-instruct-fp8', label: 'Llama 3.1 8B FP8' },
   { value: '@cf/openai/gpt-oss-20b', label: 'GPT-OSS 20B' },
-  { value: '@cf/meta/llama-4-scout-17b-16e-instruct', label: 'Llama 4 Scout 17B' },
+  { value: '@cf/openai/gpt-oss-120b', label: 'GPT-OSS 120B' },
   { value: '@cf/meta/llama-3.3-70b-instruct-fp8-fast', label: 'Llama 3.3 70B FP8' },
-  { value: '@cf/nvidia/nemotron-3-120b-a12b', label: 'Nemotron 3 120B' },
+  { value: '@cf/meta/llama-4-scout-17b-16e-instruct', label: 'Llama 4 Scout 17B' },
   { value: '@cf/google/gemma-4-26b-a4b-it', label: 'Gemma 4 26B A4B' },
-  { value: '@cf/qwen/qwen3-30b-a3b-fp8', label: 'Qwen3 30B A3B' },
+  { value: '@cf/nvidia/nemotron-3-120b-a12b', label: 'Nemotron 3 120B' },
 ];
 
 // Fallback de Ollama Cloud — modelos cloud verificados hoy vía la API oficial
@@ -439,7 +443,9 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
   // Cloudflare Workers AI: VA AL FINAL del listado (decisión del usuario).
   // Exige account_id en la ruta URL + token por cuenta; el proxy recibe el
   // account_id por header X-Account-Id y construye la URL del upstream.
-  // Catálogo ESTÁTICO (CLOUDFLARE_FALLBACK): los modelos que usa el usuario en ZCode.
+  // Catálogo DINÁMICO vía proxy /api/cloudflare/models (elude CORS); el account_id se
+  // envía como header X-Account-Id y la key como Bearer. CLOUDFLARE_FALLBACK es red de
+  // seguridad mientras carga o si la API falla.
   cloudflare: {
     id: 'cloudflare',
     name: 'Cloudflare Workers AI',
@@ -449,6 +455,8 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     transport: 'openai-compatible',
     // Proxy backend /api/cloudflare (elude bloqueo CORS de Cloudflare).
     chatEndpoint: '/api/cloudflare',
+    // Proxy backend /api/cloudflare/models (catálogo dinámico; elude CORS).
+    modelsEndpoint: '/api/cloudflare/models',
     modelsNeedKey: true, // requiere el API token (Bearer) y el account_id
     staticModels: CLOUDFLARE_FALLBACK,
     defaultModel: CLOUDFLARE_FALLBACK[0].value,
@@ -644,6 +652,9 @@ export async function fetchModels(
   if (def.modelsNeedKey && !apiKey) return null;
   // Cloudflare (y cualquier endpoint con {account_id}) también necesita el accountId.
   if (def.modelsEndpoint.includes('{account_id}') && !accountId) return null;
+  // Cloudflare exige account_id por header X-Account-Id aunque el endpoint no lleve
+  // el placeholder {account_id} (el proxy server-side construye la URL del upstream).
+  if (def.id === 'cloudflare' && !accountId) return null;
 
   const cacheKey = `${def.id}_models_cache${accountId ? '_' + accountId : ''}`;
   const cached = sessionStorage.getItem(cacheKey);
@@ -656,6 +667,8 @@ export async function fetchModels(
 
   const headers: Record<string, string> = {};
   if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
+  // Cloudflare: account_id requerido en el header X-Account-Id (v3.33.1, chat proxy).
+  if (def.id === 'cloudflare' && accountId) headers['X-Account-Id'] = accountId;
 
   const res = await fetch(resolveEndpoint(def.modelsEndpoint, accountId), { headers });
   if (!res.ok) throw new Error(`models endpoint error ${res.status}`);
@@ -757,16 +770,36 @@ export async function fetchModels(
       .sort((a: { id: string }, b: { id: string }) => a.id.localeCompare(b.id))
       .map((m: { id: string }) => ({ value: m.id, label: m.id, free: true }));
   } else if (def.id === 'cloudflare') {
-    // Cloudflare Workers AI: catálogo COMPLETO (sin filtro free) para que el usuario
-    // elija. Respuesta envoltorio { result: [...] }; cada item trae `name`
-    // (p.ej. "@cf/meta/llama-3.1-8b-instruct"), `description` y `task`. El account_id
-    // ya viene sustituido en modelsEndpoint vía resolveEndpoint().
-    const cfSource = (data as { result?: Array<{ name?: string; description?: string }> }).result
-      ?? (data.data as Array<{ name?: string; description?: string }>);
+    // Cloudflare Workers AI: el proxy /api/cloudflare/models ya filtra task ===
+    // 'Text Generation' y excluye los 3 modelos no-Free (kimi-k2.6, kimi-k2.7-code,
+    // glm-5.2). Aquí re-aplicamos la exclusión no-Free por defensa en profundidad y
+    // enriquecemos con etiquetas amigables (CLOUDFLARE_FALLBACK). Respuesta envoltorio
+    // { result: [{ name, ... }] }. Orden: por precio input ascendente (baratos =
+    // aptos para el plan Free de 10 000 Neurons/día); a igualdad, alfabético.
+    // El plan Free no se distingue por modelo: marcamos free a los económicos que
+    // mejor consumen la cuota diaria (heurística por id).
+    const CF_NOT_FREE = ['kimi-k2.6', 'kimi-k2.7-code', 'glm-5.2'];
+    const cfLabel = (id: string): string => {
+      const hit = CLOUDFLARE_FALLBACK.find(m => m.value === id);
+      return hit ? hit.label : id;
+    };
+    const cfIsLikelyFree = (id: string): boolean => {
+      const low = id.toLowerCase();
+      // LoRA y modelos muy pequeños/ligeritos son los que mejor aprovechan la cuota.
+      return low.includes('lora') || low.includes('1b') || low.includes('3b')
+        || low.includes('8b') || low.includes('gpt-oss-20b') || low.includes('qwen3-30b');
+    };
+    const cfSource = (data as { result?: Array<{ name?: string }> }).result
+      ?? (data.data as Array<{ name?: string }>);
     models = cfSource
-      .filter((m): m is { name: string; description?: string } => !!m.name)
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .map((m) => ({ value: m.name, label: m.name }));
+      .filter((m): m is { name: string } => !!m.name)
+      .filter(m => !CF_NOT_FREE.some(nf => m.name.toLowerCase().includes(nf)))
+      .map((m) => ({
+        value: m.name,
+        label: cfLabel(m.name),
+        ...(cfIsLikelyFree(m.name) ? { free: true } : {}),
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
   } else if (def.id === 'aiand') {
     // Ai& (api.aiand.com): catálogo dinámico con pricing de tipo escalado
     // (input_per_1m / output_per_1m, costo por millón de tokens). free = ambos a 0.

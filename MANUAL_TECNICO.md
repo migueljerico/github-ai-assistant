@@ -249,7 +249,7 @@ abuso de un proveedor no agote la cuota del otro:
 | `POST /api/gemini` | 40 req/min por IP | `generativelanguage.googleapis` |
 | `POST /api/nim` + `GET /api/nim/models` | 40 req/min por IP | `integrate.api.nvidia.com/v1` |
 | `POST /api/openzen` | 100 req/min por IP | `opencode.ai/zen/v1` |
-| `POST /api/cloudflare` | 100 req/min por IP | `api.cloudflare.com/client/v4/accounts/{id}/ai/v1` |
+| `POST /api/cloudflare` + `GET /api/cloudflare/models` | 100 req/min por IP | `api.cloudflare.com/client/v4/accounts/{id}/ai/...` (chat `v1` + `models/search`) |
 | `POST /api/ollama` + `GET /api/ollama/models` | 100 req/min por IP | `ollama.com/v1` |
 | `POST /api/aiand` + `GET /api/aiand/models` | 100 req/min por IP | `api.aiand.com/v1` |
 

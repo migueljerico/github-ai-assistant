@@ -5,6 +5,71 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.65.0] — 2026-08-01
+
+> **Arreglo de los proveedores Cloudflare Workers AI (plan Free) y Zenmux (#74).**
+> Cloudflare fallaba en cuentas Free porque `CLOUDFLARE_FALLBACK` recomendaba y
+> listaba los **3 modelos que la propia Cloudflare excluye del plan Free**
+> (`kimi-k2.6`, `kimi-k2.7-code`, `glm-5.2`), causando 403/429. Esta versión
+> reordena el catálogo sin esos modelos (recommended Qwen3 30B), añade **catálogo
+> dinámico** vía nuevo proxy `GET /api/cloudflare/models` (la API de CF no envía
+> CORS) y completa Zenmux con el 4.º modelo free (`deepseek-v4-flash-free`).
+> Verificado contra la API real de CF (2026-07-31). Sin breaking changes (minor).
+
+### Added
+- **Catálogo dinámico de Cloudflare Workers AI** — `server/index.js`: nuevo proxy
+  `GET /api/cloudflare/models` (patrón de `/api/gemini/models`). Recibe el token
+  (`Authorization: Bearer`) y el `accountId` (`X-Account-Id`), llama a
+  `GET /accounts/{id}/ai/models/search` y **normaliza server-side**: filtra a
+  `task.name === 'Text Generation'`, **excluye los 3 modelos no-Free**, ordena por
+  precio input asc (baratos = aptos para 10 000 Neurons/día) y devuelve
+  `{ result: [{ name, description }] }`. Reutiliza `cloudflareLimiter` y
+  `upstreamSignal()`. Registrado en el banner de arranque (`routes` + `rateLimited`).
+- **Rama `cloudflare` de `fetchModels` activada en producción** —
+  `client/src/services/providers.ts`: el def `cloudflare` declara ahora
+  `modelsEndpoint: '/api/cloudflare/models'`. La rama ya existía (era código
+  muerto); ahora re-aplica la exclusión no-Free por defensa en profundidad,
+  enriquece con etiquetas (`CLOUDFLARE_FALLBACK`) y marca `free` a los económicos.
+  Envía `X-Account-Id` (mismo patrón que el chat).
+
+### Changed
+- **`CLOUDFLARE_FALLBACK` reordenado sin los 3 no-Free** —
+  `client/src/services/providers.ts`: quitados `@cf/moonshotai/kimi-k2.7-code`,
+  `kimi-k2.6` y `@cf/zai-org/glm-5.2` (requieren Workers Paid); añadidos
+  `llama-3.2-1b/3b-instruct` y `llama-3.1-8b-instruct-fp8`. Nuevo `recommended`
+  **Qwen3 30B A3B** (equilibra calidad y bajo consumo de Neurons). `defaultModel`
+  apunta al nuevo primer elemento. Ordenado por precio asc (Free-friendly).
+- **`ZENMUX_FALLBACK` ampliado** — `client/src/services/providers.ts`: añadido
+  `deepseek/deepseek-v4-flash-free` (4.º modelo free confirmado en
+  zenmux.ai/models?price_filter=free) como nuevo `recommended`.
+- **`modelLabels.ts`** — `client/src/utils/modelLabels.ts`: bloque Zenmux
+  reescrito (los 7 modelos antiguos desfasados → los 4 free reales) y añadido
+  mapa Cloudflare (10 entradas `@cf/...` antes ausentes; los badges mostraban el
+  id crudo). Cabecera del archivo actualizada.
+- **Notas i18n** — `client/src/i18n/{es,en}.ts`: `provider.zenmux.note` cita ahora
+  los 4 free reales (antes Step 3.7/Grok 4.5/Ling 2.6 inexistentes);
+  `provider.cloudflare.note` explica el plan Free (10 000 Neurons/día), recomienda
+  Qwen3 30B y advierte de Kimi/GLM 5.2 (Paid).
+- **Hint de error 403/429** — `client/src/services/gemini.ts`: actualizado para
+  sugerir Qwen3 30B / Llama 3.1 8B (antes "Kimi K2.7 Code", precisamente no-Free).
+- **`.env.example`** — sección "AI API keys" reescrita: lista los **10 proveedores**
+  (antes solo 3) con su tipo de catálogo, y corrige "sessionStorage" → Zero-Storage
+  (memoria de React, no persistido).
+
+### Fixed
+- **Cloudflare falla en cuentas Free (403/429)**: causa raíz era un `recommended`
+  y un catálogo que priorizaban los 3 modelos excluidos del plan Free. Arreglado
+  reordenando el fallback + catálogo dinámico que los excluye server-side.
+
+### Docs
+- **`MEJORAS_FUTURAS.md`**: avanza #74 (revisión catálogos) registrando la
+  revisión Cloudflare+Zenmux de esta versión. El resto de proveedores quedan
+  para la próxima revisión periódica (~octubre 2026).
+- **`MANUAL_TECNICO.md`** y **`README.md`**: tablas de transporte/rate-limit/rutas
+  actualizadas con `GET /api/cloudflare/models` (Cloudflare pasa de catálogo
+  estático a dinámico vía proxy).
+- **`CLAUDE.md`**: versión → v3.65.0.
+
 ## [3.64.0] — 2026-07-31
 
 > **Accesibilidad de foco y movimiento (#72, WCAG 2.4.7 y 2.3.3).**

@@ -247,7 +247,7 @@ Ver detalle en ./docs/TESTING_CALIDAD.md.
 | NVIDIA NIM | Modelos optimizados vía proxy (sin CORS upstream) |
 | Zenmux | Pasarela con modelos gratuitos (directo del navegador) |
 | OpenCode Zen | Modelos gratis vía proxy (sin CORS upstream) |
-| Cloudflare Workers AI | Modelos serverless vía proxy (sin CORS upstream) |
+| Cloudflare Workers AI | Modelos serverless vía proxy (chat + catálogo dinámico, sin CORS upstream) |
 | Ollama Cloud | OpenAI-compatible vía proxy (sin CORS upstream) |
 | Ai& | Pasarela OpenAI-compatible vía proxy (sin CORS upstream, modelos de razonamiento) |
 | Recharts | Dashboard de salud del código |

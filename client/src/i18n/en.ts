@@ -162,13 +162,13 @@ export const en = {
 
   'provider.zenmux.cardDesc': 'Unified gateway to OpenAI, Anthropic, Google, Meta… one key for all',
   'provider.zenmux.signupLabel': 'Get API key at zenmux.ai →',
-  'provider.zenmux.note': '🆓 Marked models are free. A single key gives access to multiple free models: Step 3.7 Flash, Grok 4.5, GLM 4.7, Ling 2.6 and more.',
+  'provider.zenmux.note': '🆓 Marked models are free. A single key gives access to several free models: DeepSeek V4 Flash, Ling 3.0 Flash, GLM 4.7 and GLM 4.6V.',
   'provider.openzen.cardDesc': 'OpenCode Zen: models with opencode.ai API key',
   'provider.openzen.signupLabel': 'Get API key at opencode.ai →',
   'provider.openzen.note': '🆓 Models available with your opencode.ai API key. Free models (suffix "-free") work with the free key; a paid key unlocks premium models.',
   'provider.cloudflare.cardDesc': 'Cloudflare Workers AI · serverless models (@cf/…)',
   'provider.cloudflare.signupLabel': 'Create API token at dash.cloudflare.com →',
-  'provider.cloudflare.note': 'Requires your Account ID and an API token with Workers AI permissions. Choose the model you want to use from the list.',
+  'provider.cloudflare.note': 'Requires your Account ID and an API token with Workers AI permissions. Free plan: 10,000 Neurons/day. Low-usage recommended: Qwen3 30B. Avoid Kimi/GLM 5.2 (require the Paid plan).',
 
   'provider.ollama.cardDesc': 'Open models hosted on Ollama Cloud. Requires free account at ollama.com.',
   'provider.ollama.signupLabel': 'Create account at Ollama',

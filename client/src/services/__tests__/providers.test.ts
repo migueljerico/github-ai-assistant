@@ -30,10 +30,10 @@ describe('providers — registro', () => {
     expect(PROVIDERS.openzen.transport).toBe('openai-compatible');
     expect(PROVIDERS.openzen.chatEndpoint).toBe('/api/openzen');
     expect(PROVIDERS.openzen.modelsEndpoint).toBeUndefined();
-    // Cloudflare: proxy /api/cloudflare (CORS de Cloudflare), catálogo estático
+    // Cloudflare: proxy /api/cloudflare (CORS de Cloudflare), catálogo dinámico vía proxy
     expect(PROVIDERS.cloudflare.transport).toBe('openai-compatible');
     expect(PROVIDERS.cloudflare.chatEndpoint).toBe('/api/cloudflare');
-    expect(PROVIDERS.cloudflare.modelsEndpoint).toBeUndefined();
+    expect(PROVIDERS.cloudflare.modelsEndpoint).toBe('/api/cloudflare/models');
     expect(PROVIDERS.cloudflare.modelsNeedKey).toBe(true);
   });
 
@@ -303,35 +303,60 @@ describe('providers — fetchModels', () => {
     expect(PROVIDERS.openzen.staticModels.length).toBe(7);
   });
 
-  it('cloudflare: devuelve null sin accountId (sin modelsEndpoint usa catálogo estático)', async () => {
+  it('cloudflare: devuelve null sin accountId (exige X-Account-Id aunque el endpoint no lleve {account_id})', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
-    // Sin modelsEndpoint, fetchModels devuelve null (usa staticModels)
-    expect(await fetchModels(PROVIDERS.cloudflare, 'token_test')).toBeNull();
+    // Sin accountId, fetchModels devuelve null (no hace fetch); el panel usa staticModels.
+    expect(await fetchModels(PROVIDERS.cloudflare, 'token_test', null)).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('cloudflare: usa catálogo estático (CLOUDFLARE_FALLBACK) sin fetch dinámico', async () => {
-    const fetchMock = vi.fn();
-    vi.stubGlobal('fetch', fetchMock);
-
-    const list = await fetchModels(PROVIDERS.cloudflare, 'token_test', 'MY_ACCOUNT');
-    expect(list).toBeNull(); // Sin modelsEndpoint, devuelve null
-    expect(fetchMock).not.toHaveBeenCalled();
-    // El catálogo estático son los modelos @cf/ actuales (developers.cloudflare.com, 2026-07-28)
+  it('cloudflare: catálogo estático (CLOUDFLARE_FALLBACK) sin modelos no-Free y recommended Qwen3', () => {
+    // Catálogo estático = red de seguridad. Los 3 modelos no-Free (kimi-k2.6,
+    // kimi-k2.7-code, glm-5.2) están excluidos; el recommended es Qwen3 30B.
     const values = PROVIDERS.cloudflare.staticModels.map(m => m.value);
     expect(values).toEqual([
-      '@cf/moonshotai/kimi-k2.7-code',
-      '@cf/moonshotai/kimi-k2.6',
-      '@cf/zai-org/glm-5.2',
-      '@cf/openai/gpt-oss-120b',
-      '@cf/openai/gpt-oss-20b',
-      '@cf/meta/llama-4-scout-17b-16e-instruct',
-      '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
-      '@cf/nvidia/nemotron-3-120b-a12b',
-      '@cf/google/gemma-4-26b-a4b-it',
       '@cf/qwen/qwen3-30b-a3b-fp8',
+      '@cf/meta/llama-3.2-3b-instruct',
+      '@cf/meta/llama-3.2-1b-instruct',
+      '@cf/meta/llama-3.1-8b-instruct-fp8',
+      '@cf/openai/gpt-oss-20b',
+      '@cf/openai/gpt-oss-120b',
+      '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
+      '@cf/meta/llama-4-scout-17b-16e-instruct',
+      '@cf/google/gemma-4-26b-a4b-it',
+      '@cf/nvidia/nemotron-3-120b-a12b',
     ]);
+    expect(values).not.toContain('@cf/moonshotai/kimi-k2.7-code');
+    expect(values).not.toContain('@cf/moonshotai/kimi-k2.6');
+    expect(values).not.toContain('@cf/zai-org/glm-5.2');
+    expect(PROVIDERS.cloudflare.staticModels.find(m => m.value === '@cf/qwen/qwen3-30b-a3b-fp8')?.recommended).toBe(true);
+    expect(PROVIDERS.cloudflare.defaultModel).toBe('@cf/qwen/qwen3-30b-a3b-fp8');
+  });
+
+  it('cloudflare: fetch dinámico envía X-Account-Id, excluye no-Free y enriquece etiquetas', async () => {
+    // El proxy server-side ya filtra task=Text Generation y los no-Free; el cliente
+    // re-aplica la exclusión no-Free por defensa en profundidad y mapea etiquetas.
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ result: [
+        { name: '@cf/qwen/qwen3-30b-a3b-fp8' },
+        { name: '@cf/meta/llama-3.1-8b-instruct-fp8' },
+        { name: '@cf/moonshotai/kimi-k2.7-code' }, // no-Free → excluido
+        { description: 'sin name' },               // sin name → filtrado
+      ] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const list = await fetchModels(PROVIDERS.cloudflare, 'token', 'ACC');
+    // El fetch se llamó con header X-Account-Id (y Bearer).
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('/api/cloudflare/models');
+    expect((init.headers as Record<string, string>).Authorization).toBe('Bearer token');
+    expect((init.headers as Record<string, string>)['X-Account-Id']).toBe('ACC');
+    // Excluye el no-Free (kimi-k2.7-code) y el sin-name; etiquetas amigables.
+    expect(list!.map(m => m.value)).toEqual(['@cf/meta/llama-3.1-8b-instruct-fp8', '@cf/qwen/qwen3-30b-a3b-fp8']);
+    expect(list!.find(m => m.value === '@cf/qwen/qwen3-30b-a3b-fp8')?.label).toBe('Qwen3 30B A3B');
   });
 
   it('kilo: catálogo público (no requiere key) parsea {data:[{id}]}, marca free por sufijo :free, ordena free primero', async () => {

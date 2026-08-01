@@ -88,17 +88,11 @@ describe('AIProviderPanel — Zenmux', () => {
     expect(screen.getByText(/Pasarela unificada/)).toBeInTheDocument();
   });
 
-  it('muestra catálogo con 3 modelos free y Ling 3.0 Flash recomendado', async () => {
-    // Zenmux tiene modelsEndpoint → el panel carga el catálogo dinámicamente vía fetch.
-    // Stub con los 3 modelos free oficiales y esperamos a que cargue.
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ data: [
-        { id: 'inclusionai/ling-3.0-flash', pricing: { prompt: [{ value: 0 }], completion: [{ value: 0 }] } },
-        { id: 'z-ai/glm-4.7-flash-free', pricing: { prompt: [{ value: 0 }], completion: [{ value: 0 }] } },
-        { id: 'z-ai/glm-4.6v-flash-free', pricing: { prompt: [{ value: 0 }], completion: [{ value: 0 }] } },
-      ] }),
-    }));
+  it('muestra catálogo fallback con modelos free (DeepSeek V4 Flash recomendado)', async () => {
+    // Zenmux es modelsNeedKey → sin clave el panel NO llama a fetchModels y muestra
+    // el fallback estático (ZENMUX_FALLBACK, 4 free). Verificamos ese comportamiento.
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
 
     const { container } = renderPanel();
     selectProvider(container, 'zenmux');
@@ -106,15 +100,14 @@ describe('AIProviderPanel — Zenmux', () => {
     const select = container.querySelector('#zenmux-model-select') as HTMLSelectElement;
     expect(select).toBeInTheDocument();
 
-    await waitFor(() => expect(select.disabled).toBe(false));
+    // Sin clave → no hay fetch dinámico; se queda con el fallback (todos free 🆓).
+    expect(fetchSpy).not.toHaveBeenCalled();
 
-    // El catálogo dinámico devuelve los 3 modelos free oficiales. La rama de Zenmux
-    // en fetchModels marca free por pricing a 0 → todos llevan 🆓.
     const labels = Array.from(select.options).map(o => o.textContent ?? '');
-    expect(labels.length).toBe(3);
+    const zenmuxCount = getProvider('zenmux').staticModels.length;
+    expect(labels.length).toBe(zenmuxCount);
+    expect(labels).toContain('🆓 DeepSeek V4 Flash'); // nuevo recommended (todos free llevan 🆓)
     Array.from(select.options).forEach(o => expect(o.textContent).toContain('🆓'));
-    // El default (primer free que coincida con una preferencia fiable, o el 1º) es uno
-    // de los 3 free; todos son válidos.
     expect(select.value).toBeTruthy();
   });
 

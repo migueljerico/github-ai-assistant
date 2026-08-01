@@ -575,6 +575,16 @@ fallback) y detección de free al día con cada proveedor.
 expone el "free" de forma distinta y varios requieren key. Cubre el mismo espíritu
 que #66 (Gemini) pero generalizado a los 6 proveedores dinámicos.
 
+> **Revisión v3.65.0 (2026-08-01).** Cloudflare pasa de **estático a dinámico**:
+> nuevo proxy `GET /api/cloudflare/models` que lista `Text Generation` excluyendo
+> los 3 modelos no-Free (`kimi-k2.6`, `kimi-k2.7-code`, `glm-5.2`). El fallback
+> `CLOUDFLARE_FALLBACK` se reordena sin esos modelos (recommended Qwen3 30B) — esto
+> arregla los 403/429 que sufrían las cuentas Free. **Zenmux**: `ZENMUX_FALLBACK`
+> ampliado con `deepseek/deepseek-v4-flash-free` (4.º free). `modelLabels.ts`
+> (Zenmux desfasado + nuevo mapa Cloudflare) e i18n corregidos. Verificado contra la
+> API real de CF. **Quedan pendientes** de revisar en la próxima pasada (~octubre
+> 2026, junto con #66): Groq, OpenRouter, NIM, OpenCode Zen, Ollama, Ai&, Kilo.
+
 ---
 
 #### #75 — Tests E2E (fin de flujo con Playwright) ✅ RESUELTO (v3.61.0, ampliado v3.63.0)

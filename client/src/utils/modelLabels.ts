@@ -1,5 +1,5 @@
 /**
- * Etiquetas amigables para los modelos de IA (Gemini, Groq, NIM, Zenmux).
+ * Etiquetas amigables para los modelos de IA (Gemini, Groq, NIM, Zenmux, Cloudflare).
  *
  * Se usan tanto en el selector del panel de conexión (`AIProviderPanel`) como en
  * el badge del header (`AIProviderBadge`). Para cualquier id desconocido se
@@ -48,14 +48,24 @@ export const MODEL_LABELS: Record<string, string> = {
   'stepfun-ai/step-3.7-flash': 'Step 3.7 Flash',
   'mistralai/mistral-medium-3.5-128b': 'Mistral Medium 3.5',
   'nvidia/llama-3.3-nemotron-super-49b-v1.5': 'Nemotron Super 49B',
-  // ── Zenmux (modelos FREE) ──
-  'stepfun/step-3.7-flash-free': 'Step 3.7 Flash',
-  'x-ai/grok-4.5-free': 'Grok 4.5 (500K ctx)',
+  // ── Zenmux (modelos FREE confirmados, zenmux.ai/models?price_filter=free, 2026-07-31) ──
+  'deepseek/deepseek-v4-flash-free': 'DeepSeek V4 Flash',
+  'inclusionai/ling-3.0-flash': 'Ling 3.0 Flash',
   'z-ai/glm-4.7-flash-free': 'GLM 4.7 Flash',
   'z-ai/glm-4.6v-flash-free': 'GLM 4.6V Flash',
-  'inclusionai/ling-2.6-flash': 'Ling 2.6 Flash',
-  'minimax/minimax-m2.5-lightning': 'MiniMax M2.5 Lightning',
-  'qwen/qwen3-asr-flash': 'Qwen3 ASR Flash',
+  // ── Cloudflare Workers AI (catálogo @cf/, API oficial 2026-07-31) ──
+  // Etiquetas para los modelos que aparecen en CLOUDFLARE_FALLBACK y/o en el
+  // catálogo dinámico; los ids @cf/... sin etiqueta se muestran tal cual.
+  '@cf/qwen/qwen3-30b-a3b-fp8': 'Qwen3 30B A3B',
+  '@cf/meta/llama-3.3-70b-instruct-fp8-fast': 'Llama 3.3 70B FP8',
+  '@cf/meta/llama-3.2-3b-instruct': 'Llama 3.2 3B',
+  '@cf/meta/llama-3.2-1b-instruct': 'Llama 3.2 1B',
+  '@cf/meta/llama-3.1-8b-instruct-fp8': 'Llama 3.1 8B FP8',
+  '@cf/meta/llama-4-scout-17b-16e-instruct': 'Llama 4 Scout 17B',
+  '@cf/openai/gpt-oss-120b': 'GPT-OSS 120B',
+  '@cf/openai/gpt-oss-20b': 'GPT-OSS 20B',
+  '@cf/google/gemma-4-26b-a4b-it': 'Gemma 4 26B A4B',
+  '@cf/nvidia/nemotron-3-120b-a12b': 'Nemotron 3 120B',
 };
 
 /** Devuelve la etiqueta amigable de un modelo, o su id si no hay etiqueta conocida. */
