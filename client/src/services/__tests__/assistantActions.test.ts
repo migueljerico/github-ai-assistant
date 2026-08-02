@@ -966,6 +966,24 @@ describe('runAttachFile (#28)', () => {
     expect(deps.updateMessage).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ content: expect.stringContaining('Adjuntado'), isLoading: false }));
   });
 
+  // v3.66.0 (Frente D): una imagen NO se analiza (sin visión). Se conserva el File
+  // para hospedarlo en screenshots/ al publicar, y el contextText es solo un aviso.
+  it('una imagen NO se analiza: conserva el File y avisa de documentar (Frente D)', async () => {
+    vi.mocked(assertSupportedFile).mockReturnValue(undefined);
+    const deps = makeDeps();
+    const png = new File([new Uint8Array([1, 2, 3])], 'captura.png', { type: 'image/png' });
+    Object.defineProperty(png, 'size', { value: 2048 });
+
+    const ctx = await runAttachFile(deps, png);
+
+    expect(ctx?.name).toBe('captura.png');
+    expect(ctx?.file).toBe(png); // conserva el File para subirlo al publicar
+    expect(ctx?.contextText).toContain('captura.png');
+    // NO se llama al extractor de texto
+    expect(readFileContent).not.toHaveBeenCalled();
+    expect(deps.updateMessage).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ content: expect.stringContaining('captura.png'), isLoading: false }));
+  });
+
   it('devuelve null y avisa si el archivo no es válido', async () => {
     vi.mocked(assertSupportedFile).mockImplementation(() => { throw new Error('No puedo leer archivos «.exe»'); });
     const deps = makeDeps();

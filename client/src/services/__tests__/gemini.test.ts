@@ -788,6 +788,20 @@ describe('callAI - streaming (#38)', () => {
     expect(out).toBe('completo');
     expect((fetchMock.mock.calls[0][1] as RequestInit).body).not.toContain('"stream":true');
   });
+
+  // v3.66.0 (Frente B): callGeminiDirect valida respuesta vacía en la rama NO
+  // streaming (antes fluía {text:""} silenciosamente al parser JSON de docs).
+  it('gemini-proxy no-streaming: lanza error accionable si la respuesta viene vacía (Frente B)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ text: '   ' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      callAI([{ role: 'user', content: 'hi' }], 'sys', 'gemini', 'key', 'gemini-2.5-flash', 'chat'),
+    ).rejects.toThrow(/no devolvió contenido/);
+  });
 });
 
 describe('generateFileDoc - documentar archivo adjunto (#28 Fase 2)', () => {
@@ -947,6 +961,35 @@ describe('generateRepoDocs - no inventar autor/año (#28 4a)', () => {
       // El transporte lanza "no devolvió contenido" ANTES de llegar a la validación
       // de generateRepoDocs; lo importante es que NO aparece el viejo error de JSON.
     ).rejects.toThrow(/no devolvió contenido/);
+  });
+
+  // v3.66.0 (Frente B): las validaciones de README/MANUAL vacíos en generateRepoDocs
+  // (l.911/924) solo son alcanzables cuando el transporte devuelve contenido que,
+  // tras limpiar fences, queda vacío (p. ej. solo ``` ```). El transporte ya lanza
+  // "no devolvió contenido" si la respuesta es puramente vacía, así que este test
+  // usa una respuesta de solo-fences para ejercitar la rama de generateRepoDocs.
+  it('lanza error específico si el README queda vacío tras limpiar fences (Frente B)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ text: '```\n```' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      generateRepoDocs('owner/repo', [{ path: 'src/a.ts', content: 'x' }], { provider: 'gemini', apiKey: 'k', model: 'gemini-2.5-flash' }),
+    ).rejects.toThrow(/no devolvió el README/);
+  });
+
+  it('lanza error específico si el MANUAL_TECNICO queda vacío tras un README válido (Frente B)', async () => {
+    // 1ª llamada (README): contenido válido. 2ª llamada (MANUAL): solo-fences → vacío.
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ text: '# README válido' }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ text: '```markdown\n```' }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      generateRepoDocs('owner/repo', [{ path: 'src/a.ts', content: 'x' }], { provider: 'gemini', apiKey: 'k', model: 'gemini-2.5-flash' }),
+    ).rejects.toThrow(/no devolvió el MANUAL_TECNICO/);
   });
 });
 

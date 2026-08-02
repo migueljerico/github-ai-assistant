@@ -556,3 +556,47 @@ describe('#58 (a) bulk multi-archivo', () => {
     expect(notasTarget.content).toBe('NOTAS RAW');
   });
 });
+
+// v3.66.0 (Frente C): los doCommit*Specific deben propagar specificRepoInput al
+// callback para que el destino sea el repo tecleado (no user.login hardcodeado).
+describe('DocumentFlowModal — scope specific propaga specificRepoInput (v3.66.0 Frente C)', () => {
+  // Helper: navega hasta el paso 4 del scope specific con un repo/path rellenos y
+  // un doc generado (mock). Devuelve las props para inspeccionar los callbacks.
+  async function gotoSpecificStep4() {
+    const props = setup();
+    // Paso 1 → seleccionar scope "specific".
+    fireEvent.click(screen.getByText('Documento específico del repo'));
+    // Paso 2 → rellenar repo + path y generar.
+    const repoInput = document.getElementById('flow-specific-repo-input') as HTMLInputElement;
+    const pathInput = document.getElementById('flow-specific-path-input') as HTMLInputElement;
+    fireEvent.change(repoInput, { target: { value: 'powerbi-dashboard-mercadona' } });
+    fireEvent.change(pathInput, { target: { value: 'docs/api.md' } });
+    fireEvent.click(screen.getByRole('button', { name: /Generar doc de este archivo/i }));
+    // Esperar a que onGenerateSpecific resuelva y avance al paso 3.
+    await waitFor(() => expect(screen.getByText('docs/api.md')).toBeInTheDocument());
+    // Paso 3 → continuar al paso 4 (publicación).
+    fireEvent.click(screen.getByRole('button', { name: /Continuar/i }));
+    return props;
+  }
+
+  it('Commit directo: onCommitSpecific recibe el repo tecleado como 3er argumento', async () => {
+    const props = await gotoSpecificStep4();
+    fireEvent.click(screen.getByRole('button', { name: /Commit directo/i }));
+    await waitFor(() => expect(props.onCommitSpecific).toHaveBeenCalled());
+    expect(props.onCommitSpecific).toHaveBeenCalledWith('specific doc', 'docs/api.md', 'powerbi-dashboard-mercadona');
+  });
+
+  it('Draft PR: onDraftPrSpecific recibe el repo tecleado como 3er argumento', async () => {
+    const props = await gotoSpecificStep4();
+    fireEvent.click(screen.getByRole('button', { name: /Crear Draft PR/i }));
+    await waitFor(() => expect(props.onDraftPrSpecific).toHaveBeenCalled());
+    expect(props.onDraftPrSpecific).toHaveBeenCalledWith('specific doc', 'docs/api.md', 'powerbi-dashboard-mercadona');
+  });
+
+  it('Release: onReleaseSpecific recibe el repo tecleado como 3er argumento', async () => {
+    const props = await gotoSpecificStep4();
+    fireEvent.click(screen.getByRole('button', { name: /Crear Release/i }));
+    await waitFor(() => expect(props.onReleaseSpecific).toHaveBeenCalled());
+    expect(props.onReleaseSpecific).toHaveBeenCalledWith('specific doc', 'docs/api.md', 'powerbi-dashboard-mercadona');
+  });
+});

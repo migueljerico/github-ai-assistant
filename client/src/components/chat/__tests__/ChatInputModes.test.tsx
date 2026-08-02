@@ -100,3 +100,21 @@ describe('ChatInput — selector de modo (v3.56.0)', () => {
     expect(screen.queryByText(/¿Para qué sirve cada modo\?/)).not.toBeInTheDocument();
   });
 });
+
+describe('ChatInput — botón 🖼️ Documentar con capturas (v3.66.0 Frente D2)', () => {
+  it('NO renderiza el botón si no hay imágenes adjuntas', () => {
+    setup({ fileContextNames: ['notas.txt', 'datos.csv'] });
+    expect(screen.queryByRole('button', { name: /Documentar con capturas/i })).not.toBeInTheDocument();
+  });
+
+  it('renderiza el botón cuando hay al menos una imagen adjunta', () => {
+    setup({ fileContextNames: ['notas.txt', 'captura.png'] });
+    expect(screen.getByRole('button', { name: /Documentar con capturas/i })).toBeInTheDocument();
+  });
+
+  it('al pulsarlo abre el flujo de documentación (con el repo de contexto si lo hay)', () => {
+    const { props } = setup({ fileContextNames: ['login.png'], repoContextName: 'migueljerico/powerbi-dashboard-mercadona' });
+    fireEvent.click(screen.getByRole('button', { name: /Documentar con capturas/i }));
+    expect(props.onOpenDocumentFlow).toHaveBeenCalledWith('migueljerico/powerbi-dashboard-mercadona');
+  });
+});
