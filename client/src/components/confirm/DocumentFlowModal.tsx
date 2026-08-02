@@ -57,12 +57,14 @@ interface DocumentFlowModalProps {
   * #58 (b): devuelve `{doc, currentContent}` para que el modal pueda mostrar el
   * diff old↔new; `currentContent` es `undefined` cuando el documento es nuevo. */
  onGenerateSpecific: (repoInput: string, targetPath: string, extraInstructions?: string) => Promise<GenerateSpecificResult | null>;
- /** Publica (commit) un documento específico del repo. */
- onCommitSpecific: (doc: string, path: string) => Promise<void>;
+ /** Publica (commit) un documento específico del repo.
+  * v3.66.0: se propaga `repoInput` para que el destino sea el repo tecleado por
+  * el usuario en el paso 2 (specificRepoInput), no el login hardcodeado. */
+ onCommitSpecific: (doc: string, path: string, repoInput?: string) => Promise<void>;
  /** Crea Draft PR con un documento específico del repo. */
- onDraftPrSpecific: (doc: string, path: string) => Promise<void>;
+ onDraftPrSpecific: (doc: string, path: string, repoInput?: string) => Promise<void>;
  /** Crea Release con un documento específico del repo. */
- onReleaseSpecific: (doc: string, path: string) => Promise<void>;
+ onReleaseSpecific: (doc: string, path: string, repoInput?: string) => Promise<void>;
  /** #58 (a): bulk multi-archivo atómico (commit directo a la rama por defecto). */
  onCommitBulk?: (owner: string, repo: string, targets: DocTarget[]) => Promise<void>;
  /** #58 (a): bulk multi-archivo atómico como Draft PR (rama nueva docs/bulk-{ts}). */
@@ -409,23 +411,26 @@ const doCreateRepoAndPublishFile = async () => {
 };
 
 // #58 Fase 2: handlers de publicación para "documento específico del repo"
+// v3.66.0 (Frente C): propagamos specificRepoInput al callback para que el destino
+// sea el repo tecleado por el usuario (p. ej. powerbi-dashboard-mercadona), no el
+// login del usuario autenticado. Antes se descartaba → publicaba en user/user.
 const doCommitSpecific = async () => {
   if (!specificDoc || !specificRepoInput.trim()) return;
   setPending('commit'); setBusy(true);
   try {
-    await onCommitSpecific(specificDoc, specificPath.trim());
+    await onCommitSpecific(specificDoc, specificPath.trim(), specificRepoInput.trim());
   } finally { setBusy(false); setPending(null); onCancel(); }
 };
 const doDraftPrSpecific = async () => {
   if (!specificDoc || !specificRepoInput.trim()) return;
   setPending('draftpr'); setBusy(true);
-  try { await onDraftPrSpecific(specificDoc, specificPath.trim()); }
+  try { await onDraftPrSpecific(specificDoc, specificPath.trim(), specificRepoInput.trim()); }
   finally { setBusy(false); setPending(null); onCancel(); }
 };
 const doReleaseSpecific = async () => {
   if (!specificDoc || !specificRepoInput.trim()) return;
   setPending('release'); setBusy(true);
-  try { await onReleaseSpecific(specificDoc, specificPath.trim()); }
+  try { await onReleaseSpecific(specificDoc, specificPath.trim(), specificRepoInput.trim()); }
   finally { setBusy(false); setPending(null); onCancel(); }
 };
 

@@ -10,6 +10,7 @@ import CodeHealthButton from './CodeHealthButton';
 import ConversationIOButton from './ConversationIOButton';
 import FileAttachButton from './FileAttachButton';
 import InstructionSuggestions from './InstructionSuggestions';
+import { isImageFile } from '../../services/docPublisher';
 import SecurityAuditButton from './SecurityAuditButton';
 import SyncRepoStatusButton from './SyncRepoStatusButton';
 
@@ -282,6 +283,24 @@ export default function ChatInput({
         >
           🔄 {t('chat.updateDocs')}
         </button>
+
+        {/* v3.66.0 (Frente D2): atajo chat → wizard. Solo visible cuando hay
+            imágenes adjuntas. Abre el stepper de documentación con las capturas
+            ya cargadas como extras (el wizard las hospeda en screenshots/ e
+            inserta ![](screenshots/...) en el markdown generado). Sin visión:
+            el modelo nunca analiza los píxeles. */}
+        {fileContextNames.some(isImageFile) && (
+          <button
+            id="doc-with-screenshots-btn"
+            className="doc-repo-btn"
+            disabled={disabled}
+            type="button"
+            title={t('chat.docWithScreenshots')}
+            onClick={() => onOpenDocumentFlow(repoContextName ?? undefined)}
+          >
+            🖼️ {t('chat.docWithScreenshots')}
+          </button>
+        )}
 
         <ThreadSummaryButton
           disabled={disabled}

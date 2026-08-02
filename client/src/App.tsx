@@ -14,6 +14,7 @@ fetchExistingFileDoc, runPublishBulk,
 import type { RepoContext, FileContext, PublishTarget, StartPublishResult, CodeHealth, GenerateSpecificResult } from './services/assistantActions';
 import type { DocTarget } from './services/docPublisher';
 import { serializeConversation, parseConversation, conversationFilename } from './utils/conversationIO';
+import { resolveRepoRef } from './utils/repoRef';
 import Header from './components/layout/Header';
 import SessionWarningBanner from './components/layout/SessionWarningBanner';
 import HistoryPanel from './components/layout/HistoryPanel';
@@ -286,27 +287,33 @@ const flowGenerateSpecific = useCallback(async (repoInput: string, targetPath: s
  return runGenerateSpecificDoc(deps, { provider, apiKey, model, accountId, timeoutMs }, repoInput, targetPath, undefined, extraInstructions);
 }, [token, user, providerName, model, provider, apiKey, accountId, timeoutMs, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading]);
 
-const flowCommitSpecific = useCallback(async (doc: string, path: string): Promise<void> => {
+// v3.66.0 (Frente C): los 3 flowCommit*Specific reciben `repoInput` del modal
+// (lo que el usuario tecleó en el paso 2) y resuelven owner/repo con resolveRepoRef,
+// en vez de hardcodear user.login dos veces (que publicaba en user/user y corrompía
+// el README de perfil cuando se pretendía actualizar otro repo).
+const flowCommitSpecific = useCallback(async (doc: string, path: string, repoInput?: string): Promise<void> => {
   if (!token || !user) return;
   const deps = { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading };
-  await runPublishSpecificDoc(deps, user.login, user.login, path, doc, 'commit');
+  const { owner, repo } = resolveRepoRef(repoInput || user.login, user.login);
+  await runPublishSpecificDoc(deps, owner, repo, path, doc, 'commit');
 }, [token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading]);
 
-const flowDraftPrSpecific = useCallback(async (doc: string, path: string): Promise<void> => {
+const flowDraftPrSpecific = useCallback(async (doc: string, path: string, repoInput?: string): Promise<void> => {
   if (!token || !user) return;
   const deps = { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading };
-  await runPublishSpecificDoc(deps, user.login, user.login, path, doc, 'draftpr');
+  const { owner, repo } = resolveRepoRef(repoInput || user.login, user.login);
+  await runPublishSpecificDoc(deps, owner, repo, path, doc, 'draftpr');
 }, [token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading]);
 
-const flowReleaseSpecific = useCallback(async (doc: string, path: string): Promise<void> => {
+const flowReleaseSpecific = useCallback(async (doc: string, path: string, repoInput?: string): Promise<void> => {
   if (!token || !user) return;
   const deps = { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading };
-  await runPublishSpecificDoc(deps, user.login, user.login, path, doc, 'release');
+  const { owner, repo } = resolveRepoRef(repoInput || user.login, user.login);
+  await runPublishSpecificDoc(deps, owner, repo, path, doc, 'release');
 }, [token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading]);
 
 // #58 (a): bulk multi-archivo atómico. Recibe (owner, repo, targets) explícitos
-// (a diferencia de flowCommitSpecific que hardcodea user.login — limitación prexistente,
-// no tocada aquí). El destino lo resuelve el modal en el paso 4.
+// (el destino lo resuelve el modal en el paso 4, igual que los *Specific ahora).
 const flowCommitBulk = useCallback(async (owner: string, repo: string, targets: DocTarget[]): Promise<void> => {
   if (!token || !user) return;
   const deps = { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading };

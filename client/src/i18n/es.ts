@@ -317,6 +317,8 @@ export const es = {
   'chat.docRepoMissingCreate': '⚠️ El repositorio **{repo}** no existe. ¿Quieres que lo cree y lo documente? Puedes adjuntar archivos para subirlos al repo recién creado.',
   'chat.docRepoMissingOther': '❌ No encontré **{repo}** y solo puedo crear repositorios en tu cuenta. Créalo en GitHub o elige otro destino.',
   'chat.updateDocs': '🔄 Actualizar documentación',
+  // v3.66.0 (Frente D2): atajo chat → wizard cuando hay imágenes adjuntas.
+  'chat.docWithScreenshots': '🖼️ Documentar con capturas',
   // ────── #52 Modo Auditoría de Seguridad ──────
   'chat.auditSecurity': '🛡️ Auditar seguridad',
   'chat.auditSecurity.loading': 'Analizando la seguridad de **{ref}** con {provider}...',

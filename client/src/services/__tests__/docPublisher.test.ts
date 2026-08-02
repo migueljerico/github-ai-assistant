@@ -28,7 +28,7 @@ import {
   createCommit,
   updateRef,
 } from '../github';
-import { writeDocFiles, buildDocsPrBody, createDocsDraftPr, publishFileDoc, uploadPathFor, writeDocTargets, commitMultipleFiles, publishBulkCommit, publishBulkDraftPr, buildBulkPrBody } from '../docPublisher';
+import { writeDocFiles, buildDocsPrBody, createDocsDraftPr, publishFileDoc, uploadPathFor, writeDocTargets, commitMultipleFiles, publishBulkCommit, publishBulkDraftPr, buildBulkPrBody, buildImageMarkdown, isImageFile } from '../docPublisher';
 
 const TOKEN = 'tok';
 const OWNER = 'owner';
@@ -255,6 +255,75 @@ describe('docPublisher', () => {
       const paths = vi.mocked(createOrUpdateBinaryFile).mock.calls.map(c => c[3]);
       expect(paths).toEqual(['screenshots/captura.png', 'data/datos.xlsx', 'notas.txt']);
     });
+
+    // v3.66.0 (Frente D1): con imágenes entre los extras, el content publicado
+    // debe incluir una sección "Capturas" que las enlace desde screenshots/ (donde
+    // commitExtras las hospeda). Sin visión: el modelo nunca ve los píxeles.
+    it('inserta la sección Capturas en el markdown cuando hay imágenes (Frente D1)', async () => {
+      vi.mocked(getFileContents).mockResolvedValue({ sha: 'x' } as any);
+      vi.mocked(createOrUpdateFile).mockResolvedValue({ commit: { sha: 'c' }, content: { sha: 'c', name: 'x', path: 'x', type: 'file' } as any });
+      vi.mocked(createOrUpdateBinaryFile).mockResolvedValue({ commit: { sha: 'b' } } as any);
+      const mk = (name: string) => ({ name, arrayBuffer: async () => new Uint8Array([1]).buffer }) as unknown as File;
+      const extraFiles = [mk('dashboard.png'), mk('datos.xlsx')];
+
+      await publishFileDoc(TOKEN, OWNER, REPO, 'README.md', '# Mi README', { extraFiles });
+
+      // El content escrito (5º arg de createOrUpdateFile) ahora termina con la
+      // sección Capturas enlazando la imagen desde screenshots/. El .xlsx NO aparece
+      // (no es imagen).
+      const writtenContent = vi.mocked(createOrUpdateFile).mock.calls[0][4] as string;
+      expect(writtenContent).toContain('# Mi README');
+      expect(writtenContent).toContain('![dashboard](screenshots/dashboard.png)');
+      expect(writtenContent).not.toContain('datos.xlsx');
+    });
+
+    it('NO añade sección Capturas si no hay imágenes entre los extras', async () => {
+      vi.mocked(getFileContents).mockResolvedValue({ sha: 'x' } as any);
+      vi.mocked(createOrUpdateFile).mockResolvedValue({ commit: { sha: 'c' }, content: { sha: 'c', name: 'x', path: 'x', type: 'file' } as any });
+      vi.mocked(createOrUpdateBinaryFile).mockResolvedValue({ commit: { sha: 'b' } } as any);
+      const mk = (name: string) => ({ name, arrayBuffer: async () => new Uint8Array([1]).buffer }) as unknown as File;
+      const extraFiles = [mk('datos.xlsx'), mk('notas.txt')];
+
+      await publishFileDoc(TOKEN, OWNER, REPO, 'README.md', '# Mi README', { extraFiles });
+
+      const writtenContent = vi.mocked(createOrUpdateFile).mock.calls[0][4] as string;
+      expect(writtenContent).toBe('# Mi README');
+    });
+  });
+});
+
+// ── v3.66.0 (Frente D1): buildImageMarkdown + isImageFile ────────────────────
+describe('buildImageMarkdown / isImageFile (v3.66.0 Frente D1)', () => {
+  it('isImageFile detecta extensiones de imagen', () => {
+    expect(isImageFile('a.png')).toBe(true);
+    expect(isImageFile('a.JPG')).toBe(true);
+    expect(isImageFile('a.jpeg')).toBe(true);
+    expect(isImageFile('a.gif')).toBe(true);
+    expect(isImageFile('a.webp')).toBe(true);
+    expect(isImageFile('a.svg')).toBe(true);
+    expect(isImageFile('a.bmp')).toBe(true);
+    expect(isImageFile('a.xlsx')).toBe(false);
+    expect(isImageFile('a.md')).toBe(false);
+    expect(isImageFile('a')).toBe(false);
+  });
+
+  it('buildImageMarkdown devuelve cadena vacía sin imágenes', () => {
+    expect(buildImageMarkdown([])).toBe('');
+    expect(buildImageMarkdown(['notas.txt', 'datos.csv'])).toBe('');
+  });
+
+  it('buildImageMarkdown genera una línea markdown por imagen, enlazando screenshots/', () => {
+    const md = buildImageMarkdown(['dashboard.png', 'login.jpeg']);
+    expect(md).toContain('## 📸 Capturas');
+    expect(md).toContain('![dashboard](screenshots/dashboard.png)');
+    expect(md).toContain('![login](screenshots/login.jpeg)');
+  });
+
+  it('buildImageMarkdown ignora los no-imágenes mezclados', () => {
+    const md = buildImageMarkdown(['captura.png', 'datos.xlsx', 'notas.txt']);
+    expect(md).toContain('![captura](screenshots/captura.png)');
+    expect(md).not.toContain('datos.xlsx');
+    expect(md).not.toContain('notas.txt');
   });
 });
 

@@ -103,7 +103,15 @@ describe('assertSupportedFile (#28)', () => {
 
   it('rechaza extensiones no soportadas con mensaje claro', () => {
     expect(() => assertSupportedFile(fileFrom('x', 'app.exe'))).toThrow(/\.exe/);
-    expect(() => assertSupportedFile(fileFrom('x', 'foto.png'))).toThrow(/no puedo leer/i);
+    expect(() => assertSupportedFile(fileFrom('x', 'binario.zip'))).toThrow(/no puedo leer/i);
+  });
+
+  // v3.66.0 (Frente D): las imágenes ahora SÍ están soportadas (se hospedan en
+  // screenshots/ y se enlazan desde los docs, sin visión).
+  it('acepta imágenes png/jpg/svg (#28 Frente D)', () => {
+    expect(() => assertSupportedFile(fileFrom('x', 'captura.png'))).not.toThrow();
+    expect(() => assertSupportedFile(fileFrom('x', 'foto.jpg'))).not.toThrow();
+    expect(() => assertSupportedFile(fileFrom('x', 'logo.svg'))).not.toThrow();
   });
 
   it('rechaza archivos por encima del tamaño máximo', () => {

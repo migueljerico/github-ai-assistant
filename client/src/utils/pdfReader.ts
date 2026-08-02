@@ -5,13 +5,16 @@
 
 import { readPDFAdvanced } from './pdfAdvanced';
 
-/** Extensiones admitidas al adjuntar archivos (#28): PDF + texto/código + hojas de cálculo + Power BI + Word. */
+/** Extensiones admitidas al adjuntar archivos (#28): PDF + texto/código + hojas de cálculo + Power BI + Word + imágenes.
+ *  v3.66.0 (Frente D): imágenes para hospedarlas en screenshots/ y enlazarlas desde
+ *  los docs (sin visión — el modelo nunca analiza los píxeles). */
 export const SUPPORTED_FILE_EXTENSIONS = [
   'pdf', 'txt', 'md', 'markdown', 'json', 'csv', 'yaml', 'yml',
   'js', 'jsx', 'ts', 'tsx', 'py', 'html', 'css', 'xml', 'log', 'env',
   'xlsx', 'xls', // #28 Fase 3a — hojas de cálculo (Excel) vía SheetJS
   'pbix', 'pbit', // #28 Fase 3b — Power BI (ZIP); solo se lee la estructura JSON
   'docx', // #28 — documentos Word (ZIP OOXML); se lee el texto de word/document.xml
+  'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', // v3.66.0 (Frente D) — capturas para docs
 ];
 
 /** Tamaño máximo de archivo adjunto (5 MB). */

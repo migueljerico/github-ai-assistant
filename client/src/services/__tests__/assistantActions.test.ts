@@ -57,6 +57,8 @@ vi.mock('../docPublisher', () => ({
   createDocsDraftPr: vi.fn(),
   publishFileDoc: vi.fn(),
   uploadFilesToRepo: vi.fn(),
+  // v3.66.0 (Frente D): isImageFile real para que runAttachFile decida bien.
+  isImageFile: (name: string) => /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(name),
   // #58 (b): constantes reales (no mocks) para que runDocumentRepo las use.
   README_PATH: 'README.md',
   MANUAL_PATH: 'MANUAL_TECNICO.md',
@@ -1491,11 +1493,11 @@ describe('buildSignature (v3.31.0)', () => {
     const sig = buildSignature({
       user: { login: 'me' },
       providerName: 'Groq Cloud',
-      model: 'llama-3.1-8b-instant',
+      model: 'openai/gpt-oss-20b',
       provider: 'groq',
       lang: 'es',
     });
-    expect(sig).toContain('Llama 3.1 8B (se retira 08-16)');
+    expect(sig).toContain('GPT-OSS 20B (fast)');
   });
 
   it('cae al value si el modelo no está en el catálogo estático', () => {

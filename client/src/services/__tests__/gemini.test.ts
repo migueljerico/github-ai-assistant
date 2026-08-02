@@ -844,10 +844,13 @@ describe('generateFileDoc - documentar archivo adjunto (#28 Fase 2)', () => {
 describe('generateRepoDocs - no inventar autor/año (#28 4a)', () => {
   beforeEach(() => { vi.restoreAllMocks(); });
 
+  // v3.66.0 (Frente A+B): la función ahora hace 2 llamadas secuenciales en markdown
+  // plano (README, luego MANUAL) en vez de un único JSON. Los mocks devuelven
+  // markdown plano para reflejar el comportamiento real.
   it('inyecta el owner real y el año actual en el footer, sin placeholders', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ choices: [{ message: { content: '{"readme":"R","manualTecnico":"M"}' } }] }),
+      json: async () => ({ choices: [{ message: { content: '# README' } }] }),
     });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -857,6 +860,7 @@ describe('generateRepoDocs - no inventar autor/año (#28 4a)', () => {
       { provider: 'groq', apiKey: 'k', model: 'llama' },
     );
 
+    // La 1ª llamada es el README; su system prompt contiene el footer.
     const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
     const sysMsg = body.messages.find((m: { role: string }) => m.role === 'system');
     // v3.31.0: el footer ahora cita usuario + proveedor + modelo (firma de documentación).
@@ -868,7 +872,7 @@ describe('generateRepoDocs - no inventar autor/año (#28 4a)', () => {
   it('trunca el contenido de los archivos por LÍNEAS, no por caracteres (#20)', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ choices: [{ message: { content: '{"readme":"R","manualTecnico":"M"}' } }] }),
+      json: async () => ({ choices: [{ message: { content: '# doc' } }] }),
     });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -884,6 +888,65 @@ describe('generateRepoDocs - no inventar autor/año (#28 4a)', () => {
     expect(userMsg.content).toContain('líneas más');         // truncado por líneas
     expect(userMsg.content).not.toContain('truncado a 2000 chars'); // ya no por chars
     expect(userMsg.content).toContain('linea 0');            // preserva el inicio (imports/firmas)
+  });
+
+  // v3.66.0 (Frente A): cuando ya existe un README en el repo, el system prompt
+  // debe pedir MEJORARLO (no copiarlo). Antes solo decía "genera desde cero" y un
+  // modelo perezoso del free tier duplicaba el README existente.
+  it('pide MEJORAR el README existente en vez de copiarlo (Frente A)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: '# README mejorado' } }] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await generateRepoDocs(
+      'owner/repo',
+      [{ path: 'README.md', content: '# README viejo que no debe copiarse' }],
+      { provider: 'groq', apiKey: 'k', model: 'llama' },
+    );
+
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    const sysMsg = body.messages.find((m: { role: string }) => m.role === 'system');
+    expect(sysMsg.content).toContain('MEJORAR');
+    expect(sysMsg.content).toContain('# README viejo que no debe copiarse');
+  });
+
+  it('pide MEJORAR el MANUAL_TECNICO existente en vez de copiarlo (Frente A)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: '# Manual mejorado' } }] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await generateRepoDocs(
+      'owner/repo',
+      [{ path: 'MANUAL_TECNICO.md', content: '# Manual viejo' }],
+      { provider: 'groq', apiKey: 'k', model: 'llama' },
+    );
+
+    // La 2ª llamada es el MANUAL.
+    const body = JSON.parse((fetchMock.mock.calls[1][1] as RequestInit).body as string);
+    const sysMsg = body.messages.find((m: { role: string }) => m.role === 'system');
+    expect(sysMsg.content).toContain('MEJORAR');
+    expect(sysMsg.content).toContain('# Manual viejo');
+  });
+
+  // v3.66.0 (Frente B): ya no hay JSON que truncar — cada doc viene en markdown
+  // plano. El error "no devolvió JSON válido" desaparece. Una respuesta vacía da
+  // un error accionable (no genérico de JSON), lanzado por el transporte.
+  it('lanza error accionable si el README viene vacío (Frente B, markdown plano)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: '   ' } }] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      generateRepoDocs('owner/repo', [{ path: 'src/a.ts', content: 'x' }], { provider: 'groq', apiKey: 'k', model: 'llama' }),
+      // El transporte lanza "no devolvió contenido" ANTES de llegar a la validación
+      // de generateRepoDocs; lo importante es que NO aparece el viejo error de JSON.
+    ).rejects.toThrow(/no devolvió contenido/);
   });
 });
 

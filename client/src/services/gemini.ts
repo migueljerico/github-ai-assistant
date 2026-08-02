@@ -385,6 +385,13 @@ async function callGeminiDirect(
   }
 
   const data = await res.json() as { text: string };
+  // v3.66.0 (Frente B): validación de respuesta vacía que FALTABA en la rama no-
+  // streaming (la streaming sí la tenía en l.381-383, y callOpenAICompatible en
+  // ambos casos). Antes, un {text:""} del proxy fluía silenciosamente al parser
+  // JSON de docs y provocaba el engañoso "no devolvió JSON válido".
+  if (!data.text?.trim()) {
+    throw new Error('El modelo no devolvió contenido. Prueba con otro modelo o vuelve a intentarlo.');
+  }
   return data.text;
 }
 
@@ -776,11 +783,44 @@ export async function generateRepoDocs(
     ? `<p align="center">Created by @${docOwner} and documented by ${providerLabel} (${modelLabelVal}) · ${docYear}</p>`
     : `<p align="center">Creado por @${docOwner} y documentado por ${providerLabel} (${modelLabelVal}) · ${docYear}</p>`;
 
-  // ── Rich system prompt with structure template ────────────────────────────
-  const docSystemPrompt = `Eres un experto en documentación técnica de software de nivel profesional.
-Tu tarea es analizar el código de un repositorio y generar documentación completa, detallada y visualmente atractiva.
-Responde ÚNICAMENTE con un objeto JSON con este formato exacto (sin markdown exterior, sin texto adicional):
-{ "readme": "...", "manualTecnico": "...", "resumen": "...", "metadatos": {...} }
+  // v3.66.0 (Frente A+B): converger generateRepoDocs hacia el patrón de
+  // generateSpecificDoc. ANTES pedía un único JSON gigante {readme, manualTecnico,
+  // resumen, metadatos} con maxTokens 8192 = techo exacto del free tier de Gemini
+  // Flash → el JSON se trunca → "no devolvió JSON válido" (bug B). Además el prompt
+  // solo decía "genera desde cero", nunca "mejora el existente" → un modelo perezoso
+  // del free tier COPIABA el README previo (bug A). No existía el existingDirective
+  // que SÍ tiene generateSpecificDoc.
+  //
+  // Solución: 2 llamadas secuenciales (README, luego MANUAL), cada una en MARKDOWN
+  // PLANO (sin JSON → imposible truncar un JSON que no existe), inyectando la
+  // directiva "MEJORA, no copies" cuando haya un doc previo. Secuenciales (no
+  // Promise.all) para no disparar 429 en free tier.
+
+  // ── Detectar README y MANUAL existentes para pedir "mejora" en vez de "copia" ──
+  const existingReadme = files.find(f => /^readme(\.|$)/i.test(f.path))?.content;
+  const existingManual = files.find(f => /manual[_-]tecnico/i.test(f.path))?.content;
+
+  // ── Contexto compartido por ambas llamadas ────────────────────────────────
+  const treeOverview = files.map(f => f.path).join('\n');
+  const fileContents = files
+    .filter(f => f.content) // Solo archivos con contenido
+    // #20: truncado por líneas (preserva imports/firmas) en vez de cortar a 2000 chars.
+    .map(f => `### ${f.path}\n${truncateByLines(f.content || '', 80)}`)
+    .join('\n\n---\n\n');
+  const sharedUserContext =
+    `Repositorio: ${repoName}\n` +
+    `Lenguaje principal detectado: ${primaryLanguage}\n` +
+    `Archivos analizados: ${files.length}\n\n` +
+    `ESTRUCTURA DEL PROYECTO:\n\`\`\`\n${treeOverview}\n\`\`\`\n\n` +
+    `CONTENIDO DE ARCHIVOS CLAVE:\n\n${fileContents}`;
+
+  // ── Llamada 1: README en markdown plano ───────────────────────────────────
+  const readmeExistingDirective = existingReadme
+    ? `\n\nCONTENIDO ACTUAL DEL README (debes MEJORARLO, no copiarlo ni reemplazarlo ciegamente — mantén su estructura y tono, corrige lo obsoleto y añade/aumenta secciones con información real del código):\n${existingReadme}`
+    : '\n\nEl README NO existe aún — créalo desde cero con contenido profesional.';
+
+  const readmeSystemPrompt = `Eres un experto en documentación técnica de software de nivel profesional.
+Tu tarea es analizar el código de un repositorio y generar el contenido del archivo README.md en Markdown plano, completo, detallado y visualmente atractivo. Responde ÚNICAMENTE con el Markdown del README, sin texto introductorio ni bloques de código externos que envuelvan todo.
 
 ═══════════════════════════════════════════════════════
 REQUISITOS OBLIGATORIOS PARA EL README.md
@@ -809,6 +849,20 @@ REQUISITOS OBLIGATORIOS PARA EL README.md
    - Los bloques de código deben contener comandos reales (npm install, python main.py, etc.)
    - Las tablas deben tener filas con información concreta, no placeholders genéricos
    - Detecta el lenguaje principal y usa badges específicos de ese ecosistema
+${readmeExistingDirective}
+
+═══════════════════════════════════════════════════════
+LENGUAJE PRIMARIO DETECTADO: ${primaryLanguage}
+REPOSITORIO: ${repoName}
+═══════════════════════════════════════════════════════`;
+
+  // ── Llamada 2: MANUAL_TECNICO en markdown plano ───────────────────────────
+  const manualExistingDirective = existingManual
+    ? `\n\nCONTENIDO ACTUAL DEL MANUAL_TECNICO (debes MEJORARLO, no copiarlo ni reemplazarlo ciegamente — mantén su estructura y tono, corrige lo obsoleto y añade/aumenta secciones con información real del código):\n${existingManual}`
+    : '\n\nEl MANUAL_TECNICO NO existe aún — créalo desde cero con contenido profesional.';
+
+  const manualSystemPrompt = `Eres un experto en documentación técnica de software de nivel profesional.
+Tu tarea es analizar el código de un repositorio y generar el contenido del archivo MANUAL_TECNICO.md en Markdown plano, detallado y riguroso. Responde ÚNICAMENTE con el Markdown del manual, sin texto introductorio ni bloques de código externos que envuelvan todo.
 
 ═══════════════════════════════════════════════════════
 REQUISITOS OBLIGATORIOS PARA EL MANUAL_TECNICO.md
@@ -829,105 +883,52 @@ REQUISITOS OBLIGATORIOS PARA EL MANUAL_TECNICO.md
 5. Guía de despliegue paso a paso para el stack detectado
 
 6. Limitaciones conocidas y posibles mejoras futuras
+${manualExistingDirective}
 
 ═══════════════════════════════════════════════════════
 LENGUAJE PRIMARIO DETECTADO: ${primaryLanguage}
 REPOSITORIO: ${repoName}
-═══════════════════════════════════════════════════════
+═══════════════════════════════════════════════════════`;
 
-Recuerda: responde SOLO con el JSON { "readme": "...", "manualTecnico": "...", "resumen": "...", "metadatos": {...} }.
-No incluyas ningún texto fuera del JSON. No uses bloques de código externos.`;
+  // ── Ejecución: 2 llamadas secuenciales en markdown plano ──────────────────
+  // Secuenciales (no Promise.all) para no disparar 429 en el free tier.
+  const provider = config?.provider ?? 'groq';
+  const apiKey = config?.apiKey ?? 'test-key';
+  const model = config?.model ?? 'test-model';
 
-  // ── Build message: tree overview + file contents ──────────────────────────
-  const treeOverview = files.map(f => f.path).join('\n');
-  const fileContents = files
-    .filter(f => f.content) // Solo archivos con contenido
-    // #20: truncado por líneas (preserva imports/firmas) en vez de cortar a 2000 chars.
-    .map(f => `### ${f.path}\n${truncateByLines(f.content || '', 80)}`)
-    .join('\n\n---\n\n');
+  const stripFences = (raw: string): string =>
+    raw.replace(/^```(?:markdown)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
 
-  const userMessage =
-    `Repositorio: ${repoName}\n` +
-    `Lenguaje principal detectado: ${primaryLanguage}\n` +
-    `Archivos analizados: ${files.length}\n\n` +
-    `ESTRUCTURA DEL PROYECTO:\n\`\`\`\n${treeOverview}\n\`\`\`\n\n` +
-    `CONTENIDO DE ARCHIVOS CLAVE:\n\n${fileContents}`;
-
-  // 🔥 ZERO-STORAGE: Si tenemos config, lo pasamos a callAI. Si no, usamos defaults (para tests).
-  // #24 Fase 3: la documentación respeta el idioma activo de la interfaz.
-  const prompt = withLangDirective(docSystemPrompt, lang);
-  let rawText: string;
-  if (config) {
-    rawText = await callAI(
-      [{ role: 'user', content: userMessage }],
-      prompt,
-      config.provider,
-      config.apiKey,
-      config.model,
-      undefined,   // mode (no aplica a docs)
-      undefined,   // onToken (sin streaming)
-      undefined,   // signal
-      8192,        // v3.31.0: README + MANUAL_TECNICO requieren más salida que chat/action
-    );
-  } else {
-    // Fallback para tests: usa valores por defecto
-    rawText = await callAI(
-      [{ role: 'user', content: userMessage }],
-      prompt,
-      'groq',
-      'test-key',
-      'test-model',
-      undefined,
-      undefined,
-      undefined,
-      8192,
-    );
+  const readmeRaw = await callAI(
+    [{ role: 'user', content: sharedUserContext }],
+    withLangDirective(readmeSystemPrompt, lang),
+    provider, apiKey, model,
+    undefined, undefined, undefined,
+    8192, // README solo cabe holgado en el free tier al ir en markdown plano.
+  );
+  const readme = stripFences(readmeRaw);
+  if (!readme) {
+    throw new Error('La IA no devolvió el README. Prueba con otro modelo o vuelve a intentarlo.');
   }
 
-  // v3.22.3: reutilizamos el parser robusto de parseGeminiAction (extrae el JSON
-  // aunque el modelo lo envuelva en prosa o emita un bloque <think> antes), en vez
-  // del parser simple (solo fences + JSON.parse) que rompía con respuestas verbosas.
-  let parsed: Record<string, unknown> | undefined;
-  for (const candidate of extractJsonCandidates(rawText)) {
-    try {
-      parsed = JSON.parse(candidate) as Record<string, unknown>;
-      break;
-    } catch {
-      // probamos el siguiente candidato
-    }
+  // Segunda llamada DESPUÉS de la primera (secuenciales).
+  const manualRaw = await callAI(
+    [{ role: 'user', content: sharedUserContext }],
+    withLangDirective(manualSystemPrompt, lang),
+    provider, apiKey, model,
+    undefined, undefined, undefined,
+    8192,
+  );
+  const manualTecnico = stripFences(manualRaw);
+  if (!manualTecnico) {
+    throw new Error('La IA no devolvió el MANUAL_TECNICO. Prueba con otro modelo o vuelve a intentarlo.');
   }
-  if (!parsed) {
-    throw new Error(
-      'La IA no devolvió JSON válido. Suele ocurrir cuando la respuesta se trunca ' +
-      '(README + MANUAL_TECNICO son largos) o el modelo devuelve prosa. ' +
-      'Prueba con un repositorio más pequeño o con un modelo que admita más tokens de salida.',
-    );
-  }
-
-  // Validación de campos requeridos
-  if (!parsed.readme || typeof parsed.readme !== 'string') {
-    throw new Error('La IA no devolvió el campo "readme" en el formato esperado');
-  }
-  if (!parsed.manualTecnico || typeof parsed.manualTecnico !== 'string') {
-    throw new Error('La IA no devolvió el campo "manualTecnico" en el formato esperado');
-  }
-
-  // Manejo de errores del modelo
-  if (parsed.error) {
-    throw new Error(`Error del modelo: ${parsed.error}`);
-  }
-  
-  // Construir metadatos por defecto si no están en la respuesta
-  const defaultMetadatos = {
-    lenguaje: primaryLanguage,
-    filesCount: files.length,
-  };
 
   return {
-    readme: parsed.readme as string,
-    manualTecnico: parsed.manualTecnico as string,
-    resumen: (parsed.resumen as string) || `Documentación generada para ${repoName}`,
-    metadatos: (parsed.metadatos as Record<string, unknown>) || defaultMetadatos,
+    readme,
+    manualTecnico,
+    resumen: `Documentación generada para ${repoName}`,
+    metadatos: { lenguaje: primaryLanguage, filesCount: files.length },
   };
 }
 

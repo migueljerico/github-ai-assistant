@@ -19,7 +19,7 @@ import type { RepoTreeFile } from './github';
 import { rankFilesByQuery } from '../utils/contextRanker';
 import { isContextTooLargeError } from '../utils/retry';
 import { languageDistribution, countTechnicalDebt, commitsByWeek, type LanguageSlice, type TechnicalDebt, type CommitWeek } from '../utils/codeHealth';
-import { writeDocFiles, createDocsDraftPr, publishFileDoc, uploadFilesToRepo, README_PATH, MANUAL_PATH, publishBulkCommit, publishBulkDraftPr } from './docPublisher';
+import { writeDocFiles, createDocsDraftPr, publishFileDoc, uploadFilesToRepo, README_PATH, MANUAL_PATH, publishBulkCommit, publishBulkDraftPr, isImageFile } from './docPublisher';
 import type { DocTarget } from './docPublisher';
 import { summarizeThread, parseThreadInput, listOpenThreads, formatThreadList } from './threadSummary';
 import { generateChangelog } from './changelogGenerator';
@@ -1224,6 +1224,19 @@ export async function runAttachFile(deps: ChatDeps, file: File): Promise<FileCon
         isLoading: false,
       });
       return { name: file.name, contextText };
+    }
+
+    // v3.66.0 (Frente D) — imágenes/capturas: NO se analizan (sin visión). Se
+    // conservan como File para hospedarlas en screenshots/ al publicar documentación,
+    // y se enlazan desde el Markdown generado. El contextText es solo un aviso para
+    // que el usuario sepa que debe usar el botón 📄 para documentar con la captura.
+    if (isImageFile(file.name)) {
+      const kb = Math.max(1, Math.round(file.size / 1024));
+      updateMessage(loadingId, {
+        content: `🖼️ Captura **${file.name}** (${kb} KB) lista. No la analizo (sin visión): úsala con el botón 📄 para insertarla en la documentación — se subirá a \`screenshots/\` y se enlazará desde el README/MANUAL. ${docHint}`,
+        isLoading: false,
+      });
+      return { name: file.name, contextText: `[Captura adjunta: ${file.name} — se insertará en la documentación al publicar]`, file };
     }
 
     const content = await readFileContent(file);

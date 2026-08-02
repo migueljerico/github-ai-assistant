@@ -259,7 +259,26 @@ function isUpstreamTimeout(err) {
     }
 
     const result = await chat.sendMessage(lastMessage.content, { signal: upstreamSignal() });
-    const text = result.response.text();
+    // v3.66.0 (Frente B): inspeccionar finishReason/blockReason ANTES de devolver el
+    // texto. El SDK puede devolver text()="" sin lanzar cuando la respuesta se trunca
+    // (MAX_TOKENS) o se bloquea por seguridad (promptFeedback.blockReason). Antes eso
+    // fluía como {text:""} al cliente y generaba el engañoso "no devolvió JSON válido".
+    const response = result.response;
+    const blockReason = response?.promptFeedback?.blockReason;
+    const finishReason = response?.candidates?.[0]?.finishReason;
+    if (blockReason && blockReason !== 'BLOCK_REASON_UNSPECIFIED') {
+      return res.status(502).json({
+        error: `Gemini bloqueó la respuesta (${blockReason}). Reformula el prompt o prueba con otro modelo.`,
+      });
+    }
+    if (finishReason && finishReason !== 'STOP' && finishReason !== 'FINISH_REASON_UNSPECIFIED') {
+      // MAX_TOKENS es el más común: la salida se cortó. Avisamos para que el usuario
+      // use un modelo con más tokens de salida o reduzca el alcance del repo.
+      return res.status(502).json({
+        error: `La respuesta de Gemini se cortó (${finishReason}). Prueba con un repositorio más pequeño o un modelo con más tokens de salida.`,
+      });
+    }
+    const text = response.text();
     res.json({ text });
   } catch (err) {
     log.error('proxy_error', { provider: 'gemini', flow: 'chat', requestId: req.id, error: err?.message || String(err) });

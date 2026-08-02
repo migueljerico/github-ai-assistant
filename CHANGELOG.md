@@ -5,6 +5,66 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.66.0] — 2026-08-02
+
+> **4 frentes: arreglar el botón 📄 "Documentar repo" (README duplicado + JSON
+> inválido del free tier), el destino hardcodeado al publicar "doc específico", y
+> nueva feature de insertar capturas en la documentación (sin visión).**
+> El botón 📄 duplicaba el README existente porque su prompt solo decía "genera desde
+> cero" y un modelo perezoso del free tier lo copiaba; además pedía un único JSON
+> gigante que se truncaba en el techo de tokens del free tier → "no devolvió JSON
+> válido". Al publicar en scope "doc específico" el destino se hardcodeaba a
+> `user/user` (corrompió el README de perfil al actualizar otro repo). Esta versión
+> converger `generateRepoDocs` al patrón de `generateSpecificDoc` (markdown plano +
+> directiva "mejora"), propaga el destino del modal, y añade la inserción de
+> capturas (hospedadas en `screenshots/`, enlazadas desde el markdown, sin que el
+> modelo vea los píxeles).
+
+### Added
+- **Insertar capturas en docs (sin visión) — Frente D.** Las imágenes adjuntadas se
+  hospedan en `screenshots/` y se enlazan desde el markdown generado; el modelo
+  nunca analiza los píxeles.
+  - `buildImageMarkdown`/`isImageFile` (`client/src/services/docPublisher.ts`):
+    helper puro que genera la sección `## 📸 Capturas` con `![](screenshots/...)`,
+    coherente con la ruta donde `commitExtras` las sube.
+  - `publishFileDoc` inserta la sección al final del documento cuando hay imágenes
+    entre los `extraFiles`.
+  - `SUPPORTED_FILE_EXTENSIONS` (`client/src/utils/pdfReader.ts`) admite
+    `png/jpg/jpeg/gif/webp/svg/bmp`.
+  - `runAttachFile` (`assistantActions.ts`) trata las imágenes sin análisis (las
+    conserva para hospedarlas al publicar).
+  - **Frente D2:** botón "🖼️ Documentar con capturas" en `ChatInput`, visible solo
+    con imágenes adjuntas, que abre el stepper con las capturas precargadas
+    (reutiliza el motor de generación+publicación, sin duplicar lógica). Clave i18n
+    `chat.docWithScreenshots` (ES/EN).
+
+### Fixed
+- **Frente A — README duplicado:** `generateRepoDocs` (`gemini.ts`) ahora inyecta la
+  directiva "MEJORA, no copies" cuando ya existe un README/MANUAL previo, en vez de
+  "genera desde cero" (que un modelo perezoso del free tier copiaba literalmente).
+  Converge al patrón de `generateSpecificDoc` (`existingDirective`).
+- **Frente B — "no devolvió JSON válido" (free tier):** `generateRepoDocs` pasa de
+  un único JSON gigante `{readme, manualTecnico, ...}` con `maxTokens: 8192` (techo
+  exacto del free tier → truncamiento) a **2 llamadas secuenciales en markdown
+  plano** (README, luego MANUAL). Imposible truncar un JSON que ya no existe.
+  - Hardening residual: `callGeminiDirect` valida respuesta vacía en la rama no-
+    streaming (antes fluía `{text:"}` silenciosamente al parser JSON).
+  - `server/index.js`: el proxy de Gemini inspecciona `finishReason`/`blockReason`
+    y devuelve 502 accionable (p. ej. `MAX_TOKENS`) en vez de `{text:"}` silencioso.
+- **Frente C — destino hardcodeado al publicar "doc específico":** los 3 callbacks
+  `flowCommit*Specific` (`App.tsx`) usaban `user.login, user.login` (corrompió el
+  README de perfil al actualizar otro repo). Ahora propagan `specificRepoInput` del
+  modal y resuelven `owner/repo` con `resolveRepoRef`. Firmas `onCommit*Specific`
+  ampliadas a `(doc, path, repoInput?)` en `DocumentFlowModal.tsx`.
+
+### Tests
+- Client: 939 pasados (+10 nuevos: 5 de `generateRepoDocs` — directiva MEJORA,
+  markdown plano, respuesta vacía; 6 de `docPublisher` — `buildImageMarkdown` +
+  inyección; 1 de `pdfReader` — imágenes aceptadas).
+- Server: 58 pasados (+4 del proxy de chat de Gemini — `finishReason`/`blockReason`).
+
+Cambio de código por ZCode (GLM-5.2).
+
 ## [3.65.1] — 2026-08-01
 
 > **Limpieza del catálogo de Groq antes de su deprecation del 2026-08-16 (#74).**

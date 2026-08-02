@@ -107,6 +107,31 @@ function sanitizeRepoPath(name: string): string {
 const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp']);
 const DATA_EXTS = new Set(['xlsx', 'xls', 'csv', 'json', 'parquet']);
 
+/** v3.66.0 (Frente D1): ¿es un archivo de imagen (por extensión)? */
+export function isImageFile(fileName: string): boolean {
+  const ext = fileName.split('.').pop()?.toLowerCase() || '';
+  return IMAGE_EXTS.has(ext);
+}
+
+/**
+ * v3.66.0 (Frente D1): construye una sección Markdown "## Capturas" que ENLAZA
+ * (sin visión — el modelo nunca ve los píxeles) las imágenes que se van a hospedar
+ * en `screenshots/`. La ruta destino se calcula con `uploadPathFor` para que
+ * coincida exactamente con donde `commitExtras` las sube.
+ *
+ * Sin imágenes → cadena vacía (no añade nada al documento).
+ */
+export function buildImageMarkdown(fileNames: string[], heading = '## 📸 Capturas'): string {
+  const images = fileNames.filter(isImageFile);
+  if (images.length === 0) return '';
+  const lines = images.map(name => {
+    const dest = uploadPathFor(name);
+    const alt = name.replace(/\.[^.]+$/, '').replace(/[^\w\s-]+/g, ' ').trim() || 'captura';
+    return `![${alt}](${dest})`;
+  });
+  return `\n\n${heading}\n\n${lines.join('\n\n')}\n`;
+}
+
 /**
  * Ruta destino en el repo para un archivo "extra" (#28 Fase 4b), según su tipo:
  * imágenes/capturas → `screenshots/`, datos (Excel/CSV…) → `data/`, el resto → raíz.
@@ -204,10 +229,17 @@ export async function publishFileDoc(
     ? `docs: ${path} generado por ${signature}`
     : `docs: ${path} generado por el Asistente de IA`;
 
+  // v3.66.0 (Frente D1): si entre los extras hay imágenes, se inserta una sección
+  // "Capturas" al final del documento que las ENLAZA desde screenshots/ (donde
+  // commitExtras las hospeda). Sin visión: el modelo nunca ve los píxeles; aquí
+  // solo componemos el Markdown con la ruta de hospedaje coherente.
+  const imageNames = (options.extraFiles ?? []).map(f => f.name);
+  const finalContent = content + buildImageMarkdown(imageNames);
+
   if (!options.draft) {
     // Commit directo a la rama por defecto.
     const sha = await getExistingSha(token, owner, repo, path);
-    await createOrUpdateFile(token, owner, repo, path, content, message, sha);
+    await createOrUpdateFile(token, owner, repo, path, finalContent, message, sha);
     await commitExtras(token, owner, repo, options);
     return { pr: null, branchName: null };
   }
@@ -220,7 +252,7 @@ export async function publishFileDoc(
   await createBranch(token, owner, repo, branchName, baseSha);
 
   const sha = await getExistingSha(token, owner, repo, path);
-  await createOrUpdateFile(token, owner, repo, path, content, message, sha, branchName);
+  await createOrUpdateFile(token, owner, repo, path, finalContent, message, sha, branchName);
   await commitExtras(token, owner, repo, options, branchName);
 
   const prTitle = signature ? `docs: ${path} (generado por ${signature})` : `docs: ${path} (generado por IA)`;
