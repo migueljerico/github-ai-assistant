@@ -277,15 +277,33 @@ const flowCreateRepoAndPublishFile = useCallback(async (target: PublishTarget): 
 // #58 Fase 2: callbacks para "documento específico del repo"
 // #58 (b): devuelve GenerateSpecificResult ({doc, currentContent}) en vez de
 // string plano, para que el modal pueda renderizar el diff old↔new.
+// v3.67.0 (Frente A): si el usuario NO ha escrito en el textarea "Instrucciones
+// adicionales", pero SÍ ha estado conversando con el chat (p. ej. "redacta un
+// README completamente nuevo con badges…"), pasamos los últimos turnos como
+// instrucción para que el modelo aplique esa edición, no cambios triviales.
 const flowGenerateSpecific = useCallback(async (repoInput: string, targetPath: string, extraInstructions?: string): Promise<GenerateSpecificResult | null> => {
  // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto
  if (!token || !user || !provider || !apiKey || !model) return null;
  const deps = {
- token, user, providerName, model, provider, t, lang,
- addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading,
+   token, user, providerName, model, provider, t, lang,
+   addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading,
  };
- return runGenerateSpecificDoc(deps, { provider, apiKey, model, accountId, timeoutMs }, repoInput, targetPath, undefined, extraInstructions);
-}, [token, user, providerName, model, provider, apiKey, accountId, timeoutMs, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading]);
+ let effectiveInstructions = extraInstructions?.trim() || undefined;
+ if (!effectiveInstructions && conversationHistory.length > 0) {
+   // Tomamos los últimos 6 turnos (3 intercambios) — suficiente contexto sin
+   // saturar el prompt. Solo incluimos turnos user (lo que pidió) y el último
+   // assistant que pudiera contener la propuesta a aplicar.
+   const recent = conversationHistory.slice(-6);
+   const lastAssistant = recent.filter(t => t.role === 'assistant').slice(-1);
+   const userTurns = recent.filter(t => t.role === 'user');
+   const compact = [
+     ...userTurns.map(t => `Usuario: ${t.content}`),
+     ...lastAssistant.map(t => `Asistente: ${t.content}`),
+   ].join('\n\n');
+   if (compact.trim()) effectiveInstructions = compact;
+ }
+ return runGenerateSpecificDoc(deps, { provider, apiKey, model, accountId, timeoutMs }, repoInput, targetPath, undefined, effectiveInstructions);
+}, [token, user, providerName, model, provider, apiKey, accountId, timeoutMs, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading, conversationHistory]);
 
 // v3.66.0 (Frente C): los 3 flowCommit*Specific reciben `repoInput` del modal
 // (lo que el usuario tecleó en el paso 2) y resuelven owner/repo con resolveRepoRef,

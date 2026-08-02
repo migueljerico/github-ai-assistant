@@ -1015,25 +1015,36 @@ export async function generateSpecificDoc(
     typeDirective = `TIPO: Documento personalizado (${targetPath}). Genera documentación profesional y útil para este archivo según su función en el repo.`;
   }
 
+  // v3.67.0 (Frente A): la instrucción del usuario tiene PRECEDENCIA sobre el
+  // contenido existente. Antes, "actualizar, no reemplazar ciegamente" + la regla
+  // "básate únicamente en el contexto" hacían que el modelo ignorara un rewrite
+  // pedido en el chat (ej. "redacta un README completamente nuevo con badges y
+  // estructura X") y produjera solo cambios triviales. Ahora: si hay instrucción
+  // del usuario, prevalece; si NO hay instrucción, se mantiene la directriz de
+  // "mejora, no copies" sobre el contenido existente.
+  const hasUserInstruction = Boolean(repoContext && repoContext.trim());
+
   const existingDirective = existingContent
-    ? `\n\nCONTENIDO ACTUAL DEL ARCHIVO (debes actualizarlo, no reemplazarlo ciegamente — mantén la estructura existente y mejora/añade secciones):\n${existingContent}`
+    ? `\n\nCONTENIDO ACTUAL DEL ARCHIVO (úsalo como referencia${hasUserInstruction ? ' pero la instrucción del usuario prevalece sobre preservarlo' : ' — actualízalo, no reemplazarlo ciegamente; mantén la estructura existente y mejora/añade secciones'}):\n${existingContent}`
     : '\n\nEl archivo NO existe aún — créalo desde cero con contenido profesional.';
 
-  const contextDirective = repoContext
-    ? `\n\nCONTEXTO ADICIONAL (provisto por el usuario como archivos adjuntos):\n${repoContext}`
+  const userInstructionDirective = hasUserInstruction
+    ? `\n\nINSTRUCCIÓN EXPLÍCITA DEL USUARIO (PREVALECE sobre el contenido actual — aplícala aunque implique reescritura completa):\n${repoContext}`
     : '';
 
   const systemPrompt = `Eres un experto en documentación técnica con registro PROFESIONAL. Tu tarea es generar o actualizar documentación para un archivo del repo. ${langInstruction}.
 
-${typeDirective}${existingDirective}${contextDirective}
+${typeDirective}${existingDirective}${userInstructionDirective}
 
 Reglas:
-- Básate ÚNICAMENTE en el contexto aportado; no inventes información sobre el repo que no esté en el contexto.
+- ${hasUserInstruction ? 'APLICA la instrucción del usuario indicada arriba, aunque implique reescribir el archivo desde cero o contradecir la estructura existente.' : 'Básate en el contexto aportado; no inventes información sobre el repo que no esté en el contexto.'}
 - Usa Markdown limpio y profesional (emojis en títulos, tablas, bloques de código cuando corresponda).
-- Si hay contenido existente, respeta su estructura y tono; solo actualiza/añade.
+- ${hasUserInstruction ? 'No limites la reescritura para preservar lo existente: el usuario ha pedido cambios concretos.' : 'Si hay contenido existente, respeta su estructura y tono; solo actualiza/añade.'}
 - Responde SOLO con el Markdown del documento, sin texto introductorio ni bloques de código externos que envuelvan todo.`;
 
-  const userMessage = `Documento objetivo: \`${targetPath}\`\n\nGenera la documentación completa para este archivo teniendo en cuenta las reglas y el contexto arriba indicados.`;
+  const userMessage = hasUserInstruction
+    ? `Documento objetivo: \`${targetPath}\`\n\nReescribe el archivo aplicando la siguiente instrucción del usuario (es lo que ha pedido explícitamente):\n\n---\n${repoContext}\n---\n\nGenera ÚNICAMENTE el Markdown resultante.`
+    : `Documento objetivo: \`${targetPath}\`\n\nGenera la documentación completa para este archivo teniendo en cuenta las reglas y el contexto arriba indicados.`;
 
   const provider = config?.provider ?? 'groq';
   const apiKey = config?.apiKey ?? 'test-key';

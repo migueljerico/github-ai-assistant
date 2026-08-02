@@ -27,7 +27,7 @@
 
 > **Asistente Zero-Storage para analizar, documentar y gestionar repositorios de GitHub mediante lenguaje natural.**
 >
-> Proyecto de portfolio del curso de **Análisis de Datos e Inteligencia Artificial (2026)**, construido en 30 días por un profesional de negocio sin experiencia previa en programación.
+> Proyecto de portfolio del curso de **Análisis de Datos e Inteligencia Artificial (2026)**, construido en 2 meses por un profesional de negocio sin experiencia previa en programación — prácticamente 100% funcional.
 
 ---
 
@@ -64,7 +64,7 @@ Todo bajo el principio:
 
 | Aspecto | Detalle |
 |---|---|
-| ⏱️ Tiempo de desarrollo | 30 días desde cero |
+| ⏱️ Tiempo de desarrollo | 2 meses de desarrollo continuo |
 | 🤖 Proveedores soportados | Groq · Google Gemini · OpenRouter · NVIDIA NIM · Zenmux · OpenCode Zen · Cloudflare Workers AI · Ollama Cloud · Ai& · Kilo |
 | 🧠 Modelos disponibles | Gemini, Llama, Nemotron, GLM, Grok, DeepSeek, Qwen, MiniMax y más vía OpenRouter/NIM/Zenmux/OpenCode/Cloudflare/Ollama/Ai&/Kilo |
 | ⚡ Latencia observada | ~400ms Groq / ~1.2s Gemini, variable según modelo y contexto |
@@ -294,6 +294,7 @@ Este proyecto fue construido con un flujo humano ↔ IA basado en validación cr
 - **GLM-5.2 (builtin:zai-coding-plan/GLM-5.2):** cerró **#50 y #51 (v3.28.0)** — presupuesto de contexto adaptativo por proveedor (Groq free con TPM bajo: 6 archivos/60 líneas frente a 12/80), reintento automático con menos contexto ante error de TPM/context-length, fix del mensaje de error duplicado y bloque plegable "Archivos consultados para esta respuesta" que hace transparente el `contextRanker`.
 - **Microsoft 365 Copilot — GPT-5 Razonamiento:** revisión editorial del README, propuesta de modularización documental y reestructuración de la documentación en archivos separados.
 - **ling-3.0-flash:free** (Zhipu, vía Kilo): dogfooding 2026-07-28 — revisó el roadmap (`MEJORAS_FUTURAS.md`) y aportó **#75 (tests E2E)** como la única mejora concreta, medible y alineada con la cultura de testing del proyecto. Descartó sugerencias genéricas ya cubiertas (accesibilidad, priorización) y las inviables (monitoring operativo, auditoría de deps). Refinó la propuesta para que sea verificable.
+- **ling-3.0-flash:free** (Zhipu, vía Kilo): sesión v3.67.0 (2026-08-02) — diagnóstico y fix de un bug real reportado por el usuario: el flujo "Documentar → Documento específico del repo" ignoraba la instrucción del chat y solo aplicaba cambios triviales al README existente. Se refactorizó el system prompt de `generateSpecificDoc` (precedencia de instrucción de usuario sobre contenido previo) y se cableó el `conversationHistory` desde `App.tsx` para que el modelo aplique las peticiones de reescritura hechas en el chat.
 
 Además, el proyecto se desarrolló aplicando **dogfooding**: la propia app se usó para cargar y analizar el repositorio `github-ai-assistant`, revisar su arquitectura, detectar límites reales de contexto, contrastar propuestas entre modelos y generar nuevas mejoras del roadmap.
 

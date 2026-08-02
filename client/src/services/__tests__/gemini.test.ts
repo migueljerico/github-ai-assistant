@@ -1049,4 +1049,53 @@ describe('truncateByLines (#20)', () => {
  const sys = body.messages.find((m: { role: string }) => m.role === 'system');
  expect(sys.content).toContain('IN ENGLISH');
  });
+
+ // v3.67.0 (Frente A): la instrucción del usuario tiene precedencia sobre el
+ // contenido existente — antes, "actualizar, no reemplazar ciegamente" +
+ // "básate únicamente en el contexto" hacía que el modelo ignorara un rewrite
+ // pedido en el chat y solo produjera cambios triviales.
+ describe('precedencia de instrucción de usuario sobre contenido existente', () => {
+ const existing = '# README viejo\n\nSección A obsoleta.\nSección B.';
+ const userInstruction = 'Reescribe completamente: añade badges, vista previa del dashboard y medidas DAX en bloques de código.';
+
+ it('cuando hay instrucción de usuario, el system prompt dice que PREVALECE', async () => {
+ const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ choices: [{ message: { content: '# nuevo' } }] }) });
+ vi.stubGlobal('fetch', fetchMock);
+ await generateSpecificDoc('readme.md', existing, userInstruction, config, 'es');
+ const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+ const sys = body.messages.find((m: { role: string }) => m.role === 'system');
+ expect(sys.content).toContain('INSTRUCCIÓN EXPLÍCITA DEL USUARIO');
+ expect(sys.content).toContain('PREVALECE');
+ expect(sys.content).toContain(userInstruction);
  });
+
+ it('cuando hay instrucción de usuario, el userMessage hace eco de ella (mayor prominencia)', async () => {
+ const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ choices: [{ message: { content: '# nuevo' } }] }) });
+ vi.stubGlobal('fetch', fetchMock);
+ await generateSpecificDoc('readme.md', existing, userInstruction, config, 'es');
+ const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+ const usr = body.messages.find((m: { role: string }) => m.role === 'user');
+ expect(usr.content).toContain(userInstruction);
+ expect(usr.content).toContain('Reescribe');
+ });
+
+ it('cuando NO hay instrucción de usuario, mantiene el comportamiento "mejora, no copies" del v3.66.0', async () => {
+ const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ choices: [{ message: { content: '# nuevo' } }] }) });
+ vi.stubGlobal('fetch', fetchMock);
+ await generateSpecificDoc('readme.md', existing, undefined, config, 'es');
+ const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+ const sys = body.messages.find((m: { role: string }) => m.role === 'system');
+ expect(sys.content).not.toContain('PREVALECE');
+ expect(sys.content).toContain('actualízalo, no reemplazarlo ciegamente');
+ });
+
+ it('no etiqueta mal la instrucción como "archivos adjuntos"', async () => {
+ const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ choices: [{ message: { content: '# doc' } }] }) });
+ vi.stubGlobal('fetch', fetchMock);
+ await generateSpecificDoc('readme.md', existing, userInstruction, config, 'es');
+ const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+ const sys = body.messages.find((m: { role: string }) => m.role === 'system');
+ expect(sys.content).not.toContain('provisto por el usuario como archivos adjuntos');
+ });
+ });
+});

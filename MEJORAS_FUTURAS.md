@@ -2,7 +2,7 @@
 
 Estado del código, mejoras realizadas y pendientes del proyecto.
 
-**Actualizado a:** v3.66.0 · Agosto 2026
+**Actualizado a:** v3.67.0 · Agosto 2026
 
 ---
 
@@ -98,6 +98,7 @@ Ordenadas por prioridad. Cada ítem se mueve a la tabla ✅ al resolverse.
 
 | # | Punto | Esfuerzo | Estado |
 |---|-------|----------|--------|
+| 76 | Bug: el flujo "Documentar → Documento específico" ignora la instrucción del chat y solo aplica cambios triviales al archivo existente | 🟢 Bajo (1h) | 🔄 En progreso (v3.67.0) |
 | 26 | Mantener y expandir cobertura de tests con Codecov | Continuo (2-4h/sprint) | 🔄 En progreso |
 
 #### #26 — Mantener y expandir cobertura de tests con Codecov
@@ -123,6 +124,32 @@ Ordenadas por prioridad. Cada ítem se mueve a la tabla ✅ al resolverse.
 **Beneficio:** Mayor confianza en cambios futuros; detección temprana de regresiones; documentación viva del comportamiento esperado.
 
 **Nota:** Mejora transversal — cada vez que se resuelva otra mejora, se deben añadir tests correspondientes.
+
+---
+
+#### #76 — Bug: el flujo "Documentar → Documento específico" ignora la instrucción del chat
+**Esfuerzo:** 🟢 Bajo (~1h) · **Prioridad:** 🔴 Alta (reportado por usuario en producción)
+
+**Problema (reportado 2026-08-02):** Cuando el usuario redacta una propuesta de README en el chat (p. ej. "redacta un README completamente nuevo con badges, vista previa y medidas DAX") y luego abre el wizard "Documentar → Documento específico del repo" → selecciona `README.md` → pulsa "Generar doc de este archivo", el resultado solo aplica cambios triviales (comillas, puntuación) y NO refleja la instrucción del chat. El diff old↔new confirma que el modelo preserva el contenido previo.
+
+**Causa raíz** (verificada en código):
+1. `generateSpecificDoc` en `gemini.ts` (v3.66.0) añadía un `existingDirective` ("actualízalo, no reemplazarlo ciegamente") pero el `contextDirective` que recibía la instrucción del usuario estaba **mal etiquetado** ("provisto por el usuario como archivos adjuntos"), **colocado al final** del prompt (después del bloque dominante de contenido existente) y la regla "básate únicamente en el contexto aportado" neutralizaba cualquier rewrite solicitado.
+2. `App.tsx:flowGenerateSpecific` solo leía el `extraInstructions` del textarea del modal — nunca leía el `conversationHistory` del chat. El usuario que pedía la reescritura en el chat tenía que copiarla a mano en el textarea para que surtiera efecto.
+3. El `userMessage` de `generateSpecificDoc` era genérico y no hacía eco de la instrucción.
+
+**Solución (v3.67.0, Frente A):**
+- En `gemini.ts` (`generateSpecificDoc`):
+  - Renombrar `contextDirective` → `userInstructionDirective` (etiqueta honesta).
+  - Cuando hay instrucción del usuario, el system prompt dice **explícitamente** "PREVALECE sobre el contenido actual" y permite reescritura completa.
+  - El `userMessage` hace eco de la instrucción del usuario (mayor prominencia en el contexto del modelo).
+  - Sin instrucción del usuario, se mantiene el comportamiento "mejora, no copies" del v3.66.0 (compatibilidad).
+- En `App.tsx:flowGenerateSpecific`: si el `extraInstructions` del modal está vacío, se pasan los **últimos 6 turnos** del `conversationHistory` (3 intercambios user/asistente) como instrucción efectiva.
+- Tests nuevos (`gemini.test.ts`):
+  - Con instrucción + existente → system prompt contiene "PREVALECE" + eco en `userMessage`.
+  - Con instrucción + existente → etiqueta "archivos adjuntos" desaparece.
+  - Sin instrucción → comportamiento v3.66.0 intacto.
+
+**Beneficio:** El chat y el wizard ahora cooperan. Cualquier petición de reescritura hecha en el chat (no solo en el textarea del modal) se respeta al generar la doc del archivo específico.
 
 ---
 
@@ -646,16 +673,16 @@ existentes, no como sustituto.
 
 ---
 
-## 🎯 Próximo enfoque (post-v3.64.0)
+## 🎯 Próximo enfoque (post-v3.67.0)
 
-Con **v3.64.0** (**#72 resuelto**: a11y foco visible + reduced-motion), **v3.63.0**
-(ampliación E2E + workflow propio), **v3.62.0** (**#71 resuelto**: tema claro/oscuro),
-**v3.61.0** (**#75 resuelto**: tests E2E con Playwright), **v3.60.0** (**#73
-resuelto**: timeout automático IA) y **v3.59.0** (**#70 resuelto**: SyncRepoStatus),
-el roadmap queda en **3 pendientes accionables**. Orden recomendado:
+Con **v3.67.0** (**#76 resuelto**: fix precedencia de instrucción de usuario en
+`generateSpecificDoc` + cableado de `conversationHistory` desde el chat al
+wizard), **v3.66.0** (4 frentes: repo docs + destino específico + capturas sin
+visión), **v3.65.1** (limpieza catálogo Groq) y el histórico anterior, el roadmap
+queda en **3 pendientes accionables**. Orden recomendado:
 
 1. **#26 — Cobertura de tests (🔴 Alta, continuo).** El proyecto suma
-   **976 tests unitarios** (cliente 926 en 63 suites + servidor 50 en 6) y
+   **976+ tests unitarios** (cliente 926+ en 63+ suites + servidor 50 en 6) y
    **13 tests E2E** con Playwright (5 specs: chat, theme, i18n, persistence,
    a11y). Cobertura global ~90% líneas (umbral codecov/patch ≥89%; umbral mínimo
    Vitest 70%). Quedan: edge cases de servicios existentes y subir el umbral mínimo

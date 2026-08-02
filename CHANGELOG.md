@@ -5,6 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.67.0] — 2026-08-02
+
+> **Bug crítico reportado por usuario: el flujo "Documentar → Documento específico
+> del repo" ignoraba la instrucción del chat y solo aplicaba cambios triviales al
+> archivo existente.** El usuario redactaba un README completamente nuevo en el chat
+> (badges, vista previa, medidas DAX en bloques de código), abría el wizard,
+> seleccionaba `README.md`, pulsaba "Generar doc de este archivo" y el diff
+> old↔new mostraba solo cambios de comillas/puntuación. Causa raíz: `generateSpecificDoc`
+> tenía la regla "actualizar, no reemplazar ciegamente" + "básate únicamente en el
+> contexto" y la instrucción del usuario se inyectaba al final del prompt, después
+> del bloque dominante de contenido existente. Además, `App.tsx:flowGenerateSpecific`
+> nunca leía el `conversationHistory` — solo el `extraInstructions` del textarea del
+> modal.
+
+### Fixed
+- **#76 — `generateSpecificDoc` ahora respeta la instrucción del usuario sobre el
+  contenido existente.** Cuando el usuario pasa una instrucción explícita (vía
+  `extraInstructions` del modal O vía el `conversationHistory` reciente del chat),
+  el system prompt declara explícitamente "PREVALECE sobre el contenido actual" y
+  permite reescritura completa. Sin instrucción, se mantiene el comportamiento
+  "mejora, no copies" del v3.66.0 (compatibilidad).
+  - Renombrado `contextDirective` → `userInstructionDirective` (etiqueta honesta;
+    ya no dice mal "provisto por el usuario como archivos adjuntos").
+  - `userMessage` hace eco de la instrucción del usuario cuando existe (mayor
+    prominencia en el contexto del modelo).
+  - Reglas del prompt se adaptan: con instrucción se permite reescritura; sin
+    ella se mantiene la preservación.
+  - `client/src/services/gemini.ts:990-1062`
+- **`App.tsx:flowGenerateSpecific` ahora propaga el `conversationHistory` cuando
+  el textarea del modal está vacío.** Si el usuario ha estado conversando en el
+  chat (p. ej. "redacta un README completamente nuevo…") y abre el wizard sin
+  reescribir la instrucción en el textarea, los últimos 6 turnos (3 intercambios
+  user/asistente) se pasan como instrucción efectiva al modelo.
+  - `client/src/App.tsx:280-300`
+
+### Changed
+- **README actualizado a 2 meses de desarrollo.** `30 días` → `2 meses de
+  desarrollo continuo`. Subtítulo: "prácticamente 100% funcional".
+  - `README.md:30`, `README.md:67`
+- **Sección IA del README: nueva entrada para la sesión v3.67.0 con Kilo/Ling-3-0-flash:free.**
+  - `README.md:296-297`
+
+### Tests
+- `client/src/services/__tests__/gemini.test.ts`: 4 tests nuevos para `generateSpecificDoc`
+  (precedencia de instrucción de usuario, eco en `userMessage`, etiqueta
+  "archivos adjuntos" eliminada, comportamiento v3.66.0 intacto sin instrucción).
+
 ## [3.66.0] — 2026-08-02
 
 > **4 frentes: arreglar el botón 📄 "Documentar repo" (README duplicado + JSON
