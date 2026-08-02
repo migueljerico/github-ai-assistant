@@ -31,10 +31,10 @@ describe('AIProviderPanel — selector de modelos Groq', () => {
     expect(select).toBeInTheDocument();
 
     const labels = Array.from(select.options).map(o => o.textContent);
-    expect(labels).toContain('Llama 3.3 70B');
-    expect(labels).toContain('Llama 3.1 8B');
+    expect(labels).toContain('GPT-OSS 20B (fast)');
+    expect(labels).toContain('GPT-OSS 120B');
     // El valor sigue siendo el id real, aunque se muestre la etiqueta amigable
-    expect(Array.from(select.options).map(o => o.value)).toContain('llama-3.3-70b-versatile');
+    expect(Array.from(select.options).map(o => o.value)).toContain('openai/gpt-oss-20b');
     // Hay más de una opción (descarta la percepción de "solo hay uno")
     expect(select.options.length).toBeGreaterThan(1);
   });
@@ -123,14 +123,14 @@ describe('AIProviderPanel — Zenmux', () => {
 describe('AIProviderPanel — recuerda proveedor/modelo (#40)', () => {
   it('arranca en el proveedor recordado con su modelo (sin tener que reseleccionar)', () => {
     // Simula una recarga: hay una preferencia guardada (no la key).
-    sessionStorage.setItem('ai_provider_pref', JSON.stringify({ provider: 'groq', model: 'llama-3.3-70b-versatile' }));
+    sessionStorage.setItem('ai_provider_pref', JSON.stringify({ provider: 'groq', model: 'openai/gpt-oss-20b' }));
 
     const { container } = renderPanel();
 
     // La tarjeta de Groq sale ya seleccionada (su selector es visible sin hacer clic).
     const select = container.querySelector('#groq-model-select') as HTMLSelectElement;
     expect(select).toBeInTheDocument();
-    expect(select.value).toBe('llama-3.3-70b-versatile');
+    expect(select.value).toBe('openai/gpt-oss-20b');
   });
 });
 

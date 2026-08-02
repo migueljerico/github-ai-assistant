@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { PROVIDERS, getProvider, fetchModels, pickDefaultModel, modelLabel, resolveEndpoint, NIM_EXCLUDED, type ModelOption } from '../providers';
+import { PROVIDERS, getProvider, fetchModels, pickDefaultModel, modelLabel, resolveEndpoint, NIM_EXCLUDED, GROQ_FALLBACK, GROQ_DEPRECATED, type ModelOption } from '../providers';
 
 describe('providers — registro', () => {
   it('los proveedores tienen su defaultModel dentro de staticModels', () => {
@@ -139,14 +139,39 @@ describe('providers — fetchModels', () => {
   it('groq: excluye modelos no-chat (whisper, etc.)', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ data: [{ id: 'llama-3.3-70b-versatile' }, { id: 'whisper-large-v3' }] }),
+      json: async () => ({ data: [{ id: 'openai/gpt-oss-20b' }, { id: 'whisper-large-v3' }] }),
     });
     vi.stubGlobal('fetch', fetchMock);
 
     const list = await fetchModels(PROVIDERS.groq, 'gsk_test');
     const ids = list!.map(m => m.value);
-    expect(ids).toContain('llama-3.3-70b-versatile');
+    expect(ids).toContain('openai/gpt-oss-20b');
     expect(ids).not.toContain('whisper-large-v3');
+  });
+
+  it('groq: excluye modelos retirados/Deprecated aunque la API aún los devuelva (defensa en profundidad)', async () => {
+    // Groq retira llama-3.3-70b-versatile y llama-3.1-8b-instant el 2026-08-16; hasta
+    // esa fecha la API puede seguir listándolos. fetchModels no debe ofrecerlos.
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [
+        { id: 'openai/gpt-oss-20b' },
+        { id: 'llama-3.3-70b-versatile' },
+        { id: 'llama-3.1-8b-instant' },
+      ] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const list = await fetchModels(PROVIDERS.groq, 'gsk_test');
+    const ids = list!.map(m => m.value);
+    expect(ids).toEqual(['openai/gpt-oss-20b']);
+    GROQ_DEPRECATED.forEach(deprecated => expect(ids).not.toContain(deprecated));
+  });
+
+  it('groq: el fallback estático NO contiene modelos retirados (regresión v3.65.1)', () => {
+    // Evita que vuelvan a meterse modelos que se deprecaban el 2026-08-16.
+    const values = GROQ_FALLBACK.map(m => m.value);
+    GROQ_DEPRECATED.forEach(deprecated => expect(values).not.toContain(deprecated));
   });
 
   it('gemini: catálogo fijo (v3.24.0) — fetchModels devuelve null, no hay endpoint dinámico', async () => {

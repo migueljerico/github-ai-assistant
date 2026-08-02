@@ -25,16 +25,13 @@ export const MODEL_LABELS: Record<string, string> = {
   'gemini-3.1-flash-lite-preview': 'Gemini 3.1 Flash Lite Preview',
   'gemini-3.5-flash-lite': 'Gemini 3.5 Flash Lite',
   'gemini-3.6-flash': 'Gemini 3.6 Flash',
-  // ── Groq ──
-  'llama-3.3-70b-versatile': 'Llama 3.3 70B',
-  'llama-3.1-8b-instant': 'Llama 3.1 8B',
-  'llama3-70b-8192': 'Llama 3 70B',
-  'llama3-8b-8192': 'Llama 3 8B',
-  'gemma2-9b-it': 'Gemma 2 9B',
-  'qwen-qwq-32b': 'Qwen QwQ 32B',
-  'qwen-2.5-32b': 'Qwen 2.5 32B',
-  'deepseek-r1-distill-llama-70b': 'DeepSeek R1 70B',
-  'mixtral-8x7b-32768': 'Mixtral 8x7B',
+  // ── Groq (catálogo dinámico + GROQ_FALLBACK vigente, 2026-08-01) ──
+  // Los dos Llama (llama-3.3-70b-versatile, llama-3.1-8b-instant) se retiraron del
+  // mapa en v3.65.1 (deprecation Groq 2026-08-16); el catálogo dinámico los filtra.
+  'openai/gpt-oss-20b': 'GPT-OSS 20B (fast)',
+  'openai/gpt-oss-120b': 'GPT-OSS 120B',
+  'groq/compound': 'Compound (agéntico)',
+  'groq/compound-mini': 'Compound Mini (agéntico)',
   // ── NVIDIA NIM ──
   'nvidia/nemotron-3-ultra-550b-a55b': 'Nemotron 3 Ultra',
   'z-ai/glm-5.2': 'GLM 5.2',

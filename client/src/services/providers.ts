@@ -171,22 +171,27 @@ const OPENROUTER_FALLBACK: ModelOption[] = [
 ];
 
 // Fallback de Groq mientras carga el catálogo o si la API falla.
-// Modelos PRODUCTION confirmados hoy en la fuente oficial (console.groq.com/docs/models,
-// 2026-07-28). Los dos Llama (`llama-3.1-8b-instant`, `llama-3.3-70b-versatile`) se
-// RETIRAN el 2026-08-16 (deprecation page) → default migrado a `openai/gpt-oss-20b`
-// (production, 131K, no deprecado). `qwen/qwen3-32b` ya retirado (2026-07-17).
-// `groq/compound` son sistemas agénticos sobre GPT-OSS+Llama+tools.
-const GROQ_FALLBACK: ModelOption[] = [
+// Modelos PRODUCTION confirmados en la fuente oficial (console.groq.com/docs/models).
+// Los dos Llama (`llama-3.1-8b-instant`, `llama-3.3-70b-versatile`) se RETIRAN de Groq
+// el 2026-08-16 (deprecation page); el default se migró a `openai/gpt-oss-20b`
+// (production, 131K). `qwen/qwen3-32b` retirado el 2026-07-17. En v3.65.1 se eliminaron
+// del fallback y del catálogo dinámico ANTES de la fecha: quien los tuviera guardados
+// vería error al chatear el 16-ago. `groq/compound` = sistemas agénticos GPT-OSS+tools.
+export const GROQ_FALLBACK: ModelOption[] = [
   { value: 'openai/gpt-oss-20b', label: 'GPT-OSS 20B (fast)', recommended: true },
   { value: 'openai/gpt-oss-120b', label: 'GPT-OSS 120B' },
   { value: 'groq/compound', label: 'Compound (agéntico)' },
   { value: 'groq/compound-mini', label: 'Compound Mini (agéntico)' },
-  { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B (se retira 08-16)' },
-  { value: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B (se retira 08-16)' },
 ];
 
-// Prefijos de modelos Groq no-chat que se excluyen del selector.
+// Prefijos de modelos Groq no-chat que se excluyen del selector (whisper, tts, guard…).
 export const GROQ_EXCLUDED = ['whisper', 'distil-whisper', 'playai', 'llama-guard', 'tts'];
+
+// IDs de modelos Groq RETIRADOS que el catálogo dinámico aún pudiera devolver (la API
+// los sigue sirviendo hasta la fecha de deprecation). Se filtran por defensa en
+// profundidad para no ofrecer modelos que dejan de funcionar. Tras el 2026-08-16 la API
+// ya no los devuelve, por lo que esta lista puede borrarse sin riesgo.
+export const GROQ_DEPRECATED = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
 
 // Subcadenas de modelos Gemini no generativos (embeddings, visión, etc.) que se
 // excluyen del selector. Debe coincidir con el filtro del backend (#58).
@@ -859,9 +864,12 @@ export async function fetchModels(
       }))
       .sort((a: ModelOption, b: ModelOption) => (Number(b.free) - Number(a.free)) || a.label.localeCompare(b.label));
   } else {
-    // Groq (y cualquier OpenAI-compatible genérico): filtra no-chat
+    // Groq (y cualquier OpenAI-compatible genérico): filtra no-chat (GROQ_EXCLUDED) y
+    // modelos retirados que la API aún devuelve (GROQ_DEPRECATED; p. ej. los dos Llama
+    // que se deprecaban el 2026-08-16). Defensa en profundidad sobre el catálogo dinámico.
     models = data.data
       .filter((m: { id: string }) => !GROQ_EXCLUDED.some(p => m.id.startsWith(p)))
+      .filter((m: { id: string }) => !GROQ_DEPRECATED.includes(m.id))
       .sort((a: { id: string }, b: { id: string }) => a.id.localeCompare(b.id))
       .map((m: { id: string }) => ({ value: m.id, label: m.id }));
   }

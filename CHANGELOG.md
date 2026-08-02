@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.65.1] — 2026-08-01
+
+> **Limpieza del catálogo de Groq antes de su deprecation del 2026-08-16 (#74).**
+> Groq retira `llama-3.3-70b-versatile` y `llama-3.1-8b-instant` el 16-ago-2026. El
+> `defaultModel` ya apuntaba a `openai/gpt-oss-20b` desde v3.64.0, pero ambos modelos
+> seguían en `GROQ_FALLBACK` y el catálogo dinámico no los excluía, por lo que podían
+> seguir ofreciéndose hasta la fecha de retiro. Esta versión los elimina del fallback
+> y añade `GROQ_DEPRECATED` para filtrarlos del catálogo dinámico (defensa en
+> profundidad: la API de Groq también dejará de devolverlos el 16-ago). Sin breaking
+> changes (patch).
+
+### Fixed
+- **`GROQ_FALLBACK`** (`client/src/services/providers.ts`) — eliminados los 2 modelos
+  que Groq retira el 2026-08-16 (`llama-3.3-70b-versatile`, `llama-3.1-8b-instant`).
+  Quedan 4 modelos: GPT-OSS 20B (recommended), GPT-OSS 120B, Compound, Compound Mini.
+- **`GROQ_DEPRECATED`** (nuevo, `providers.ts`) — lista de IDs retirados; la rama
+  dinámica de `fetchModels()` los filtra para que no se ofrezcan aunque la API de Groq
+  aún los devuelva hasta el 16-ago-2026. Borrable sin riesgo tras esa fecha.
+
+### Docs
+- `MEJORAS_FUTURAS.md` (#74): nota de revisión v3.65.1; Groq sale de la lista de
+  pendientes para ~octubre 2026 (quedan OpenRouter, NIM, OpenCode Zen, Ollama, Ai&, Kilo).
+- `CHANGELOG.md`, `CLAUDE.md`, `package.json` y lockfiles sincronizados a v3.65.1.
+
 ## [3.65.0] — 2026-08-01
 
 > **Arreglo de los proveedores Cloudflare Workers AI (plan Free) y Zenmux (#74).**

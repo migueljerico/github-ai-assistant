@@ -9,7 +9,7 @@ const mockState: {
   disconnect: () => void;
 } = {
   provider: 'groq',
-  model: 'llama-3.3-70b-versatile',
+  model: 'openai/gpt-oss-20b',
   isConnected: true,
   disconnect: vi.fn(),
 };
@@ -24,12 +24,12 @@ describe('AIProviderBadge', () => {
   it('muestra el proveedor y la etiqueta amigable del modelo cuando está conectado', () => {
     Object.assign(mockState, {
       provider: 'groq',
-      model: 'llama-3.3-70b-versatile',
+      model: 'openai/gpt-oss-20b',
       isConnected: true,
     });
     render(<AIProviderBadge />);
-    // "⚡ Groq · Llama 3.3 70B" (etiqueta amigable, no el id crudo)
-    expect(screen.getByText(/Groq · Llama 3\.3 70B/)).toBeInTheDocument();
+    // "⚡ Groq · GPT-OSS 20B (fast)" (etiqueta amigable, no el id crudo)
+    expect(screen.getByText(/Groq · GPT-OSS 20B/)).toBeInTheDocument();
   });
 
   it('no renderiza nada si no hay conexión', () => {

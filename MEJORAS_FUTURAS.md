@@ -585,6 +585,15 @@ que #66 (Gemini) pero generalizado a los 6 proveedores dinámicos.
 > API real de CF. **Quedan pendientes** de revisar en la próxima pasada (~octubre
 > 2026, junto con #66): Groq, OpenRouter, NIM, OpenCode Zen, Ollama, Ai&, Kilo.
 
+> **Revisión v3.65.1 (2026-08-01).** **Groq** resuelto antes de su deprecation del
+> 2026-08-16: `GROQ_FALLBACK` pierde `llama-3.3-70b-versatile` y `llama-3.1-8b-instant`
+> (el `defaultModel` ya apuntaba a `openai/gpt-oss-20b` desde v3.64.0). Añadido
+> `GROQ_DEPRECATED` y filtro en la rama dinámica de `fetchModels()` para que el
+> catálogo no ofrezca esos modelos aunque la API aún los devuelva hasta el 16-ago.
+> Traslada `GROQ_DEPRECATED` a la lista "limpieza post-deprecation" (borrable sin
+> riesgo tras esa fecha). **Quedan pendientes** para ~octubre 2026 (con #66):
+> OpenRouter, NIM, OpenCode Zen, Ollama, Ai&, Kilo.
+
 ---
 
 #### #75 — Tests E2E (fin de flujo con Playwright) ✅ RESUELTO (v3.61.0, ampliado v3.63.0)
