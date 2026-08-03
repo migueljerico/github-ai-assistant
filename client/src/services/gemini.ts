@@ -844,11 +844,21 @@ REQUISITOS OBLIGATORIOS PARA EL README.md
    Footer EXACTO (NO inventes autor ni año; usa EXACTAMENTE estos valores reales):
    ${docFooter}
 
+   REGLA CRÍTICA SOBRE EL FOOTER: El footer debe ser EXACTAMENTE el valor indicado
+   arriba. Si el README existente tiene una sección "Autor", "Créditos", "Footer",
+   "Licencia" o similar con texto de atribución, REEMPLÁZALA completamente por el
+   footer exacto proporcionado. NUNCA preserves el footer anterior ni combines ambos.
+   El footer SIEMPRE va al final del documento como la última línea.
+
 3. CALIDAD:
    - Usa el contenido REAL del código para las explicaciones (nombres de funciones, rutas, comandos)
    - Los bloques de código deben contener comandos reales (npm install, python main.py, etc.)
    - Las tablas deben tener filas con información concreta, no placeholders genéricos
    - Detecta el lenguaje principal y usa badges específicos de ese ecosistema
+   - Si el README existente referencia archivos de imagen (*.png, *.jpg, *.gif,
+     *.svg, *.webp) que NO aparecen en la estructura del proyecto (ESTRUCTURA DEL
+     PROYECTO más arriba), ELIMINA esa referencia de imagen completa (la línea
+     ![...](...) y su pie de foto si lo tiene). No dejes enlaces a archivos inexistentes.
 ${readmeExistingDirective}
 
 ═══════════════════════════════════════════════════════
