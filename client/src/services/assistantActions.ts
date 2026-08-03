@@ -714,15 +714,16 @@ async function updateRepoAbout(
 }
 
 /** Commit directo de la documentación generada a la rama por defecto. */
-export async function runCommitDocs(deps: ChatDeps, analysis: RepoAnalysis): Promise<void> {
+export async function runCommitDocs(deps: ChatDeps, analysis: RepoAnalysis, extraFiles?: File[]): Promise<void> {
   const { token, user, addMessage, addEntry, updateEntry } = deps;
   const { owner, repo } = resolveRepoRef(analysis.repoName, user.login);
   const histId = addEntry({ status: 'pending', description: deps.t('history.committingDocs', { repo: analysis.repoName }), repo: analysis.repoName });
   const signature = buildSignature(deps);
 
   try {
-    await writeDocFiles(token, owner, repo, analysis.readme, analysis.manualTecnico, undefined, signature);
-    addMessage({ role: 'assistant', content: `✅ README.md y MANUAL_TECNICO.md commiteados en **${analysis.repoName}**` });
+    await writeDocFiles(token, owner, repo, analysis.readme, analysis.manualTecnico, undefined, signature, extraFiles);
+    const fileMsg = extraFiles && extraFiles.length > 0 ? ` + ${extraFiles.length} archivo(s) adjunto(s)` : '';
+    addMessage({ role: 'assistant', content: `✅ README.md y MANUAL_TECNICO.md commiteados en **${analysis.repoName}**${fileMsg}` });
     updateEntry(histId, { status: 'completed', description: deps.t('history.docsCommitted', { repo: analysis.repoName }) });
     // v3.31.0: actualiza el "about" del repo (resumen + firma). No rompe si falla.
     await updateRepoAbout(deps, owner, repo, analysis);

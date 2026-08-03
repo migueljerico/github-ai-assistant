@@ -219,11 +219,12 @@ runCancelAction(
   }, [token]);
 
   // Publicación de la doc de repo (destino fijo = repo analizado).
-  const flowCommitRepo = useCallback(async (analysis: RepoAnalysis): Promise<void> => {
+  const flowCommitRepo = useCallback(async (analysis: RepoAnalysis, extraFiles?: File[]): Promise<void> => {
     if (!token || !user) return;
     await runCommitDocs(
       { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
       analysis,
+      extraFiles,
     );
   }, [token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry]);
 

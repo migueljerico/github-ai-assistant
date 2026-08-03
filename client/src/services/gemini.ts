@@ -859,6 +859,8 @@ REQUISITOS OBLIGATORIOS PARA EL README.md
      *.svg, *.webp) que NO aparecen en la estructura del proyecto (ESTRUCTURA DEL
      PROYECTO más arriba), ELIMINA esa referencia de imagen completa (la línea
      ![...](...) y su pie de foto si lo tiene). No dejes enlaces a archivos inexistentes.
+   - Si el README referencia imágenes, usa la ruta screenshots/FILENAME (no la raíz).
+     Ejemplo: ![Vista previa](screenshots/captura.png) en vez de ![Vista previa](captura.png).
 ${readmeExistingDirective}
 
 ═══════════════════════════════════════════════════════

@@ -38,8 +38,8 @@ interface DocumentFlowModalProps {
   /** Genera la documentación del archivo adjunto. Devuelve el Markdown o null. */
   onGenerateFile: () => Promise<string | null>;
 
-  /** Publica la doc de repo (destino fijo = repo analizado). */
-  onCommitRepo: (analysis: RepoAnalysis) => Promise<void>;
+  /** Publica la doc de repo (destino fijo = repo analizado). extraFiles = imágenes/datos adjuntos. */
+  onCommitRepo: (analysis: RepoAnalysis, extraFiles?: File[]) => Promise<void>;
   onDraftPrRepo: (analysis: RepoAnalysis) => Promise<void>;
   onReleaseRepo: (analysis: RepoAnalysis, version: string) => Promise<void>;
 
@@ -379,10 +379,12 @@ const handleGenerateSpecific = async () => {
 };
 
   // ── Paso 4 (repo): publicación con destino fijo ─────────────────────────────────
+  // v3.67.3: pasa archivos adjuntos (imágenes) para que se suban al repo
+  const repoExtraFiles = allAttachedFiles?.map(f => f.file).filter((f): f is File => !!f) ?? [];
   const doCommitRepo = async () => {
     if (!analysis) return;
     setPending('commit'); setBusy(true);
-    try { await onCommitRepo(analysis); } finally { setBusy(false); setPending(null); onCancel(); }
+    try { await onCommitRepo(analysis, repoExtraFiles.length > 0 ? repoExtraFiles : undefined); } finally { setBusy(false); setPending(null); onCancel(); }
   };
   const doDraftPrRepo = async () => {
     if (!analysis) return;

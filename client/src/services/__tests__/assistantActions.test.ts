@@ -468,9 +468,9 @@ describe('runCommitDocs', () => {
 
     await runCommitDocs(deps, ANALYSIS);
 
-    // v3.31.0: writeDocFiles ahora recibe (token, owner, repo, readme, manual, branch?, signature?).
+    // v3.31.0: writeDocFiles ahora recibe (token, owner, repo, readme, manual, branch?, signature?, extraFiles?).
     expect(writeDocFiles).toHaveBeenCalledWith('tok', 'owner', 'repo', 'R', 'M', undefined,
-      expect.stringContaining('Creado por @me y documentado por Groq'));
+      expect.stringContaining('Creado por @me y documentado por Groq'), undefined);
     expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'completed' }));
   });
 

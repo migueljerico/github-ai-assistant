@@ -71,7 +71,8 @@ export async function writeDocFiles(
   readme: string,
   manualTecnico: string,
   branch?: string,
-  signature?: string
+  signature?: string,
+  extraFiles?: File[]
 ): Promise<void> {
   const readmeMessage = signature ? `docs: generate README — ${signature}` : README_MESSAGE;
   const manualMessage = signature ? `docs: generate MANUAL_TECNICO — ${signature}` : MANUAL_MESSAGE;
@@ -80,6 +81,11 @@ export async function writeDocFiles(
 
   const manualSha = await getExistingSha(token, owner, repo, MANUAL_PATH);
   await createOrUpdateFile(token, owner, repo, MANUAL_PATH, manualTecnico, manualMessage, manualSha, branch);
+
+  // v3.67.3: sube archivos adjuntos (imágenes→screenshots/, datos→data/) al actualizar repo
+  if (extraFiles && extraFiles.length > 0) {
+    await commitExtras(token, owner, repo, { extraFiles }, branch);
+  }
 }
 
 /** #58: escribe N documentos en el repo (array genérico de targets). */

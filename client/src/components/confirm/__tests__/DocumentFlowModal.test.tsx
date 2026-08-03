@@ -107,7 +107,7 @@ describe('DocumentFlowModal (#57)', () => {
     expect(screen.getByText('owner/repo')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Commit directo/ }));
 
-    await waitFor(() => expect(props.onCommitRepo).toHaveBeenCalledWith(analysis));
+    await waitFor(() => expect(props.onCommitRepo).toHaveBeenCalledWith(analysis, undefined));
   });
 
   it('Flujo archivo: archivo → generar → revisar → publicar (commit) con destino', async () => {

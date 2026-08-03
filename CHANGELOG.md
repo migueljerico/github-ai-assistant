@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.67.3] — 2026-08-03
+
+> **Fix: al actualizar un repo, las imágenes adjuntas ahora se suben al repositorio.**
+> El usuario reportó que al actualizar `powerbi-dashboard-mercadona` con una imagen
+> adjunta, la app generaba una referencia a la imagen en el README pero nunca la
+> subía al repo, resultando en un 404 al abrirla en GitHub.
+
+### Fixed
+- **Imágenes adjuntas se suben al actualizar repo.** El flujo "Documentar → Repo
+  entero" ahora pasa los archivos adjuntos (`allAttachedFiles`) a `writeDocFiles`,
+  que los commitea en `screenshots/` (imágenes) o `data/` (datos) vía `commitExtras`.
+  - `client/src/services/docPublisher.ts:67-88` (nuevo param `extraFiles`)
+  - `client/src/services/assistantActions.ts:717` (acepta `extraFiles`)
+  - `client/src/App.tsx:222` (propaga `extraFiles`)
+  - `client/src/components/confirm/DocumentFlowModal.tsx:382-389` (extrae `File` de `allAttachedFiles`)
+- **Prompt del README referencia imágenes en `screenshots/`.** El modelo ahora genera
+  rutas `screenshots/FILENAME` en vez de raíz, consistente con donde se suben.
+  - `client/src/services/gemini.ts:862-863`
+
+Cambio de código por [ZCode (mimo-v2.5-free)].
+
 ## [3.67.2] — 2026-08-03
 
 > **Fix: prompt del README reemplaza footer existente y elimina imágenes rotas.**
