@@ -15,6 +15,7 @@ import type { RepoContext, FileContext, PublishTarget, StartPublishResult, CodeH
 import type { DocTarget } from './services/docPublisher';
 import { serializeConversation, parseConversation, conversationFilename } from './utils/conversationIO';
 import { resolveRepoRef } from './utils/repoRef';
+import { getRepo } from './services/github';
 import Header from './components/layout/Header';
 import SessionWarningBanner from './components/layout/SessionWarningBanner';
 import HistoryPanel from './components/layout/HistoryPanel';
@@ -643,6 +644,12 @@ const flowDraftPrBulk = useCallback(async (owner: string, repo: string, targets:
     onCommitSpecific={flowCommitSpecific}
     onDraftPrSpecific={flowDraftPrSpecific}
     onReleaseSpecific={flowReleaseSpecific}
+    // #XX: validación temprana del repo en scope specific
+    onCheckRepoExists={async (repoInput: string) => {
+      if (!token || !user) return false;
+      const { owner, repo } = resolveRepoRef(repoInput, user.login);
+      try { await getRepo(token, owner, repo); return true; } catch { return false; }
+    }}
     // #58 (a): bulk multi-archivo atómico (commit directo + Draft PR)
     onCommitBulk={flowCommitBulk}
     onDraftPrBulk={flowDraftPrBulk}

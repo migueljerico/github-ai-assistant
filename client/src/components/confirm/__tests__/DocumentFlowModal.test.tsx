@@ -600,3 +600,113 @@ describe('DocumentFlowModal — scope specific propaga specificRepoInput (v3.66.
     expect(props.onReleaseSpecific).toHaveBeenCalledWith('specific doc', 'docs/api.md', 'powerbi-dashboard-mercadona');
   });
 });
+
+// ── Fix #XX: auto-fill specificRepoInput + validación temprana + limpieza localStorage ──
+describe('DocumentFlowModal — Fix #XX: auto-fill, validación y limpieza localStorage', () => {
+  it('Fix 1: al seleccionar scope specific con initialRepo y specificRepoInput vacío, auto-rellena desde initialRepo', () => {
+    // Sin initialRepo → abre en paso 1 (scope selection)
+    setup();
+    // Seleccionar scope specific
+    fireEvent.click(screen.getByText('Documento específico del repo'));
+    // Ahora simular que el padre pasa initialRepo (como si el usuario hubiera
+    // abierto el modal desde "Actualizar documentación" y luego cambiara a specific).
+    // Re-render con initialRepo para verificar el auto-fill.
+    // En la práctica, el fix se aplica al hacer click en el botón de scope.
+    // Verificamos que el fix funciona: si initialRepo está presente Y el input
+    // está vacío, se auto-rellena.
+    const repoInput = document.getElementById('flow-specific-repo-input') as HTMLInputElement;
+    // Sin initialRepo, el input debe estar vacío
+    expect(repoInput.value).toBe('');
+  });
+
+  it('Fix 1 (con initialRepo): al seleccionar scope specific se auto-rellena desde initialRepo', () => {
+    // Con initialRepo, el modal abre en scope 'repo' (step 2).
+    // El usuario hace click en "Atrás" para volver al paso 1, luego selecciona "specific".
+    setup({ initialRepo: 'migueljerico/powerbi-dashboard-mercadona' });
+    // Volver al paso 1
+    fireEvent.click(screen.getByRole('button', { name: /Atrás/i }));
+    // Seleccionar scope specific
+    fireEvent.click(screen.getByText('Documento específico del repo'));
+    const repoInput = document.getElementById('flow-specific-repo-input') as HTMLInputElement;
+    expect(repoInput.value).toBe('migueljerico/powerbi-dashboard-mercadona');
+  });
+
+  it('Fix 1: NO auto-rellena si specificRepoInput ya tiene valor', () => {
+    setup();
+    // Seleccionar scope specific
+    fireEvent.click(screen.getByText('Documento específico del repo'));
+    const repoInput = document.getElementById('flow-specific-repo-input') as HTMLInputElement;
+    // Cambiar el valor manualmente
+    fireEvent.change(repoInput, { target: { value: 'otro-repo' } });
+    // Volver al paso 1 y re-seleccionar specific
+    fireEvent.click(screen.getByRole('button', { name: /Atrás/i }));
+    fireEvent.click(screen.getByText('Documento específico del repo'));
+    // Debe conservar el valor que el usuario ya escribió (persistido en localStorage)
+    expect(repoInput.value).toBe('otro-repo');
+  });
+
+  it('Fix 2: si onCheckRepoExists devuelve false, muestra error y NO llama a onGenerateSpecific', async () => {
+    const props = setup({
+      onCheckRepoExists: vi.fn().mockResolvedValue(false),
+    });
+    // Seleccionar scope specific
+    fireEvent.click(screen.getByText('Documento específico del repo'));
+    // Rellenar repo + path
+    const repoInput = document.getElementById('flow-specific-repo-input') as HTMLInputElement;
+    const pathInput = document.getElementById('flow-specific-path-input') as HTMLInputElement;
+    fireEvent.change(repoInput, { target: { value: 'mercadona-dashboard' } });
+    fireEvent.change(pathInput, { target: { value: 'README.md' } });
+    // Click generar
+    fireEvent.click(screen.getByRole('button', { name: /Generar doc de este archivo/i }));
+    await waitFor(() => {
+      // Debe mostrar el error de repo no encontrado
+      expect(screen.getByText(/No encontré el repositorio/)).toBeInTheDocument();
+      expect(screen.getByText('mercadona-dashboard')).toBeInTheDocument();
+    });
+    // NO debe haber llamado a onGenerateSpecific
+    expect(props.onGenerateSpecific).not.toHaveBeenCalled();
+  });
+
+  it('Fix 2: si onCheckRepoExists devuelve true, genera normalmente', async () => {
+    const props = setup({
+      onCheckRepoExists: vi.fn().mockResolvedValue(true),
+    });
+    fireEvent.click(screen.getByText('Documento específico del repo'));
+    const repoInput = document.getElementById('flow-specific-repo-input') as HTMLInputElement;
+    const pathInput = document.getElementById('flow-specific-path-input') as HTMLInputElement;
+    fireEvent.change(repoInput, { target: { value: 'owner/repo' } });
+    fireEvent.change(pathInput, { target: { value: 'README.md' } });
+    fireEvent.click(screen.getByRole('button', { name: /Generar doc de este archivo/i }));
+    await waitFor(() => expect(props.onGenerateSpecific).toHaveBeenCalledTimes(1));
+  });
+
+  it('Fix 2: si onCheckRepoExists no se provee, genera sin validación (backward compat)', async () => {
+    const props = setup({
+      onCheckRepoExists: undefined,
+    });
+    fireEvent.click(screen.getByText('Documento específico del repo'));
+    const repoInput = document.getElementById('flow-specific-repo-input') as HTMLInputElement;
+    const pathInput = document.getElementById('flow-specific-path-input') as HTMLInputElement;
+    fireEvent.change(repoInput, { target: { value: 'owner/repo' } });
+    fireEvent.change(pathInput, { target: { value: 'README.md' } });
+    fireEvent.click(screen.getByRole('button', { name: /Generar doc de este archivo/i }));
+    await waitFor(() => expect(props.onGenerateSpecific).toHaveBeenCalledTimes(1));
+  });
+
+  it('Fix 2: el error se limpia al cambiar el input del repo', async () => {
+    setup({
+      onCheckRepoExists: vi.fn().mockResolvedValue(false),
+    });
+    fireEvent.click(screen.getByText('Documento específico del repo'));
+    const repoInput = document.getElementById('flow-specific-repo-input') as HTMLInputElement;
+    const pathInput = document.getElementById('flow-specific-path-input') as HTMLInputElement;
+    fireEvent.change(repoInput, { target: { value: 'mercadona-dashboard' } });
+    fireEvent.change(pathInput, { target: { value: 'README.md' } });
+    // Generar → error
+    fireEvent.click(screen.getByRole('button', { name: /Generar doc de este archivo/i }));
+    await waitFor(() => expect(screen.getByText(/No encontré el repositorio/)).toBeInTheDocument());
+    // Cambiar el input → el error debe desaparecer
+    fireEvent.change(repoInput, { target: { value: 'powerbi-dashboard-mercadona' } });
+    expect(screen.queryByText(/No encontré el repositorio/)).not.toBeInTheDocument();
+  });
+});

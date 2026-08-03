@@ -75,7 +75,10 @@ interface DocumentFlowModalProps {
  // #58 Fase 3: selectividad — instrucciones adicionales para el generador (controlled)
  extraInstructions?: string;
  onExtraInstructionsChange?: (value: string) => void;
- 
+ /** Valida si un repositorio existe antes de generar documentación (#XX).
+  *  Devuelve `true` si el repo existe, `false` si no. */
+ onCheckRepoExists?: (repoInput: string) => Promise<boolean>;
+
  onCancel: () => void;
 }
 
@@ -116,6 +119,7 @@ export default function DocumentFlowModal({
   // #58 Fase 3: selectividad — instrucciones adicionales
   extraInstructions,
   onExtraInstructionsChange,
+  onCheckRepoExists,
   onCancel,
 }: DocumentFlowModalProps) {
   const { t } = useLanguage();
@@ -147,6 +151,8 @@ const [specificDoc, setSpecificDoc] = useState<string | null>(null);
 // #58 (b): contenido actual del documento en el repo (para diff). `undefined`
 // cuando es un alta nueva; `string` cuando ya existía y se va a actualizar.
 const [specificExistingContent, setSpecificExistingContent] = useState<string | undefined>(undefined);
+// #XX: error de validación del repo en scope specific (nombre incorrecto o sin acceso)
+const [specificRepoError, setSpecificRepoError] = useState<string | null>(null);
 // #58 (a): estado del scope bulk
 const [bulkRepoInput, setBulkRepoInput] = useState('');
 // Paths del repoFileTree seleccionados para generar doc vía IA (multi-select).
@@ -237,12 +243,19 @@ const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number }
     setSpecificRepoInput: saveSpecificRepoInput,
     setSpecificPath: saveSpecificPath,
     setExtraInstructions: saveExtraInstructions,
-
+    clear,
   } = useDocTargetSelector();
 
-  // Restaurar estado guardado al montar (solo si no hay initialRepo que sobrescribe)
+  // Restaurar estado guardado al montar (solo si no hay initialRepo que sobrescribe).
+  // Fix #XX: si se abre con initialRepo, limpiar localStorage para evitar restaurar
+  // un nombre de repo incorrecto de sesión anterior (p. ej. "mercadona-dashboard"
+  // en vez de "powerbi-dashboard-mercadona").
   useEffect(() => {
-    if (!initialRepo && savedState?.scope === 'specific') {
+    if (initialRepo) {
+      clear(); // descarta estado persisted que podría tener un repo name obsoleto
+      return;
+    }
+    if (savedState?.scope === 'specific') {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- run-once: hidratar estado persistido al montar
       setScope('specific');
       setSpecificRepoInput(savedState.specificRepoInput);
@@ -338,6 +351,18 @@ const handleGenerateFile = async () => {
 // #58 Fase 2: generar documentación para un path concreto del repo
 const handleGenerateSpecific = async () => {
  if (!specificRepoInput.trim() || !specificPath.trim()) return;
+ // #XX: validación temprana — verificar que el repo existe antes de generar doc.
+ // Evita que la IA genere contenido con un nombre de repo incorrecto y que el
+ // commit falle después con 404 (p. ej. "mercadona-dashboard" en vez de
+ // "powerbi-dashboard-mercadona").
+ if (onCheckRepoExists) {
+   const exists = await onCheckRepoExists(specificRepoInput.trim());
+   if (!exists) {
+     setSpecificRepoError(specificRepoInput.trim());
+     return;
+   }
+ }
+ setSpecificRepoError(null);
  setBusy(true);
  try {
  const result = await onGenerateSpecific(specificRepoInput.trim(), specificPath.trim(), extraInstructions);
@@ -562,7 +587,15 @@ return (
   type="button"
   className="btn btn-secondary"
   style={{ textAlign: 'left', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '4px' }}
-  onClick={() => { setScope('specific'); saveScope('specific'); setStep(2); }}
+  onClick={() => {
+    setScope('specific'); saveScope('specific'); setStep(2);
+    // Fix #XX: auto-fill desde initialRepo si el input está vacío (evita que el
+    // usuario teclee un nombre incompleto tipo "mercadona-dashboard" en vez del
+    // nombre completo del repo cargado en contexto).
+    if (!specificRepoInput.trim() && safeInitialRepo) {
+      setSpecificRepoInput(safeInitialRepo);
+    }
+  }}
 >
   <strong>{t('modal.flow.scopeSpecific')}</strong>
   <small style={{ opacity: 0.8, fontWeight: 400 }}>{t('modal.flow.scopeSpecificDesc')}</small>
@@ -631,7 +664,7 @@ return (
         className="input"
         placeholder={t('chat.repoInputPlaceholder')}
         value={specificRepoInput}
-        onChange={e => { setSpecificRepoInput(e.target.value); saveSpecificRepoInput(e.target.value); }}
+        onChange={e => { setSpecificRepoInput(e.target.value); saveSpecificRepoInput(e.target.value); setSpecificRepoError(null); }}
         style={{ fontSize: '0.85rem', padding: '8px 10px' }}
       />
       <input
@@ -673,6 +706,15 @@ return (
           style={{ fontSize: '0.85rem', padding: '8px 10px', resize: 'vertical', minHeight: '48px' }}
         />
       </div>
+      {/* #XX: error de validación del repo (no existe o sin acceso) */}
+      {specificRepoError && (
+        <div style={{
+          padding: '8px 12px', borderRadius: '8px', fontSize: '0.85rem',
+          background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.4)',
+        }}>
+          ❌ No encontré el repositorio <code>{specificRepoError}</code>. Verifica el nombre — ¿existe y tienes acceso?
+        </div>
+      )}
       <button
         id="flow-generate-specific-btn"
         type="button"

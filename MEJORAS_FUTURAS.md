@@ -2,7 +2,7 @@
 
 Estado del código, mejoras realizadas y pendientes del proyecto.
 
-**Actualizado a:** v3.67.0 · Agosto 2026
+**Actualizado a:** v3.67.1 · Agosto 2026
 
 ---
 
@@ -98,7 +98,7 @@ Ordenadas por prioridad. Cada ítem se mueve a la tabla ✅ al resolverse.
 
 | # | Punto | Esfuerzo | Estado |
 |---|-------|----------|--------|
-| 76 | Bug: el flujo "Documentar → Documento específico" ignora la instrucción del chat y solo aplica cambios triviales al archivo existente | 🟢 Bajo (1h) | 🔄 En progreso (v3.67.0) |
+| 76 | Bug: el flujo "Documentar → Documento específico" ignora la instrucción del chat y solo aplica cambios triviales al archivo existente | 🟢 Bajo (1h) | ✅ Resuelto (v3.67.0 + v3.67.1) |
 | 26 | Mantener y expandir cobertura de tests con Codecov | Continuo (2-4h/sprint) | 🔄 En progreso |
 
 #### #26 — Mantener y expandir cobertura de tests con Codecov
@@ -673,13 +673,12 @@ existentes, no como sustituto.
 
 ---
 
-## 🎯 Próximo enfoque (post-v3.67.0)
+## 🎯 Próximo enfoque (post-v3.67.1)
 
-Con **v3.67.0** (**#76 resuelto**: fix precedencia de instrucción de usuario en
-`generateSpecificDoc` + cableado de `conversationHistory` desde el chat al
-wizard), **v3.66.0** (4 frentes: repo docs + destino específico + capturas sin
-visión), **v3.65.1** (limpieza catálogo Groq) y el histórico anterior, el roadmap
-queda en **3 pendientes accionables**. Orden recomendado:
+Con **v3.67.1** (fix auto-fill y validación temprana del repo en wizard
+"Documentar → Doc específico"), **v3.67.0** (#76 resuelto), **v3.66.0** (4
+frentes) y el histórico anterior, el roadmap queda en **2 pendientes
+accionables**. Orden recomendado:
 
 1. **#26 — Cobertura de tests (🔴 Alta, continuo).** El proyecto suma
    **976+ tests unitarios** (cliente 926+ en 63+ suites + servidor 50 en 6) y
