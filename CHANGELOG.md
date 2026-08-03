@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.67.2] — 2026-08-03
+
+> **Fix: prompt del README reemplaza footer existente y elimina imágenes rotas.**
+> El usuario reportó que al actualizar el repo `powerbi-dashboard-mercadona`, el
+> footer "Creado por @migueljerico y documentado por Ollama Cloud (MiniMax M3)"
+> no se actualizaba (el modelo preservaba la sección "Autor y Licencia" anterior)
+> y la imagen `Captura Dashboard Mercadona.png` daba error 404 porque no existía
+> en el repo.
+
+### Fixed
+- **Footer del README siempre se reemplaza.** Nueva `REGLA CRÍTICA` en el prompt
+  de `generateRepoDocs`: si el README existente tiene secciones "Autor", "Créditos",
+  "Footer" o "Licencia", se reemplazan completamente por el footer exacto del prompt.
+  NUNCA se preserva ni combina con el anterior.
+  - `client/src/services/gemini.ts:847-851`
+- **Eliminación de imágenes rotas.** El prompt ahora instruye al modelo a eliminar
+  referencias a archivos de imagen (*.png, *.jpg, etc.) que no existen en la
+  estructura del proyecto, evitando enlaces a 404.
+  - `client/src/services/gemini.ts:858-861`
+
+Cambio de código por [ZCode (mimo-v2.5-free)].
+
 ## [3.67.1] — 2026-08-03
 
 > **Fix: wizard "Documentar → Doc específico" ahora valida el repo antes de
