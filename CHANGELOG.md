@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.67.1] — 2026-08-03
+
+> **Fix: wizard "Documentar → Doc específico" ahora valida el repo antes de
+> generar y auto-rellena desde el contexto.** El usuario reportó que al intentar
+> actualizar un repo, la app usaba un nombre incorrecto ("mercadona-dashboard"
+> en vez de "powerbi-dashboard-mercadona"), generaba documentación con el nombre
+> erróneo y luego fallaba con 404 al commitear. Causa raíz: `specificRepoInput`
+> se inicializaba vacío y no se auto-rellenaba desde el repo cargado en contexto;
+> el hook `useDocTargetSelector` persistía el valor incorrecto en localStorage.
+
+### Fixed
+- **Auto-fill de `specificRepoInput` desde `initialRepo`.** Al seleccionar scope
+  "Documento específico del repo", si el input está vacío e `initialRepo` tiene
+  valor (repo cargado en contexto), se rellena automáticamente con el nombre
+  completo del repo. Evita que el usuario teclee un nombre incompleto.
+  - `client/src/components/confirm/DocumentFlowModal.tsx:565-574`
+- **Validación temprana del repo antes de generar documentación.** Nuevo callback
+  `onCheckRepoExists` verifica que el repo existe via GitHub API antes de llamar
+  a la IA. Si no existe, muestra un error claro y aborta. Evita que la IA
+  genere contenido con un nombre de repo incorrecto.
+  - `client/src/components/confirm/DocumentFlowModal.tsx:344-360`
+  - `client/src/App.tsx:643-648` (implementación del callback)
+- **Limpieza de localStorage stale.** Al abrir el modal con `initialRepo`, se
+  descarta el estado persistido en `useDocTargetSelector` para evitar restaurar
+  un nombre de repo obsoleto de una sesión anterior.
+  - `client/src/components/confirm/DocumentFlowModal.tsx:254-257`
+
+Cambio de código por [ZCode (mimo-v2.5-free)].
+
 ## [3.67.0] — 2026-08-02
 
 > **Bug crítico reportado por usuario: el flujo "Documentar → Documento específico
