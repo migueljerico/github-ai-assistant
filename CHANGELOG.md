@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.68.6] — 2026-08-04
+
+> **Actualización de badges de versión en README.md.**
+> - Sincronizado el badge de versión en `README.md` a `v3.68.6`.
+
+### Fixed & Changed
+- **Badges README.md:** `README.md`.
+
+Cambio de código por [Antigravity (Gemini 3.6 Flash)].
+
 ## [3.68.5] — 2026-08-04
 
 > **Fix de catálogo y selección de modelos en BazaarLink + Invalidation Cache v3 + Rate Limiter Dedicado.**
