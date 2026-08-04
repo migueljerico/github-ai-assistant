@@ -3,11 +3,22 @@ import { PROVIDERS, getProvider, fetchModels, pickDefaultModel, modelLabel, reso
 
 describe('providers — registro', () => {
   it('los proveedores tienen su defaultModel dentro de staticModels', () => {
-    (['gemini', 'groq', 'openrouter', 'nvidia', 'zenmux', 'openzen', 'cloudflare', 'ollama', 'aiand', 'kilo'] as const).forEach(id => {
+    (['gemini', 'groq', 'openrouter', 'nvidia', 'zenmux', 'openzen', 'cloudflare', 'ollama', 'aiand', 'kilo', 'bazaarlink'] as const).forEach(id => {
       const def = getProvider(id);
       expect(def.id).toBe(id);
       expect(def.staticModels.some(m => m.value === def.defaultModel)).toBe(true);
     });
+  });
+
+  it('bazaarlink: openai-compatible vía proxy backend /api/bazaarlink, endpoints relativos, modelos free configurados', () => {
+    const def = PROVIDERS.bazaarlink;
+    expect(def.transport).toBe('openai-compatible');
+    expect(def.chatEndpoint).toBe('/api/bazaarlink');
+    expect(def.modelsEndpoint).toBe('/api/bazaarlink/models');
+    expect(def.modelsNeedKey).toBe(true);
+    expect(def.staticModels.some(m => m.value === def.defaultModel)).toBe(true);
+    expect(def.defaultModel).toBe('deepseek-v4-flash');
+    expect(def.staticModels.every(m => m.free === true)).toBe(true);
   });
 
   it('gemini usa proxy; groq, openrouter y zenmux son openai-compatible con endpoint directo; nvidia, openzen y cloudflare usan proxy backend por CORS', () => {

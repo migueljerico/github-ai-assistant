@@ -180,6 +180,10 @@ export const en = {
   'provider.kilo.cardDesc': 'Kilo · OpenAI-compatible gateway with a catalog of free models (Ling, Laguna, Nex…)',
   'provider.kilo.signupLabel': 'Get JWT key at kilo.ai →',
 
+  'provider.bazaarlink.cardDesc': 'BazaarLink · DeepSeek and Qwen models with free option',
+  'provider.bazaarlink.signupLabel': 'Get API key at bazaarlink.ai →',
+  'provider.bazaarlink.note': '🆓 Configured free models: deepseek-v4-flash and qwen3.7-flash.',
+
   // ────── PHASE 2: Modals ──────
   'modal.doc.title': 'Documentation generated for {repoName}',
   'modal.doc.subtitle': 'I analyzed {filesAnalyzed} file',

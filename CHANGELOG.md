@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.68.0] — 2026-08-04
+
+> **Nuevo proveedor de IA: BazaarLink (`bazaarlink.ai/api/v1`).**
+> Integración del nuevo proveedor BazaarLink con catálogo dinámico, soporte para los modelos
+> gratuitos `deepseek-v4-flash` y `qwen3.7-flash`, proxy backend dedicado `/api/bazaarlink` (elude CORS),
+> fallback estático `BAZAARLINK_FALLBACK`, i18n completo ES/EN y suite de tests.
+
+### Added
+- **Proveedor BazaarLink:** añadido al registro `PROVIDERS` (`client/src/services/providers.ts`).
+  - Endpoints proxy backend `/api/bazaarlink` (chat) y `/api/bazaarlink/models` (catálogo).
+  - Modelos gratuitos destacados: `deepseek-v4-flash` y `qwen3.7-flash`.
+- **Proxy backend y rate limiter:** endpoints dedicados y `bazaarlinkLimiter` en `server/index.js`.
+- **Internacionalización y etiquetas:** claves `provider.bazaarlink.*` en `client/src/i18n/es.ts` y `en.ts`, y etiquetas amigables en `client/src/utils/modelLabels.ts`.
+- **Tests unitarios:** suite de verificación en `client/src/services/__tests__/providers.test.ts`.
+
+Cambio de código por [Antigravity (Gemini 3.6 Flash)].
+
 ## [3.67.3] — 2026-08-03
 
 > **Fix: al actualizar un repo, las imágenes adjuntas ahora se suben al repositorio.**

@@ -2,7 +2,7 @@
 
 Estado del código, mejoras realizadas y pendientes del proyecto.
 
-**Actualizado a:** v3.67.3 · Agosto 2026
+**Actualizado a:** v3.68.0 · Agosto 2026
 
 ---
 
@@ -87,6 +87,7 @@ Ordenado por versión ascendente. Las fases de un mismo issue (`#24`, `#28`, `#5
 | 53 | **Sugerir mensaje de commit semántico** — Reformulación final: como la app opera vía GitHub API sin working tree local, "analizar el diff pendiente" no aplica. En su lugar, `commitSuggester.ts` propone el mensaje **antes de abrir el `ConfirmModal`** para acciones PUT/DELETE sobre archivos, usando los 10 commits recientes del repo destino como few-shot de estilo y el prompt dedicado `prompts/commit-message.md` (Conventional Commits). Best-effort con fallback determinista (`feat:`/`docs:`/`chore:` según tipo de acción) si no hay apiKey/model o falla la red; nunca bloquea el flujo. Zero-Storage intacto (la sugerencia vive solo en el textarea del modal). 24 tests. ⚠️ **Implementado de hecho en v3.50.0 pero sin documentar entonces en el roadmap;** este cierre editorial llega en v3.50.3. | client/src/services/commitSuggester.ts, client/src/services/assistantActions.ts:901-933, client/src/prompts/commit-message.md, client/src/services/__tests__/commitSuggester.test.ts | v3.50.0 (docs: v3.50.3) |
 | 26 | **Cobertura de `DiffViewer`** — Último componente de confirmación con valor real y sin suite propia. 18 tests nuevos en `DiffViewer.test.tsx`: render de cabecera y leyendas i18n (`● Eliminado`/`● Añadido`), invocación de `Diff.createPatch` con los 5 argumentos (incluye headers `Versión actual`/`Versión propuesta`), opciones de `diff2html` (`side-by-side` + `matching: 'lines'`), inyección del HTML en `.diff-wrapper`, re-renders selectivos por dep cambiada (e inmutabilidad cuando las props no cambian), casos límite (contenido idéntico, creación, borrado, multilinea) y resiliencia ante errores/HTML vacío de `diff2html`. Patrones documentados: mock de namespaces ESM vía `vi.mock` + factory (no `vi.spyOn`) y mock determinista del HTML de librerías externas. | client/src/components/confirm/__tests__/DiffViewer.test.tsx | v3.50.4 |
 | 75 | **Tests E2E con Playwright** — Primera batería de tests de fin de flujo. 3 specs (`e2e/chat.spec.ts`) sobre la **arquitectura real de producción** (Express en `:3300` sirviendo el SPA construido, no dev servers): (1) camino feliz de chat, (2) acción confirmada con diff → `ConfirmModal` → PUT a GitHub, (3) proveedor falla → error accionable sin stack trace. Helpers en `e2e/fixtures.ts` cruzan los dos gates (auth mock + mock del chat de validación) y reproducen el contrato SSE del proxy `/api/gemini` cuando el body pide `stream:true`. Job de CI `e2e` paralelo en `.github/workflows/ci.yml` (instala Chromium, buildea, ejecuta, sube reporte). | e2e/{chat.spec.ts,fixtures.ts}, playwright.config.ts, package.json, .github/workflows/ci.yml | v3.61.0 |
+| 77 | **Nuevo proveedor BazaarLink (`bazaarlink.ai/api/v1`)** — Pasarela OpenAI-compatible vía proxy backend `/api/bazaarlink` (elude CORS). Catálogo dinámico con filtrado free en `deepseek-v4-flash` y `qwen3.7-flash` + `BAZAARLINK_FALLBACK` + i18n ES/EN + tests. | client/src/services/providers.ts, server/index.js, client/src/i18n/{es,en}.ts | v3.68.0 |
 
 ---
 

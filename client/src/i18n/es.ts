@@ -182,6 +182,10 @@ export const es = {
   'provider.kilo.cardDesc': 'Kilo · pasarela OpenAI-compatible con catálogo de modelos gratuitos (Ling, Laguna, Nex…)',
   'provider.kilo.signupLabel': 'Obtener clave JWT en kilo.ai →',
 
+  'provider.bazaarlink.cardDesc': 'BazaarLink · modelos DeepSeek y Qwen con opción gratuita',
+  'provider.bazaarlink.signupLabel': 'Obtener clave en bazaarlink.ai →',
+  'provider.bazaarlink.note': '🆓 Modelos gratuitos configurados: deepseek-v4-flash y qwen3.7-flash.',
+
   // ────── FASE 2: Modales ──────
   'modal.doc.title': 'Documentación generada para {repoName}',
   'modal.doc.subtitle': 'Analicé {filesAnalyzed} archivo',

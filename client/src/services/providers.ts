@@ -12,7 +12,7 @@
 // sessionStorage es la LISTA de modelos (catálogo), nunca la clave.
 // ────────────────────────────────────────────────────────────────────────────
 
-export type AIProviderType = 'gemini' | 'groq' | 'openrouter' | 'nvidia' | 'zenmux' | 'openzen' | 'cloudflare' | 'ollama' | 'aiand' | 'kilo';
+export type AIProviderType = 'gemini' | 'groq' | 'openrouter' | 'nvidia' | 'zenmux' | 'openzen' | 'cloudflare' | 'ollama' | 'aiand' | 'kilo' | 'bazaarlink';
 export type ProviderTransport = 'gemini-proxy' | 'openai-compatible';
 
 export interface ModelOption {
@@ -324,6 +324,14 @@ const KILO_FALLBACK: ModelOption[] = [
   { value: 'nex-agi/nex-n2-pro:free', label: 'Nex N2 Pro (free)', free: true },
 ];
 
+// Fallback de BazaarLink (bazaarlink.ai/api/v1) mientras carga el catálogo dinámico o si falla.
+// Pasarela OpenAI-compatible. Acceso vía PROXY backend /api/bazaarlink.
+// Modelos gratuitos solicitados por el usuario: deepseek-v4-flash y qwen3.7-flash.
+const BAZAARLINK_FALLBACK: ModelOption[] = [
+  { value: 'deepseek-v4-flash', label: 'DeepSeek V4 Flash (free)', free: true, recommended: true },
+  { value: 'qwen3.7-flash', label: 'Qwen 3.7 Flash (free)', free: true },
+];
+
 export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
   gemini: {
     id: 'gemini',
@@ -547,6 +555,27 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     keyPrefix: 'eyJ',
     signupUrl: 'https://kilo.ai',
     signupLabel: 'provider.kilo.signupLabel',
+  },
+  // BazaarLink (bazaarlink.ai/api/v1): Pasarela OpenAI-compatible.
+  // Acceso vía PROXY backend /api/bazaarlink (elude bloqueo CORS del navegador).
+  // Catálogo dinámico vía /api/bazaarlink/models con marcas free en deepseek-v4-flash y qwen3.7-flash.
+  bazaarlink: {
+    id: 'bazaarlink',
+    name: 'BazaarLink',
+    shortName: 'BazaarLink',
+    emoji: '🛍️',
+    cardDesc: 'provider.bazaarlink.cardDesc',
+    transport: 'openai-compatible',
+    chatEndpoint: '/api/bazaarlink',
+    modelsEndpoint: '/api/bazaarlink/models',
+    modelsNeedKey: true,
+    staticModels: BAZAARLINK_FALLBACK,
+    defaultModel: BAZAARLINK_FALLBACK[0].value,
+    keyPlaceholder: 'sk-...',
+    keyPrefix: 'sk-',
+    signupUrl: 'https://bazaarlink.ai',
+    signupLabel: 'provider.bazaarlink.signupLabel',
+    note: 'provider.bazaarlink.note',
   },
 };
 
@@ -862,6 +891,24 @@ export async function fetchModels(
         label: m.id,
         free: m.id.toLowerCase().endsWith(':free'),
       }))
+      .sort((a: ModelOption, b: ModelOption) => (Number(b.free) - Number(a.free)) || a.label.localeCompare(b.label));
+  } else if (def.id === 'bazaarlink') {
+    // BazaarLink (bazaarlink.ai/api/v1): pasarela OpenAI-compatible.
+    // Modelos gratuitos solicitados por el usuario: deepseek-v4-flash y qwen3.7-flash.
+    // Filtra no-chat y marca free en los modelos indicados (o con sufijo :free).
+    const BAZAARLINK_FREE_MODELS = ['deepseek-v4-flash', 'qwen3.7-flash'];
+    const BAZAARLINK_EXCLUDED = ['embed', 'whisper', 'tts', 'asr', 'rerank', 'vision', 'clip', 'audio'];
+    models = data.data
+      .filter((m: { id: string }) => !BAZAARLINK_EXCLUDED.some(p => m.id.toLowerCase().includes(p)))
+      .map((m: { id: string; name?: string; display_name?: string }) => {
+        const idLow = m.id.toLowerCase();
+        const isFree = BAZAARLINK_FREE_MODELS.some(f => idLow.includes(f)) || idLow.endsWith(':free');
+        return {
+          value: m.id,
+          label: m.display_name || m.name || m.id,
+          free: isFree,
+        };
+      })
       .sort((a: ModelOption, b: ModelOption) => (Number(b.free) - Number(a.free)) || a.label.localeCompare(b.label));
   } else {
     // Groq (y cualquier OpenAI-compatible genérico): filtra no-chat (GROQ_EXCLUDED) y

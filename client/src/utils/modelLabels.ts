@@ -63,6 +63,9 @@ export const MODEL_LABELS: Record<string, string> = {
   '@cf/openai/gpt-oss-20b': 'GPT-OSS 20B',
   '@cf/google/gemma-4-26b-a4b-it': 'Gemma 4 26B A4B',
   '@cf/nvidia/nemotron-3-120b-a12b': 'Nemotron 3 120B',
+  // ── BazaarLink ──
+  'deepseek-v4-flash': 'DeepSeek V4 Flash',
+  'qwen3.7-flash': 'Qwen 3.7 Flash',
 };
 
 /** Devuelve la etiqueta amigable de un modelo, o su id si no hay etiqueta conocida. */
