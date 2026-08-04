@@ -363,6 +363,7 @@ Cada propuesta se revisa según criterios como:
 
 | IA / herramienta | Rol principal |
 |---|---|
+| **Antigravity 2.0 / Gemini 3.6 Flash** | Toma de control agéntica desde v3.68.0 (2026-08-04): integración de nuevos proveedores (Kilo, BazaarLink), resolución de rate limiting 429 y sincronización completa de la documentación y releases del repositorio |
 | **Claude / Claude Code** | Arquitectura, revisión crítica, documentación e implementación asistida |
 | **Antigravity 2.0** | Construcción inicial agéntica de la versión full-stack |
 | **ZCode / GLM-5.2** | Roadmap, cierre de versiones, documentación, releases e i18n |

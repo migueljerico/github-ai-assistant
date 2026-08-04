@@ -329,9 +329,9 @@ const KILO_FALLBACK: ModelOption[] = [
 // El catálogo es PÚBLICO (GET /models no requiere key -> modelsNeedKey: false).
 // Modelos gratuitos solicitados por el usuario (IDs reales de la API bazaarlink.ai):
 const BAZAARLINK_FALLBACK: ModelOption[] = [
-  { value: 'deepseek/deepseek-v4-flash:free', label: 'DeepSeek V4 Flash (free)', free: true, recommended: true },
-  { value: 'qwen/qwen3.7-flash:free', label: 'Qwen 3.7 Flash (free)', free: true },
-  { value: 'auto:free', label: 'Auto Router (free)', free: true },
+  { value: 'deepseek-v4-flash', label: 'DeepSeek V4 Flash (free)', free: true, recommended: true },
+  { value: 'qwen3.6-27b', label: 'Qwen 3.6 27B (free)', free: true },
+  { value: 'deepseek-v4-pro', label: 'DeepSeek V4 Pro', free: false },
 ];
 
 export const PROVIDERS: Record<AIProviderType, ProviderDef> = {

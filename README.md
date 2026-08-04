@@ -285,6 +285,7 @@ http://localhost:5173
 
 Este proyecto fue construido con un flujo humano ↔ IA basado en validación cruzada, revisión crítica y dogfooding.
 
+- **Antigravity 2.0 / Gemini 3.6 Flash:** desde **v3.68.0 (2026-08-04)** ha tomado el control del desarrollo agéntico del proyecto, asumiendo la integración de nuevos proveedores (Kilo, BazaarLink), la resolución de errores de rate limiting 429, el ajuste fino de reintentos transitorios y la sincronización y actualización completa de la documentación y releases del repositorio.
 - **Claude / Claude Code:** arquitectura, revisión crítica, implementación asistida y documentación.
 - **Antigravity 2.0:** construcción inicial agéntica de la versión full-stack.
 - **ZCode / step-3.7-flash-free (GLM-5.2):** cierre de versiones, build, sincronización de documentación y release desde v3.25.0.

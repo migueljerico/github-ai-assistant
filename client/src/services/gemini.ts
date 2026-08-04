@@ -292,13 +292,18 @@ async function callOpenAICompatible(
     // pueda reintentar con menos contexto y mostrar un mensaje accionable; el segundo
     // mantiene el hint de "prueba otro modelo".
     const base = msg || `AI provider error ${res.status}`;
-    const isTooLarge = typeof msg === 'string' && /too large|reduce the length|tokens per minute|context length|maximum.{0,12}tokens|payload too|rate limit/i.test(msg);
+    const isTooLarge = typeof msg === 'string' && /too large|reduce the length|tokens per minute|context length|maximum.{0,12}tokens|payload too/i.test(msg);
     if (isTooLarge || res.status === 413) {
       throw Object.assign(new Error(base), { status: res.status, contextTooLarge: true });
     }
     // Cloudflare 403/429: mensaje accionable con modelos aptos para el plan Free.
     if ((res.status === 403 || res.status === 429) && endpoint.includes('/api/cloudflare')) {
       const hint = ' — Modelo no disponible en tu cuenta Cloudflare (cuota agotada o requiere plan Paid). Prueba con Qwen3 30B o Llama 3.1 8B en el selector.';
+      throw Object.assign(new Error(base + hint), { status: res.status });
+    }
+    // BazaarLink 429: mensaje accionable.
+    if ((res.status === 403 || res.status === 429) && endpoint.includes('/api/bazaarlink')) {
+      const hint = ' — Demasiadas peticiones o límite alcanzado en BazaarLink (429). Espera un minuto o cambia a otro modelo/proveedor en ⚙️.';
       throw Object.assign(new Error(base + hint), { status: res.status });
     }
     const hint = ' — el modelo no está disponible ahora mismo (saturación del tier gratuito). Prueba otro modelo (p. ej. Gemma) o cambia a Gemini/Groq.';

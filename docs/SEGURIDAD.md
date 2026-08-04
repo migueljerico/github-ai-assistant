@@ -311,7 +311,7 @@ La clave Gemini:
 
 ## 🚦 Rate limiting
 
-El proxy Gemini está protegido con rate limiting.
+El backend de Express implementa rate limiting independiente para cada proxy a proveedores de IA (Gemini, NVIDIA NIM, OpenCode Zen, Cloudflare, Ollama, Ai&, Kilo y BazaarLink).
 
 Objetivo:
 

@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.68.3] — 2026-08-04
+
+> **Fix de BazaarLink (429 & IDs de modelos) y Actualización Integral de Documentación (Antigravity & Gemini 3.6 Flash).**
+> - **BazaarLink Fix:** Ajustados los IDs de modelo en `BAZAARLINK_FALLBACK` (`deepseek-v4-flash`, `qwen3.6-27b`, `deepseek-v4-pro`) a los IDs reales de `bazaarlink.ai/api/v1/models`. Refinada la detección de errores en `gemini.ts` y `retry.ts` eliminando el patrón genérico `/rate limit/i` de `isTooLarge` para evitar que respuestas 429 desencadenen bucles de reintentos con podado de contexto. Añadido mensaje de error accionable para estados 429 en BazaarLink.
+> - **Actualización de Documentación:** Actualizado `README.md` (sección `🧠 Desarrollo asistido por IA`), `docs/DESARROLLO_IA.md`, `METODOLOGIA_IA.md` y todos los `.md` de `docs/` (`ARQUITECTURA.md`, `COMPARATIVA_COPILOT.md`, `FUNCIONALIDADES.md`, `INSTALACION.md`, `SEGURIDAD.md`, `TESTING_CALIDAD.md`) y raíz (`CLAUDE.md`, `MANUAL_TECNICO.md`, `MEJORAS_FUTURAS.md`) dejando constancia de la toma de control desde v3.68.0 por **Antigravity 2.0 y Gemini 3.6 Flash**, sincronizando versión (v3.68.3) y recuentos de tests y proveedores (11).
+
+### Changed
+- **BazaarLink & Retries:** `client/src/services/providers.ts`, `client/src/services/gemini.ts`, `client/src/utils/retry.ts`, `client/src/services/__tests__/providers.test.ts`, `client/src/utils/__tests__/retry.test.ts`.
+- **Documentación integral:** `README.md`, `METODOLOGIA_IA.md`, `CLAUDE.md`, `MANUAL_TECNICO.md`, `MEJORAS_FUTURAS.md`, `docs/*.md`.
+
+Cambio de código por [Antigravity (Gemini 3.6 Flash)].
+
 ## [3.68.2] — 2026-08-04
 
 > **Fix: corrección de IDs de modelos y reintento transitorio de 429 para BazaarLink.**

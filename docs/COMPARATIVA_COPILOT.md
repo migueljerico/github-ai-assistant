@@ -17,7 +17,7 @@ La diferencia principal no está en “hacer código mejor”, sino en ofrecer u
 | Foco principal | Ayuda al programar dentro del editor | Operar y documentar GitHub en lenguaje natural |
 | Entorno natural | IDE, GitHub y herramientas integradas | Aplicación web autoalojable |
 | Modelo de uso | Servicio gestionado por GitHub | Código abierto con claves propias |
-| Proveedores de IA | Catálogo gestionado por la plataforma | Groq, Gemini, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI, Ollama Cloud y Ai& |
+| Proveedores de IA | Catálogo gestionado por la plataforma | Groq, Gemini, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI, Ollama Cloud, Ai&, Kilo y BazaarLink |
 | Credenciales | Gestionadas por la plataforma | Zero-Storage en memoria del navegador |
 | Acciones GitHub | Integradas según capacidades de Copilot | Orquestadas mediante GitHub REST API con confirmación |
 | Público objetivo | Desarrolladores que escriben código | Usuarios que quieren operar, analizar y publicar repos sin conocer la API |

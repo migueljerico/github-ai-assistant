@@ -32,7 +32,7 @@ export function isTransientError(err: unknown): boolean {
 // the messages", "tokens per minute" (TPM), "context length"/"maximum context
 // tokens", 413 Payload Too Large.
 const CONTEXT_TOO_LARGE_PATTERN =
-  /too large|reduce the length|tokens per minute|context length|maximum.{0,12}tokens|payload too|rate limit/i;
+  /too large|reduce the length|tokens per minute|context length|maximum.{0,12}tokens|payload too/i;
 
 /** ¿El error indica que el contexto supera el límite (TPM/context length)? */
 export function isContextTooLargeError(err: unknown): boolean {

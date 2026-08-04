@@ -37,10 +37,13 @@ APIs externas
   ├── Google Gemini
   ├── OpenRouter
   ├── NVIDIA NIM
-  └── Zenmux
+  ├── Zenmux
   ├── OpenCode Zen
   ├── Cloudflare Workers AI
-  └── Ollama Cloud
+  ├── Ollama Cloud
+  ├── Ai&
+  ├── Kilo
+  └── BazaarLink
 ```
 
 ---
@@ -604,6 +607,8 @@ Proveedores:
 | Cloudflare Workers AI | Proxy Express `/api/cloudflare` (sin cabeceras CORS) |
 | Ollama Cloud | Proxy Express `/api/ollama` (sin cabeceras CORS) |
 | Ai& | Proxy Express `/api/aiand` (sin cabeceras CORS) |
+| Kilo | Proxy Express `/api/kilo` (sin cabeceras CORS) |
+| BazaarLink | Proxy Express `/api/bazaarlink` (sin cabeceras CORS) |
 
 ---
 
@@ -628,7 +633,9 @@ Responsabilidades:
 | `POST /api/cloudflare` | Proxy hacia Cloudflare Workers AI (sin CORS upstream) |
 | `POST /api/ollama` | Proxy hacia Ollama Cloud (sin CORS upstream) |
 | `POST /api/aiand` | Proxy hacia Ai& (sin CORS upstream) |
-| `GET /api/nim/models` · `/api/ollama/models` · `/api/aiand/models` | Catálogos dinámicos de modelos de NIM, Ollama y Ai& vía proxy |
+| `POST /api/kilo` | Proxy hacia Kilo (sin CORS upstream) |
+| `POST /api/bazaarlink` | Proxy hacia BazaarLink (sin CORS upstream) |
+| `GET /api/nim/models` · `/api/ollama/models` · `/api/aiand/models` · `/api/kilo/models` · `/api/bazaarlink/models` | Catálogos dinámicos de modelos vía proxy |
 | `GET /health` | Health check |
 | `GET /*` | Sirve frontend en producción |
 

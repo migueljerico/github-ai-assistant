@@ -30,7 +30,7 @@ describe('retry (#40 / #50)', () => {
       expect(isContextTooLargeError(new Error('Please reduce the length of the messages'))).toBe(true);
       expect(isContextTooLargeError(new Error('exceeded your tokens per minute limit'))).toBe(true);
       expect(isContextTooLargeError(new Error('context length exceeded'))).toBe(true);
-      expect(isContextTooLargeError(new Error('rate limit exceeded'))).toBe(true);
+      expect(isContextTooLargeError(new Error('rate limit exceeded'))).toBe(false);
     });
 
     it('detecta status 413 Payload Too Large', () => {

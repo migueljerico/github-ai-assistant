@@ -18,8 +18,8 @@ describe('providers — registro', () => {
     expect(def.modelsNeedKey).toBe(false);
     expect(def.keyPrefix).toBe('sk-bl-');
     expect(def.staticModels.some(m => m.value === def.defaultModel)).toBe(true);
-    expect(def.defaultModel).toBe('deepseek/deepseek-v4-flash:free');
-    expect(def.staticModels.every(m => m.free === true)).toBe(true);
+    expect(def.defaultModel).toBe('deepseek-v4-flash');
+    expect(def.staticModels.some(m => m.free === true)).toBe(true);
   });
 
   it('gemini usa proxy; groq, openrouter y zenmux son openai-compatible con endpoint directo; nvidia, openzen y cloudflare usan proxy backend por CORS', () => {
