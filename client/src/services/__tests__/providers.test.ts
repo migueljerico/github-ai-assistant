@@ -10,14 +10,15 @@ describe('providers — registro', () => {
     });
   });
 
-  it('bazaarlink: openai-compatible vía proxy backend /api/bazaarlink, endpoints relativos, modelos free configurados', () => {
+  it('bazaarlink: openai-compatible vía proxy backend /api/bazaarlink, endpoints relativos, catálogo público, modelos free configurados', () => {
     const def = PROVIDERS.bazaarlink;
     expect(def.transport).toBe('openai-compatible');
     expect(def.chatEndpoint).toBe('/api/bazaarlink');
     expect(def.modelsEndpoint).toBe('/api/bazaarlink/models');
-    expect(def.modelsNeedKey).toBe(true);
+    expect(def.modelsNeedKey).toBe(false);
+    expect(def.keyPrefix).toBe('sk-bl-');
     expect(def.staticModels.some(m => m.value === def.defaultModel)).toBe(true);
-    expect(def.defaultModel).toBe('deepseek-v4-flash');
+    expect(def.defaultModel).toBe('deepseek/deepseek-v4-flash:free');
     expect(def.staticModels.every(m => m.free === true)).toBe(true);
   });
 
@@ -431,22 +432,21 @@ describe('providers — fetchModels', () => {
       ok: true,
       json: async () => ({
         data: [
-          { id: 'deepseek-v4-flash', display_name: 'DeepSeek V4 Flash' },
-          { id: 'qwen3.7-flash', display_name: 'Qwen 3.7 Flash' },
+          { id: 'deepseek/deepseek-v4-flash:free', display_name: 'DeepSeek V4 Flash' },
+          { id: 'qwen/qwen3.7-flash:free', display_name: 'Qwen 3.7 Flash' },
           { id: 'custom-model:free', display_name: 'Custom Model Free' },
           { id: 'text-embedding-3', display_name: 'Embedding (no-chat)' }, // excluido
-          { id: 'paid-large-model', display_name: 'Paid Large Model' },
+          { id: 'paid-large-model', display_name: 'Paid Large Model', pricing: { prompt: '0.001', completion: '0.002' } },
         ],
       }),
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const list = await fetchModels(PROVIDERS.bazaarlink, 'sk-test');
+    const list = await fetchModels(PROVIDERS.bazaarlink);
     expect(list).not.toBeNull();
 
-    const [url, init] = fetchMock.mock.calls[0];
+    const [url] = fetchMock.mock.calls[0];
     expect(url).toBe('/api/bazaarlink/models');
-    expect((init.headers as Record<string, string>).Authorization).toBe('Bearer sk-test');
 
     const ids = list!.map(m => m.value);
     // Excluye no-chat
@@ -454,12 +454,12 @@ describe('providers — fetchModels', () => {
     // Free primero, luego paid
     expect(ids).toEqual([
       'custom-model:free',
-      'deepseek-v4-flash',
-      'qwen3.7-flash',
+      'deepseek/deepseek-v4-flash:free',
+      'qwen/qwen3.7-flash:free',
       'paid-large-model',
     ]);
-    expect(list!.find(m => m.value === 'deepseek-v4-flash')!.free).toBe(true);
-    expect(list!.find(m => m.value === 'qwen3.7-flash')!.free).toBe(true);
+    expect(list!.find(m => m.value === 'deepseek/deepseek-v4-flash:free')!.free).toBe(true);
+    expect(list!.find(m => m.value === 'qwen/qwen3.7-flash:free')!.free).toBe(true);
     expect(list!.find(m => m.value === 'custom-model:free')!.free).toBe(true);
     expect(list!.find(m => m.value === 'paid-large-model')!.free).toBe(false);
   });

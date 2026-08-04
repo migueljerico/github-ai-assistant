@@ -6,7 +6,7 @@
 // NUNCA se reintenta un 4xx no recuperable (401/403/404/422) ni una cancelación
 // (AbortController). Mantener este módulo sin dependencias y agnóstico del dominio.
 
-const TRANSIENT_STATUS = new Set([500, 502, 503, 504]);
+const TRANSIENT_STATUS = new Set([429, 500, 502, 503, 504]);
 const TRANSIENT_PATTERN =
   /overloaded|high demand|currently experiencing|service unavailable|provider returned error|temporarily|try again|failed to fetch|network|timeout|econnreset|rate limit|429/i;
 

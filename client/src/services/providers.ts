@@ -326,10 +326,12 @@ const KILO_FALLBACK: ModelOption[] = [
 
 // Fallback de BazaarLink (bazaarlink.ai/api/v1) mientras carga el catálogo dinámico o si falla.
 // Pasarela OpenAI-compatible. Acceso vía PROXY backend /api/bazaarlink.
-// Modelos gratuitos solicitados por el usuario: deepseek-v4-flash y qwen3.7-flash.
+// El catálogo es PÚBLICO (GET /models no requiere key -> modelsNeedKey: false).
+// Modelos gratuitos solicitados por el usuario (IDs reales de la API bazaarlink.ai):
 const BAZAARLINK_FALLBACK: ModelOption[] = [
-  { value: 'deepseek-v4-flash', label: 'DeepSeek V4 Flash (free)', free: true, recommended: true },
-  { value: 'qwen3.7-flash', label: 'Qwen 3.7 Flash (free)', free: true },
+  { value: 'deepseek/deepseek-v4-flash:free', label: 'DeepSeek V4 Flash (free)', free: true, recommended: true },
+  { value: 'qwen/qwen3.7-flash:free', label: 'Qwen 3.7 Flash (free)', free: true },
+  { value: 'auto:free', label: 'Auto Router (free)', free: true },
 ];
 
 export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
@@ -558,7 +560,7 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
   },
   // BazaarLink (bazaarlink.ai/api/v1): Pasarela OpenAI-compatible.
   // Acceso vía PROXY backend /api/bazaarlink (elude bloqueo CORS del navegador).
-  // Catálogo dinámico vía /api/bazaarlink/models con marcas free en deepseek-v4-flash y qwen3.7-flash.
+  // Catálogo dinámico vía /api/bazaarlink/models (público, modelsNeedKey: false).
   bazaarlink: {
     id: 'bazaarlink',
     name: 'BazaarLink',
@@ -568,11 +570,11 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     transport: 'openai-compatible',
     chatEndpoint: '/api/bazaarlink',
     modelsEndpoint: '/api/bazaarlink/models',
-    modelsNeedKey: true,
+    modelsNeedKey: false, // El catálogo de BazaarLink es público (GET /v1/models sin auth)
     staticModels: BAZAARLINK_FALLBACK,
     defaultModel: BAZAARLINK_FALLBACK[0].value,
-    keyPlaceholder: 'sk-...',
-    keyPrefix: 'sk-',
+    keyPlaceholder: 'sk-bl-...',
+    keyPrefix: 'sk-bl-',
     signupUrl: 'https://bazaarlink.ai',
     signupLabel: 'provider.bazaarlink.signupLabel',
     note: 'provider.bazaarlink.note',
@@ -893,19 +895,28 @@ export async function fetchModels(
       }))
       .sort((a: ModelOption, b: ModelOption) => (Number(b.free) - Number(a.free)) || a.label.localeCompare(b.label));
   } else if (def.id === 'bazaarlink') {
-    // BazaarLink (bazaarlink.ai/api/v1): pasarela OpenAI-compatible.
-    // Modelos gratuitos solicitados por el usuario: deepseek-v4-flash y qwen3.7-flash.
-    // Filtra no-chat y marca free en los modelos indicados (o con sufijo :free).
-    const BAZAARLINK_FREE_MODELS = ['deepseek-v4-flash', 'qwen3.7-flash'];
+    // BazaarLink (bazaarlink.ai/api/v1): pasarela OpenAI-compatible con catálogo público.
+    // Identifica free por sufijo :free, pricing a 0 o alias conocidos.
+    // Filtra modelos obviamente no-chat (embedding, whisper, tts…). free primero, luego alfabético.
+    const BAZAARLINK_FREE_MODELS = ['deepseek-v4-flash', 'qwen3.7-flash', 'auto:free'];
     const BAZAARLINK_EXCLUDED = ['embed', 'whisper', 'tts', 'asr', 'rerank', 'vision', 'clip', 'audio'];
-    models = data.data
-      .filter((m: { id: string }) => !BAZAARLINK_EXCLUDED.some(p => m.id.toLowerCase().includes(p)))
-      .map((m: { id: string; name?: string; display_name?: string }) => {
+    type BazaarlinkItem = {
+      id: string;
+      name?: string;
+      display_name?: string;
+      pricing?: { prompt?: string | number; completion?: string | number };
+    };
+    models = (data.data as unknown as BazaarlinkItem[])
+      .filter((m) => !BAZAARLINK_EXCLUDED.some(p => m.id.toLowerCase().includes(p)))
+      .map((m) => {
         const idLow = m.id.toLowerCase();
-        const isFree = BAZAARLINK_FREE_MODELS.some(f => idLow.includes(f)) || idLow.endsWith(':free');
+        const promptPrice = m.pricing?.prompt;
+        const completionPrice = m.pricing?.completion;
+        const priceIsZero = promptPrice !== undefined && Number(promptPrice) === 0 && Number(completionPrice) === 0;
+        const isFree = idLow.endsWith(':free') || priceIsZero || BAZAARLINK_FREE_MODELS.some(f => idLow.includes(f));
         return {
           value: m.id,
-          label: m.display_name || m.name || m.id,
+          label: m.name || m.display_name || m.id,
           free: isFree,
         };
       })

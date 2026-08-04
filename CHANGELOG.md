@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.68.2] — 2026-08-04
+
+> **Fix: corrección de IDs de modelos y reintento transitorio de 429 para BazaarLink.**
+> - **IDs de API reales:** Actualizados los IDs de modelos de BazaarLink a los requeridos por su API (`deepseek/deepseek-v4-flash:free`, `qwen/qwen3.7-flash:free` y `auto:free`), evitando errores 429/404 por ID desconocido.
+> - **Catálogo público:** Configurado `modelsNeedKey: false` (el endpoint `GET /v1/models` es público en BazaarLink) y prefijo de clave `sk-bl-`.
+> - **Reintento de 429:** Añadido el estado HTTP `429` a `TRANSIENT_STATUS` en `retry.ts` para reintentar automáticamente con backoff exponencial ante saturación puntual de la pasarela.
+
+### Fixed
+- **BazaarLink IDs & 429:** `providers.ts`, `retry.ts`, `modelLabels.ts`, `providers.test.ts`.
+
+Cambio de código por [Antigravity (Gemini 3.6 Flash)].
+
 ## [3.68.1] — 2026-08-04
 
 > **Cobertura de tests (Codecov patch 100%).**
