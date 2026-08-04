@@ -18,7 +18,7 @@ describe('providers — registro', () => {
     expect(def.modelsNeedKey).toBe(false);
     expect(def.keyPrefix).toBe('sk-bl-');
     expect(def.staticModels.some(m => m.value === def.defaultModel)).toBe(true);
-    expect(def.defaultModel).toBe('deepseek-v4-flash');
+    expect(def.defaultModel).toBe('deepseek/deepseek-v4-flash:free');
     expect(def.staticModels.some(m => m.free === true)).toBe(true);
   });
 
@@ -237,7 +237,7 @@ describe('providers — fetchModels', () => {
     await fetchModels(PROVIDERS.openrouter); // segunda llamada → cache
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
-    const cached = sessionStorage.getItem('openrouter_models_cache');
+    const cached = sessionStorage.getItem('openrouter_models_cache_v3');
     expect(cached).toBeTruthy();
     expect(cached).not.toContain('sk-or'); // nunca la key
   });

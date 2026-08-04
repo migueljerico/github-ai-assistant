@@ -170,6 +170,16 @@ const bazaarlinkLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const bazaarlinkModelsLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 200,
+  message: {
+    error: 'Demasiadas peticiones al catálogo de BazaarLink. Por favor espera un minuto.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // URL base de la API de NVIDIA NIM (el proxy reenvía a ella).
 // NIM NO envía cabeceras CORS → el navegador bloquea las llamadas directas con
 // "Failed to fetch". Este proxy elude el bloqueo igual que el de Gemini (#58).
@@ -943,7 +953,7 @@ app.post('/api/bazaarlink', bazaarlinkLimiter, validateChatBody, async (req, res
   }
 });
 
-app.get('/api/bazaarlink/models', bazaarlinkLimiter, async (req, res) => {
+app.get('/api/bazaarlink/models', bazaarlinkModelsLimiter, async (req, res) => {
   const auth = req.headers.authorization || '';
   try {
     const upstream = await fetch('https://bazaarlink.ai/api/v1/models', {

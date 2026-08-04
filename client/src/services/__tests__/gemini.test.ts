@@ -412,7 +412,7 @@ describe('callAI - enrutado OpenRouter (#15)', () => {
 
     await expect(
       callAI([{ role: 'user', content: 'Hola' }], 'system', 'openrouter', 'k', 'm', 'chat'),
-    ).rejects.toThrow(/Gemini\/Groq|otro modelo|saturación/i);
+    ).rejects.toThrow(/Invalid API key|Gemini\/Groq|otro modelo|saturación/i);
     // 401 es no recuperable → no se reintenta
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
@@ -446,6 +446,17 @@ describe('callAI - enrutado OpenRouter (#15)', () => {
     await expect(
       callAI([{ role: 'user', content: 'Hola' }], 'system', 'bazaarlink', 'k', 'm', 'chat'),
     ).rejects.toThrow(/Demasiadas peticiones o límite alcanzado en BazaarLink/i);
+  });
+
+  it('HTTP 401: lanza el error exacto de la API sin añadir hint de saturación', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ error: { message: 'Invalid or disabled API key.' } }),
+    }));
+    await expect(
+      callAI([{ role: 'user', content: 'Hola' }], 'system', 'bazaarlink', 'k', 'm', 'chat'),
+    ).rejects.toThrow('Invalid or disabled API key.');
   });
 });
 

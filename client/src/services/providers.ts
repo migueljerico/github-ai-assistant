@@ -329,9 +329,9 @@ const KILO_FALLBACK: ModelOption[] = [
 // El catálogo es PÚBLICO (GET /models no requiere key -> modelsNeedKey: false).
 // Modelos gratuitos solicitados por el usuario (IDs reales de la API bazaarlink.ai):
 const BAZAARLINK_FALLBACK: ModelOption[] = [
-  { value: 'deepseek-v4-flash', label: 'DeepSeek V4 Flash (free)', free: true, recommended: true },
-  { value: 'qwen3.6-27b', label: 'Qwen 3.6 27B (free)', free: true },
-  { value: 'deepseek-v4-pro', label: 'DeepSeek V4 Pro', free: false },
+  { value: 'deepseek/deepseek-v4-flash:free', label: 'DeepSeek V4 Flash (free)', free: true, recommended: true },
+  { value: 'qwen/qwen3.7-flash:free', label: 'Qwen 3.7 Flash (free)', free: true },
+  { value: 'auto:free', label: 'Auto Router (free)', free: true },
 ];
 
 export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
@@ -692,7 +692,7 @@ export async function fetchModels(
   // el placeholder {account_id} (el proxy server-side construye la URL del upstream).
   if (def.id === 'cloudflare' && !accountId) return null;
 
-  const cacheKey = `${def.id}_models_cache${accountId ? '_' + accountId : ''}`;
+  const cacheKey = `${def.id}_models_cache_v3${accountId ? '_' + accountId : ''}`;
   const cached = sessionStorage.getItem(cacheKey);
   if (cached) {
     try {
@@ -896,9 +896,9 @@ export async function fetchModels(
       .sort((a: ModelOption, b: ModelOption) => (Number(b.free) - Number(a.free)) || a.label.localeCompare(b.label));
   } else if (def.id === 'bazaarlink') {
     // BazaarLink (bazaarlink.ai/api/v1): pasarela OpenAI-compatible con catálogo público.
-    // Identifica free por sufijo :free, pricing a 0 o alias conocidos.
-    // Filtra modelos obviamente no-chat (embedding, whisper, tts…). free primero, luego alfabético.
-    const BAZAARLINK_FREE_MODELS = ['deepseek-v4-flash', 'qwen3.7-flash', 'auto:free'];
+    // Identifica free por sufijo :free, pricing a 0 o alias exactos conocidos.
+    // Filtra modelos obviamente no-chat (embedding, whisper, tts…). Deduplica por id.
+    const BAZAARLINK_FREE_EXACT = ['deepseek/deepseek-v4-flash:free', 'qwen/qwen3.7-flash:free', 'auto:free'];
     const BAZAARLINK_EXCLUDED = ['embed', 'whisper', 'tts', 'asr', 'rerank', 'vision', 'clip', 'audio'];
     type BazaarlinkItem = {
       id: string;
@@ -906,14 +906,20 @@ export async function fetchModels(
       display_name?: string;
       pricing?: { prompt?: string | number; completion?: string | number };
     };
+    const seen = new Set<string>();
     models = (data.data as unknown as BazaarlinkItem[])
       .filter((m) => !BAZAARLINK_EXCLUDED.some(p => m.id.toLowerCase().includes(p)))
+      .filter((m) => {
+        if (seen.has(m.id)) return false;
+        seen.add(m.id);
+        return true;
+      })
       .map((m) => {
         const idLow = m.id.toLowerCase();
         const promptPrice = m.pricing?.prompt;
         const completionPrice = m.pricing?.completion;
         const priceIsZero = promptPrice !== undefined && Number(promptPrice) === 0 && Number(completionPrice) === 0;
-        const isFree = idLow.endsWith(':free') || priceIsZero || BAZAARLINK_FREE_MODELS.some(f => idLow.includes(f));
+        const isFree = idLow.endsWith(':free') || priceIsZero || BAZAARLINK_FREE_EXACT.includes(idLow);
         return {
           value: m.id,
           label: m.name || m.display_name || m.id,

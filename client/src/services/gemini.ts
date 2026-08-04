@@ -306,6 +306,9 @@ async function callOpenAICompatible(
       const hint = ' — Demasiadas peticiones o límite alcanzado en BazaarLink (429). Espera un minuto o cambia a otro modelo/proveedor en ⚙️.';
       throw Object.assign(new Error(base + hint), { status: res.status });
     }
+    if (res.status === 401) {
+      throw Object.assign(new Error(base), { status: 401 });
+    }
     const hint = ' — el modelo no está disponible ahora mismo (saturación del tier gratuito). Prueba otro modelo (p. ej. Gemma) o cambia a Gemini/Groq.';
     throw Object.assign(new Error(base + hint), { status: res.status });
   }

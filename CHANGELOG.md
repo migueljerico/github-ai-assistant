@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.68.5] — 2026-08-04
+
+> **Fix de catálogo y selección de modelos en BazaarLink + Invalidation Cache v3 + Rate Limiter Dedicado.**
+> - **Catálogo de BazaarLink:** Restaurados los IDs reales de modelos free en `BAZAARLINK_FALLBACK` (`deepseek/deepseek-v4-flash:free`, `qwen/qwen3.7-flash:free`, `auto:free`).
+> - **Parsing & Deduplicación:** Ajustada la detección `isFree` en `fetchModels` para exigir coincidencia exacta o sufijo `:free`, evitando marcar erróneamente los modelos de pago como gratuitos. Añadida deduplicación por ID de modelo.
+> - **Invalidación de Caché:** Actualizada la clave de caché en `sessionStorage` a `_models_cache_v3` para purgar automáticamente cualquier lista obsoleta guardada en navegadores de usuarios.
+> - **Rate Limiter Server:** Creado `bazaarlinkModelsLimiter` (200 req/min) en `server/index.js` separado del limitador de chat.
+> - **Formateo de Error HTTP 401:** Evita sugerir equivocadamente la "saturación de tier gratuito" cuando la pasarela rechaza la clave API por 401.
+
+### Fixed & Changed
+- **BazaarLink & Cache:** `client/src/services/providers.ts`, `client/src/services/gemini.ts`, `server/index.js`, `client/src/services/__tests__/providers.test.ts`, `client/src/services/__tests__/gemini.test.ts`.
+
+Cambio de código por [Antigravity (Claude 4.6 Thinking / Gemini 3.6 Flash)].
+
 ## [3.68.4] — 2026-08-04
 
 > **Cobertura del 100% en Codecov Patch, regla estricta en AGENTS.md y actualización de Stack en README.md.**
