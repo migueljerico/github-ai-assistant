@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.68.4] — 2026-08-04
+
+> **Cobertura del 100% en Codecov Patch, regla estricta en AGENTS.md y actualización de Stack en README.md.**
+> - **Test de Cobertura Patch (Codecov 100%):** Añadido test unitario explícito para el manejo de errores 429/403 de BazaarLink en `client/src/services/__tests__/gemini.test.ts`, asegurando la ejecución y cobertura completa de la rama en el diff.
+> - **Regla Estricta en AGENTS.md:** Registrada la regla de oro de cobertura que prohíbe pushear código sin test unitario explícito que cubra al 100% las líneas y condicionales nuevos del diff.
+> - **README.md:** Añadidos Kilo y BazaarLink a la tabla de Stack Tecnológico y reforzada la constancia de toma de control por Antigravity y Gemini 3.6 Flash desde v3.68.0 en la sección `🧠 Desarrollo asistido por IA`.
+
+### Fixed & Changed
+- **Tests & Cobertura:** `client/src/services/__tests__/gemini.test.ts`, `AGENTS.md`.
+- **Stack & IA en README.md:** `README.md`.
+
+Cambio de código por [Antigravity (Gemini 3.6 Flash)].
+
 ## [3.68.3] — 2026-08-04
 
 > **Fix de BazaarLink (429 & IDs de modelos) y Actualización Integral de Documentación (Antigravity & Gemini 3.6 Flash).**

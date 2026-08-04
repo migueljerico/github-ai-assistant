@@ -76,11 +76,10 @@ el release):
    - `npm test` (client) — todo verde.
    - `npm run test:server` — todo verde.
    - `npm run test:coverage` (client) — sin bajar del umbral global (70% en
-     lines/functions/branches/statements). Y **presta atención a la cobertura de las
-     líneas NUEVAS del diff**: Codecov `codecov/patch` exige ≥89% del diff cubierto.
-     Si añades código, añade tests que lo cubran. Los archivos de UI (componentes
-     con mucho JSX) son los que más cuesta cubrir; para lógica nueva extrae funciones
-     puras testeables (ver `modeDetection.ts`, `gemini.ts` parsers).
+     lines/functions/branches/statements). **REGLA DE ORO DE COBERTURA (Codecov patch):**
+     Todo cambio o condicional nuevo añadido en el diff (p. ej. en `gemini.ts`, `providers.ts`, `retry.ts`)
+     DEBE incluir obligatoriamente su correspondiente test unitario que lo cubra al 100%.
+     NUNCA commitear ni pushear si alguna línea o condicional nuevo queda sin test. El CI fallará en `codecov/patch`.
    - `npm run build` (TS estricto).
 6. **Commit** convencional (`feat:`/`fix:`/`chore(vX.Y.Z):`) con TODOS los cambios
    de la gestión (código + docs).

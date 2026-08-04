@@ -436,6 +436,17 @@ describe('callAI - enrutado OpenRouter (#15)', () => {
       callAI([{ role: 'user', content: 'Hola' }], 'system', 'groq', 'k', 'm', 'chat'),
     ).rejects.toThrow(/no devolvió contenido/i);
   });
+
+  it('BazaarLink 429/403: muestra mensaje de error accionable con hint', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+      json: async () => ({ error: { message: 'Too Many Requests' } }),
+    }));
+    await expect(
+      callAI([{ role: 'user', content: 'Hola' }], 'system', 'bazaarlink', 'k', 'm', 'chat'),
+    ).rejects.toThrow(/Demasiadas peticiones o límite alcanzado en BazaarLink/i);
+  });
 });
 
 describe('Reintento ante errores transitorios (v2.7.3)', () => {

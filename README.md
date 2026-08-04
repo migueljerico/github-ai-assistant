@@ -251,6 +251,8 @@ Ver detalle en ./docs/TESTING_CALIDAD.md.
 | Cloudflare Workers AI | Modelos serverless vía proxy (chat + catálogo dinámico, sin CORS upstream) |
 | Ollama Cloud | OpenAI-compatible vía proxy (sin CORS upstream) |
 | Ai& | Pasarela OpenAI-compatible vía proxy (sin CORS upstream, modelos de razonamiento) |
+| Kilo | Pasarela OpenAI-compatible con catálogo público y modelos free vía proxy (sin CORS upstream) |
+| BazaarLink | Pasarela OpenAI-compatible con catálogo público y modelos DeepSeek/Qwen vía proxy (sin CORS upstream) |
 | Recharts | Dashboard de salud del código |
 | Vitest | Testing (unitarios, integración) |
 | Playwright | Testing E2E (flujo crítico) |
