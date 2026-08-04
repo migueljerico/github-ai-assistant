@@ -426,6 +426,44 @@ describe('providers — fetchModels', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it('bazaarlink: catálogo dinámico vía /api/bazaarlink/models, marca free en modelos solicitados, filtra no-chat y ordena free primero', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          { id: 'deepseek-v4-flash', display_name: 'DeepSeek V4 Flash' },
+          { id: 'qwen3.7-flash', display_name: 'Qwen 3.7 Flash' },
+          { id: 'custom-model:free', display_name: 'Custom Model Free' },
+          { id: 'text-embedding-3', display_name: 'Embedding (no-chat)' }, // excluido
+          { id: 'paid-large-model', display_name: 'Paid Large Model' },
+        ],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const list = await fetchModels(PROVIDERS.bazaarlink, 'sk-test');
+    expect(list).not.toBeNull();
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('/api/bazaarlink/models');
+    expect((init.headers as Record<string, string>).Authorization).toBe('Bearer sk-test');
+
+    const ids = list!.map(m => m.value);
+    // Excluye no-chat
+    expect(ids).not.toContain('text-embedding-3');
+    // Free primero, luego paid
+    expect(ids).toEqual([
+      'custom-model:free',
+      'deepseek-v4-flash',
+      'qwen3.7-flash',
+      'paid-large-model',
+    ]);
+    expect(list!.find(m => m.value === 'deepseek-v4-flash')!.free).toBe(true);
+    expect(list!.find(m => m.value === 'qwen3.7-flash')!.free).toBe(true);
+    expect(list!.find(m => m.value === 'custom-model:free')!.free).toBe(true);
+    expect(list!.find(m => m.value === 'paid-large-model')!.free).toBe(false);
+  });
+
   // ── Cobertura de ramas dinámicas no cubiertas (L635-837) ──────────────────
   // Algunos providers (gemini, nvidia, openzen, cloudflare) usan catálogo
   // ESTÁTICO en producción (sin modelsEndpoint), así que sus ramas de parseo

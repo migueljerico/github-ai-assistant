@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.68.1] — 2026-08-04
+
+> **Cobertura de tests (Codecov patch 100%).**
+> Añadidos tests unitarios exhaustivos para el catálogo dinámico de BazaarLink en `fetchModels`
+> (`client/src/services/__tests__/providers.test.ts`), elevando la cobertura del parche al 100%.
+
+### Fixed
+- **Cobertura de diff (Codecov patch):** test explícito para `fetchModels(PROVIDERS.bazaarlink)` que ejercita la ordenación, filtrado no-chat y asignación de flags `free`.
+
+Cambio de código por [Antigravity (Gemini 3.6 Flash)].
+
 ## [3.68.0] — 2026-08-04
 
 > **Nuevo proveedor de IA: BazaarLink (`bazaarlink.ai/api/v1`).**
