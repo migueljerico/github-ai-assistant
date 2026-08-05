@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.69.3] — 2026-08-05
+
+> **Generación directa de acciones para vinculación de screenshots en README.md y corrección de prompts.**
+> - **Modo Acción (action-system.md):** Añadida directiva explícita para que al pedir vincular o añadir una captura/screenshot a `README.md` la IA genere DIRECTAMENTE una acción de edición/actualización (`PUT /repos/.../contents/README.md`) insertando la sección `## 📸 Vista Previa del Dashboard` (`![Vista Previa](./screenshots/...)`), sin requerir lecturas previas innecesarias de la carpeta `./screenshots/`.
+> - **Modo Opinión (chat.md):** Eliminada la afirmación obsoleta sobre la falta de soporte para imágenes y añadida la orientación adecuada para proporcionar bloques Markdown listos para copiar y recomendar el uso del botón **📄 Documentar repo** o Modo Acción.
+
+### Fixed & Changed
+- **System Prompts:** `client/src/prompts/action-system.md`, `client/src/prompts/chat.md`.
+
+Cambio de código por [Antigravity (Gemini 3.6 Flash)].
+
 ## [3.69.2] — 2026-08-05
 
 > **Soporte para URLs completas de repositorios GitHub y 100% Cobertura Codecov.**
