@@ -59,4 +59,9 @@ describe('FileAttachButton (#28, #57 Tanda B multi-archivo)', () => {
     fireEvent.click(clearBtns[1]);
     expect(onClearAt).toHaveBeenCalledWith(1);
   });
+
+  it('con archivos ya adjuntados muestra el botón "+ 📎 Adjuntar más" para añadir más archivos secuencialmente', () => {
+    render(<FileAttachButton disabled={false} fileNames={['captura1.png']} onAttach={vi.fn()} onClearAt={vi.fn()} />);
+    expect(screen.getByRole('button', { name: /Adjuntar más/ })).toBeInTheDocument();
+  });
 });
