@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.68.7] — 2026-08-05
+
+> **Actualización de catálogos de NVIDIA NIM y OpenCode Zen con verificación directa de la API.**
+> - **OpenCode Zen:** Añadido `longcat-2.0-free` al fallback `OPENZEN_FALLBACK` (8 modelos, fuente: opencode.ai/docs/es/zen/#pricing, 2026-08-05).
+> - **NVIDIA NIM:** Añadidos `nvidia/llama-3.3-nemotron-super-49b-v1` (Nemotron Super 49B) y `stepfun-ai/step-3.7-flash` al fallback `NIM_FALLBACK`, confirmados en `integrate.api.nvidia.com/v1/models`. Retirado `qwen/qwen3-next-80b-a3b-instruct` que no existe en la API real (13 modelos totales).
+> - **Tests:** Añadidas aserciones para `longcat-2.0-free` en OpenZen, Nemotron Super 49B y ausencia de qwen3-next-80b en NIM. Actualizados tests existentes de conteo.
+
+### Changed
+- **Catálogos de proveedores:** `client/src/services/providers.ts`, `client/src/services/__tests__/providers.test.ts`, `client/src/components/ai-provider/__tests__/AIProviderPanel.test.tsx`.
+
+Cambio de código por [Antigravity (Claude Sonnet 4.6 Thinking)].
+
 ## [3.68.6] — 2026-08-04
 
 > **Actualización de badges de versión en README.md.**

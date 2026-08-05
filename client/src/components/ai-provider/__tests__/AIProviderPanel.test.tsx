@@ -68,7 +68,7 @@ describe('AIProviderPanel — NVIDIA NIM', () => {
     expect(labels).toContain('GLM 5.2');
     expect(labels).toContain('Llama 3.3 70B');
     expect(labels).toContain('DeepSeek V4 Pro');
-    expect(select.options.length).toBe(12); // fallback tiene 12 modelos
+    expect(select.options.length).toBe(13); // fallback tiene 13 modelos
   });
 
   it('valida prefijo de clave nvapi-', () => {
