@@ -1016,16 +1016,26 @@ app.post('/api/qwencloud', qwencloudLimiter, validateChatBody, async (req, res) 
     return res.status(401).json({ error: 'Falta la API key de QwenCloud (header Authorization: Bearer sk-...)' });
   }
   try {
-    const upstream = await fetch('https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': auth,
-        'Content-Type': 'application/json',
-        ...(req.headers['accept'] ? { 'Accept': req.headers['accept'] } : {}),
-      },
-      body: JSON.stringify(req.body),
-      signal: upstreamSignal(),
-    });
+    const REGIONAL_ENDPOINTS = [
+      'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions',
+      'https://dashscope-us.aliyuncs.com/compatible-mode/v1/chat/completions',
+      'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+    ];
+    let upstream;
+    for (const ep of REGIONAL_ENDPOINTS) {
+      upstream = await fetch(ep, {
+        method: 'POST',
+        headers: {
+          'Authorization': auth,
+          'Content-Type': 'application/json',
+          ...(req.headers['accept'] ? { 'Accept': req.headers['accept'] } : {}),
+        },
+        body: JSON.stringify(req.body),
+        signal: upstreamSignal(),
+      });
+      // Si el endpoint responde 200 (éxito) o un error que no sea 401/403 (mismatch regional), nos quedamos con esta respuesta
+      if (upstream.ok || (upstream.status !== 401 && upstream.status !== 403)) break;
+    }
     log.info('upstream', { provider: 'qwencloud', flow: 'chat', status: upstream.status, ct: upstream.headers.get('content-type') || '-', requestId: req.id });
     res.status(upstream.status);
     const ct = upstream.headers.get('content-type');
@@ -1043,13 +1053,22 @@ app.post('/api/qwencloud', qwencloudLimiter, validateChatBody, async (req, res) 
 app.get('/api/qwencloud/models', qwencloudModelsLimiter, async (req, res) => {
   const auth = req.headers.authorization || '';
   try {
-    const upstream = await fetch('https://dashscope-intl.aliyuncs.com/compatible-mode/v1/models', {
-      method: 'GET',
-      headers: {
-        ...(auth.startsWith('Bearer ') ? { 'Authorization': auth } : {}),
-        'Accept': 'application/json',
-      },
-    });
+    const REGIONAL_MODELS_ENDPOINTS = [
+      'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/models',
+      'https://dashscope-us.aliyuncs.com/compatible-mode/v1/models',
+      'https://dashscope.aliyuncs.com/compatible-mode/v1/models',
+    ];
+    let upstream;
+    for (const ep of REGIONAL_MODELS_ENDPOINTS) {
+      upstream = await fetch(ep, {
+        method: 'GET',
+        headers: {
+          ...(auth.startsWith('Bearer ') ? { 'Authorization': auth } : {}),
+          'Accept': 'application/json',
+        },
+      });
+      if (upstream.ok || (upstream.status !== 401 && upstream.status !== 403)) break;
+    }
     log.info('upstream', { provider: 'qwencloud', flow: 'models', status: upstream.status, ct: upstream.headers.get('content-type') || '-', requestId: req.id });
     res.status(upstream.status);
     const ct = upstream.headers.get('content-type');
