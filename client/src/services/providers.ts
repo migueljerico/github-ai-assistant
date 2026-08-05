@@ -213,17 +213,18 @@ export const NIM_EXCLUDED = [
 const NIM_FEATURED_URL = 'https://assets.ngc.nvidia.com/products/api-catalog/featured-models.json';
 
 // Fallback de NVIDIA NIM mientras carga el catálogo o si la API falla.
-// Modelos chat/código destacados confirmados hoy en la fuente oficial
-// (build.nvidia.com + featured-models.json, 2026-07-28). NIM NO distingue gratis/pago
+// Modelos chat/código destacados confirmados en la fuente oficial
+// (integrate.api.nvidia.com/v1/models, 2026-08-05). NIM NO distingue gratis/pago
 // en la API → sin flag free (el acceso free es un entitlement del programa Developer).
 const NIM_FALLBACK: ModelOption[] = [
   { value: 'nvidia/nemotron-3-ultra-550b-a55b', label: 'Nemotron 3 Ultra ⭐', recommended: true },
+  { value: 'nvidia/llama-3.3-nemotron-super-49b-v1', label: 'Nemotron Super 49B' },
   { value: 'nvidia/nemotron-3-super-120b-a12b', label: 'Nemotron 3 Super 120B' },
   { value: 'nvidia/nemotron-3-nano-30b-a3b', label: 'Nemotron 3 Nano 30B' },
   { value: 'z-ai/glm-5.2', label: 'GLM 5.2' },
   { value: 'deepseek-ai/deepseek-v4-pro', label: 'DeepSeek V4 Pro' },
   { value: 'deepseek-ai/deepseek-v4-flash', label: 'DeepSeek V4 Flash' },
-  { value: 'qwen/qwen3-next-80b-a3b-instruct', label: 'Qwen3 Next 80B' },
+  { value: 'stepfun-ai/step-3.7-flash', label: 'Step 3.7 Flash' },
   { value: 'minimaxai/minimax-m3', label: 'Minimax M3' },
   { value: 'openai/gpt-oss-120b', label: 'GPT-OSS 120B' },
   { value: 'moonshotai/kimi-k2.6', label: 'Kimi K2.6' },
@@ -243,18 +244,19 @@ const ZENMUX_FALLBACK: ModelOption[] = [
 ];
 
 // Fallback de OpenCode Zen mientras carga el catálogo dinámico o si la API falla.
-// Los 7 modelos FREE confirmados hoy en la fuente oficial
-// (https://opencode.ai/docs/es/zen/, 2026-07-28). El catálogo real es PÚBLICO y se
+// Los 8 modelos FREE confirmados hoy en la fuente oficial
+// (https://opencode.ai/docs/es/zen/#pricing, 2026-08-05). El catálogo real es PÚBLICO y se
 // filtra a los gratuitos (sufijo "-free"); este fallback es red de seguridad.
 // `big-pickle` es la excepción sin sufijo. Token keyless `public`.
 const OPENZEN_FALLBACK: ModelOption[] = [
   { value: 'big-pickle', label: 'Big Pickle (free)', free: true, recommended: true },
+  { value: 'mimo-v2.5-free', label: 'MiMo-V2.5 (free)', free: true },
+  { value: 'laguna-s-2.1-free', label: 'Laguna S 2.1 (free)', free: true },
   { value: 'ling-3.0-flash-free', label: 'Ling 3.0 Flash (free)', free: true },
+  { value: 'longcat-2.0-free', label: 'LongCat-2.0 (free)', free: true },
+  { value: 'north-mini-code-free', label: 'North Mini Code (free)', free: true },
   { value: 'nemotron-3-ultra-free', label: 'Nemotron 3 Ultra (free)', free: true },
   { value: 'deepseek-v4-flash-free', label: 'DeepSeek V4 Flash (free)', free: true },
-  { value: 'laguna-s-2.1-free', label: 'Laguna S 2.1 (free)', free: true },
-  { value: 'north-mini-code-free', label: 'North Mini Code (free)', free: true },
-  { value: 'mimo-v2.5-free', label: 'MiMo-V2.5 (free)', free: true },
 ];
 
 // Fallback de Cloudflare Workers AI — modelos @cf/ text-generation verificados hoy

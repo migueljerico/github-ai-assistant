@@ -86,6 +86,29 @@ describe('providers — registro', () => {
     expect(def.staticModels.every(m => m.free === true)).toBe(true);
     expect(def.staticModels.length).toBe(3);
   });
+
+  it('openzen: fallback incluye los 8 modelos free de 2026-08-05 (incluido longcat-2.0-free, nuevo)', () => {
+    const def = PROVIDERS.openzen;
+    // big-pickle es la excepción sin sufijo -free
+    expect(def.staticModels.some(m => m.value === 'big-pickle')).toBe(true);
+    // longcat-2.0-free: nuevo modelo añadido en v3.68.7 (faltaba en el fallback anterior)
+    expect(def.staticModels.some(m => m.value === 'longcat-2.0-free')).toBe(true);
+    expect(def.staticModels.find(m => m.value === 'longcat-2.0-free')?.free).toBe(true);
+    // Total: 8 modelos en el fallback
+    expect(def.staticModels.length).toBe(8);
+    // Todos marcados como free
+    expect(def.staticModels.every(m => m.free === true)).toBe(true);
+  });
+
+  it('nvidia NIM: fallback actualizado 2026-08-05 — Nemotron Super 49B presente, qwen3-next-80b retirado (ID inexistente en API real)', () => {
+    const def = PROVIDERS.nvidia;
+    // Nemotron Super 49B v1: confirmado en integrate.api.nvidia.com/v1/models
+    expect(def.staticModels.some(m => m.value === 'nvidia/llama-3.3-nemotron-super-49b-v1')).toBe(true);
+    // Step 3.7 Flash: nuevo modelo confirmado en API real
+    expect(def.staticModels.some(m => m.value === 'stepfun-ai/step-3.7-flash')).toBe(true);
+    // qwen3-next-80b-a3b-instruct: ID que no existe en la API real → eliminado del fallback
+    expect(def.staticModels.some(m => m.value === 'qwen/qwen3-next-80b-a3b-instruct')).toBe(false);
+  });
 });
 
 describe('providers — pickDefaultModel', () => {
@@ -251,11 +274,11 @@ describe('providers — fetchModels', () => {
 
     expect(await fetchModels(PROVIDERS.nvidia, 'nvapi_test')).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
-    // El catálogo estático son los 12 modelos curados de NIM_FALLBACK.
+    // El catálogo estático son los 13 modelos curados de NIM_FALLBACK.
     const values = PROVIDERS.nvidia.staticModels.map(m => m.value);
     expect(values).toContain('nvidia/nemotron-3-ultra-550b-a55b');
     expect(values).toContain('z-ai/glm-5.2');
-    expect(values.length).toBe(12);
+    expect(values.length).toBe(13);
   });
 
   it('zenmux: marca free por pricing 0, filtra no-chat, ordena free primero', async () => {
@@ -324,20 +347,21 @@ describe('providers — fetchModels', () => {
     const list = await fetchModels(PROVIDERS.openzen);
     expect(list).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
-    // El catálogo estático son los 5 modelos conocidos de OPENZEN_FALLBACK
+    // El catálogo estático son los 8 modelos de OPENZEN_FALLBACK (2026-08-05)
     const values = PROVIDERS.openzen.staticModels.map(m => m.value);
     expect(values).toEqual([
       'big-pickle',
+      'mimo-v2.5-free',
+      'laguna-s-2.1-free',
       'ling-3.0-flash-free',
+      'longcat-2.0-free',
+      'north-mini-code-free',
       'nemotron-3-ultra-free',
       'deepseek-v4-flash-free',
-      'laguna-s-2.1-free',
-      'north-mini-code-free',
-      'mimo-v2.5-free',
     ]);
-    // Todos son free (los 7 de la fuente oficial opencode.ai/docs/es/zen/)
+    // Todos son free (los 8 de la fuente oficial opencode.ai/docs/es/zen/#pricing)
     expect(PROVIDERS.openzen.staticModels.every(m => m.free)).toBe(true);
-    expect(PROVIDERS.openzen.staticModels.length).toBe(7);
+    expect(PROVIDERS.openzen.staticModels.length).toBe(8);
   });
 
   it('cloudflare: devuelve null sin accountId (exige X-Account-Id aunque el endpoint no lleve {account_id})', async () => {

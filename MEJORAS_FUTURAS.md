@@ -2,7 +2,7 @@
 
 Estado del código, mejoras realizadas y pendientes del proyecto.
 
-**Actualizado a:** v3.68.6 · Agosto 2026
+**Actualizado a:** v3.68.7 · Agosto 2026
 
 ---
 
