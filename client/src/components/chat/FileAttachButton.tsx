@@ -31,67 +31,66 @@ export default function FileAttachButton({ disabled, fileNames, onAttach, onClea
     e.target.value = ''; // permite volver a elegir los mismos archivos
   };
 
-  // Archivo(s) ya adjuntado(s) → chip por archivo con opción de descartar.
-  if (fileNames.length > 0) {
-    const isSpreadsheet = fileNames.some(n => /\.(xlsx?|csv)$/i.test(n));
-    return (
-      <span className="repo-context-chip" id="file-context-chip" style={{ display: 'inline-flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center' }}>
-        {fileNames.length === 1 ? (
-          <>
-            📎 <strong>{fileNames[0]}</strong>
-            {isSpreadsheet && (
-              <span style={{ fontSize: '0.7rem', opacity: 0.6, marginLeft: '4px' }}>
-                {t('chat.attachFileXlsxWarning', { maxMb: MAX_SIZE_MB })}
-              </span>
-            )}
-            <button
-              type="button"
-              className="repo-context-clear"
-              onClick={() => onClearAt(0)}
-              aria-label={t('chat.attachFileClearAria')}
-              title={t('chat.attachFileClearTitle')}
-            >
-              ✕
-            </button>
-          </>
-        ) : (
-          <>
-            📎 {t('chat.attachFileMulti', { count: fileNames.length })}
-            {fileNames.map((name, i) => (
-              <span key={`${name}-${i}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
-                <strong style={{ fontWeight: 400, opacity: 0.85 }}>{name}</strong>
-                {/\.(xlsx?|csv)$/i.test(name) && (
-                  <span style={{ fontSize: '0.7rem', opacity: 0.6, marginLeft: '4px' }}>
-                    {t('chat.attachFileXlsxWarning', { maxMb: MAX_SIZE_MB })}
-                  </span>
-                )}
-                <button
-                  type="button"
-                  className="repo-context-clear"
-                  onClick={() => onClearAt(i)}
-                  aria-label={t('chat.attachFileClearAria')}
-                  title={t('chat.attachFileClearTitle')}
-                >
-                  ✕
-                </button>
-              </span>
-            ))}
-          </>
-        )}
-      </span>
-    );
-  }
+  const isSpreadsheet = fileNames.some(n => /\.(xlsx?|csv)$/i.test(n));
 
   return (
     <>
+      {fileNames.length > 0 && (
+        <span className="repo-context-chip" id="file-context-chip" style={{ display: 'inline-flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center' }}>
+          {fileNames.length === 1 ? (
+            <>
+              📎 <strong>{fileNames[0]}</strong>
+              {isSpreadsheet && (
+                <span style={{ fontSize: '0.7rem', opacity: 0.6, marginLeft: '4px' }}>
+                  {t('chat.attachFileXlsxWarning', { maxMb: MAX_SIZE_MB })}
+                </span>
+              )}
+              <button
+                type="button"
+                className="repo-context-clear"
+                onClick={() => onClearAt(0)}
+                aria-label={t('chat.attachFileClearAria')}
+                title={t('chat.attachFileClearTitle')}
+              >
+                ✕
+              </button>
+            </>
+          ) : (
+            <>
+              📎 {t('chat.attachFileMulti', { count: fileNames.length })}
+              {fileNames.map((name, i) => (
+                <span key={`${name}-${i}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                  <strong style={{ fontWeight: 400, opacity: 0.85 }}>{name}</strong>
+                  {/\.(xlsx?|csv)$/i.test(name) && (
+                    <span style={{ fontSize: '0.7rem', opacity: 0.6, marginLeft: '4px' }}>
+                      {t('chat.attachFileXlsxWarning', { maxMb: MAX_SIZE_MB })}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    className="repo-context-clear"
+                    onClick={() => onClearAt(i)}
+                    aria-label={t('chat.attachFileClearAria')}
+                    title={t('chat.attachFileClearTitle')}
+                  >
+                    ✕
+                  </button>
+                </span>
+              ))}
+            </>
+          )}
+        </span>
+      )}
+
       <button
         id="attach-file-btn"
         className="doc-repo-btn"
         onClick={() => inputRef.current?.click()}
         disabled={disabled}
         type="button"
+        title={fileNames.length > 0 ? t('chat.attachMoreFilesTitle') : undefined}
       >
-        📎 {t('chat.attachFile')}
+        {fileNames.length > 0 ? `+ 📎 ${t('chat.attachMoreFiles')}` : `📎 ${t('chat.attachFile')}`}
       </button>
       <input
         ref={inputRef}
@@ -101,9 +100,6 @@ export default function FileAttachButton({ disabled, fileNames, onAttach, onClea
         style={{ display: 'none' }}
         onChange={handleChange}
       />
-      <div style={{ fontSize: '0.7rem', opacity: 0.6, marginTop: '4px', maxWidth: '280px' }}>
-        {t('chat.attachFileXlsxWarning', { maxMb: MAX_SIZE_MB })}
-      </div>
     </>
   );
 }

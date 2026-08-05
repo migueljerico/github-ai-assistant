@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.69.8] — 2026-08-05
+
+> **Soporte para adjuntar múltiples capturas e imágenes secuenciales (+ 📎 Adjuntar más).**
+> - **Botón de Adjuntos (`FileAttachButton.tsx`):** Añadido el botón `+ 📎 Adjuntar más` incluso cuando ya existen archivos cargados en el contexto. El usuario puede hacer clic repetidamente para seleccionar y acumular múltiples capturas de pantalla/imágenes de forma secuencial antes de pulsar `🖼️ Documentar con capturas`.
+> - **Traducciones (es.ts / en.ts):** Incorporadas las llaves i18n `chat.attachMoreFiles` y `chat.attachMoreFilesTitle`.
+
+### Fixed & Changed
+- **Sequential Multi-File Attachment:** `client/src/components/chat/FileAttachButton.tsx`, `client/src/i18n/es.ts`, `client/src/i18n/en.ts`, `client/src/components/chat/__tests__/FileAttachButton.test.tsx`.
+
+Cambio de código por [Antigravity (Gemini 3.6 Flash)].
+
 ## [3.69.7] — 2026-08-05
 
 > **Cobertura de tests del 100% para el parche de cambios (Codecov Patch Fix).**

@@ -67,6 +67,8 @@ export const es = {
   'chat.contextClearAria': 'Descartar contexto del repositorio',
   'chat.contextClearTitle': 'Descartar contexto',
   'chat.attachFile': 'Adjuntar archivo',
+  'chat.attachMoreFiles': 'Adjuntar más',
+  'chat.attachMoreFilesTitle': 'Añadir más capturas o archivos al contexto',
   'chat.attachFileClearAria': 'Quitar archivo adjunto',
   'chat.attachFileClearTitle': 'Quitar archivo',
   'chat.repoInputPlaceholder': 'nombre-del-repo o owner/repo',
