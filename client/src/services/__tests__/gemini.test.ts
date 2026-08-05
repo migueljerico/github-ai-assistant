@@ -1121,3 +1121,81 @@ describe('truncateByLines (#20)', () => {
  });
  });
 });
+
+describe('QwenCloud provider integration', () => {
+  beforeEach(() => { vi.restoreAllMocks(); });
+
+  it('realiza la llamada a /api/qwencloud correctamente', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: 'Respuesta QwenCloud' } }] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = await callAI(
+      [{ role: 'user', content: 'Hola Qwen' }],
+      'system prompt',
+      'qwencloud',
+      'sk-testkey',
+      'qwen3.7-flash',
+      'chat',
+    );
+
+    expect(res).toBe('Respuesta QwenCloud');
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('/api/qwencloud');
+    expect((init as RequestInit).headers).toMatchObject({
+      Authorization: 'Bearer sk-testkey',
+    });
+  });
+
+  it('captura el error 403 AccessDenied.Unpurchased y devuelve la sugerencia de activación', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 403,
+      json: async () => ({
+        error: {
+          code: 'AccessDenied.Unpurchased',
+          message: 'Access to model denied. Please make sure you are eligible for using the model.',
+        },
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      callAI(
+        [{ role: 'user', content: 'Hola Qwen' }],
+        'system prompt',
+        'qwencloud',
+        'sk-testkey',
+        'qwen3.7-flash',
+        'chat',
+      ),
+    ).rejects.toThrow(/activación previa en tu consola de QwenCloud/);
+  });
+
+  it('captura el error 401 de QwenCloud y devuelve el mensaje de autenticación', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({
+        error: {
+          code: 'invalid_api_key',
+          message: 'Incorrect API key provided.',
+        },
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      callAI(
+        [{ role: 'user', content: 'Hola Qwen' }],
+        'system prompt',
+        'qwencloud',
+        'sk-testkey',
+        'qwen3.7-flash',
+        'chat',
+      ),
+    ).rejects.toThrow(/Error de autenticación o permisos en QwenCloud/);
+  });
+});

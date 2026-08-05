@@ -16,10 +16,16 @@ export interface RepoRef {
  * Si no hay `/`, se usa `defaultOwner` (normalmente el login del usuario).
  */
 export function resolveRepoRef(input: string, defaultOwner: string): RepoRef {
-  const trimmed = input.trim();
+  let trimmed = input.trim();
+  // Eliminar prefijos de URL completas de GitHub (e.g. "https://github.com/owner/repo.git")
+  trimmed = trimmed.replace(/^https?:\/\/(?:www\.)?github\.com\//i, '');
+  trimmed = trimmed.replace(/\.git$/i, '');
+
   if (trimmed.includes('/')) {
-    const [owner, repo] = trimmed.split('/', 2);
-    return { owner, repo };
+    const parts = trimmed.split('/').filter(Boolean);
+    if (parts.length >= 2) {
+      return { owner: parts[0], repo: parts[1] };
+    }
   }
   return { owner: defaultOwner, repo: trimmed };
 }
