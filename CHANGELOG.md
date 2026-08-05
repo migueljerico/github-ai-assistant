@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.69.4] — 2026-08-05
+
+> **Fix de la condición de parada del bucle multi-región de QwenCloud.**
+> - **Servidor Express (server/index.js):** Corregida la condición del bucle regional en `/api/qwencloud` y `/api/qwencloud/models`. Al cambiar `(upstream.status !== 401 && upstream.status !== 403)` por `upstream.status !== 401`, el servidor se detiene correctamente en la región adecuada cuando la API key es aceptada pero devuelve un estado 403 de cuotas/activación. Esto evita que el bucle continúe hacia otras regiones y termine devolviendo un falso error 401.
+
+### Fixed & Changed
+- **Regional Proxy Loop Fix:** `server/index.js`.
+
+Cambio de código por [Antigravity (Gemini 3.6 Flash)].
+
 ## [3.69.3] — 2026-08-05
 
 > **Generación directa de acciones para vinculación de screenshots en README.md y corrección de prompts.**

@@ -1033,8 +1033,8 @@ app.post('/api/qwencloud', qwencloudLimiter, validateChatBody, async (req, res) 
         body: JSON.stringify(req.body),
         signal: upstreamSignal(),
       });
-      // Si el endpoint responde 200 (éxito) o un error que no sea 401/403 (mismatch regional), nos quedamos con esta respuesta
-      if (upstream.ok || (upstream.status !== 401 && upstream.status !== 403)) break;
+      // Si la región devuelve cualquier estado que NO sea 401 (mismatch regional), significa que la clave fue aceptada por esta región (200 OK o 403 de cuotas/activación)
+      if (upstream.ok || upstream.status !== 401) break;
     }
     log.info('upstream', { provider: 'qwencloud', flow: 'chat', status: upstream.status, ct: upstream.headers.get('content-type') || '-', requestId: req.id });
     res.status(upstream.status);
@@ -1067,7 +1067,7 @@ app.get('/api/qwencloud/models', qwencloudModelsLimiter, async (req, res) => {
           'Accept': 'application/json',
         },
       });
-      if (upstream.ok || (upstream.status !== 401 && upstream.status !== 403)) break;
+      if (upstream.ok || upstream.status !== 401) break;
     }
     log.info('upstream', { provider: 'qwencloud', flow: 'models', status: upstream.status, ct: upstream.headers.get('content-type') || '-', requestId: req.id });
     res.status(upstream.status);
