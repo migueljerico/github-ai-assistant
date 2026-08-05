@@ -341,6 +341,8 @@ const BAZAARLINK_FALLBACK: ModelOption[] = [
 // Modelos gratuitos de text & code confirmados en la web oficial de QwenCloud:
 const QWENCLOUD_FALLBACK: ModelOption[] = [
   { value: 'qwen3.7-flash', label: 'Qwen 3.7 Flash (free)', free: true, recommended: true },
+  { value: 'qwen-plus-character', label: 'Qwen Plus Character (free - instant)', free: true },
+  { value: 'qwen-flash-character', label: 'Qwen Flash Character (free - instant)', free: true },
   { value: 'qwen3-coder-flash', label: 'Qwen 3 Coder Flash (free)', free: true },
   { value: 'qwen3-coder-next', label: 'Qwen 3 Coder Next (free)', free: true },
   { value: 'qwen3.7-plus', label: 'Qwen 3.7 Plus (free)', free: true },

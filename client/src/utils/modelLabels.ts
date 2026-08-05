@@ -69,6 +69,8 @@ export const MODEL_LABELS: Record<string, string> = {
   'auto:free': 'Auto Router (free)',
   // ── QwenCloud ──
   'qwen3.7-flash': 'Qwen 3.7 Flash',
+  'qwen-plus-character': 'Qwen Plus Character',
+  'qwen-flash-character': 'Qwen Flash Character',
   'qwen3-coder-flash': 'Qwen 3 Coder Flash',
   'qwen3-coder-next': 'Qwen 3 Coder Next',
   'qwen3.7-plus': 'Qwen 3.7 Plus',

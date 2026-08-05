@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.69.6] — 2026-08-05
+
+> **Regla anti-bucle de lecturas (GET) tras lectura previa de archivos en Modo Acción.**
+> - **Prompt del Sistema (action-system.md):** Añadida prohibición explícita de bucles de lectura GET cuando el contenido del archivo ya figura en el historial de la conversación. La IA genera directamente la acción de modificación (`PUT /repos/.../contents/RUTA`) utilizando el `contenidoActual` del historial y la propuesta de cambio en `contenidoPropuesto`.
+
+### Fixed & Changed
+- **Anti-GET Loop Prompt Directive:** `client/src/prompts/action-system.md`.
+
+Cambio de código por [Antigravity (Gemini 3.6 Flash)].
+
+## [3.69.5] — 2026-08-05
+
+> **Fix de robustez del botón de envío (`#send-btn`) y modelos de respuesta instantánea en QwenCloud.**
+> - **Botón Enviar (`ChatInput.tsx`):** Añadido `type="button"` y `onMouseDown={(e) => e.preventDefault()}` al botón de enviar (`#send-btn`) con el icono `➤` para evitar la pérdida del evento clic por desenfoque (`blur`) del textarea o eventos en pantallas táctiles/dispositivos móviles.
+> - **Modelos QwenCloud:** Añadidos `qwen-plus-character` y `qwen-flash-character` al catálogo estático (`providers.ts` y `modelLabels.ts`) para permitir el uso inmediato sin requerir activación previa de paquetes de cuota en la consola de Alibaba Cloud.
+
+### Fixed & Changed
+- **Send Button & Qwen Models:** `client/src/components/chat/ChatInput.tsx`, `client/src/services/providers.ts`, `client/src/utils/modelLabels.ts`, `client/src/services/__tests__/providers.test.ts`.
+
+Cambio de código por [Antigravity (Gemini 3.6 Flash)].
+
 ## [3.69.4] — 2026-08-05
 
 > **Fix de la condición de parada del bucle multi-región de QwenCloud.**

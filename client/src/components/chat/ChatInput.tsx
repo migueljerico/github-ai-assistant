@@ -244,6 +244,8 @@ export default function ChatInput({
         <button
           id="send-btn"
           className="send-btn"
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
           onClick={isLoading ? onStop : onSend}
           disabled={disabled || (!isLoading && !value.trim())}
           aria-label={isLoading ? t('chat.ariaStop') : t('chat.ariaSend')}
