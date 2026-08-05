@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.69.1] — 2026-08-05
+
+> **Actualización del fallback estático de QwenCloud con los IDs exactos de modelos free tier.**
+> - **Catálogo Estático:** Actualizado `QWENCLOUD_FALLBACK` en `providers.ts` para alinearse con los IDs exactos de la sección Free Tier de `qwencloud.com` (`qwen3.7-flash`, `qwen3-coder-flash`, `qwen3-coder-next`, `qwen3.7-plus`, `qwen3.8-max`, `qwen3.6-flash`, `qwen3.5-flash`, `qwen-flash`, `qwen-turbo`, `deepseek-v4-flash`, `qwen3-coder-480b-a35b-instruct`).
+> - **Etiquetas & Tests:** Actualizadas las etiquetas en `modelLabels.ts` y las aserciones unitarias en `providers.test.ts` (11 modelos estáticos).
+
+### Fixed & Changed
+- **QwenCloud Fallback Catalog:** `client/src/services/providers.ts`, `client/src/utils/modelLabels.ts`, `client/src/services/__tests__/providers.test.ts`.
+
+Cambio de código por [Antigravity (Claude Sonnet 4.6 Thinking)].
+
 ## [3.69.0] — 2026-08-05
 
 > **Integración del proveedor QwenCloud con modelos gratuitos de texto y código.**

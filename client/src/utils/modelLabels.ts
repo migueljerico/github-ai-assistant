@@ -69,11 +69,16 @@ export const MODEL_LABELS: Record<string, string> = {
   'auto:free': 'Auto Router (free)',
   // ── QwenCloud ──
   'qwen3.7-flash': 'Qwen 3.7 Flash',
+  'qwen3-coder-flash': 'Qwen 3 Coder Flash',
+  'qwen3-coder-next': 'Qwen 3 Coder Next',
   'qwen3.7-plus': 'Qwen 3.7 Plus',
   'qwen3.8-max': 'Qwen 3.8 Max',
-  'qwen3.6-27b': 'Qwen 3.6 27B',
-  'qwen3-coder-32b': 'Qwen 3 Coder 32B',
-  'qwen3-coder-480b': 'Qwen 3 Coder 480B',
+  'qwen3.6-flash': 'Qwen 3.6 Flash',
+  'qwen3.5-flash': 'Qwen 3.5 Flash',
+  'qwen-flash': 'Qwen Flash',
+  'qwen-turbo': 'Qwen Turbo',
+  'deepseek-v4-flash': 'DeepSeek V4 Flash',
+  'qwen3-coder-480b-a35b-instruct': 'Qwen 3 Coder 480B',
 };
 
 /** Devuelve la etiqueta amigable de un modelo, o su id si no hay etiqueta conocida. */

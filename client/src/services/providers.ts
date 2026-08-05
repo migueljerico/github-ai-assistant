@@ -338,16 +338,19 @@ const BAZAARLINK_FALLBACK: ModelOption[] = [
 
 // Fallback de QwenCloud (qwencloud.com / DashScope) mientras carga el catálogo dinámico o si falla.
 // Pasarela OpenAI-compatible. Acceso vía PROXY backend /api/qwencloud.
-// Modelos gratuitos de text & code confirmados en QwenCloud:
+// Modelos gratuitos de text & code confirmados en la web oficial de QwenCloud:
 const QWENCLOUD_FALLBACK: ModelOption[] = [
   { value: 'qwen3.7-flash', label: 'Qwen 3.7 Flash (free)', free: true, recommended: true },
+  { value: 'qwen3-coder-flash', label: 'Qwen 3 Coder Flash (free)', free: true },
+  { value: 'qwen3-coder-next', label: 'Qwen 3 Coder Next (free)', free: true },
   { value: 'qwen3.7-plus', label: 'Qwen 3.7 Plus (free)', free: true },
   { value: 'qwen3.8-max', label: 'Qwen 3.8 Max (free)', free: true },
-  { value: 'qwen3.6-27b', label: 'Qwen 3.6 27B (free)', free: true },
-  { value: 'qwen3-coder-32b', label: 'Qwen 3 Coder 32B (free)', free: true },
-  { value: 'qwen3-coder-480b', label: 'Qwen 3 Coder 480B (free)', free: true },
+  { value: 'qwen3.6-flash', label: 'Qwen 3.6 Flash (free)', free: true },
+  { value: 'qwen3.5-flash', label: 'Qwen 3.5 Flash (free)', free: true },
+  { value: 'qwen-flash', label: 'Qwen Flash (free)', free: true },
+  { value: 'qwen-turbo', label: 'Qwen Turbo (free)', free: true },
   { value: 'deepseek-v4-flash', label: 'DeepSeek V4 Flash (free)', free: true },
-  { value: 'ling-3.0-flash', label: 'Ling 3.0 Flash (free)', free: true },
+  { value: 'qwen3-coder-480b-a35b-instruct', label: 'Qwen 3 Coder 480B (free)', free: true },
 ];
 
 export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
