@@ -1,9 +1,0 @@
-feat: actualizar catálogos NVIDIA NIM y OpenCode Zen (v3.68.7)
-
-- OpenCode Zen: añadido longcat-2.0-free (8 modelos, 2026-08-05)
-- NVIDIA NIM: añadido Nemotron Super 49B v1 + Step 3.7 Flash; retirado
-  qwen3-next-80b-a3b-instruct (ID inexistente en API real); 13 modelos totales
-- Tests: aserciones para longcat-2.0-free, Nemotron Super 49B y
-  ausencia de qwen3-next-80b; actualizados conteos NIM (12->13) y OpenZen (7->8)
-- Fuentes: integrate.api.nvidia.com/v1/models + opencode.ai/docs/es/zen/#pricing
-  (verificados en vivo 2026-08-05)

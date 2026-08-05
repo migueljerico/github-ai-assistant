@@ -1,21 +1,11 @@
-v3.36.1 — Mitigación vulnerabilidades xlsx (SheetJS) + fixes CodeQL
+## v3.68.7 — Actualización catálogos NVIDIA NIM y OpenCode Zen (2026-08-05)
 
-### Added
-- **Mitigación vulnerabilidades xlsx (SheetJS CE v0.18.5):**
-  - Límite de 10 MB antes de parsear en `spreadsheetReader.ts`
-  - Validación básica de cabecera post-parseo (mitiga Prototype Pollution GHSA-xvch-5gv4-9q4h y ReDoS GHSA-93q8-gq69-qvxp)
-  - Aviso en UI (`FileAttachButton`, `DocumentFlowModal`): "Solo suba archivos de fuentes confiables. Límite: 10 MB"
+> **Actualización de catálogos de NVIDIA NIM y OpenCode Zen con verificación directa de la API.**
+> - **OpenCode Zen:** Añadido `longcat-2.0-free` al fallback `OPENZEN_FALLBACK` (8 modelos, fuente: opencode.ai/docs/es/zen/#pricing, 2026-08-05).
+> - **NVIDIA NIM:** Añadidos `nvidia/llama-3.3-nemotron-super-49b-v1` (Nemotron Super 49B) y `stepfun-ai/step-3.7-flash` al fallback `NIM_FALLBACK`, confirmados en `integrate.api.nvidia.com/v1/models`. Retirado `qwen/qwen3-next-80b-a3b-instruct` que no existe en la API real (13 modelos totales).
+> - **Tests:** Añadidas aserciones para `longcat-2.0-free` en OpenZen, Nemotron Super 49B y ausencia de qwen3-next-80b en NIM. Actualizados tests existentes de conteo.
 
-### Fixed
-- `docxReader.ts`: fix sanitización incompleta multi-carácter (reemplazo iterativo de tags hasta estabilizar)
-- `server/index.js`: rate limiting en catch-all SPA route (200 req/min) para prevenir DoS
-- `client/src/test/setup.ts`: escape inútil en regexp corregido (`\{` → `\\{`)
+### Changed
+- **Catálogos de proveedores:** `client/src/services/providers.ts`, `client/src/services/__tests__/providers.test.ts`, `client/src/components/ai-provider/__tests__/AIProviderPanel.test.tsx`.
 
-### Documentation
-- CHANGELOG.md, README.md (badge v3.36.1 + sección Limitaciones conocidas), MEJORAS_FUTURAS.md, docs/SEGURIDAD.md
-
-### Notes
-- Tests: 557/557 (client) + 5/5 (server) = **562 verdes**
-- Build limpio, lint 0 errores
-- NO migrado a `exceljs` (+4 MB bundle, rompe chunks lazy)
-- Cambio de código por Nemotron 3 Ultra (NVIDIA NIM)
+Cambio de código por [Antigravity (Claude Sonnet 4.6 Thinking)].
