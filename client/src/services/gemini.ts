@@ -308,7 +308,7 @@ async function callOpenAICompatible(
     }
     // QwenCloud 403/401: error de permisos/activación en consola DashScope.
     if ((res.status === 403 || res.status === 401) && endpoint.includes('/api/qwencloud')) {
-      const isUnpurchased = typeof msg === 'string' && /unpurchased|access denied|not active/i.test(msg);
+      const isUnpurchased = typeof msg === 'string' && /unpurchased|access.{0,12}denied|eligible|free tier|quota|not active/i.test(msg);
       const hint = isUnpurchased
         ? ' — El modelo requiere activación previa en tu consola de QwenCloud / Alibaba Cloud Model Studio (activa la prueba gratuita o paquete de tokens en la consola).'
         : ' — Error de autenticación o permisos en QwenCloud (403/401). Verifica tu API key en qwencloud.com / DashScope.';

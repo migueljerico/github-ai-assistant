@@ -21,4 +21,14 @@ describe('resolveRepoRef', () => {
     expect(resolveRepoRef('owner/repo/extra', 'x'))
       .toEqual({ owner: 'owner', repo: 'repo' });
   });
+
+  it('soporta URLs completas de GitHub (https://github.com/owner/repo)', () => {
+    expect(resolveRepoRef('https://github.com/migueljerico/github-ai-assistant', 'x'))
+      .toEqual({ owner: 'migueljerico', repo: 'github-ai-assistant' });
+  });
+
+  it('soporta URLs completas con extensión .git (https://github.com/owner/repo.git)', () => {
+    expect(resolveRepoRef('https://github.com/migueljerico/github-ai-assistant.git', 'x'))
+      .toEqual({ owner: 'migueljerico', repo: 'github-ai-assistant' });
+  });
 });

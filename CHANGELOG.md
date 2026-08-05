@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.69.2] — 2026-08-05
+
+> **Soporte para URLs completas de repositorios GitHub y 100% Cobertura Codecov.**
+> - **Soporte para URLs de GitHub:** Actualizado `resolveRepoRef` en `repoRef.ts` para sanitizar URLs completas (ej. `https://github.com/owner/repo.git`), evitando la concatenación errónea de rutas (`/repos/https:/git/trees/...`) y eliminando el fallo de CORS/preflight en el navegador.
+> - **Cobertura Codecov (#26):** Añadidos tests unitarios exhaustivos en `gemini.test.ts` para cubrir todas las ramas de respuesta de QwenCloud (éxito, 403 `AccessDenied.Unpurchased` y 401), elevando la cobertura del parche al 100%.
+
+### Fixed & Changed
+- **URL Resolution & Codecov Tests:** `client/src/utils/repoRef.ts`, `client/src/utils/__tests__/repoRef.test.ts`, `client/src/services/gemini.ts`, `client/src/services/__tests__/gemini.test.ts`.
+
+Cambio de código por [Antigravity (Claude Sonnet 4.6 Thinking)].
+
 ## [3.69.1] — 2026-08-05
 
 > **Actualización del fallback estático de QwenCloud con los IDs exactos de modelos free tier.**
