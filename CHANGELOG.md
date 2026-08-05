@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.69.9] — 2026-08-05
+
+> **Carpeta `screenshots/` y Vista Previa del Asistente en `README.md`.**
+> - **Screenshots del Repositorio:** Creada la carpeta `screenshots/` incorporando la captura inicial del Asistente de IA (`Captura_Asistente_IA.png`).
+> - **Sección en README.md:** Añadida la sección `## 📸 Vista Previa del Asistente` vinculando la imagen capturada para visualización directa en GitHub.
+
+### Fixed & Changed
+- **Screenshots & README Preview:** `screenshots/Captura_Asistente_IA.png`, `README.md`.
+
+Cambio de código por [Antigravity (Gemini 3.6 Flash)].
+
 ## [3.69.8] — 2026-08-05
 
 > **Soporte para adjuntar múltiples capturas e imágenes secuenciales (+ 📎 Adjuntar más).**
