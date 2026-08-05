@@ -184,6 +184,10 @@ export const en = {
   'provider.bazaarlink.signupLabel': 'Get API key at bazaarlink.ai →',
   'provider.bazaarlink.note': '🆓 Configured free models: deepseek-v4-flash and qwen3.7-flash.',
 
+  'provider.qwencloud.cardDesc': 'QwenCloud · free Qwen text & code models (Qwen 3.7 Flash, Plus, Max, Coder…)',
+  'provider.qwencloud.signupLabel': 'Get API key at qwencloud.com →',
+  'provider.qwencloud.note': '🆓 Free text & code models available with your QwenCloud / DashScope API key.',
+
   // ────── PHASE 2: Modals ──────
   'modal.doc.title': 'Documentation generated for {repoName}',
   'modal.doc.subtitle': 'I analyzed {filesAnalyzed} file',

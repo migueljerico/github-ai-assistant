@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.69.0] — 2026-08-05
+
+> **Integración del proveedor QwenCloud con modelos gratuitos de texto y código.**
+> - **Nuevo Proveedor #12:** Añadido `qwencloud` (QwenCloud / DashScope) al registro central de proveedores de IA (`PROVIDERS.qwencloud`).
+> - **Modelos Free:** Añadido `QWENCLOUD_FALLBACK` con 8 modelos gratuitos de texto y código (`qwen3.7-flash`, `qwen3.7-plus`, `qwen3.8-max`, `qwen3.6-27b`, `qwen3-coder-32b`, `qwen3-coder-480b`, `deepseek-v4-flash`, `ling-3.0-flash`).
+> - **Proxy Backend:** Creados los endpoints `/api/qwencloud` y `/api/qwencloud/models` en Express (`server/index.js`) con limitadores de tasa dedicados (`qwencloudLimiter` de 40 req/min y `qwencloudModelsLimiter` de 200 req/min) para eludir el bloqueo de CORS del navegador manteniendo la arquitectura Zero-Storage.
+> - **Etiquetas e i18n:** Añadidas etiquetas amigables en `modelLabels.ts` y traducciones completas en español e inglés en `es.ts` y `en.ts`.
+> - **Tests:** Añadida cobertura unitaria completa para el registro, fallback y filtrado dinámico de QwenCloud en `providers.test.ts`.
+
+### Added & Changed
+- **QwenCloud Integration:** `client/src/services/providers.ts`, `server/index.js`, `client/src/utils/modelLabels.ts`, `client/src/i18n/es.ts`, `client/src/i18n/en.ts`, `client/src/services/__tests__/providers.test.ts`.
+
+Cambio de código por [Antigravity (Claude Sonnet 4.6 Thinking)].
+
 ## [3.68.7] — 2026-08-05
 
 > **Actualización de catálogos de NVIDIA NIM y OpenCode Zen con verificación directa de la API.**

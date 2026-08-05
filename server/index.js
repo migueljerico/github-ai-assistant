@@ -180,6 +180,26 @@ const bazaarlinkModelsLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const qwencloudLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 40,
+  message: {
+    error: 'Demasiadas peticiones a QwenCloud. Por favor espera un minuto.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const qwencloudModelsLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 200,
+  message: {
+    error: 'Demasiadas peticiones al catálogo de QwenCloud. Por favor espera un minuto.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // URL base de la API de NVIDIA NIM (el proxy reenvía a ella).
 // NIM NO envía cabeceras CORS → el navegador bloquea las llamadas directas con
 // "Failed to fetch". Este proxy elude el bloqueo igual que el de Gemini (#58).
@@ -986,6 +1006,73 @@ app.get('/api/bazaarlink/models', bazaarlinkModelsLimiter, async (req, res) => {
   }
 });
 
+// ─── QwenCloud Proxy ──────────────────────────────────────────────────────────
+// QwenCloud (qwencloud.com / DashScope) es una pasarela OpenAI-compatible.
+// Acceso vía proxy backend /api/qwencloud (servidor→servidor) para eludir
+// restricciones CORS del navegador.
+app.post('/api/qwencloud', qwencloudLimiter, validateChatBody, async (req, res) => {
+  const auth = req.headers.authorization || '';
+  if (!auth.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Falta la API key de QwenCloud (header Authorization: Bearer sk-...)' });
+  }
+  try {
+    const upstream = await fetch('https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': auth,
+        'Content-Type': 'application/json',
+        ...(req.headers['accept'] ? { 'Accept': req.headers['accept'] } : {}),
+      },
+      body: JSON.stringify(req.body),
+      signal: upstreamSignal(),
+    });
+    log.info('upstream', { provider: 'qwencloud', flow: 'chat', status: upstream.status, ct: upstream.headers.get('content-type') || '-', requestId: req.id });
+    res.status(upstream.status);
+    const ct = upstream.headers.get('content-type');
+    if (ct) res.setHeader('Content-Type', ct);
+    await pipeUpstream(upstream, res);
+  } catch (err) {
+    log.error('proxy_error', { provider: 'qwencloud', flow: 'chat', requestId: req.id, error: err?.message || String(err) });
+    const status = isUpstreamTimeout(err) ? 504 : 502;
+    const error = isUpstreamTimeout(err) ? 'QwenCloud tardó demasiado (timeout). Reintenta o sube el timeout en ⚙️.' : 'Error al contactar con QwenCloud';
+    if (!res.headersSent) res.status(status).json({ error, detail: err?.message || String(err) });
+    else { try { res.end(); } catch { /* noop */ } }
+  }
+});
+
+app.get('/api/qwencloud/models', qwencloudModelsLimiter, async (req, res) => {
+  const auth = req.headers.authorization || '';
+  try {
+    const upstream = await fetch('https://dashscope-intl.aliyuncs.com/compatible-mode/v1/models', {
+      method: 'GET',
+      headers: {
+        ...(auth.startsWith('Bearer ') ? { 'Authorization': auth } : {}),
+        'Accept': 'application/json',
+      },
+    });
+    log.info('upstream', { provider: 'qwencloud', flow: 'models', status: upstream.status, ct: upstream.headers.get('content-type') || '-', requestId: req.id });
+    res.status(upstream.status);
+    const ct = upstream.headers.get('content-type');
+    if (ct) res.setHeader('Content-Type', ct);
+    const safeHeaders = {};
+    for (const [key, value] of upstream.headers.entries()) {
+      if (typeof value === 'string' && /^[\x00-\x7F]*$/.test(value)) {
+        safeHeaders[key] = value;
+      }
+    }
+    for (const [key, value] of Object.entries(safeHeaders)) {
+      res.setHeader(key, value);
+    }
+    res.removeHeader('content-encoding');
+    res.removeHeader('transfer-encoding');
+    await pipeUpstream(upstream, res);
+  } catch (err) {
+    log.error('proxy_error', { provider: 'qwencloud', flow: 'models', requestId: req.id, error: err?.message || String(err) });
+    if (!res.headersSent) res.status(502).json({ error: 'Error al contactar con QwenCloud (models)', detail: err?.message || String(err) });
+    else { try { res.end(); } catch { /* noop */ } }
+  }
+});
+
 // ─── GitHub OAuth ─────────────────────────────────────────────────────────────
 app.get('/auth/github', (req, res) => {
   if (!GITHUB_CLIENT_ID) {
@@ -1104,13 +1191,15 @@ app.listen(PORT, () => {
       'POST /api/aiand', 'GET /api/aiand/models',
       'POST /api/kilo', 'GET /api/kilo/models',
       'POST /api/bazaarlink', 'GET /api/bazaarlink/models',
+      'POST /api/qwencloud', 'GET /api/qwencloud/models',
     ],
     rateLimited: ['/api/gemini', '/api/gemini/models', '/api/nim', '/api/nim/models',
                   '/api/openzen', '/api/cloudflare', '/api/cloudflare/models',
                   '/api/ollama', '/api/ollama/models',
                   '/api/aiand', '/api/aiand/models',
                   '/api/kilo', '/api/kilo/models',
-                  '/api/bazaarlink', '/api/bazaarlink/models'],
+                  '/api/bazaarlink', '/api/bazaarlink/models',
+                  '/api/qwencloud', '/api/qwencloud/models'],
     directFromBrowser: ['openrouter', 'zenmux', 'groq'],
   });
 });

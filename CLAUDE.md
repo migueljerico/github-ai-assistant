@@ -31,10 +31,10 @@ reemplazan. Saltarse este paso es la causa nº1 de trabajar en bucle.
 
 ## 1. Visión general
 
-**GitHub AI Assistant** (v3.68.7) es una app web que permite operar la **GitHub
+**GitHub AI Assistant** (v3.69.0) es una app web que permite operar la **GitHub
 REST API en lenguaje natural** a través de un proveedor de IA (Google Gemini,
 Groq Cloud, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI,
-Ollama Cloud, Ai&, Kilo o BazaarLink). El usuario escribe una instrucción,
+Ollama Cloud, Ai&, Kilo, BazaarLink o QwenCloud). El usuario escribe una instrucción,
 la IA propone una acción, y
 **cada operación de escritura se confirma manualmente** antes de ejecutarse.
 
@@ -345,16 +345,17 @@ Ejecutar **un solo test**: `cd client && npm run test:run -- src/services/github
   GitHub, log interno del historial, contexto que va al LLM) se dejan en español a propósito.
 - **Proveedores de IA — registro central (#15):** todos los proveedores viven en
   `services/providers.ts` como entradas del registro `PROVIDERS`. Añadir uno nuevo = una
-  entrada más, sin tocar más ficheros. Los 10 proveedores actuales y su transporte:
+  entrada más, sin tocar más ficheros. Los 12 proveedores actuales y su transporte:
   - `transport: 'openai-compatible'` con `chatEndpoint` absoluto (fetch **directo**
     desde navegador, sí envían CORS): **Groq Cloud, OpenRouter, Zenmux**.
   - `transport: 'openai-compatible'` con `chatEndpoint` relativo (proxy backend,
     no envían CORS): NVIDIA NIM (`/api/nim`), OpenCode Zen (`/api/openzen`),
     Cloudflare Workers AI (`/api/cloudflare`), Ollama Cloud (`/api/ollama`),
-    Ai& (`/api/aiand`), Kilo (`/api/kilo`).
+    Ai& (`/api/aiand`), Kilo (`/api/kilo`), BazaarLink (`/api/bazaarlink`),
+    QwenCloud (`/api/qwencloud`).
   - `transport: 'gemini-proxy'` (proxy backend, bloqueo EEA): Google Gemini (`/api/gemini`).
   Ver `server/index.js` para los endpoints proxy: `/api/gemini`, `/api/nim`,
-  `/api/openzen`, `/api/cloudflare`, `/api/ollama`, `/api/aiand`, `/api/kilo`.
+  `/api/openzen`, `/api/cloudflare`, `/api/ollama`, `/api/aiand`, `/api/kilo`, `/api/bazaarlink`, `/api/qwencloud`.
 - **⚠️ No crear archivos de handoff / notas de sesión en el repo.** El handoff se entrega
   como mensaje en el chat (formato `METODOLOGIA_IA.md §2.7`). No se crean ni se dejan
   archivos `HANDOFF_*.md`, `SESSION_*.md` ni notas personales de sesión en el repo a

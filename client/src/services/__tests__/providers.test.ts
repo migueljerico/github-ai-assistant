@@ -3,7 +3,7 @@ import { PROVIDERS, getProvider, fetchModels, pickDefaultModel, modelLabel, reso
 
 describe('providers — registro', () => {
   it('los proveedores tienen su defaultModel dentro de staticModels', () => {
-    (['gemini', 'groq', 'openrouter', 'nvidia', 'zenmux', 'openzen', 'cloudflare', 'ollama', 'aiand', 'kilo', 'bazaarlink'] as const).forEach(id => {
+    (['gemini', 'groq', 'openrouter', 'nvidia', 'zenmux', 'openzen', 'cloudflare', 'ollama', 'aiand', 'kilo', 'bazaarlink', 'qwencloud'] as const).forEach(id => {
       const def = getProvider(id);
       expect(def.id).toBe(id);
       expect(def.staticModels.some(m => m.value === def.defaultModel)).toBe(true);
@@ -20,6 +20,19 @@ describe('providers — registro', () => {
     expect(def.staticModels.some(m => m.value === def.defaultModel)).toBe(true);
     expect(def.defaultModel).toBe('deepseek/deepseek-v4-flash:free');
     expect(def.staticModels.some(m => m.free === true)).toBe(true);
+  });
+
+  it('qwencloud: openai-compatible vía proxy backend /api/qwencloud, endpoints relativos, modelos free configurados', () => {
+    const def = PROVIDERS.qwencloud;
+    expect(def.transport).toBe('openai-compatible');
+    expect(def.chatEndpoint).toBe('/api/qwencloud');
+    expect(def.modelsEndpoint).toBe('/api/qwencloud/models');
+    expect(def.modelsNeedKey).toBe(true);
+    expect(def.keyPrefix).toBe('sk-');
+    expect(def.staticModels.some(m => m.value === def.defaultModel)).toBe(true);
+    expect(def.defaultModel).toBe('qwen3.7-flash');
+    expect(def.staticModels.every(m => m.free === true)).toBe(true);
+    expect(def.staticModels.length).toBe(8);
   });
 
   it('gemini usa proxy; groq, openrouter y zenmux son openai-compatible con endpoint directo; nvidia, openzen y cloudflare usan proxy backend por CORS', () => {
@@ -661,6 +674,26 @@ describe('providers — fetchModels', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     await expect(fetchModels(PROVIDERS.groq, 'gsk_test')).rejects.toThrow('empty catalog');
+  });
+
+  it('qwencloud (fetchModels): filtra no-chat (embed, whisper, tts...) y marca free', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          { id: 'qwen3.7-flash', name: 'Qwen 3.7 Flash' },
+          { id: 'qwen3-embed', name: 'Qwen Embed' }, // excluido
+          { id: 'qwen3.7-plus', name: 'Qwen 3.7 Plus' },
+        ],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const list = await fetchModels(PROVIDERS.qwencloud, 'sk-test');
+    expect(list).toBeDefined();
+    expect(list!.length).toBe(2);
+    expect(list!.map(m => m.value)).toEqual(['qwen3.7-flash', 'qwen3.7-plus']);
+    expect(list!.every(m => m.free === true)).toBe(true);
   });
 });
 

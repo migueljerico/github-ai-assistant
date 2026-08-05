@@ -16,9 +16,10 @@
 ![Ai&](https://img.shields.io/badge/Ai&-7C4DFF?style=for-the-badge)
 ![Kilo](https://img.shields.io/badge/Kilo-00C896?style=for-the-badge)
 ![BazaarLink](https://img.shields.io/badge/BazaarLink-FF5722?style=for-the-badge)
+![QwenCloud](https://img.shields.io/badge/QwenCloud-0080FF?style=for-the-badge)
 ![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
 ![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
-![Versión](https://img.shields.io/badge/Versión-v3.68.7-blue?style=for-the-badge)
+![Versión](https://img.shields.io/badge/Versión-v3.69.0-blue?style=for-the-badge)
 [![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)](./LICENSE)
 [![CI & Coverage](https://github.com/migueljerico/github-ai-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/migueljerico/github-ai-assistant/actions/workflows/ci.yml)
 [![E2E Tests](https://img.shields.io/github/actions/workflow/status/migueljerico/github-ai-assistant/e2e.yml?style=for-the-badge&label=E2E%20Tests&logo=playwright&logoColor=white)](https://github.com/migueljerico/github-ai-assistant/actions/workflows/e2e.yml)
@@ -66,11 +67,11 @@ Todo bajo el principio:
 | Aspecto | Detalle |
 |---|---|
 | ⏱️ Tiempo de desarrollo | 2 meses de desarrollo continuo |
-| 🤖 Proveedores soportados | Groq · Google Gemini · OpenRouter · NVIDIA NIM · Zenmux · OpenCode Zen · Cloudflare Workers AI · Ollama Cloud · Ai& · Kilo |
-| 🧠 Modelos disponibles | Gemini, Llama, Nemotron, GLM, Grok, DeepSeek, Qwen, MiniMax y más vía OpenRouter/NIM/Zenmux/OpenCode/Cloudflare/Ollama/Ai&/Kilo |
+| 🤖 Proveedores soportados | Groq · Google Gemini · OpenRouter · NVIDIA NIM · Zenmux · OpenCode Zen · Cloudflare Workers AI · Ollama Cloud · Ai& · Kilo · BazaarLink · QwenCloud |
+| 🧠 Modelos disponibles | Gemini, Llama, Nemotron, GLM, Grok, DeepSeek, Qwen, MiniMax y más vía OpenRouter/NIM/Zenmux/OpenCode/Cloudflare/Ollama/Ai&/Kilo/BazaarLink/QwenCloud |
 | ⚡ Latencia observada | ~400ms Groq / ~1.2s Gemini, variable según modelo y contexto |
 | 🛡️ Seguridad | Zero-Storage: credenciales solo en memoria React |
-| 🧪 Tests | 976 tests unitarios (926 cliente + 50 servidor) + 13 E2E (Playwright) |
+| 🧪 Tests | 1026 tests unitarios (968 cliente + 58 servidor) + 13 E2E (Playwright) |
 | 🌍 Deploy | Google Cloud Run |
 | 📦 Stack | React + TypeScript + Express + Vite |
 
@@ -91,7 +92,7 @@ Todo bajo el principio:
 | 📊 Salud del código | Dashboard con lenguajes, commits y deuda técnica |
 | 🛡️ Auditoría de seguridad | Revisión orientativa (LLM) de secrets, dependencias y validación de inputs |
 | 🌐 i18n | Interfaz bilingüe ES/EN |
-| 🔑 Multi-proveedor IA | Groq, Gemini, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI, Ollama Cloud, Ai& y Kilo con clave del usuario |
+| 🔑 Multi-proveedor IA | Groq, Gemini, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI, Ollama Cloud, Ai&, Kilo, BazaarLink y QwenCloud con clave del usuario |
 
 Más detalle en ./docs/FUNCIONALIDADES.md.
 

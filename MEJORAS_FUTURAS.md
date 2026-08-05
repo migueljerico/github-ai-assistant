@@ -2,7 +2,7 @@
 
 Estado del código, mejoras realizadas y pendientes del proyecto.
 
-**Actualizado a:** v3.68.7 · Agosto 2026
+**Actualizado a:** v3.69.0 · Agosto 2026
 
 ---
 
@@ -109,7 +109,7 @@ Ordenadas por prioridad. Cada ítem se mueve a la tabla ✅ al resolverse.
 - ✅ Vitest + Codecov + CI con GitHub Actions (cliente + servidor)
 - ✅ Badge de Codecov en README
 - ✅ Cobertura actual: ver Codecov (~90% líneas)
-- ✅ **926 tests en el cliente (63 suites) + 50 en el servidor (6 suites)** = **976 unitarios** + **13 tests E2E** con Playwright (5 specs). Cobertura amplia de contextos, services, utils, hooks y componentes.
+- ✅ **968 tests en el cliente (64 suites) + 58 en el servidor (8 suites)** = **1026 unitarios** + **13 tests E2E** con Playwright (5 specs). Cobertura amplia de contextos, services, utils, hooks y componentes.
 
 **Pendiente:**
 - Aumentar cobertura del ~64% al 70% objetivo.

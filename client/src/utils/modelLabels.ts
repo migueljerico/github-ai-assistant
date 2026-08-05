@@ -67,6 +67,13 @@ export const MODEL_LABELS: Record<string, string> = {
   'deepseek/deepseek-v4-flash:free': 'DeepSeek V4 Flash',
   'qwen/qwen3.7-flash:free': 'Qwen 3.7 Flash',
   'auto:free': 'Auto Router (free)',
+  // ── QwenCloud ──
+  'qwen3.7-flash': 'Qwen 3.7 Flash',
+  'qwen3.7-plus': 'Qwen 3.7 Plus',
+  'qwen3.8-max': 'Qwen 3.8 Max',
+  'qwen3.6-27b': 'Qwen 3.6 27B',
+  'qwen3-coder-32b': 'Qwen 3 Coder 32B',
+  'qwen3-coder-480b': 'Qwen 3 Coder 480B',
 };
 
 /** Devuelve la etiqueta amigable de un modelo, o su id si no hay etiqueta conocida. */

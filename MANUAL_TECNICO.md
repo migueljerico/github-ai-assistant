@@ -1,6 +1,6 @@
 # 📖 Manual Técnico — GitHub AI Assistant
 
-**Versión:** v3.68.7 · Agosto 2026
+**Versión:** v3.69.0 · Agosto 2026
 
 ---
 
@@ -30,6 +30,7 @@ La aplicación sigue una arquitectura de **backend thin** deliberada: el servido
 ┌──────────────┬────────────────────────────────────┬───────────┘
                │ /auth/github · /auth/callback      │ fetch()
                │ /api/gemini · /api/nim · /api/openzen · /api/cloudflare · /api/ollama
+               │ /api/aiand · /api/kilo · /api/bazaarlink · /api/qwencloud
                ▼                                    ▼
 ┌──────────────────────────┐  ┌────────────────────────────────┐
 │  Backend Express.js      │  │  APIs Externas                 │
@@ -38,6 +39,7 @@ La aplicación sigue una arquitectura de **backend thin** deliberada: el servido
 │  ├── GET /auth/github    │  │  api.github.com                │
 │  ├── GET /auth/callback  │  │                                │
 │  ├── POST /api/gemini    │  │  Groq Cloud                    │
+│  ├── POST /api/qwencloud │  │  dashscope-intl.aliyuncs.com   │
 │  ├── POST /api/nim       │  │  api.groq.com/openai/v1        │
 │  ├── POST /api/openzen   │  │                                │
 │  ├── POST /api/cloudflare│  │  Google Gemini                 │
