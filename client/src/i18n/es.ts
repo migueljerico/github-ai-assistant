@@ -186,6 +186,10 @@ export const es = {
   'provider.bazaarlink.signupLabel': 'Obtener clave en bazaarlink.ai →',
   'provider.bazaarlink.note': '🆓 Modelos gratuitos configurados: deepseek-v4-flash y qwen3.7-flash.',
 
+  'provider.qwencloud.cardDesc': 'QwenCloud · modelos Qwen gratuitos para texto y código (Qwen 3.7 Flash, Plus, Max, Coder…)',
+  'provider.qwencloud.signupLabel': 'Obtener clave en qwencloud.com →',
+  'provider.qwencloud.note': '🆓 Modelos gratuitos de text & code disponibles con tu API key de QwenCloud / DashScope.',
+
   // ────── FASE 2: Modales ──────
   'modal.doc.title': 'Documentación generada para {repoName}',
   'modal.doc.subtitle': 'Analicé {filesAnalyzed} archivo',

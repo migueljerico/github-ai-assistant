@@ -12,7 +12,7 @@
 // sessionStorage es la LISTA de modelos (catálogo), nunca la clave.
 // ────────────────────────────────────────────────────────────────────────────
 
-export type AIProviderType = 'gemini' | 'groq' | 'openrouter' | 'nvidia' | 'zenmux' | 'openzen' | 'cloudflare' | 'ollama' | 'aiand' | 'kilo' | 'bazaarlink';
+export type AIProviderType = 'gemini' | 'groq' | 'openrouter' | 'nvidia' | 'zenmux' | 'openzen' | 'cloudflare' | 'ollama' | 'aiand' | 'kilo' | 'bazaarlink' | 'qwencloud';
 export type ProviderTransport = 'gemini-proxy' | 'openai-compatible';
 
 export interface ModelOption {
@@ -336,6 +336,20 @@ const BAZAARLINK_FALLBACK: ModelOption[] = [
   { value: 'auto:free', label: 'Auto Router (free)', free: true },
 ];
 
+// Fallback de QwenCloud (qwencloud.com / DashScope) mientras carga el catálogo dinámico o si falla.
+// Pasarela OpenAI-compatible. Acceso vía PROXY backend /api/qwencloud.
+// Modelos gratuitos de text & code confirmados en QwenCloud:
+const QWENCLOUD_FALLBACK: ModelOption[] = [
+  { value: 'qwen3.7-flash', label: 'Qwen 3.7 Flash (free)', free: true, recommended: true },
+  { value: 'qwen3.7-plus', label: 'Qwen 3.7 Plus (free)', free: true },
+  { value: 'qwen3.8-max', label: 'Qwen 3.8 Max (free)', free: true },
+  { value: 'qwen3.6-27b', label: 'Qwen 3.6 27B (free)', free: true },
+  { value: 'qwen3-coder-32b', label: 'Qwen 3 Coder 32B (free)', free: true },
+  { value: 'qwen3-coder-480b', label: 'Qwen 3 Coder 480B (free)', free: true },
+  { value: 'deepseek-v4-flash', label: 'DeepSeek V4 Flash (free)', free: true },
+  { value: 'ling-3.0-flash', label: 'Ling 3.0 Flash (free)', free: true },
+];
+
 export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
   gemini: {
     id: 'gemini',
@@ -580,6 +594,27 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     signupUrl: 'https://bazaarlink.ai',
     signupLabel: 'provider.bazaarlink.signupLabel',
     note: 'provider.bazaarlink.note',
+  },
+  // QwenCloud (qwencloud.com / DashScope): pasarela OpenAI-compatible.
+  // Acceso vía PROXY backend /api/qwencloud (elude bloqueo CORS del navegador).
+  // Catálogo dinámico vía /api/qwencloud/models.
+  qwencloud: {
+    id: 'qwencloud',
+    name: 'QwenCloud',
+    shortName: 'QwenCloud',
+    emoji: '☁️',
+    cardDesc: 'provider.qwencloud.cardDesc',
+    transport: 'openai-compatible',
+    chatEndpoint: '/api/qwencloud',
+    modelsEndpoint: '/api/qwencloud/models',
+    modelsNeedKey: true,
+    staticModels: QWENCLOUD_FALLBACK,
+    defaultModel: QWENCLOUD_FALLBACK[0].value,
+    keyPlaceholder: 'sk-...',
+    keyPrefix: 'sk-',
+    signupUrl: 'https://www.qwencloud.com',
+    signupLabel: 'provider.qwencloud.signupLabel',
+    note: 'provider.qwencloud.note',
   },
 };
 
@@ -928,6 +963,29 @@ export async function fetchModels(
           free: isFree,
         };
       })
+      .sort((a: ModelOption, b: ModelOption) => (Number(b.free) - Number(a.free)) || a.label.localeCompare(b.label));
+  } else if (def.id === 'qwencloud') {
+    // QwenCloud (qwencloud.com / DashScope): pasarela OpenAI-compatible.
+    // Identifica modelos de chat/código filtrando los no-chat (embeddings, rerank, audio, vision...).
+    const QWENCLOUD_EXCLUDED = ['embed', 'whisper', 'tts', 'asr', 'rerank', 'clip', 'audio', 'wan', 'happyhorse', 'image'];
+    type QwencloudItem = {
+      id: string;
+      name?: string;
+      display_name?: string;
+    };
+    const seen = new Set<string>();
+    models = (data.data as unknown as QwencloudItem[])
+      .filter((m) => !QWENCLOUD_EXCLUDED.some(p => m.id.toLowerCase().includes(p)))
+      .filter((m) => {
+        if (seen.has(m.id)) return false;
+        seen.add(m.id);
+        return true;
+      })
+      .map((m) => ({
+        value: m.id,
+        label: m.name || m.display_name || m.id,
+        free: true,
+      }))
       .sort((a: ModelOption, b: ModelOption) => (Number(b.free) - Number(a.free)) || a.label.localeCompare(b.label));
   } else {
     // Groq (y cualquier OpenAI-compatible genérico): filtra no-chat (GROQ_EXCLUDED) y
