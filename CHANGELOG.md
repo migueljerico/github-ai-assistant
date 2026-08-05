@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.69.7] — 2026-08-05
+
+> **Cobertura de tests del 100% para el parche de cambios (Codecov Patch Fix).**
+> - **Tests de Interfaz y Utilidades:** Añadidos tests unitarios para `modelLabels.ts` (`modelLabels.test.ts`) y test explícito de `onMouseDown` con `preventDefault()` para `#send-btn` (`ChatInputStop.test.tsx`), alcanzando un 100% de cobertura de parche en Codecov.
+
+### Fixed & Changed
+- **Codecov Patch Tests Coverage:** `client/src/utils/__tests__/modelLabels.test.ts`, `client/src/components/chat/__tests__/ChatInputStop.test.tsx`.
+
+Cambio de código por [Antigravity (Gemini 3.6 Flash)].
+
 ## [3.69.6] — 2026-08-05
 
 > **Regla anti-bucle de lecturas (GET) tras lectura previa de archivos en Modo Acción.**

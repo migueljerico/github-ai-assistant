@@ -58,4 +58,10 @@ describe('ChatInput — botón Enviar/Detener (#40)', () => {
     const { btn } = setup({ isLoading: false, value: '' });
     expect(btn.disabled).toBe(true);
   });
+
+  it('ejecuta e.preventDefault() en mouseDown para evitar desenfoque prematuro del textarea', () => {
+    const { btn } = setup({ isLoading: false, value: 'hola' });
+    const isDefaultPrevented = !fireEvent.mouseDown(btn);
+    expect(isDefaultPrevented).toBe(true);
+  });
 });
