@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.70.0] — 2026-08-06
+
+> **Fix crítico: botón de envío `➤` no funcionaba al hacer clic (solo Enter).**
+> - **Causa raíz:** `onClick={onSend}` en `ChatInput.tsx` pasaba el `MouseEvent` como primer argumento a `handleSend(overrideText?: string)`, haciendo que `(MouseEvent ?? inputValue).trim()` fallara silenciosamente — el texto nunca se enviaba desde el botón.
+> - **Fix en `ChatInput.tsx`:** `onClick` cambiado a `() => onSend()` para que siempre se llame sin argumentos desde el botón.
+> - **Fix en `App.tsx`:** defensa en profundidad con `typeof overrideText === 'string'` para descartar cualquier argumento no-string que llegue a `handleSend`.
+> - **Test de regresión** añadido en `ChatInputStop.test.tsx`: verifica que `onSend` se llama sin argumentos al hacer clic en el botón.
+
+### Fixed
+- **Botón envío `➤`:** `client/src/components/chat/ChatInput.tsx`, `client/src/App.tsx`, `client/src/components/chat/__tests__/ChatInputStop.test.tsx`.
+
+Cambio de código por [Antigravity (Claude Sonnet 4.6 Thinking)].
+
 ## [3.69.9] — 2026-08-05
 
 > **Carpeta `screenshots/` y Vista Previa del Asistente en `README.md`.**

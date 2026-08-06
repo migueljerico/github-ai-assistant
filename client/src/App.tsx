@@ -357,9 +357,12 @@ const flowDraftPrBulk = useCallback(async (owner: string, repo: string, targets:
     // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto.
     // v3.56.0: overrideText permite reenviar una petición concreta (p. ej. tras un
     // cambio de modo sugerido por la IA) sin depender del closure de inputValue.
-    const userText = (overrideText ?? inputValue).trim();
+    // Defensa: si overrideText no es string (p. ej. MouseEvent del onClick del botón),
+    // se ignora y se usa inputValue. Evita el bug del botón ➤ silente.
+    const textOverride = typeof overrideText === 'string' ? overrideText : undefined;
+    const userText = (textOverride ?? inputValue).trim();
     if (!userText || !token || !user || !provider || !apiKey || !model) return;
-    if (!overrideText) setInputValue('');
+    if (!textOverride) setInputValue('');
 
     const controller = new AbortController();
     abortRef.current = controller;

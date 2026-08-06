@@ -64,4 +64,14 @@ describe('ChatInput — botón Enviar/Detener (#40)', () => {
     const isDefaultPrevented = !fireEvent.mouseDown(btn);
     expect(isDefaultPrevented).toBe(true);
   });
+
+  it('regresión: al hacer clic, onSend se llama sin argumentos (no MouseEvent)', () => {
+    // Bug v3.69.10: onClick={onSend} pasaba el MouseEvent como overrideText a handleSend,
+    // lo que hacía que (MouseEvent ?? inputValue).trim() fallara silenciosamente.
+    // Fix: onClick={() => onSend()} — se llama siempre sin argumentos desde el botón.
+    const { props, btn } = setup({ isLoading: false, value: 'test de regresión' });
+    fireEvent.click(btn);
+    expect(props.onSend).toHaveBeenCalledTimes(1);
+    expect(props.onSend).toHaveBeenCalledWith(); // sin argumentos
+  });
 });
