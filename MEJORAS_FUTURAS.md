@@ -4,7 +4,7 @@ Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de
 
 **Actualizado a:** v4.0.0 — Agosto 2026
 
-> 📜 **Historial de Mejoras Implementadas:** Para consultar las 57+ características y correcciones resueltas desde la v1.0.0 a la v4.0.0, consulta el [Historial de Mejoras (`HISTORIAL_MEJORAS.md`)](file:///d:/ZCodeProject/github-ai-assistant/HISTORIAL_MEJORAS.md).
+> 📜 **Historial de Mejoras Implementadas:** Para consultar las 57+ características y correcciones resueltas desde la v1.0.0 a la v4.0.0, consulta el [Historial de Mejoras (`HISTORIAL_MEJORAS.md`)](HISTORIAL_MEJORAS.md).
 
 ---
 
@@ -26,12 +26,55 @@ Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de
 **Progreso realizado (v4.0.0):** ✅ Infraestructura completa
 - ✅ Vitest + Codecov + CI con GitHub Actions (cliente + servidor)
 - ✅ Badge de Codecov en README
-- ✅ **1.004 tests en el cliente (68 suites) + 58 en el servidor (8 suites)** = **1.062 unitarios** + **13 tests E2E** con Playwright. Cobertura amplia de contextos, services, utils, hooks y componentes.
+- ✅ **1.014 tests en el cliente (68 suites) + 58 en el servidor (8 suites)** = **1.072 unitarios** + **13 tests E2E** con Playwright. Cobertura amplia de contextos, services, utils, hooks y componentes.
 
 **Pendiente:**
 - Aumentar la cobertura global al 70%+ objetivo.
 - Cobertura de edge cases en nuevos servicios y proveedores.
 - Configurar umbral mínimo de cobertura en CI (fail si < 70%).
+
+---
+
+### 🟡 Media Prioridad
+
+#### #76 — Menú progresivo de herramientas avanzadas del chat (`ChatToolsMenu`)
+**Esfuerzo:** ~4-6h · **Estado:** ⏳ Pendiente
+
+> 🤖 **Dogfooding:** Propuesta generada por **QwenCloud · Qwen 3.8 Max** al usar la propia app (sesión de chat, 2026-08-06) y analizar el contexto real del repositorio. La IA detectó de forma autónoma el problema de sobrecarga visual de la barra de herramientas del chat y propuso la solución de revelado progresivo.
+
+**Contexto:** La barra de herramientas del chat expone actualmente 9 botones especializados de forma simultánea:
+`DocumentRepoButton`, `ThreadSummaryButton`, `ChangelogButton`, `CodeHealthButton`, `SecurityAuditButton`, `SyncRepoStatusButton`, `ConversationIOButton`, `RepoContextButton`, `FileAttachButton`.
+
+Para usuarios sin experiencia técnica — el público objetivo principal de la app — esta densidad puede resultar intimidante y reducir la curva de entrada.
+
+**Solución propuesta:** Crear un componente `ChatToolsMenu` que agrupe los botones avanzados bajo un menú desplegable "⚙️ Más herramientas", manteniendo visible solo los esenciales.
+
+**Barra principal (siempre visible):**
+1. 📄 Documentar repo
+2. 📎 Adjuntar archivo
+3. ⚙️ Más herramientas *(menú desplegable)*
+
+**Dentro de "Más herramientas":**
+- Generar changelog
+- Salud del código
+- Auditoría de seguridad
+- Resumir hilo
+- Exportar / importar conversación
+- Estado del repo
+
+**Criterios de aceptación:**
+- El usuario nuevo ve ≤ 3 botones al abrir el chat.
+- Las herramientas avanzadas siguen accesibles desde el menú.
+- No se elimina ninguna funcionalidad existente.
+- Textos nuevos traducidos en los 13 idiomas (i18n).
+- Tests actualizados para el nuevo menú.
+- Accesibilidad por teclado preservada (WCAG 2.4.7).
+
+**Archivos afectados:**
+- `client/src/components/chat/ChatToolsMenu.tsx` *(nuevo)*
+- `client/src/components/chat/ChatInput.tsx` *(modificar)*
+- `client/src/i18n/es.ts`, `en.ts` y los 11 idiomas globales
+- `client/src/components/chat/__tests__/ChatToolsMenu.test.tsx` *(nuevo)*
 
 ---
 
@@ -65,9 +108,9 @@ Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de
 
 | Categoría | Cantidad | Referencia |
 |---|---|---|
-| ✅ **Mejoras Implementadas** | 57 ítems | [HISTORIAL_MEJORAS.md](file:///d:/ZCodeProject/github-ai-assistant/HISTORIAL_MEJORAS.md) |
-| ⏳ **Pendientes Activos** | 3 ítems (#26, #66, #74) | Secciones superiores |
-| 🗑️ **Descartados / Inviables** | 3 ítems (#33, #35, #36) | [HISTORIAL_MEJORAS.md](file:///d:/ZCodeProject/github-ai-assistant/HISTORIAL_MEJORAS.md) |
+| ✅ **Mejoras Implementadas** | 57 ítems | [HISTORIAL_MEJORAS.md](HISTORIAL_MEJORAS.md) |
+| ⏳ **Pendientes Activos** | 4 ítems (#26, #76, #66, #74) | Secciones superiores |
+| 🗑️ **Descartados / Inviables** | 3 ítems (#33, #35, #36) | [HISTORIAL_MEJORAS.md](HISTORIAL_MEJORAS.md) |
 
 ---
 

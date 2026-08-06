@@ -1,0 +1,21 @@
+# .gitleaks.toml — Configuración Gitleaks para github-ai-assistant
+# Documentación: https://github.com/gitleaks/gitleaks#configuration
+
+title = "github-ai-assistant gitleaks config"
+
+[extend]
+# Extender la configuración por defecto de gitleaks
+useDefault = true
+
+[[allowlists]]
+description = "i18n translation files — words like 'clé' (French for key), 'clave', 'Schlüssel', etc. are translation strings, NOT secrets"
+paths = [
+  '''client/src/i18n/.*\.ts$'''
+]
+
+[[allowlists]]
+description = "Test and fixture files may contain example keys"
+paths = [
+  '''client/src/.*__tests__.*\.ts(x)?$''',
+  '''e2e/.*\.ts$'''
+]

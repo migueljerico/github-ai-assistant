@@ -96,7 +96,7 @@ export const fr = {
   'aipanel.accountIdPlaceholder': 'Cloudflare Account ID',
   'aipanel.loadingCatalog': '⏳ Chargement du catalogue à jour...',
   'aipanel.catalogLoaded': '✅ Catalogue chargé en temps réel',
-  'aipanel.toggleKeyVisibility': 'Afficher/masquer la clé',
+  'aipanel.toggleKeyVisibility': 'Afficher/masquer la clé', // gitleaks:allow
   'aipanel.verifyingKey': 'Vérification de la clé...',
   'aipanel.connected': 'Connecté ! Entrée dans l\'application...',
   'aipanel.connectWith': 'Se connecter avec {provider}',

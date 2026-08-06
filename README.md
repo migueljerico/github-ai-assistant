@@ -78,7 +78,7 @@ Todo bajo el principio:
 | 🧠 Modelos disponibles | Gemini, Llama, Nemotron, GLM, Grok, DeepSeek, Qwen, MiniMax y más vía OpenRouter/NIM/Zenmux/OpenCode/Cloudflare/Ollama/Ai&/Kilo/BazaarLink/QwenCloud |
 | ⚡ Latencia observada | ~400ms Groq / ~1.2s Gemini, variable según modelo y contexto |
 | 🛡️ Seguridad | Zero-Storage: credenciales solo en memoria React |
-| 🧪 Tests | 1062 tests unitarios (1004 cliente + 58 servidor) + 13 E2E (Playwright) |
+| 🧪 Tests | 1072 tests unitarios (1014 cliente + 58 servidor) + 13 E2E (Playwright) |
 | 🌐 i18n | 13 idiomas globales (ES, EN, ZH, HI, FR, AR, BN, PT, ID, UR, RU, DE, JA) con soporte RTL |
 | 🌍 Deploy | Google Cloud Run |
 | 📦 Stack | React + TypeScript + Express + Vite |
@@ -233,7 +233,7 @@ Ver detalle en ./docs/SEGURIDAD.md.
 
 El proyecto usa **Vitest**, **React Testing Library**, **Playwright**, **GitHub Actions** y **Codecov**.
 
-- **976 tests unitarios (926 cliente + 50 servidor)** + **13 tests E2E** con Playwright (5 specs)
+- **1072 tests unitarios (1014 cliente + 58 servidor)** + **13 tests E2E** con Playwright (5 specs)
 - Tests unitarios, integración y componentes
 - Tests del servidor
 - Tests E2E del flujo crítico en navegador real (auth → chat → acción confirmada), del toggle de tema, de i18n, de persistencia y de accesibilidad (foco visible `:focus-visible` + `prefers-reduced-motion`, WCAG 2.4.7/2.3.3)
@@ -309,6 +309,7 @@ Este proyecto fue construido con un flujo humano ↔ IA basado en validación cr
 - **Microsoft 365 Copilot — GPT-5 Razonamiento:** revisión editorial del README, propuesta de modularización documental y reestructuración de la documentación en archivos separados.
 - **ling-3.0-flash:free** (Zhipu, vía Kilo): dogfooding 2026-07-28 — revisó el roadmap (`MEJORAS_FUTURAS.md`) y aportó **#75 (tests E2E)** como la única mejora concreta, medible y alineada con la cultura de testing del proyecto. Descartó sugerencias genéricas ya cubiertas (accesibilidad, priorización) y las inviables (monitoring operativo, auditoría de deps). Refinó la propuesta para que sea verificable.
 - **ling-3.0-flash:free** (Zhipu, vía Kilo): sesión v3.67.0 (2026-08-02) — diagnóstico y fix de un bug real reportado por el usuario: el flujo "Documentar → Documento específico del repo" ignoraba la instrucción del chat y solo aplicaba cambios triviales al README existente. Se refactorizó el system prompt de `generateSpecificDoc` (precedencia de instrucción de usuario sobre contenido previo) y se cableó el `conversationHistory` desde `App.tsx` para que el modelo aplique las peticiones de reescritura hechas en el chat.
+- **QwenCloud · Qwen 3.8 Max** (Alibaba Cloud): dogfooding 2026-08-06 — primera sesión real de la app con el repo cargado como contexto. Analizó 218 archivos, ejecutó acciones de lectura y propuso de forma autónoma la mejora **#76 `ChatToolsMenu`** (revelado progresivo de herramientas avanzadas del chat), detectando que los 9 botones de la barra son excesivos para usuarios sin experiencia técnica. Propuesta evaluada por el autor e incorporada al roadmap.
 
 Además, el proyecto se desarrolló aplicando **dogfooding**: la propia app se usó para cargar y analizar el repositorio `github-ai-assistant`, revisar su arquitectura, detectar límites reales de contexto, contrastar propuestas entre modelos y generar nuevas mejoras del roadmap.
 

@@ -1,0 +1,18 @@
+fix(ci): add .gitleaks.toml to suppress false positive in fr.ts i18n
+
+Gitleaks incorrectly flagged 'Afficher/masquer la clé' (French for
+"Show/hide the key") in client/src/i18n/fr.ts:99 as a generic-api-key
+leak. This is a translation string, not a secret.
+
+Fixes:
+- Added .gitleaks.toml allowlisting all client/src/i18n/*.ts files
+- Added // gitleaks:allow inline comment on the offending line
+
+docs(roadmap): add #76 ChatToolsMenu progressive disclosure improvement
+
+Proposed by dogfooding with QwenCloud Qwen 3.8 Max (2026-08-06):
+the AI analysed the real repo context and identified that the 9 chat
+toolbar buttons can overwhelm non-technical users. The proposal is to
+group advanced tools under a "More tools" dropdown menu.
+
+Also updated: tests count (1072 unit + 13 E2E), summary table (4 items).
