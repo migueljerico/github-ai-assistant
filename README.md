@@ -19,7 +19,7 @@
 ![QwenCloud](https://img.shields.io/badge/QwenCloud-0080FF?style=for-the-badge)
 ![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
 ![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
-![Versión](https://img.shields.io/badge/Versión-v3.71.0-blue?style=for-the-badge)
+![Versión](https://img.shields.io/badge/Versión-v4.0.0-blue?style=for-the-badge)
 [![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)](./LICENSE)
 [![CI & Coverage](https://github.com/migueljerico/github-ai-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/migueljerico/github-ai-assistant/actions/workflows/ci.yml)
 [![E2E Tests](https://img.shields.io/github/actions/workflow/status/migueljerico/github-ai-assistant/e2e.yml?style=for-the-badge&label=E2E%20Tests&logo=playwright&logoColor=white)](https://github.com/migueljerico/github-ai-assistant/actions/workflows/e2e.yml)
@@ -78,7 +78,8 @@ Todo bajo el principio:
 | 🧠 Modelos disponibles | Gemini, Llama, Nemotron, GLM, Grok, DeepSeek, Qwen, MiniMax y más vía OpenRouter/NIM/Zenmux/OpenCode/Cloudflare/Ollama/Ai&/Kilo/BazaarLink/QwenCloud |
 | ⚡ Latencia observada | ~400ms Groq / ~1.2s Gemini, variable según modelo y contexto |
 | 🛡️ Seguridad | Zero-Storage: credenciales solo en memoria React |
-| 🧪 Tests | 1026 tests unitarios (968 cliente + 58 servidor) + 13 E2E (Playwright) |
+| 🧪 Tests | 1062 tests unitarios (1004 cliente + 58 servidor) + 13 E2E (Playwright) |
+| 🌐 i18n | 13 idiomas globales (ES, EN, ZH, HI, FR, AR, BN, PT, ID, UR, RU, DE, JA) con soporte RTL |
 | 🌍 Deploy | Google Cloud Run |
 | 📦 Stack | React + TypeScript + Express + Vite |
 
@@ -89,6 +90,7 @@ Todo bajo el principio:
 | Área | Qué permite hacer |
 |---|---|
 | 💬 Lenguaje natural | Pedir acciones sobre GitHub sin conocer la API |
+| 🌍 Internacionalización | 13 idiomas globales con banderas vectoriales SVG y dirección de texto RTL |
 | ✅ Confirmación segura | Toda escritura requiere revisión y aprobación |
 | 🗂️ Multi-repo | Aplicar acciones a varios repositorios |
 | 🤖 Documentación automática | Generar README + MANUAL_TECNICO |
