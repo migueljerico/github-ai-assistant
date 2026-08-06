@@ -1,8 +1,8 @@
 /**
- * Tests E2E del selector de idioma (ES↔EN).
+ * Tests E2E del selector de idioma.
  *
- * El LanguageSelector (<select aria-label="Select language">) está en el Header,
- * tras los gates. Idioma por defecto: 'es'. La preferencia se persiste en
+ * El LanguageSelector (dropdown de React accesible con aria-label="Select language")
+ * vive en el Header, tras los gates. Idioma por defecto: 'es'. La preferencia se persiste en
  * sessionStorage('app-lang') (no localStorage; es preferencia de sesión).
  *
  * Verifica que cambiar el idioma actualiza los textos visibles del Header en
@@ -12,7 +12,7 @@
 import { expect, test } from '@playwright/test';
 import { connectProvider, goAuthed, mockGeminiChat } from './fixtures';
 
-test.describe('Selector de idioma ES↔EN', () => {
+test.describe('Selector de idioma multilingüe (13 idiomas)', () => {
   test.beforeEach(async ({ page }) => {
     await mockGeminiChat(page, 'ok');
     await goAuthed(page);
@@ -20,14 +20,17 @@ test.describe('Selector de idioma ES↔EN', () => {
   });
 
   test('cambiar a EN actualiza los textos visibles del Header', async ({ page }) => {
-    // Idioma por defecto: español. El título y subtítulo del header son estables
-    // y no dependen del estado (siempre visibles una vez cruzados los gates).
+    // Idioma por defecto: español. El título y subtítulo del header son estables.
     const headerTitle = page.locator('.header-title');
     await expect(headerTitle).toContainText('Asistente de IA de GitHub');
 
-    // El select no tiene id pero sí aria-label determinista (LanguageSelector.tsx).
-    const select = page.getByRole('combobox', { name: 'Select language' });
-    await select.selectOption('en');
+    // Botón desplegable de idioma
+    const langBtn = page.getByRole('button', { name: 'Select language' });
+    await langBtn.click();
+
+    // Seleccionar English (EN)
+    const enOption = page.getByRole('option', { name: /English/i });
+    await enOption.click();
 
     // t() es reactiva al estado `lang`; el título cambia en caliente.
     await expect(headerTitle).toContainText('GitHub AI Assistant');
@@ -36,12 +39,16 @@ test.describe('Selector de idioma ES↔EN', () => {
 
   test('volver a ES restaura los textos', async ({ page }) => {
     const headerTitle = page.locator('.header-title');
-    const select = page.getByRole('combobox', { name: 'Select language' });
+    const langBtn = page.getByRole('button', { name: 'Select language' });
 
-    await select.selectOption('en');
+    // Cambiar a EN
+    await langBtn.click();
+    await page.getByRole('option', { name: /English/i }).click();
     await expect(headerTitle).toContainText('GitHub AI Assistant');
 
-    await select.selectOption('es');
+    // Cambiar de nuevo a ES
+    await langBtn.click();
+    await page.getByRole('option', { name: /Español/i }).click();
     await expect(headerTitle).toContainText('Asistente de IA de GitHub');
   });
 });
