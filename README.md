@@ -48,7 +48,7 @@ Conecta tu cuenta de GitHub mediante OAuth, elige tu proveedor de IA preferido y
 
 ![Vista Previa del Asistente de IA Conexión](./screenshots/Captura_Asistente_IA_Inicio.png)
 ![Vista Previa del Asistente de IA Conexión GitHub](./screenshots/Captura_Asistente_IA_Conexión_GitHub.png)
-![Vista Previa del Asistente de IA Principal](./screenshots/Captura_Asistente_IA_Dentro.png)
+![Vista Previa del Asistente de IA Principal](./screenshots/Captura_Asistente_IA_funcionando.png)
 ---
 
 ## 🎯 Qué hace
