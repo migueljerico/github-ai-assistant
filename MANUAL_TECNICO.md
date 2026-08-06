@@ -310,6 +310,18 @@ Descarga en batches de 5 archivos en paralelo (respeto a los rate limits de GitH
 
 ---
 
+## 🌐 Sistema de Internacionalización (i18n) — v4.0.0
+
+La aplicación cuenta con un motor de internacionalización ligero y de cero dependencias en `client/src/context/LanguageContext.tsx`.
+
+### Arquitectura y Componentes
+- **13 Idiomas Soportados:** Diccionarios estáticos tipados en `client/src/i18n/{es,en,zh,hi,fr,ar,bn,pt,id,ur,ru,de,ja}.ts`.
+- **Selector Desplegable Accesible (`LanguageSelector.tsx`):** Un control desplegable de React con `role="listbox"`, soporte para navegación con teclado (`Esc`, `Enter`), banderas vectoriales nativas SVG ([`FlagIcon.tsx`](file:///d:/ZCodeProject/github-ai-assistant/client/src/components/layout/FlagIcon.tsx)) que resuelve el bug de renderizado de fuentes Emoji en Windows/Chrome.
+- **Soporte RTL (Right-to-Left):** `LanguageContext.tsx` actualiza automáticamente `document.documentElement.dir = 'rtl'` para idiomas como el Árabe (`ar`) y Urdu (`ur`), permitiendo la orientación de interfaz requerida.
+- **Respuestas de IA Multilingües:** La función `t()` inyecta el código de idioma activo (`lang`) en los prompts del sistema para que las respuestas del LLM se emitan en el idioma seleccionado por el usuario.
+
+---
+
 ## 🔐 Autenticación — AuthContext.tsx y server/index.js
 
 ### Arquitectura Zero-Storage Completa

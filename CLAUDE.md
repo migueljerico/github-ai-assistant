@@ -504,5 +504,6 @@ Para más detalle, consulta:
 - `README.md` — visión de producto, arquitectura ampliada, modelo de seguridad.
 - `MANUAL_TECNICO.md` — documentación técnica detallada.
 - `CONTRIBUTING.md` — estándares de código, flujo de PRs, testing.
-- `MEJORAS_FUTURAS.md` — roadmap e issues priorizados.
+- `MEJORAS_FUTURAS.md` — roadmap e issues pendientes priorizados.
+- `HISTORIAL_MEJORAS.md` — registro histórico de todas las mejoras e issues resueltos (v1.0.0–v4.0.0).
 - `CHANGELOG.md` — historial de versiones.

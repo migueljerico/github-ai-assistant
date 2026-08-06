@@ -1,0 +1,1 @@
+docs(v4.0.0): reorganizar MEJORAS_FUTURAS.md e incorporar HISTORIAL_MEJORAS.md
