@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.71.0] — 2026-08-06
+
+> **Fix de límite de tamaño de archivo en escaneo de repo (`MAX_FILE_SIZE`) y salida de QwenCloud.**
+> - **Causa raíz 1 (`MAX_FILE_SIZE`):** En `client/src/services/github.ts`, `MAX_FILE_SIZE` estaba limitado a `50 KB`. Archivos de documentación extensa como `MEJORAS_FUTURAS.md` (62,5 KB) eran omitidos por `fetchRepoTreeRecursive`, haciendo que el modelo reportara no encontrar el archivo en el contexto.
+> - **Fix 1:** Aumentado `MAX_FILE_SIZE` a `150 KB` en `github.ts` y actualizado el test en `github.test.ts`.
+> - **Causa raíz 2 (`QwenCloud maxOutputTokens`):** Respuestas extensas de chat se detenían prematuramente (`⏹️ detenido`) al no especificar `maxOutputTokens` en la definición del proveedor QwenCloud (usando 4096 por defecto).
+> - **Fix 2:** Añadido `maxOutputTokens: 8192` en `client/src/services/providers.ts` para QwenCloud.
+
+### Fixed
+- **Tamaño de archivo en contexto de repo:** `client/src/services/github.ts`, `client/src/services/__tests__/github.test.ts`.
+- **Límite de tokens de salida QwenCloud:** `client/src/services/providers.ts`.
+
+Cambio de código por [Antigravity (Gemini 3.6 Flash)].
+
 ## [3.70.0] — 2026-08-06
 
 > **Fix crítico: botón de envío `➤` no funcionaba al hacer clic (solo Enter).**

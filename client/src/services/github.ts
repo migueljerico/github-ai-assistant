@@ -410,7 +410,7 @@ const BINARY_EXTENSIONS = new Set([
 const MAX_FILES = 120;
 
 /** Maximum file size to include (in bytes). Files larger than this are skipped. */
-const MAX_FILE_SIZE = 50 * 1024; // 50 KB
+const MAX_FILE_SIZE = 150 * 1024; // 150 KB (ampliado en v3.71.0 de 50 KB para incluir MEJORAS_FUTURAS.md ~62KB y CHANGELOG.md ~131KB)
 
 /**
  * Returns true if the file's extension is in the binary exclusion list.

@@ -620,6 +620,7 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     signupUrl: 'https://www.qwencloud.com',
     signupLabel: 'provider.qwencloud.signupLabel',
     note: 'provider.qwencloud.note',
+    maxOutputTokens: 8192,
   },
 };
 

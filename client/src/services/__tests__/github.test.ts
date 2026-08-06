@@ -744,7 +744,7 @@ describe('github.ts', () => {
           tree: [
             { path: 'README.md', type: 'blob', size: 100, sha: '1' },
             { path: 'imagen.png', type: 'blob', size: 100, sha: '2' },           // binario
-            { path: 'big.log', type: 'blob', size: 60 * 1024, sha: '3' },         // > 50 KB
+            { path: 'big.log', type: 'blob', size: 200 * 1024, sha: '3' },        // > 150 KB
             { path: 'src', type: 'tree', size: 0, sha: '4' },                     // dir
           ],
         }),
