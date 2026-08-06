@@ -30,30 +30,17 @@ describe('i18n dictionaries', () => {
   };
 
   Object.entries(dictionaries).forEach(([code, dict]) => {
-    it(`el diccionario ${code} debería tener entradas válidas sin valores undefined`, () => {
+    it(`el diccionario ${code} debería contener el 100% de las claves del máster es (${Object.keys(es).length} claves)`, () => {
       expect(dict).toBeDefined();
-      expect(Object.keys(dict).length).toBeGreaterThan(0);
+      const masterKeys = Object.keys(es) as Array<keyof typeof es>;
+      expect(Object.keys(dict).length).toBeGreaterThanOrEqual(masterKeys.length);
 
-      Object.entries(dict).forEach(([key, val]) => {
-        expect(key).toBeTruthy();
-        expect(typeof val).toBe('string');
+      masterKeys.forEach((key) => {
+        expect(dict).toHaveProperty(key);
+        expect(typeof (dict as Record<string, string>)[key]).toBe('string');
+        expect((dict as Record<string, string>)[key].trim()).not.toBe('');
       });
     });
   });
-
-  it('el diccionario en debería contener las claves principales del máster es', () => {
-    const essentialKeys = [
-      'header.title',
-      'header.subtitle',
-      'chat.mode.auto',
-      'chat.mode.chat',
-      'chat.mode.action',
-      'auth.title',
-    ];
-
-    essentialKeys.forEach((key) => {
-      expect(en).toHaveProperty(key);
-      expect(typeof (es as Record<string, string>)[key]).toBe('string');
-    });
-  });
 });
+
