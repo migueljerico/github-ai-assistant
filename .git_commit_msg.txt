@@ -1,12 +1,13 @@
-fix(docs): README footer now uses Markdown link and full attribution text
+fix(docs): README footer link and attribution text in generateRepoDocs
 
-In gemini.ts generateRepoDocs(), the docFooter variable was generating
-the author as plain text '@login' and omitting the app attribution.
+gemini.ts docFooter was generating @login as plain text and missing
+the 'desde la App Asistente de IA' attribution. Year was kept.
 
-Fixed to match buildSignature() output in assistantActions.ts:
-- @login → [@login](https://github.com/login) (clickable Markdown link)
+Changes in gemini.ts lines 798-800:
+- @owner plain text -> <a href="https://github.com/owner">@owner</a>
 - Added 'desde la App Asistente de IA' (ES) / 'from the AI Assistant App' (EN)
-- Removed the '· year' suffix (year was only in the footer, not in About)
+- Year (· docYear) preserved at end
 
-Now the README footer generated on 'Documentar repo' is consistent with
-the repo About description set by updateRepoAbout().
+Updated gemini.test.ts line 903 to match new footer format.
+
+Tests: 93/93 gemini tests green. Build clean.

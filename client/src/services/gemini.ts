@@ -796,8 +796,8 @@ export async function generateRepoDocs(
   const modelLabelVal = config ? modelLabel(config.provider, config.model) : 'IA';
   // El footer cambia según el idioma de la interfaz (ES/EN).
   const docFooter = lang === 'en'
-    ? `<p align="center">Created by <a href="https://github.com/${docOwner}">@${docOwner}</a> and documented by ${providerLabel} (${modelLabelVal}) from the AI Assistant App</p>`
-    : `<p align="center">Creado por <a href="https://github.com/${docOwner}">@${docOwner}</a> y documentado por ${providerLabel} (${modelLabelVal}) desde la App Asistente de IA</p>`;
+    ? `<p align="center">Created by <a href="https://github.com/${docOwner}">@${docOwner}</a> and documented by ${providerLabel} (${modelLabelVal}) from the AI Assistant App · ${docYear}</p>`
+    : `<p align="center">Creado por <a href="https://github.com/${docOwner}">@${docOwner}</a> y documentado por ${providerLabel} (${modelLabelVal}) desde la App Asistente de IA · ${docYear}</p>`;
 
   // v3.66.0 (Frente A+B): converger generateRepoDocs hacia el patrón de
   // generateSpecificDoc. ANTES pedía un único JSON gigante {readme, manualTecnico,
