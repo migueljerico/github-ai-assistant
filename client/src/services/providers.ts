@@ -373,6 +373,7 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     keyPrefix: 'AIza',
     signupUrl: 'https://aistudio.google.com/apikey',
     signupLabel: 'provider.gemini.signupLabel',
+    maxOutputTokens: 8192,
   },
   groq: {
     id: 'groq',
@@ -445,8 +446,8 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     emoji: '🧘',
     cardDesc: 'provider.zenmux.cardDesc',
     transport: 'openai-compatible',
-    chatEndpoint: 'https://zenmux.ai/api/v1/chat/completions',
-    modelsEndpoint: 'https://zenmux.ai/api/v1/models',
+    chatEndpoint: '/api/zenmux',
+    modelsEndpoint: '/api/zenmux/models',
     modelsNeedKey: true,
     staticModels: ZENMUX_FALLBACK,
     defaultModel: ZENMUX_FALLBACK[0].value,
@@ -896,19 +897,17 @@ export async function fetchModels(
     models = aiandData
       .filter(m => !AIAND_EXCLUDED.some(p => m.id.toLowerCase().includes(p)))
       .map(m => {
-        const pricing = m.pricing;
+        const rawM = m as Record<string, unknown>;
+        // La API actual expone input_per_1m y output_per_1m en la raíz del objeto, no en "pricing"
+        const inputPer1m = rawM.input_per_1m ?? m.pricing?.input_per_1m;
+        const outputPer1m = rawM.output_per_1m ?? m.pricing?.output_per_1m;
+        
         // eslint-disable-next-line no-useless-assignment -- falso positivo: el linter no sigue el closure del .map(); `free` se lee en el return de abajo.
         let free = false;
-        if (!pricing) {
+        if (inputPer1m === undefined && outputPer1m === undefined) {
           free = true; // sin pricing → asumimos free (catálogo futuro-proof)
         } else {
-          const inputPer1m = pricing.input_per_1m;
-          const outputPer1m = pricing.output_per_1m;
-          if (inputPer1m === undefined && outputPer1m === undefined) {
-            free = true;
-          } else {
-            free = Number(inputPer1m ?? 0) === 0 && Number(outputPer1m ?? 0) === 0;
-          }
+          free = Number(inputPer1m ?? 0) === 0 && Number(outputPer1m ?? 0) === 0;
         }
         return {
           value: m.id,
@@ -917,11 +916,7 @@ export async function fetchModels(
         };
       })
       // free primero, luego alfabético
-      .sort((a, b) => (Number(b.free) - Number(a.free)) || a.label.localeCompare(b.label))
-      // free-only: Ai& solo muestra modelos gratuitos (pricing a 0). Si el catálogo
-      // dinámico no trae ningún free, fetchModels lanza 'empty catalog' y el panel
-      // cae en el fallback estático (AIAND_FALLBACK = solo qwen/qwen3.6-27b).
-      .filter(m => m.free);
+      .sort((a, b) => (Number(b.free) - Number(a.free)) || a.label.localeCompare(b.label));
   } else if (def.id === 'kilo') {
     // Kilo (api.kilo.ai/api/gateway): pasarela OpenAI-compatible con catálogo público.
     // Los modelos gratuitos se identifican por el sufijo ":free" (igual que OpenRouter/

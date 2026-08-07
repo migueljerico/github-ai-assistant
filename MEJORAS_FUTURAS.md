@@ -2,9 +2,9 @@
 
 Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de GitHub**.
 
-**Actualizado a:** v4.0.0 — Agosto 2026
+**Actualizado a:** v4.0.1 — Agosto 2026
 
-> 📜 **Historial de Mejoras Implementadas:** Para consultar las 57+ características y correcciones resueltas desde la v1.0.0 a la v4.0.0, consulta el [Historial de Mejoras (`HISTORIAL_MEJORAS.md`)](HISTORIAL_MEJORAS.md).
+> 📜 **Historial de Mejoras Implementadas:** Para consultar las 57+ características y correcciones resueltas desde la v1.0.0 a la v4.0.1, consulta el [Historial de Mejoras (`HISTORIAL_MEJORAS.md`)](HISTORIAL_MEJORAS.md).
 
 ---
 
@@ -23,7 +23,7 @@ Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de
 #### #26 — Mantener y expandir cobertura de tests con Codecov
 **Esfuerzo:** Continuo (2-4h por sprint) · **Estado:** 🔄 En progreso
 
-**Progreso realizado (v4.0.0):** ✅ Infraestructura completa
+**Progreso realizado (v4.0.1):** ✅ Infraestructura completa
 - ✅ Vitest + Codecov + CI con GitHub Actions (cliente + servidor)
 - ✅ Badge de Codecov en README
 - ✅ **1.014 tests en el cliente (68 suites) + 58 en el servidor (8 suites)** = **1.072 unitarios** + **13 tests E2E** con Playwright. Cobertura amplia de contextos, services, utils, hooks y componentes.

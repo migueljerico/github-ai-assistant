@@ -1,6 +1,6 @@
 # 📖 Manual Técnico — GitHub AI Assistant
 
-**Versión:** v4.0.0 — Agosto 2026
+**Versión:** v4.0.1 — Agosto 2026
 
 ---
 
@@ -310,7 +310,7 @@ Descarga en batches de 5 archivos en paralelo (respeto a los rate limits de GitH
 
 ---
 
-## 🌐 Sistema de Internacionalización (i18n) — v4.0.0
+## 🌐 Sistema de Internacionalización (i18n) — v4.0.1
 
 La aplicación cuenta con un motor de internacionalización ligero y de cero dependencias en `client/src/context/LanguageContext.tsx`.
 

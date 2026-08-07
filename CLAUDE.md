@@ -31,7 +31,7 @@ reemplazan. Saltarse este paso es la causa nº1 de trabajar en bucle.
 
 ## 1. Visión general
 
-**GitHub AI Assistant** (v4.0.0) es una app web que permite operar la **GitHub
+**GitHub AI Assistant** (v4.0.1) es una app web que permite operar la **GitHub
 REST API en lenguaje natural** a través de un proveedor de IA (Google Gemini,
 Groq Cloud, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI,
 Ollama Cloud, Ai&, Kilo, BazaarLink o QwenCloud). El usuario escribe una instrucción,
@@ -505,5 +505,5 @@ Para más detalle, consulta:
 - `MANUAL_TECNICO.md` — documentación técnica detallada.
 - `CONTRIBUTING.md` — estándares de código, flujo de PRs, testing.
 - `MEJORAS_FUTURAS.md` — roadmap e issues pendientes priorizados.
-- `HISTORIAL_MEJORAS.md` — registro histórico de todas las mejoras e issues resueltos (v1.0.0–v4.0.0).
+- `HISTORIAL_MEJORAS.md` — registro histórico de todas las mejoras e issues resueltos (v1.0.0–v4.0.1).
 - `CHANGELOG.md` — historial de versiones.

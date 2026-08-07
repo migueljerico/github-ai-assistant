@@ -124,6 +124,16 @@ const openzenLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const zenmuxLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 100,
+  message: {
+    error: 'Demasiadas peticiones a Zenmux. Por favor espera un minuto.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // ─── Rate Limiting para Cloudflare Workers AI Proxy (v3.33.1) ──────────────────
 // Cloudflare Workers AI tampoco envía cabeceras CORS → mismo patrón de proxy.
 const cloudflareLimiter = rateLimit({
@@ -546,6 +556,84 @@ app.post('/api/openzen', openzenLimiter, validateChatBody, async (req, res) => {
   }
 });
 
+// ─── Zenmux Proxy ─────────────────────────────────────────────────────────────
+app.post('/api/zenmux', zenmuxLimiter, validateChatBody, async (req, res) => {
+  const auth = req.headers.authorization || '';
+  if (!auth.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Falta la API key (header Authorization: Bearer ...)' });
+  }
+  try {
+    const upstream = await fetch('https://zenmux.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': auth,
+        'Content-Type': 'application/json',
+        ...(req.headers['accept'] ? { 'Accept': req.headers['accept'] } : {}),
+      },
+      body: JSON.stringify(req.body),
+      signal: upstreamSignal(),
+    });
+    log.info('upstream', { provider: 'zenmux', flow: 'chat', status: upstream.status, ct: upstream.headers.get('content-type') || '-', requestId: req.id });
+    res.status(upstream.status);
+    const ct = upstream.headers.get('content-type');
+    if (ct) res.setHeader('Content-Type', ct);
+    const safeHeaders = {};
+    for (const [key, value] of upstream.headers.entries()) {
+      if (typeof value === 'string' && /^[\x00-\x7F]*$/.test(value)) {
+        safeHeaders[key] = value;
+      }
+    }
+    for (const [key, value] of Object.entries(safeHeaders)) {
+      res.setHeader(key, value);
+    }
+    res.removeHeader('content-encoding');
+    res.removeHeader('transfer-encoding');
+    await pipeUpstream(upstream, res);
+  } catch (err) {
+    log.error('proxy_error', { provider: 'zenmux', flow: 'chat', requestId: req.id, error: err?.message || String(err) });
+    const status = isUpstreamTimeout(err) ? 504 : 502;
+    const error = isUpstreamTimeout(err) ? 'Zenmux tardó demasiado (timeout). Reintenta o sube el timeout en ⚙️.' : 'Error al contactar con Zenmux';
+    if (!res.headersSent) res.status(status).json({ error, detail: err?.message || String(err) });
+    else { try { res.end(); } catch { /* noop */ } }
+  }
+});
+
+app.get('/api/zenmux/models', zenmuxLimiter, async (req, res) => {
+  const auth = req.headers.authorization || '';
+  if (!auth.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Falta la API key (header Authorization: Bearer ...)' });
+  }
+  try {
+    const upstream = await fetch('https://zenmux.ai/api/v1/models', {
+      method: 'GET',
+      headers: {
+        'Authorization': auth,
+        'Accept': 'application/json',
+      },
+    });
+    log.info('upstream', { provider: 'zenmux', flow: 'models', status: upstream.status, ct: upstream.headers.get('content-type') || '-', requestId: req.id });
+    res.status(upstream.status);
+    const ct = upstream.headers.get('content-type');
+    if (ct) res.setHeader('Content-Type', ct);
+    const safeHeaders = {};
+    for (const [key, value] of upstream.headers.entries()) {
+      if (typeof value === 'string' && /^[\x00-\x7F]*$/.test(value)) {
+        safeHeaders[key] = value;
+      }
+    }
+    for (const [key, value] of Object.entries(safeHeaders)) {
+      res.setHeader(key, value);
+    }
+    res.removeHeader('content-encoding');
+    res.removeHeader('transfer-encoding');
+    await pipeUpstream(upstream, res);
+  } catch (err) {
+    log.error('proxy_error', { provider: 'zenmux', flow: 'models', requestId: req.id, error: err?.message || String(err) });
+    if (!res.headersSent) res.status(502).json({ error: 'Error al contactar con Zenmux (models)', detail: err?.message || String(err) });
+    else { try { res.end(); } catch { /* noop */ } }
+  }
+});
+
 // ─── Cloudflare Workers AI Proxy (v3.33.1) ─────────────────────────────────────
 // Cloudflare Workers AI (api.cloudflare.com) NO envía cabeceras CORS → el navegador
 // bloquea las llamadas directas con "Failed to fetch". Este proxy elude el bloqueo
@@ -813,6 +901,17 @@ app.post('/api/aiand', aiandLimiter, validateChatBody, async (req, res) => {
     res.status(upstream.status);
     const ct = upstream.headers.get('content-type');
     if (ct) res.setHeader('Content-Type', ct);
+    const safeHeaders = {};
+    for (const [key, value] of upstream.headers.entries()) {
+      if (typeof value === 'string' && /^[\x00-\x7F]*$/.test(value)) {
+        safeHeaders[key] = value;
+      }
+    }
+    for (const [key, value] of Object.entries(safeHeaders)) {
+      res.setHeader(key, value);
+    }
+    res.removeHeader('content-encoding');
+    res.removeHeader('transfer-encoding');
     await pipeUpstream(upstream, res);
   } catch (err) {
     log.error('proxy_error', { provider: 'aiand', flow: 'chat', requestId: req.id, error: err?.message || String(err) });

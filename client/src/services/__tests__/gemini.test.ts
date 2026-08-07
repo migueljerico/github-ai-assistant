@@ -906,6 +906,27 @@ describe('generateRepoDocs - no inventar autor/año (#28 4a)', () => {
     expect(sysMsg.content).not.toContain('[año]');
   });
 
+  it('inyecta el owner real y el año actual en el footer en INGLÉS, sin placeholders', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: '# README' } }] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await generateRepoDocs(
+      'migueljerico/powerbi-gestion-people',
+      [{ path: 'README.md', content: '# x' }],
+      { provider: 'groq', apiKey: 'k', model: 'llama' },
+      'en' // Idioma inglés
+    );
+
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    const sysMsg = body.messages.find((m: { role: string }) => m.role === 'system');
+    expect(sysMsg.content).toContain(`Created by <a href="https://github.com/migueljerico">@migueljerico</a> and documented by Groq Cloud (llama) from the AI Assistant App · ${new Date().getFullYear()}`);
+    expect(sysMsg.content).not.toContain('[autor]');
+    expect(sysMsg.content).not.toContain('[año]');
+  });
+
   it('trunca el contenido de los archivos por LÍNEAS, no por caracteres (#20)', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
