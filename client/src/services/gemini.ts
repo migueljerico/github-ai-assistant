@@ -75,6 +75,9 @@ export function withLangDirective(prompt: string, lang: Language): string {
  * Función pura (testeable).
  */
 export function truncateByLines(content: string, maxLines: number): string {
+  if (content.trimStart().startsWith('data:')) {
+    return '[ARCHIVO BINARIO O BASE64 ADJUNTO - NO SE MUESTRA CONTENIDO EN EL PROMPT]';
+  }
   const lines = content.split('\n');
   if (lines.length <= maxLines) return content;
   const shown = lines.slice(0, maxLines).join('\n');

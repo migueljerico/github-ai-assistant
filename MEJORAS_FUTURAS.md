@@ -37,44 +37,7 @@ Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de
 
 ### 🟡 Media Prioridad
 
-#### #76 — Menú progresivo de herramientas avanzadas del chat (`ChatToolsMenu`)
-**Esfuerzo:** ~4-6h · **Estado:** ⏳ Pendiente
-
-> 🤖 **Dogfooding:** Propuesta generada por **QwenCloud · Qwen 3.8 Max** al usar la propia app (sesión de chat, 2026-08-06) y analizar el contexto real del repositorio. La IA detectó de forma autónoma el problema de sobrecarga visual de la barra de herramientas del chat y propuso la solución de revelado progresivo.
-
-**Contexto:** La barra de herramientas del chat expone actualmente 9 botones especializados de forma simultánea:
-`DocumentRepoButton`, `ThreadSummaryButton`, `ChangelogButton`, `CodeHealthButton`, `SecurityAuditButton`, `SyncRepoStatusButton`, `ConversationIOButton`, `RepoContextButton`, `FileAttachButton`.
-
-Para usuarios sin experiencia técnica — el público objetivo principal de la app — esta densidad puede resultar intimidante y reducir la curva de entrada.
-
-**Solución propuesta:** Crear un componente `ChatToolsMenu` que agrupe los botones avanzados bajo un menú desplegable "⚙️ Más herramientas", manteniendo visible solo los esenciales.
-
-**Barra principal (siempre visible):**
-1. 📄 Documentar repo
-2. 📎 Adjuntar archivo
-3. ⚙️ Más herramientas *(menú desplegable)*
-
-**Dentro de "Más herramientas":**
-- Generar changelog
-- Salud del código
-- Auditoría de seguridad
-- Resumir hilo
-- Exportar / importar conversación
-- Estado del repo
-
-**Criterios de aceptación:**
-- El usuario nuevo ve ≤ 3 botones al abrir el chat.
-- Las herramientas avanzadas siguen accesibles desde el menú.
-- No se elimina ninguna funcionalidad existente.
-- Textos nuevos traducidos en los 13 idiomas (i18n).
-- Tests actualizados para el nuevo menú.
-- Accesibilidad por teclado preservada (WCAG 2.4.7).
-
-**Archivos afectados:**
-- `client/src/components/chat/ChatToolsMenu.tsx` *(nuevo)*
-- `client/src/components/chat/ChatInput.tsx` *(modificar)*
-- `client/src/i18n/es.ts`, `en.ts` y los 11 idiomas globales
-- `client/src/components/chat/__tests__/ChatToolsMenu.test.tsx` *(nuevo)*
+*(Sin tareas de prioridad media en este momento)*
 
 ---
 

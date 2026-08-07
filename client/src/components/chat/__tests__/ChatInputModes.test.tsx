@@ -108,13 +108,17 @@ describe('ChatInput — botón 🖼️ Documentar con capturas (v3.66.0 Frente D
   });
 
   it('renderiza el botón cuando hay al menos una imagen adjunta', () => {
-    setup({ fileContextNames: ['notas.txt', 'captura.png'] });
+    const { container } = setup({ fileContextNames: ['notas.txt', 'captura.png'] });
+    const menuBtn = container.querySelector('.chat-tools-menu-btn') as HTMLElement;
+    fireEvent.click(menuBtn);
     expect(screen.getByRole('button', { name: /Documentar con capturas/i })).toBeInTheDocument();
   });
 
   it('al pulsarlo abre el flujo de documentación (con el repo de contexto si lo hay)', () => {
-    const { props } = setup({ fileContextNames: ['login.png'], repoContextName: 'migueljerico/powerbi-dashboard-mercadona' });
+    const { props, container } = setup({ fileContextNames: ['login.png'], repoContextName: 'migueljerico/github-ai-assistant' });
+    const menuBtn = container.querySelector('.chat-tools-menu-btn') as HTMLElement;
+    fireEvent.click(menuBtn);
     fireEvent.click(screen.getByRole('button', { name: /Documentar con capturas/i }));
-    expect(props.onOpenDocumentFlow).toHaveBeenCalledWith('migueljerico/powerbi-dashboard-mercadona');
+    expect(props.onOpenDocumentFlow).toHaveBeenCalledWith('migueljerico/github-ai-assistant');
   });
 });
