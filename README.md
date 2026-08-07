@@ -1,30 +1,36 @@
 # 🤖 GitHub AI Assistant
 
-![React](https://img.shields.io/badge/React_19-61DAFB?style=for-the-badge&logo=react&logoColor=black)
-![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
-![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)
-![Express](https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white)
-![GitHub OAuth](https://img.shields.io/badge/GitHub_OAuth-181717?style=for-the-badge&logo=github&logoColor=white)
-![Groq](https://img.shields.io/badge/Groq_Cloud-F55036?style=for-the-badge&logo=groq&logoColor=white)
-![Gemini](https://img.shields.io/badge/Google_Gemini-4285F4?style=for-the-badge&logo=google&logoColor=white)
+<p align="center">
+  <img src="https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge" alt="Estado" />
+  <a href="https://github.com/migueljerico/github-ai-assistant/releases"><img src="https://img.shields.io/badge/Versión-v4.0.4-blue?style=for-the-badge" alt="Versión" /></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge" alt="License" /></a>
+  <a href="https://github.com/migueljerico/github-ai-assistant/actions/workflows/ci.yml"><img src="https://github.com/migueljerico/github-ai-assistant/actions/workflows/ci.yml/badge.svg?style=for-the-badge" alt="CI & Coverage" /></a>
+  <a href="https://github.com/migueljerico/github-ai-assistant/actions/workflows/e2e.yml"><img src="https://img.shields.io/github/actions/workflow/status/migueljerico/github-ai-assistant/e2e.yml?style=for-the-badge&label=E2E%20Tests&logo=playwright&logoColor=white" alt="E2E Tests" /></a>
+  <a href="https://codecov.io/gh/migueljerico/github-ai-assistant"><img src="https://codecov.io/gh/migueljerico/github-ai-assistant/graph/badge.svg?token=B1VDL0Y04G" alt="codecov" /></a>
+  <a href="./e2e"><img src="https://img.shields.io/badge/Tested_with-Playwright-2EAD33?style=for-the-badge&logo=playwright&logoColor=white" alt="Tested with Playwright" /></a>
+</p>
 
-![NVIDIA NIM](https://img.shields.io/badge/NVIDIA_NIM-76B900?style=for-the-badge&logo=nvidia&logoColor=white)
-![Zenmux](https://img.shields.io/badge/Zenmux-6C5CE7?style=for-the-badge&logo=brave&logoColor=white)
-![OpenCode Zen](https://img.shields.io/badge/OpenCode_Zen-9C27B0?style=for-the-badge&logo=opencode&logoColor=white)
-![Cloudflare Workers AI](https://img.shields.io/badge/Cloudflare_Workers_AI-F38020?style=for-the-badge&logo=cloudflare&logoColor=white)
-![Ollama Cloud](https://img.shields.io/badge/Ollama_Cloud-000000?style=for-the-badge&logo=ollama&logoColor=white)
+<p align="center">
+  <img src="https://img.shields.io/badge/React_19-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React" />
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite" />
+  <img src="https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express" />
+  <img src="https://img.shields.io/badge/GitHub_OAuth-181717?style=for-the-badge&logo=github&logoColor=white" alt="GitHub OAuth" />
+  <img src="https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white" alt="Cloud Run" />
+</p>
 
-![Kilo](https://img.shields.io/badge/Kilo-00C896?style=for-the-badge)
-![BazaarLink](https://img.shields.io/badge/BazaarLink-FF5722?style=for-the-badge)
-![QwenCloud](https://img.shields.io/badge/QwenCloud-0080FF?style=for-the-badge)
-![Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
-![Estado](https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge)
-![Versión](https://img.shields.io/badge/Versión-v4.0.1-blue?style=for-the-badge)
-[![License](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)](./LICENSE)
-[![CI & Coverage](https://github.com/migueljerico/github-ai-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/migueljerico/github-ai-assistant/actions/workflows/ci.yml)
-[![E2E Tests](https://img.shields.io/github/actions/workflow/status/migueljerico/github-ai-assistant/e2e.yml?style=for-the-badge&label=E2E%20Tests&logo=playwright&logoColor=white)](https://github.com/migueljerico/github-ai-assistant/actions/workflows/e2e.yml)
-[![codecov](https://codecov.io/gh/migueljerico/github-ai-assistant/graph/badge.svg?token=B1VDL0Y04G)](https://codecov.io/gh/migueljerico/github-ai-assistant)
-[![Tested with Playwright](https://img.shields.io/badge/Tested_with-Playwright-2EAD33?style=for-the-badge&logo=playwright&logoColor=white)](./e2e)
+<p align="center">
+  <img src="https://img.shields.io/badge/Groq_Cloud-F55036?style=for-the-badge&logo=groq&logoColor=white" alt="Groq" />
+  <img src="https://img.shields.io/badge/Google_Gemini-4285F4?style=for-the-badge&logo=google&logoColor=white" alt="Gemini" />
+  <img src="https://img.shields.io/badge/NVIDIA_NIM-76B900?style=for-the-badge&logo=nvidia&logoColor=white" alt="NVIDIA NIM" />
+  <img src="https://img.shields.io/badge/Zenmux-6C5CE7?style=for-the-badge&logo=brave&logoColor=white" alt="Zenmux" />
+  <img src="https://img.shields.io/badge/OpenCode_Zen-9C27B0?style=for-the-badge&logo=opencode&logoColor=white" alt="OpenCode Zen" />
+  <img src="https://img.shields.io/badge/Cloudflare_Workers_AI-F38020?style=for-the-badge&logo=cloudflare&logoColor=white" alt="Cloudflare Workers AI" />
+  <img src="https://img.shields.io/badge/Ollama_Cloud-000000?style=for-the-badge&logo=ollama&logoColor=white" alt="Ollama Cloud" />
+  <img src="https://img.shields.io/badge/Kilo-00C896?style=for-the-badge" alt="Kilo" />
+  <img src="https://img.shields.io/badge/BazaarLink-FF5722?style=for-the-badge" alt="BazaarLink" />
+  <img src="https://img.shields.io/badge/QwenCloud-0080FF?style=for-the-badge" alt="QwenCloud" />
+</p>
 
 
 > **Asistente Zero-Storage para analizar, documentar y gestionar repositorios de GitHub mediante lenguaje natural.**
@@ -74,8 +80,6 @@ Todo bajo el principio:
 | Aspecto | Detalle |
 |---|---|
 | ⏱️ Tiempo de desarrollo | 2 meses de desarrollo continuo |
-
-
 | ⚡ Latencia observada | ~400ms Groq / ~1.2s Gemini, variable según modelo y contexto |
 | 🛡️ Seguridad | Zero-Storage: credenciales solo en memoria React |
 | 🧪 Tests | 1072 tests unitarios (1014 cliente + 58 servidor) + 13 E2E (Playwright) |
