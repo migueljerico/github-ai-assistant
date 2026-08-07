@@ -314,6 +314,11 @@ async function callOpenAICompatible(
         : ' — Error de autenticación o permisos en QwenCloud (403/401). Verifica tu API key en qwencloud.com / DashScope.';
       throw Object.assign(new Error((msg || base) + hint), { status: res.status });
     }
+    // Genérico 429 para cualquier otro proveedor (ej. Zenmux, Groq, OpenRouter)
+    if (res.status === 429) {
+      const hint = ' — Demasiadas peticiones o límite de cuota alcanzado (429). Los modelos gratuitos tienen límites estrictos de peticiones por minuto. Espera un momento o cambia de proveedor.';
+      throw Object.assign(new Error(base + hint), { status: res.status });
+    }
     if (res.status === 401) {
       throw Object.assign(new Error(base), { status: 401 });
     }
@@ -857,14 +862,6 @@ REQUISITOS OBLIGATORIOS PARA EL README.md
    📁 Estructura del proyecto (árbol de carpetas formateado en bloque de código)
    🛠️ Tecnologías (tabla: Herramienta | Versión/Detalle | Uso en el proyecto)
    📚 Contexto formativo o motivación del proyecto (si aplica)
-   Footer EXACTO (NO inventes autor ni año; usa EXACTAMENTE estos valores reales):
-   ${docFooter}
-
-   REGLA CRÍTICA SOBRE EL FOOTER: El footer debe ser EXACTAMENTE el valor indicado
-   arriba. Si el README existente tiene una sección "Autor", "Créditos", "Footer",
-   "Licencia" o similar con texto de atribución, REEMPLÁZALA completamente por el
-   footer exacto proporcionado. NUNCA preserves el footer anterior ni combines ambos.
-   El footer SIEMPRE va al final del documento como la última línea.
 
 3. CALIDAD:
    - Usa el contenido REAL del código para las explicaciones (nombres de funciones, rutas, comandos)
@@ -934,10 +931,11 @@ REPOSITORIO: ${repoName}
     undefined, undefined, undefined,
     8192, // README solo cabe holgado en el free tier al ir en markdown plano.
   );
-  const readme = stripFences(readmeRaw);
-  if (!readme) {
+  const readmeStripped = stripFences(readmeRaw).trim();
+  if (!readmeStripped) {
     throw new Error('La IA no devolvió el README. Prueba con otro modelo o vuelve a intentarlo.');
   }
+  const readme = readmeStripped + '\n\n' + docFooter;
 
   // Segunda llamada DESPUÉS de la primera (secuenciales).
   const manualRaw = await callAI(
@@ -947,10 +945,11 @@ REPOSITORIO: ${repoName}
     undefined, undefined, undefined,
     8192,
   );
-  const manualTecnico = stripFences(manualRaw);
-  if (!manualTecnico) {
+  const manualStripped = stripFences(manualRaw).trim();
+  if (!manualStripped) {
     throw new Error('La IA no devolvió el MANUAL_TECNICO. Prueba con otro modelo o vuelve a intentarlo.');
   }
+  const manualTecnico = manualStripped + '\n\n' + docFooter;
 
   return {
     readme,

@@ -168,7 +168,7 @@ runCancelAction(
   // charlado). La lógica vive en formatConversation (testeable). Se define antes del
   // flujo de documentación porque flowGenerateFile lo usa.
   const buildConversationText = useCallback(
-    () => formatConversation(conversationHistory),
+    () => formatConversation(conversationHistory.slice(-6)),
     [conversationHistory],
   );
 
