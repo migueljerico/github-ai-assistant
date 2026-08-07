@@ -20,6 +20,7 @@ export const zh = {
   'chat.placeholder.disabled': '连接 GitHub 以开始…',
   'chat.placeholder.auto': '输入指令… (Enter 发送，Shift+Enter 换行)',
   'chat.placeholder.chat': '寻求意见、建议或分析...',
+  'chat.moreTools': '更多工具',
   'chat.placeholder.action': '输入操作（例如：创建文件，列出我的仓库）...',
   'chat.mode.auto': '自动',
   'chat.mode.chat': '意见',

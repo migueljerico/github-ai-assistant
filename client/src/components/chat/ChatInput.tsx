@@ -13,6 +13,7 @@ import InstructionSuggestions from './InstructionSuggestions';
 import { isImageFile } from '../../services/docPublisher';
 import SecurityAuditButton from './SecurityAuditButton';
 import SyncRepoStatusButton from './SyncRepoStatusButton';
+import ChatToolsMenu from './ChatToolsMenu';
 
 interface ChatInputProps {
   value: string;
@@ -304,61 +305,63 @@ export default function ChatInput({
           </button>
         )}
 
-        <ThreadSummaryButton
-          disabled={disabled}
-          onSummarizeThread={onSummarizeThread}
-        />
-
-        <ChangelogButton
-          disabled={disabled}
-          onGenerateChangelog={onGenerateChangelog}
-        />
-
-        <CodeHealthButton
-          disabled={disabled}
-          onCodeHealth={onCodeHealth}
-        />
-
-        {/* #52: Modo Auditoría de Seguridad — revisión orientativa de secrets,
-            dependencias y validación de inputs. Sobre el repo activo si lo hay.
-            onOpen es opcional en la interfaz; si no se pasa (tests), no se renderiza. */}
-        {onOpenSecurityAudit && (
-          <SecurityAuditButton
-            disabled={disabled}
-            onOpen={onOpenSecurityAudit}
-            repoContextName={repoContextName}
-          />
-        )}
-
-        {/* #70/#48: SyncRepoStatus — resumen pull-based de los commits recientes.
-            onSyncRepoStatus es opcional; si no se pasa (tests), no se renderiza. */}
-        {onSyncRepoStatus && (
-          <SyncRepoStatusButton
-            disabled={disabled}
-            onSyncRepoStatus={onSyncRepoStatus}
-          />
-        )}
-
-        <ConversationIOButton
-          disabled={disabled}
-          hasMessages={hasMessages}
-          onExport={onExportConversation}
-          onImport={onImportConversation}
-        />
-
-        <RepoContextButton
-          disabled={disabled}
-          activeContext={repoContextName}
-          onLoadContext={onLoadRepoContext}
-          onClearContext={onClearRepoContext}
-        />
-
         <FileAttachButton
           disabled={disabled}
           fileNames={fileContextNames}
           onAttach={onAttachFiles}
           onClearAt={onClearFileAt}
         />
+
+        <ChatToolsMenu disabled={disabled}>
+          <ThreadSummaryButton
+            disabled={disabled}
+            onSummarizeThread={onSummarizeThread}
+          />
+
+          <ChangelogButton
+            disabled={disabled}
+            onGenerateChangelog={onGenerateChangelog}
+          />
+
+          <CodeHealthButton
+            disabled={disabled}
+            onCodeHealth={onCodeHealth}
+          />
+
+          {/* #52: Modo Auditoría de Seguridad — revisión orientativa de secrets,
+              dependencias y validación de inputs. Sobre el repo activo si lo hay.
+              onOpen es opcional en la interfaz; si no se pasa (tests), no se renderiza. */}
+          {onOpenSecurityAudit && (
+            <SecurityAuditButton
+              disabled={disabled}
+              onOpen={onOpenSecurityAudit}
+              repoContextName={repoContextName}
+            />
+          )}
+
+          {/* #70/#48: SyncRepoStatus — resumen pull-based de los commits recientes.
+              onSyncRepoStatus es opcional; si no se pasa (tests), no se renderiza. */}
+          {onSyncRepoStatus && (
+            <SyncRepoStatusButton
+              disabled={disabled}
+              onSyncRepoStatus={onSyncRepoStatus}
+            />
+          )}
+
+          <ConversationIOButton
+            disabled={disabled}
+            hasMessages={hasMessages}
+            onExport={onExportConversation}
+            onImport={onImportConversation}
+          />
+
+          <RepoContextButton
+            disabled={disabled}
+            activeContext={repoContextName}
+            onLoadContext={onLoadRepoContext}
+            onClearContext={onClearRepoContext}
+          />
+        </ChatToolsMenu>
       </div>
     </div>
   );

@@ -23,6 +23,7 @@ export const es = {
   'chat.placeholder.disabled': 'Conecta con GitHub para empezar…',
   'chat.placeholder.auto': 'Escribe una instrucción… (Enter para enviar, Shift+Enter para nueva línea)',
   'chat.placeholder.chat': 'Pide una opinión, consejo o análisis...',
+  'chat.moreTools': 'Más herramientas',
   'chat.placeholder.action': 'Escribe una acción (ej: crea un archivo, lista mis repos)...',
   'chat.mode.auto': 'Auto',
   'chat.mode.chat': 'Opinión',

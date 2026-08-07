@@ -20,6 +20,7 @@ export const ar = {
   'chat.placeholder.disabled': 'اتصل بـ GitHub للبدء…',
   'chat.placeholder.auto': 'اكتب تعليمة… (Enter للإرسال، Shift+Enter لسطر جديد)',
   'chat.placeholder.chat': 'اطلب رأياً أو نصيحة أو تحليلاً...',
+  'chat.moreTools': 'المزيد من الأدوات',
   'chat.placeholder.action': 'اكتب إجراءً (مثال: إنشاء ملف، إدراج المستودعات)...',
   'chat.mode.auto': 'تلقائي',
   'chat.mode.chat': 'رأي',

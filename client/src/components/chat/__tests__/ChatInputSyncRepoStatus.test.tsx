@@ -43,6 +43,7 @@ describe('ChatInput — cableado de SyncRepoStatus (#70, v3.59.0)', () => {
 
   it('renderiza el botón SyncRepoStatus cuando onSyncRepoStatus se pasa', () => {
     setup({ onSyncRepoStatus: vi.fn() });
+    fireEvent.click(screen.getByRole('button', { name: /Más herramientas/ }));
     expect(screen.getByRole('button', { name: /Sincronizar estado del repo/ })).toBeInTheDocument();
   });
 
@@ -50,6 +51,7 @@ describe('ChatInput — cableado de SyncRepoStatus (#70, v3.59.0)', () => {
     const onSyncRepoStatus = vi.fn();
     vi.spyOn(window, 'prompt').mockReturnValue('owner/repo');
     setup({ onSyncRepoStatus });
+    fireEvent.click(screen.getByRole('button', { name: /Más herramientas/ }));
     fireEvent.click(screen.getByRole('button', { name: /Sincronizar estado del repo/ }));
     expect(onSyncRepoStatus).toHaveBeenCalledWith('owner/repo');
   });

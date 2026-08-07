@@ -20,6 +20,7 @@ export const ru = {
   'chat.placeholder.disabled': 'Подключитесь к GitHub для начала…',
   'chat.placeholder.auto': 'Введите инструкцию… (Enter — отправить, Shift+Enter — новая строка)',
   'chat.placeholder.chat': 'Запросите мнение, совет или анализ...',
+  'chat.moreTools': 'Больше инструментов',
   'chat.placeholder.action': 'Введите действие (напр.: создать файл, список репозиториев)...',
   'chat.mode.auto': 'Авто',
   'chat.mode.chat': 'Мнение',

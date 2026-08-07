@@ -20,6 +20,7 @@ export const ja = {
   'chat.placeholder.disabled': '開始するにはGitHubに接続してください…',
   'chat.placeholder.auto': '指示を入力… (Enterで送信、Shift+Enterで改行)',
   'chat.placeholder.chat': '意見、助言、または分析を求める...',
+  'chat.moreTools': 'その他のツール',
   'chat.placeholder.action': 'アクションを入力 (例: ファイル作成、リポジトリ一覧)...',
   'chat.mode.auto': '自動',
   'chat.mode.chat': '意見',

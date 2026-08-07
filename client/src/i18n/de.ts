@@ -20,6 +20,7 @@ export const de = {
   'chat.placeholder.disabled': 'Mit GitHub verbinden um zu starten…',
   'chat.placeholder.auto': 'Anweisung eingeben… (Eingabe zum Senden, Umschalt+Eingabe für neue Zeile)',
   'chat.placeholder.chat': 'Nach einer Meinung, Analyse oder Beratung fragen...',
+  'chat.moreTools': 'Weitere Werkzeuge',
   'chat.placeholder.action': 'Aktion eingeben (z. B. Datei erstellen, Repos auflisten)...',
   'chat.mode.auto': 'Auto',
   'chat.mode.chat': 'Meinung',
