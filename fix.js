@@ -1,0 +1,1 @@
+const fs = require('fs'); const files = ['client/src/i18n/fr.ts', 'client/src/i18n/ar.ts', 'client/src/i18n/de.ts', 'client/src/i18n/ja.ts']; files.forEach(f = let c = fs.readFileSync(f, 'utf8'); c = c.replace(/('chat\.placeholder\.chat': '.*?',)/, '\n  \'chat.moreTools\': \'M s herramientas\','); fs.writeFileSync(f, c); });  

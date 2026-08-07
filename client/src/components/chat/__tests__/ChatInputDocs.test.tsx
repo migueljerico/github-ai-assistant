@@ -39,21 +39,27 @@ function setup(overrides: Partial<React.ComponentProps<typeof ChatInput>> = {}) 
 
 describe('ChatInput Docs buttons', () => {
   it('calls onOpenDocumentFlow when update docs button is clicked', () => {
-    const { props } = setup({ repoContextName: 'test/repo' });
+    const { props, container } = setup({ repoContextName: 'test/repo' });
+    const menuBtn = container.querySelector('.chat-tools-menu-btn') as HTMLElement;
+    fireEvent.click(menuBtn);
     const updateBtn = screen.getByRole('button', { name: /actualizar|update/i });
     fireEvent.click(updateBtn);
     expect(props.onOpenDocumentFlow).toHaveBeenCalledWith('test/repo');
   });
 
   it('calls onOpenDocumentFlow without repo context when update docs button is clicked and no repo', () => {
-    const { props } = setup({ repoContextName: null });
+    const { props, container } = setup({ repoContextName: null });
+    const menuBtn = container.querySelector('.chat-tools-menu-btn') as HTMLElement;
+    fireEvent.click(menuBtn);
     const updateBtn = screen.getByRole('button', { name: /actualizar|update/i });
     fireEvent.click(updateBtn);
     expect(props.onOpenDocumentFlow).toHaveBeenCalledWith(undefined);
   });
 
   it('renders and clicks doc with screenshots button when image is attached', () => {
-    const { props } = setup({ fileContextNames: ['test.png'], repoContextName: 'test/repo' });
+    const { props, container } = setup({ fileContextNames: ['test.png'], repoContextName: 'test/repo' });
+    const menuBtn = container.querySelector('.chat-tools-menu-btn') as HTMLElement;
+    fireEvent.click(menuBtn);
     const screenshotBtn = screen.getByRole('button', { name: /captura|screenshot/i });
     fireEvent.click(screenshotBtn);
     expect(props.onOpenDocumentFlow).toHaveBeenCalledWith('test/repo');

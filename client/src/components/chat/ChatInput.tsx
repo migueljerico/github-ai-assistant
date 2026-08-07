@@ -273,38 +273,6 @@ export default function ChatInput({
           onOpen={onOpenDocumentFlow}
         />
 
-        {/* v3.31.0: botón "Actualizar documentación" siempre visible. Si hay un repo
-            cargado en contexto, abre el stepper con ese repo pre-rellenado; si no,
-            abre en el paso 2 para que el usuario introduzca el repo a actualizar. */}
-        <button
-          id="update-docs-btn"
-          className="doc-repo-btn"
-          disabled={disabled}
-          type="button"
-          title={repoContextName ?? t('chat.updateDocs')}
-          onClick={() => onOpenDocumentFlow(repoContextName ?? undefined)}
-        >
-          🔄 {t('chat.updateDocs')}
-        </button>
-
-        {/* v3.66.0 (Frente D2): atajo chat → wizard. Solo visible cuando hay
-            imágenes adjuntas. Abre el stepper de documentación con las capturas
-            ya cargadas como extras (el wizard las hospeda en screenshots/ e
-            inserta ![](screenshots/...) en el markdown generado). Sin visión:
-            el modelo nunca analiza los píxeles. */}
-        {fileContextNames.some(isImageFile) && (
-          <button
-            id="doc-with-screenshots-btn"
-            className="doc-repo-btn"
-            disabled={disabled}
-            type="button"
-            title={t('chat.docWithScreenshots')}
-            onClick={() => onOpenDocumentFlow(repoContextName ?? undefined)}
-          >
-            🖼️ {t('chat.docWithScreenshots')}
-          </button>
-        )}
-
         <FileAttachButton
           disabled={disabled}
           fileNames={fileContextNames}
@@ -313,6 +281,38 @@ export default function ChatInput({
         />
 
         <ChatToolsMenu disabled={disabled}>
+          {/* v3.31.0: botón "Actualizar documentación" siempre visible. Si hay un repo
+              cargado en contexto, abre el stepper con ese repo pre-rellenado; si no,
+              abre en el paso 2 para que el usuario introduzca el repo a actualizar. */}
+          <button
+            id="update-docs-btn"
+            className="doc-repo-btn"
+            disabled={disabled}
+            type="button"
+            title={repoContextName ?? t('chat.updateDocs')}
+            onClick={() => onOpenDocumentFlow(repoContextName ?? undefined)}
+          >
+            🔄 {t('chat.updateDocs')}
+          </button>
+
+          {/* v3.66.0 (Frente D2): atajo chat → wizard. Solo visible cuando hay
+              imágenes adjuntas. Abre el stepper de documentación con las capturas
+              ya cargadas como extras (el wizard las hospeda en screenshots/ e
+              inserta ![](screenshots/...) en el markdown generado). Sin visión:
+              el modelo nunca analiza los píxeles. */}
+          {fileContextNames.some(isImageFile) && (
+            <button
+              id="doc-with-screenshots-btn"
+              className="doc-repo-btn"
+              disabled={disabled}
+              type="button"
+              title={t('chat.docWithScreenshots')}
+              onClick={() => onOpenDocumentFlow(repoContextName ?? undefined)}
+            >
+              🖼️ {t('chat.docWithScreenshots')}
+            </button>
+          )}
+
           <ThreadSummaryButton
             disabled={disabled}
             onSummarizeThread={onSummarizeThread}
