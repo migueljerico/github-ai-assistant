@@ -1,7 +1,7 @@
 // ─── Validadores de body para los proxies /api/* (Hallazgos #1+#3, v3.50.0) ────
 //
 // Los proxies de chat (/api/gemini, /api/nim, /api/openzen, /api/cloudflare,
-// /api/ollama, /api/aiand) reenvían el body del cliente al upstream casi tal cual.
+// /api/ollama) reenvían el body del cliente al upstream casi tal cual.
 // Antes de v3.50.0 solo validaban la presencia de la API key; un cliente podía
 // enviar bodies malformados que llegaban al proveedor y consumían cuota/token.
 //

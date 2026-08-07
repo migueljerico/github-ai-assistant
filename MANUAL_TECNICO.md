@@ -30,7 +30,6 @@ La aplicación sigue una arquitectura de **backend thin** deliberada: el servido
 ┌──────────────┬────────────────────────────────────┬───────────┘
                │ /auth/github · /auth/callback      │ fetch()
                │ /api/gemini · /api/nim · /api/openzen · /api/cloudflare · /api/ollama
-               │ /api/aiand · /api/kilo · /api/bazaarlink · /api/qwencloud
                ▼                                    ▼
 ┌──────────────────────────┐  ┌────────────────────────────────┐
 │  Backend Express.js      │  │  APIs Externas                 │
@@ -111,7 +110,6 @@ github-ai-assistant/
 │       │   └── modeDetection.ts    # Detección de modo chat vs action
 │       └── types/index.ts          # Tipos compartidos TypeScript
 ├── server/
-│   ├── index.js              # Express: OAuth + proxies (Gemini/NIM/OpenZen/CF/Ollama/Ai&) + rate limit + static
 │   ├── logger.js             # #65 (v3.39.0): logEvent (JSON línea) + requestIdMiddleware
 │   └── __tests__/            # Tests de servidor (vitest + supertest): geminiModelsProxy, rateLimit, logger, health
 ├── Dockerfile                # Multi-stage build (Node 22 Alpine)
@@ -238,7 +236,6 @@ directamente, por lo que no se ve afectada por este reintento.
 | OpenCode Zen | OpenAI-compatible | Sí (`/api/openzen`) | Sin CORS → el navegador bloquea "Failed to fetch" |
 | Cloudflare Workers AI | OpenAI-compatible | Sí (`/api/cloudflare`) | Sin CORS → el navegador bloquea "Failed to fetch" |
 | Ollama Cloud | OpenAI-compatible | Sí (`/api/ollama`) | Sin CORS → el navegador bloquea "Failed to fetch" |
-| Ai& | OpenAI-compatible | Sí (`/api/aiand`) | Sin CORS → el navegador bloquea "Failed to fetch" |
 | Google Gemini | `gemini-proxy` (SDK) | Sí (`/api/gemini`) | Bloqueo geográfico en EEA |
 
 ### Proxies backend (rate limiters por proveedor)
@@ -253,7 +250,6 @@ abuso de un proveedor no agote la cuota del otro:
 | `POST /api/openzen` | 100 req/min por IP | `opencode.ai/zen/v1` |
 | `POST /api/cloudflare` + `GET /api/cloudflare/models` | 100 req/min por IP | `api.cloudflare.com/client/v4/accounts/{id}/ai/...` (chat `v1` + `models/search`) |
 | `POST /api/ollama` + `GET /api/ollama/models` | 100 req/min por IP | `ollama.com/v1` |
-| `POST /api/aiand` + `GET /api/aiand/models` | 100 req/min por IP | `api.aiand.com/v1` |
 
 Todos los proxies reenvían el body y el header `Authorization` sin tocarlos,
 respeta streaming SSE (`pipeUpstream`), y sanean headers del upstream para

@@ -606,7 +606,7 @@ Proveedores:
 | OpenCode Zen | Proxy Express `/api/openzen` (sin cabeceras CORS) |
 | Cloudflare Workers AI | Proxy Express `/api/cloudflare` (sin cabeceras CORS) |
 | Ollama Cloud | Proxy Express `/api/ollama` (sin cabeceras CORS) |
-| Ai& | Proxy Express `/api/aiand` (sin cabeceras CORS) |
+
 | Kilo | Proxy Express `/api/kilo` (sin cabeceras CORS) |
 | BazaarLink | Proxy Express `/api/bazaarlink` (sin cabeceras CORS) |
 
@@ -632,10 +632,10 @@ Responsabilidades:
 | `POST /api/openzen` | Proxy hacia OpenCode Zen (sin CORS upstream) |
 | `POST /api/cloudflare` | Proxy hacia Cloudflare Workers AI (sin CORS upstream) |
 | `POST /api/ollama` | Proxy hacia Ollama Cloud (sin CORS upstream) |
-| `POST /api/aiand` | Proxy hacia Ai& (sin CORS upstream) |
+
 | `POST /api/kilo` | Proxy hacia Kilo (sin CORS upstream) |
 | `POST /api/bazaarlink` | Proxy hacia BazaarLink (sin CORS upstream) |
-| `GET /api/nim/models` · `/api/ollama/models` · `/api/aiand/models` · `/api/kilo/models` · `/api/bazaarlink/models` | Catálogos dinámicos de modelos vía proxy |
+
 | `GET /health` | Health check |
 | `GET /*` | Sirve frontend en producción |
 

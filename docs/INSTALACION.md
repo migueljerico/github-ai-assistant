@@ -76,7 +76,7 @@ Necesitarás al menos una clave de:
 | OpenCode Zen | `https://opencode.ai` |
 | Cloudflare Workers AI | `https://dash.cloudflare.com` |
 | Ollama Cloud | `https://ollama.com` |
-| Ai& | `https://aiand.com` |
+
 
 > La clave de IA **no** se configura en `.env`.  
 > Cada usuario la introduce directamente en la aplicación y vive solo en memoria durante la sesión.

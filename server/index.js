@@ -146,19 +146,7 @@ const cloudflareLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// ─── Rate Limiting para Ai& Proxy (v3.38.1) ───────────────────────────────────
-// Ai& (api.aiand.com) NO envía cabeceras CORS → el navegador bloquea las llamadas
-// directas con "Failed to fetch". Mismo patrón que Gemini/NIM/OpenZen/CF/Ollama.
-// (Corrige la asunción falsa del handoff v3.38.0, que lo daba por "verificado".)
-const aiandLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 100,
-  message: {
-    error: 'Demasiadas peticiones a Ai&. Por favor espera un minuto.',
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+
 
 const kiloLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -875,90 +863,6 @@ app.get('/api/ollama/models', ollamaLimiter, async (req, res) => {
   }
 });
 
-// ─── Ai& Proxy (v3.38.1) ──────────────────────────────────────────────────────
-// Ai& (api.aiand.com) es OpenAI-compatible PERO no envía cabeceras CORS, así que
-// las llamadas directas del navegador fallan en prod con "Failed to fetch"
-// (No 'Access-Control-Allow-Origin' header). Mismo motivo que NIM/OpenZen/CF/Ollama.
-// La API key del usuario viaja en el header Authorization (HTTPS cliente→backend)
-// y se descarta al terminar la petición — nunca se persiste ni loguea.
-app.post('/api/aiand', aiandLimiter, validateChatBody, async (req, res) => {
-  const auth = req.headers.authorization || '';
-  if (!auth.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Falta la API key (header Authorization: Bearer ...)' });
-  }
-  try {
-    const upstream = await fetch('https://api.aiand.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': auth,
-        'Content-Type': 'application/json',
-        ...(req.headers['accept'] ? { 'Accept': req.headers['accept'] } : {}),
-      },
-      body: JSON.stringify(req.body),
-      signal: upstreamSignal(), // #73: timeout 120s (defensa en profundidad)
-    });
-    log.info('upstream', { provider: 'aiand', flow: 'chat', status: upstream.status, ct: upstream.headers.get('content-type') || '-', requestId: req.id });
-    res.status(upstream.status);
-    const ct = upstream.headers.get('content-type');
-    if (ct) res.setHeader('Content-Type', ct);
-    const safeHeaders = {};
-    for (const [key, value] of upstream.headers.entries()) {
-      if (typeof value === 'string' && /^[\x00-\x7F]*$/.test(value)) {
-        safeHeaders[key] = value;
-      }
-    }
-    for (const [key, value] of Object.entries(safeHeaders)) {
-      res.setHeader(key, value);
-    }
-    res.removeHeader('content-encoding');
-    res.removeHeader('transfer-encoding');
-    await pipeUpstream(upstream, res);
-  } catch (err) {
-    log.error('proxy_error', { provider: 'aiand', flow: 'chat', requestId: req.id, error: err?.message || String(err) });
-    const status = isUpstreamTimeout(err) ? 504 : 502;
-    const error = isUpstreamTimeout(err) ? 'Ai& tardó demasiado (timeout). Reintenta o sube el timeout en ⚙️.' : 'Error al contactar con Ai&';
-    if (!res.headersSent) res.status(status).json({ error, detail: err?.message || String(err) });
-    else { try { res.end(); } catch { /* noop */ } }
-  }
-});
-
-// Catálogo de modelos Ai& vía proxy (evita CORS). OpenAI-compatible: { data: [...] }.
-app.get('/api/aiand/models', aiandLimiter, async (req, res) => {
-  const auth = req.headers.authorization || '';
-  if (!auth.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Falta la API key de Ai& (header Authorization: Bearer sk-...)' });
-  }
-  try {
-    const upstream = await fetch('https://api.aiand.com/v1/models', {
-      method: 'GET',
-      headers: {
-        'Authorization': auth,
-        'Accept': 'application/json',
-      },
-    });
-    log.info('upstream', { provider: 'aiand', flow: 'models', status: upstream.status, ct: upstream.headers.get('content-type') || '-', requestId: req.id });
-    res.status(upstream.status);
-    const ct = upstream.headers.get('content-type');
-    if (ct) res.setHeader('Content-Type', ct);
-    // Saneamos headers (mismo defensivo que Ollama)
-    const safeHeaders = {};
-    for (const [key, value] of upstream.headers.entries()) {
-      if (typeof value === 'string' && /^[\x00-\x7F]*$/.test(value)) {
-        safeHeaders[key] = value;
-      }
-    }
-    for (const [key, value] of Object.entries(safeHeaders)) {
-      res.setHeader(key, value);
-    }
-    res.removeHeader('content-encoding');
-    res.removeHeader('transfer-encoding');
-    await pipeUpstream(upstream, res);
-  } catch (err) {
-    log.error('proxy_error', { provider: 'aiand', flow: 'models', requestId: req.id, error: err?.message || String(err) });
-    if (!res.headersSent) res.status(502).json({ error: 'Error al contactar con Ai& (models)', detail: err?.message || String(err) });
-    else { try { res.end(); } catch { /* noop */ } }
-  }
-});
 
 // ─── Kilo Proxy (v3.58.0) ─────────────────────────────────────────────────────
 // Kilo (api.kilo.ai/api/gateway) es una pasarela OpenAI-compatible. No envía
@@ -1306,7 +1210,7 @@ app.listen(PORT, () => {
       'POST /api/nim', 'GET /api/nim/models',
       'POST /api/openzen', 'POST /api/cloudflare', 'GET /api/cloudflare/models',
       'POST /api/ollama', 'GET /api/ollama/models',
-      'POST /api/aiand', 'GET /api/aiand/models',
+
       'POST /api/kilo', 'GET /api/kilo/models',
       'POST /api/bazaarlink', 'GET /api/bazaarlink/models',
       'POST /api/qwencloud', 'GET /api/qwencloud/models',
@@ -1314,7 +1218,7 @@ app.listen(PORT, () => {
     rateLimited: ['/api/gemini', '/api/gemini/models', '/api/nim', '/api/nim/models',
                   '/api/openzen', '/api/cloudflare', '/api/cloudflare/models',
                   '/api/ollama', '/api/ollama/models',
-                  '/api/aiand', '/api/aiand/models',
+
                   '/api/kilo', '/api/kilo/models',
                   '/api/bazaarlink', '/api/bazaarlink/models',
                   '/api/qwencloud', '/api/qwencloud/models'],

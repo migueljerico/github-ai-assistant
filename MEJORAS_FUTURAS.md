@@ -95,7 +95,6 @@ Para usuarios sin experiencia técnica — el público objetivo principal de la 
 #### #74 — Revisión periódica de catálogos free/dinámicos (cada 2-3 meses)
 **Esfuerzo:** ~1-2h cada revisión · **Estado:** ⏳ Pendiente (Próxima revisión: ~Octubre 2026)
 
-**Contexto:** La app soporta 10 proveedores de IA. Los arrays `*_FALLBACK` de los 6 proveedores dinámicos (Groq, OpenRouter, Zenmux, Ollama, Ai&, Kilo) sirven como red de seguridad cuando la red falla.
 
 **Procedimiento de revisión:**
 1. Consultar endpoints reales de los proveedores dinámicos.

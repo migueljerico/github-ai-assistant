@@ -12,7 +12,7 @@
 // sessionStorage es la LISTA de modelos (catálogo), nunca la clave.
 // ────────────────────────────────────────────────────────────────────────────
 
-export type AIProviderType = 'gemini' | 'groq' | 'openrouter' | 'nvidia' | 'zenmux' | 'openzen' | 'cloudflare' | 'ollama' | 'aiand' | 'kilo' | 'bazaarlink' | 'qwencloud';
+export type AIProviderType = 'gemini' | 'groq' | 'openrouter' | 'nvidia' | 'zenmux' | 'openzen' | 'cloudflare' | 'ollama' | 'kilo' | 'bazaarlink' | 'qwencloud';
 export type ProviderTransport = 'gemini-proxy' | 'openai-compatible';
 
 export interface ModelOption {
@@ -307,14 +307,7 @@ const OLLAMA_FALLBACK: ModelOption[] = [
   { value: 'gpt-oss:20b', label: 'GPT-OSS 20B', free: true },
 ];
 
-// Fallback de Ai& (api.aiand.com) mientras carga el catálogo dinámico o si falla.
-// Acceso vía PROXY backend /api/aiand (Ai& no envía CORS → las llamadas directas
-// del navegador fallan con "Failed to fetch"; mismo motivo que NIM/OpenZen/CF/Ollama).
-// El catálogo dinámico filtra a free=true (pricing input_per_1m/output_per_1m a 0);
-// este fallback es la red de seguridad. defaultModel = qwen/qwen3.6-27b.
-const AIAND_FALLBACK: ModelOption[] = [
-  { value: 'qwen/qwen3.6-27b', label: 'Qwen3.6 27B', recommended: true },
-];
+
 
 // Fallback de Kilo (api.kilo.ai/api/gateway) mientras carga el catálogo o si falla.
 // Pasarela OpenAI-compatible con catálogo PÚBLICO (GET /models no requiere key) que
@@ -524,34 +517,7 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     signupLabel: 'provider.ollama.signupLabel',
     note: 'provider.ollama.note',
   },
-  // Ai& (api.aiand.com): VA AL FINAL (último proveedor añadido, v3.38.0).
-  // Acceso vía PROXY backend /api/aiand: Ai& NO envía cabeceras CORS, así que las
-  // llamadas directas del navegador fallan con "Failed to fetch" en prod. Mismo
-  // motivo y mismo patrón que NIM/OpenZen/Cloudflare/Ollama (v3.38.1 corrige la
-  // asunción falsa del handoff v3.38.0, que lo daba por "CORS verificado").
-  // La key viaja en memoria (Zero-Storage) y se reenvía por Authorization al server.
-  // Catálogo dinámico vía /api/aiand/models con filtro free (pricing a 0);
-  // fallback estático AIAND_FALLBACK (solo qwen/qwen3.6-27b).
-  // maxOutputTokens: 8192 — modelos de razonamiento con salidas largas; evita
-  // respuestas vacías por truncado del max_tokens (ver callAI / effectiveMaxTokens).
-  aiand: {
-    id: 'aiand',
-    name: 'Ai&',
-    shortName: 'Ai&',
-    emoji: '✨',
-    cardDesc: 'provider.aiand.cardDesc',
-    transport: 'openai-compatible',
-    chatEndpoint: '/api/aiand',
-    modelsEndpoint: '/api/aiand/models',
-    modelsNeedKey: true,
-    staticModels: AIAND_FALLBACK,
-    defaultModel: AIAND_FALLBACK[0].value, // 'qwen/qwen3.6-27b'
-    keyPlaceholder: 'sk-...',
-    keyPrefix: 'sk-',
-    signupUrl: 'https://aiand.com',
-    signupLabel: 'provider.aiand.signupLabel',
-    maxOutputTokens: 8192,
-  },
+
   // Kilo (api.kilo.ai/api/gateway): VA AL FINAL (último proveedor añadido, v3.58.0).
   // Pasarela OpenAI-compatible. Acceso vía PROXY backend /api/kilo (sigue el mismo
   // patrón que NIM/OpenZen/Cloudflare/Ollama/Ai& para eludir el bloqueo CORS del
@@ -880,43 +846,7 @@ export async function fetchModels(
         ...(cfIsLikelyFree(m.name) ? { free: true } : {}),
       }))
       .sort((a, b) => a.label.localeCompare(b.label));
-  } else if (def.id === 'aiand') {
-    // Ai& (api.aiand.com): catálogo dinámico con pricing de tipo escalado
-    // (input_per_1m / output_per_1m, costo por millón de tokens). free = ambos a 0.
-    // Fallback defensivo: si el modelo no traza pricing, se asume free (igual que
-    // Zenmux/OpenRouter). Filtra modelos no-chat (embedding, whisper, tts, etc.).
-    // Orden: free primero, luego alfabético por etiqueta.
-    const AIAND_EXCLUDED = ['embed', 'whisper', 'tts', 'asr', 'rerank', 'vision', 'clip', 'audio'];
-    type AiandModel = {
-      id: string;
-      name?: string;
-      display_name?: string;
-      pricing?: { input_per_1m?: number | string; output_per_1m?: number | string };
-    };
-    const aiandData = data.data as unknown as AiandModel[];
-    models = aiandData
-      .filter(m => !AIAND_EXCLUDED.some(p => m.id.toLowerCase().includes(p)))
-      .map(m => {
-        const rawM = m as Record<string, unknown>;
-        // La API actual expone input_per_1m y output_per_1m en la raíz del objeto, no en "pricing"
-        const inputPer1m = rawM.input_per_1m ?? m.pricing?.input_per_1m;
-        const outputPer1m = rawM.output_per_1m ?? m.pricing?.output_per_1m;
-        
-        // eslint-disable-next-line no-useless-assignment -- falso positivo: el linter no sigue el closure del .map(); `free` se lee en el return de abajo.
-        let free = false;
-        if (inputPer1m === undefined && outputPer1m === undefined) {
-          free = true; // sin pricing → asumimos free (catálogo futuro-proof)
-        } else {
-          free = Number(inputPer1m ?? 0) === 0 && Number(outputPer1m ?? 0) === 0;
-        }
-        return {
-          value: m.id,
-          label: m.display_name || m.name || m.id,
-          free,
-        };
-      })
-      // free primero, luego alfabético
-      .sort((a, b) => (Number(b.free) - Number(a.free)) || a.label.localeCompare(b.label));
+
   } else if (def.id === 'kilo') {
     // Kilo (api.kilo.ai/api/gateway): pasarela OpenAI-compatible con catálogo público.
     // Los modelos gratuitos se identifican por el sufijo ":free" (igual que OpenRouter/

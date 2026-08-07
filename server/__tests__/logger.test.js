@@ -78,7 +78,7 @@ describe('logger — logEvent / log', () => {
   });
 
   it('no incluye campos fuera de ctx más allá de ts/level/msg', () => {
-    logEvent('info', 'upstream', { provider: 'aiand' });
+    logEvent('info', 'upstream', { provider: 'gemini' });
     const entry = lastWritten(stdoutSpy);
     expect(Object.keys(entry).sort()).toEqual(['level', 'msg', 'provider', 'ts']);
   });
