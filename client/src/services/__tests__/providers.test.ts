@@ -46,7 +46,7 @@ describe('providers — registro', () => {
     expect(PROVIDERS.openrouter.modelsNeedKey).toBe(false);
     expect(PROVIDERS.groq.modelsNeedKey).toBe(true);
     expect(PROVIDERS.zenmux.transport).toBe('openai-compatible');
-    expect(PROVIDERS.zenmux.chatEndpoint).toContain('zenmux.ai');
+    expect(PROVIDERS.zenmux.chatEndpoint).toBe('/api/zenmux');
     expect(PROVIDERS.zenmux.modelsNeedKey).toBe(true);
     // NVIDIA NIM: proxy backend /api/nim (CORS de NIM)
     expect(PROVIDERS.nvidia.transport).toBe('openai-compatible');
@@ -341,10 +341,10 @@ describe('providers — fetchModels', () => {
     const ids = list!.map(m => m.value);
     // Filtra embedding (no-chat)
     expect(ids).not.toContain('text-embedding-3');
-    // Filtra modelos paid (v3.38.1: catálogo free-only)
-    expect(ids).not.toContain('paid/model');
-    // Todos los listados son free
-    expect(list!.every(m => m.free === true)).toBe(true);
+    // Ahora devuelve modelos de pago tambien (v4.0.1)
+    expect(ids).toContain('paid/model');
+    const paidModel = list!.find(m => m.value === 'paid/model');
+    expect(paidModel?.free).toBe(false);
     // Ambos precios a 0 → free (presente)
     expect(list!.find(m => m.value === 'qwen/qwen-free')!.free).toBe(true);
     // Sin pricing → free (fallback defensivo, presente)
