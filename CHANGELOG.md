@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.9] — 2026-08-08
+
+> **Cobertura de Codecov patch al 100% y tests unitarios adicionales para la inyección de vista previa visual de imágenes.**
+> - **Tests Unitarios de Cobertura Completa (#84):** Se añadieron tests exhaustivos en `gemini.test.ts` y `assistantActions.test.ts` que cubren todas las ramas y casos de borde de `injectImagePreviewBlock`, `generateRepoDocs` con capturas preexistentes/faltantes, `generateSpecificDoc` con imágenes adjuntas y `runDocumentRepo`/`runGenerateSpecificDoc` propagando archivos de capturas `.png`.
+> - **Verificación CI:** 1.052 tests unitarios en cliente + 58 en servidor (1.110 unitarios en total) con 100% diff hit en Codecov.
+>
+> Cambio de código por Antigravity 2.0 (Gemini 3.6 Flash).
+
 ## [4.0.8] — 2026-08-08
 
 > **Vista previa visual en `README.md` (`injectImagePreviewBlock`) para capturas adjuntas y verificación de publicación vía chat.**

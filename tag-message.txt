@@ -1,8 +1,8 @@
-## [4.0.7] — 2026-08-08
+## [4.0.8] — 2026-08-08
 
-> **Fix duplicación de footer (`cleanDocFooter`) e inyección estricta de fecha/año actual (2026).**
-> - **Deduplicación de Footer (`cleanDocFooter`):** Se implementó saneamiento automático de firmas/footers en documentos de referencia antes de ser enviados como prompt al modelo, y sobre la salida generada por la IA antes de concatenar `docFooter`. Esto elimina la presencia de footers dobles en la vista previa y publicación.
-> - **Prevención de Alucinaciones con 2025:** Inyección dinámica de la fecha y año actual (`2026`) en las instrucciones del sistema (`generateRepoDocs`, `generateSpecificDoc`, `generateFileDoc`), con regla estricta que exige actualizar encabezados o versiones a la fecha actual y prohíbe el uso de fechas o años pasados (2025).
-> - **Tests Unitarios:** Añadidos tests unitarios en `gemini.test.ts` que validan `cleanDocFooter` y la presencia de un único footer en `generateRepoDocs`.
+> **Vista previa visual en `README.md` (`injectImagePreviewBlock`) para capturas adjuntas y verificación de publicación vía chat.**
+> - **Inclusión Obligatoria de Vista Previa de Imágenes:** Al documentar con imágenes/capturas adjuntas, se pasa la lista de nombres de imagen a los prompts de `generateRepoDocs` y `generateSpecificDoc` exigiendo su referencia. Además, se implementó el post-procesador `injectImagePreviewBlock` que verifica que cada imagen adjunta a subir en `screenshots/` tenga su vista previa en Markdown/HTML (`<p align="center"><img src="screenshots/IMAGEN" width="750" /></p>`).
+> - **Verificación de Publicación por Chat:** Se auditó y confirmó el funcionamiento del flujo de publicación/modificación mediante chat (`runSend`, `parseGeminiAction`, `ConfirmModal`, `runConfirmAction`, `executeAction`), el cual permite proponer y confirmar cambios directo sobre la API de GitHub REST.
+> - **Tests Unitarios:** Nuevos unit tests en `gemini.test.ts` para la inyección de vista previa visual de capturas.
 
 Cambio de código por Antigravity 2.0 (Gemini 3.6 Flash).

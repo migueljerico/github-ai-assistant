@@ -235,6 +235,18 @@ describe('runDocumentRepo', () => {
     expect(deps.setIsChatLoading).toHaveBeenLastCalledWith(false);
   });
 
+  it('propaga extraFiles conteniendo imagenes a generateRepoDocs', async () => {
+    vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'a' }], totalScanned: 1, truncated: false, allPaths: ['a'] } as any);
+    vi.mocked(generateRepoDocs).mockResolvedValue({ readme: 'R', manualTecnico: 'M' } as any);
+    const deps = makeDeps();
+
+    const imageFile = new File(['dummy'], 'screen.png', { type: 'image/png' });
+    await runDocumentRepo(deps, CONFIG, 'owner/repo', [imageFile]);
+
+    expect(generateRepoDocs).toHaveBeenCalledWith('owner/repo', expect.any(Array), CONFIG, 'es', ['screen.png']);
+  });
+
   it('#58 (b): cuando alreadyDocumented=true, trae el README/MANUAL actual y lo propaga', async () => {
     vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
     vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'README.md' }, { path: 'MANUAL_TECNICO.md' }], totalScanned: 2, truncated: false, allPaths: ['README.md', 'MANUAL_TECNICO.md'] } as any);
@@ -1793,6 +1805,18 @@ describe('runGenerateSpecificDoc', () => {
     );
     expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'error' }));
     expect(deps.setIsChatLoading).toHaveBeenLastCalledWith(false);
+  });
+
+  it('pasa extraFiles conteniendo imagenes a generateSpecificDoc', async () => {
+    vi.mocked(getFileContents).mockRejectedValue(new Error('404'));
+    vi.mocked(generateSpecificDoc).mockResolvedValue('# Doc Con Imagen');
+
+    const deps = makeDeps();
+    const imageFile = new File(['dummy'], 'demo.png', { type: 'image/png' });
+    const result = await runGenerateSpecificDoc(deps, CONFIG, 'owner/repo', 'README.md', undefined, undefined, [imageFile]);
+
+    expect(generateSpecificDoc).toHaveBeenCalledWith('README.md', undefined, undefined, CONFIG, 'es', ['demo.png']);
+    expect(result).toEqual({ doc: '# Doc Con Imagen', currentContent: undefined });
   });
 });
 

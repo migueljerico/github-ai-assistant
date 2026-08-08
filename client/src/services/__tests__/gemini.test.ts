@@ -1321,9 +1321,17 @@ describe('truncateByLines & generateFileDoc - base64 & data URI handling', () =>
 
     it('injectImagePreviewBlock inserta la vista previa antes de las secciones principales', () => {
       const readme = '# Mi App\n\nDescripción...\n\n## ⚙️ Instalación\n\n`npm install`';
-      const preview = '\n\n### 🖼️ Vista previa\n\n<p align="center"><img src="screenshots/demo.png" /></p>';
+      const preview = '### 🖼️ Vista previa\n\n<p align="center"><img src="screenshots/demo.png" /></p>';
       const result = injectImagePreviewBlock(readme, preview);
-      expect(result).toBe('# Mi App\n\nDescripción...' + preview + '\n\n## ⚙️ Instalación\n\n`npm install`');
+      expect(result).toBe('# Mi App\n\nDescripción...\n\n' + preview + '\n\n## ⚙️ Instalación\n\n`npm install`');
+    });
+
+    it('injectImagePreviewBlock maneja casos vacíos y fallback sin secciones encontradas', () => {
+      expect(injectImagePreviewBlock('', 'block')).toBe('');
+      expect(injectImagePreviewBlock('doc', '')).toBe('doc');
+      const noSectionsDoc = '# Titulo\n\nTexto plano sin headers H2';
+      const preview = '### 🖼️ Vista previa';
+      expect(injectImagePreviewBlock(noSectionsDoc, preview)).toBe(noSectionsDoc + '\n\n' + preview);
     });
 
     it('generateRepoDocs inyecta vista previa de capturas adjuntas si el LLM no las incluye', async () => {
@@ -1346,8 +1354,59 @@ describe('truncateByLines & generateFileDoc - base64 & data URI handling', () =>
       expect(result.readme).toContain('screenshots/captura1.png');
       expect(result.readme).toContain('Vista previa');
     });
+
+    it('generateRepoDocs no duplica la vista previa si el LLM ya incluyó la captura', async () => {
+      const fetchMock = vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ choices: [{ message: { content: '# README\n\n![Demo](screenshots/captura1.png)' } }] }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ choices: [{ message: { content: '# Manual Técnico' } }] }),
+        });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const files = [{ path: 'main.ts', content: 'console.log("hi");' }];
+      const config = { provider: 'groq' as const, apiKey: 'gsk-test', model: 'llama-3.3-70b' };
+
+      const result = await generateRepoDocs('user/repo', files, config, 'es', ['captura1.png']);
+
+      // Solo una mención de screenshots/captura1.png
+      const matches = result.readme.match(/screenshots\/captura1\.png/g) || [];
+      expect(matches.length).toBe(1);
+    });
+
+    it('generateSpecificDoc inyecta vista previa si el LLM omite la captura adjunta', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ choices: [{ message: { content: '# Doc Específico\n\nContenido.' } }] }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const config = { provider: 'groq' as const, apiKey: 'gsk-test', model: 'llama-3.3-70b' };
+      const doc = await generateSpecificDoc('README.md', undefined, undefined, config, 'es', ['screenshot.png']);
+
+      expect(doc).toContain('screenshots/screenshot.png');
+      expect(doc).toContain('Vista previa');
+    });
+
+    it('generateSpecificDoc no duplica si el LLM ya incluye la captura adjunta', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ choices: [{ message: { content: '# Doc Específico\n\n![Screenshot](screenshots/screenshot.png)' } }] }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const config = { provider: 'groq' as const, apiKey: 'gsk-test', model: 'llama-3.3-70b' };
+      const doc = await generateSpecificDoc('README.md', undefined, undefined, config, 'es', ['screenshot.png']);
+
+      const matches = doc.match(/screenshots\/screenshot\.png/g) || [];
+      expect(matches.length).toBe(1);
+    });
   });
 });
+
 
 
 
