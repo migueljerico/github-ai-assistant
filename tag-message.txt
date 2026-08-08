@@ -1,11 +1,7 @@
-## v3.68.7 — Actualización catálogos NVIDIA NIM y OpenCode Zen (2026-08-05)
+## [4.0.6] — 2026-08-08
 
-> **Actualización de catálogos de NVIDIA NIM y OpenCode Zen con verificación directa de la API.**
-> - **OpenCode Zen:** Añadido `longcat-2.0-free` al fallback `OPENZEN_FALLBACK` (8 modelos, fuente: opencode.ai/docs/es/zen/#pricing, 2026-08-05).
-> - **NVIDIA NIM:** Añadidos `nvidia/llama-3.3-nemotron-super-49b-v1` (Nemotron Super 49B) y `stepfun-ai/step-3.7-flash` al fallback `NIM_FALLBACK`, confirmados en `integrate.api.nvidia.com/v1/models`. Retirado `qwen/qwen3-next-80b-a3b-instruct` que no existe en la API real (13 modelos totales).
-> - **Tests:** Añadidas aserciones para `longcat-2.0-free` en OpenZen, Nemotron Super 49B y ausencia de qwen3-next-80b en NIM. Actualizados tests existentes de conteo.
+> **Tests unitarios y cobertura al 100% en `rateLimitHandler.ts` (#26).**
+> - **Cobertura del módulo:** Se creó `client/src/utils/__tests__/rateLimitHandler.test.ts` con 16 tests unitarios cubriendo todas las funciones y ramas de `rateLimitHandler.ts` (`parseRateLimitHeaders`, `formatRemainingTime`, `createRateLimitCountdown`, `isRateLimitError`, `enhanceErrorWithRateLimit`).
+> - **Métricas globales:** 1.040 tests unitarios pasados en el cliente (71 suites) + 58 en el servidor (8 suites) = 1.098 unitarios + 13 E2E.
 
-### Changed
-- **Catálogos de proveedores:** `client/src/services/providers.ts`, `client/src/services/__tests__/providers.test.ts`, `client/src/components/ai-provider/__tests__/AIProviderPanel.test.tsx`.
-
-Cambio de código por [Antigravity (Claude Sonnet 4.6 Thinking)].
+Cambio de código por Antigravity 2.0 (Gemini 3.6 Flash).

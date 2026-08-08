@@ -749,86 +749,75 @@ export function detectPrimaryLanguage(files: Array<{ path: string }>): string {
   return top ? extMap[top[0]] : 'múltiple';
 }
 
-// ── Repo documentation generator ──────────────────────────────────────────────
 /**
- * Generate README.md and MANUAL_TECNICO.md for a repository.
- * 
- * 🔥 ZERO-STORAGE: Acepta un objeto config opcional con provider/apiKey/model.
- * Si no se pasa (ej: en tests), usa valores por defecto para compatibilidad.
- * 
- * Acepta dos formatos de llamada:
- * - generateRepoDocs(files) - solo archivos (para tests)
- * - generateRepoDocs(files, config) - archivos + config (para tests con provider)
- * - generateRepoDocs(repoName, files) - con nombre del repo (legacy)
- * - generateRepoDocs(repoName, files, config) - con nombre y config (App.tsx)
+ * Sanea y elimina cualquier footer o firma previa (bloques `<p align="center">...`
+ * o firmas markdown de pie de página) de un documento para evitar duplicaciones.
  */
-export async function generateRepoDocs(
-  fileTreeOrRepoName: Array<{ path: string; content?: string }> | string,
-  fileTreeOrConfig?: Array<{ path: string; content?: string }> | AIProviderConfig,
-  maybeConfig?: AIProviderConfig,
-  lang: Language = 'es',
-): Promise<GeneratedDocs> {
-  
-  let repoName: string;
-  let files: Array<{ path: string; content?: string }>;
-  let config: AIProviderConfig | undefined;
-  
-  // Soporte para múltiples formatos de llamada
-  if (typeof fileTreeOrRepoName === 'string') {
-    // Formato: generateRepoDocs(repoName, files, config?)
-    repoName = fileTreeOrRepoName;
-    files = (fileTreeOrConfig as Array<{ path: string; content?: string }>) || [];
-    config = maybeConfig;
-  } else {
-    // Formato: generateRepoDocs(files, config?)
-    repoName = 'unknown-repo';
-    files = fileTreeOrRepoName;
-    // fileTreeOrConfig podría ser el config si se llama con (files, config)
-    if (fileTreeOrConfig && typeof fileTreeOrConfig === 'object' && 'provider' in fileTreeOrConfig) {
-      config = fileTreeOrConfig as AIProviderConfig;
+export function cleanDocFooter(text: string): string {
+  if (!text) return '';
+  let cleaned = text;
+
+  // Elimina todos los bloques HTML <p align="center">...</p> que contengan firmas de autor/documentación
+  const footerHtmlRegex = /<p\s+align=["']center["']\s*>[\s\S]*?(?:Desarrollado|Creado|Created|Documentado|Documented|Asistente\s+de\s+IA|AI\s+Assistant|github\.com)[\s\S]*?<\/p>/gi;
+  cleaned = cleaned.replace(footerHtmlRegex, '');
+
+  // Elimina líneas o párrafos finales que contengan firmas residuales
+  const lines = cleaned.split('\n');
+  while (lines.length > 0) {
+    const lastLine = lines[lines.length - 1].trim();
+    if (
+      !lastLine ||
+      /^(?:Desarrollado|Creado|Created|Documentado|Documented)\s+por|by/i.test(lastLine) ||
+      (/<p\s+align=["']center["']/i.test(lastLine) && /(?:Desarrollado|Creado|Created|Documentado|Documented|Asistente|AI\s+Assistant|github\.com|ljerico)/i.test(lastLine)) ||
+      /ljerico<\/a>/i.test(lastLine)
+    ) {
+      lines.pop();
+    } else {
+      break;
     }
   }
 
-  // Validación
+  return lines.join('\n').trimEnd();
+}
+
+/**
+ * Genera documentación para un repositorio completo (README.md + MANUAL_TECNICO.md).
+ */
+export async function generateRepoDocs(
+  repoName: string,
+  files: Array<{ path: string; content?: string }>,
+  config?: AIProviderConfig,
+  lang: Language = 'es',
+): Promise<GeneratedDocs> {
   if (!files || files.length === 0) {
-    throw new Error('No hay archivos para analizar');
+    throw new Error('No hay archivos para analizar en el repositorio.');
   }
 
   const primaryLanguage = detectPrimaryLanguage(files);
-  // Autor y año REALES (no dejar que el modelo los invente — caso real: footer "· 2024").
   const docOwner = repoName.includes('/') ? repoName.split('/')[0] : repoName;
-  const docYear = new Date().getFullYear();
-  // v3.31.0: proveedor y modelo REALES para el footer del README (firma de
-  // documentación). Si no hay config (tests), usamos valores genéricos.
+  const now = new Date();
+  const docYear = now.getFullYear();
+  const currentDateStr = now.toLocaleDateString(lang === 'en' ? 'en-US' : 'es-ES', { month: 'long', year: 'numeric' });
+  const currentIsoDate = now.toISOString().split('T')[0];
+
   const providerLabel = config ? getProvider(config.provider).name : 'IA';
   const modelLabelVal = config ? modelLabel(config.provider, config.model) : 'IA';
-  // El footer cambia según el idioma de la interfaz (ES/EN).
   const docFooter = lang === 'en'
     ? `<p align="center">Created by <a href="https://github.com/${docOwner}">@${docOwner}</a> and documented by ${providerLabel} (${modelLabelVal}) from the AI Assistant App · ${docYear}</p>`
     : `<p align="center">Creado por <a href="https://github.com/${docOwner}">@${docOwner}</a> y documentado por ${providerLabel} (${modelLabelVal}) desde la App Asistente de IA · ${docYear}</p>`;
 
-  // v3.66.0 (Frente A+B): converger generateRepoDocs hacia el patrón de
-  // generateSpecificDoc. ANTES pedía un único JSON gigante {readme, manualTecnico,
-  // resumen, metadatos} con maxTokens 8192 = techo exacto del free tier de Gemini
-  // Flash → el JSON se trunca → "no devolvió JSON válido" (bug B). Además el prompt
-  // solo decía "genera desde cero", nunca "mejora el existente" → un modelo perezoso
-  // del free tier COPIABA el README previo (bug A). No existía el existingDirective
-  // que SÍ tiene generateSpecificDoc.
-  //
-  // Solución: 2 llamadas secuenciales (README, luego MANUAL), cada una en MARKDOWN
-  // PLANO (sin JSON → imposible truncar un JSON que no existe), inyectando la
-  // directiva "MEJORA, no copies" cuando haya un doc previo. Secuenciales (no
-  // Promise.all) para no disparar 429 en free tier.
+  const dateDirective = `\n\n═══════════════════════════════════════════════════════\nFECHA Y AÑO ACTUAL EN CURSO (OBLIGATORIO):\n- Año actual: ${docYear}\n- Fecha actual: ${currentDateStr} (${currentIsoDate})\n\nREGLA ESTRICTA DE FECHA/AÑO: Si incluyes alguna fecha, versión o año en el documento (encabezados, badges, notas o pie de página), DEBES usar obligatoriamente la fecha u año actual indicado arriba (${docYear}). NUNCA alucines ni incluyas años o fechas pasadas (como 2025 o anteriores) para la versión o actualización actual. Si el contenido existente contenía "2025" o fechas pasadas en la cabecera/versión/fecha, ACTUALÍZALO obligatoriamente a ${docYear}.\n═══════════════════════════════════════════════════════`;
 
-  // ── Detectar README y MANUAL existentes para pedir "mejora" en vez de "copia" ──
-  const existingReadme = files.find(f => /^readme(\.|$)/i.test(f.path))?.content;
-  const existingManual = files.find(f => /manual[_-]tecnico/i.test(f.path))?.content;
+  // Detectar y sanear README y MANUAL existentes para pedir "mejora" en vez de "copia"
+  const rawExistingReadme = files.find(f => /^readme(\.|$)/i.test(f.path))?.content;
+  const rawExistingManual = files.find(f => /manual[_-]tecnico/i.test(f.path))?.content;
 
-  // ── Contexto compartido por ambas llamadas ────────────────────────────────
+  const existingReadme = rawExistingReadme ? cleanDocFooter(rawExistingReadme) : undefined;
+  const existingManual = rawExistingManual ? cleanDocFooter(rawExistingManual) : undefined;
+
   const treeOverview = files.map(f => f.path).join('\n');
   const fileContents = files
-    .filter(f => f.content) // Solo archivos con contenido
-    // #20: truncado por líneas (preserva imports/firmas) en vez de cortar a 2000 chars.
+    .filter(f => f.content)
     .map(f => `### ${f.path}\n${truncateByLines(f.content || '', 80)}`)
     .join('\n\n---\n\n');
   const sharedUserContext =
@@ -838,7 +827,6 @@ export async function generateRepoDocs(
     `ESTRUCTURA DEL PROYECTO:\n\`\`\`\n${treeOverview}\n\`\`\`\n\n` +
     `CONTENIDO DE ARCHIVOS CLAVE:\n\n${fileContents}`;
 
-  // ── Llamada 1: README en markdown plano ───────────────────────────────────
   const readmeExistingDirective = existingReadme
     ? `\n\nCONTENIDO ACTUAL DEL README (debes MEJORARLO, no copiarlo ni reemplazarlo ciegamente — mantén su estructura y tono, corrige lo obsoleto y añade/aumenta secciones con información real del código):\n${existingReadme}`
     : '\n\nEl README NO existe aún — créalo desde cero con contenido profesional.';
@@ -873,18 +861,15 @@ REQUISITOS OBLIGATORIOS PARA EL README.md
    - Detecta el lenguaje principal y usa badges específicos de ese ecosistema
    - Si el README existente referencia archivos de imagen (*.png, *.jpg, *.gif,
      *.svg, *.webp) que NO aparecen en la estructura del proyecto (ESTRUCTURA DEL
-     PROYECTO más arriba), ELIMINA esa referencia de imagen completa (la línea
-     ![...](...) y su pie de foto si lo tiene). No dejes enlaces a archivos inexistentes.
+     PROYECTO más arriba), ELIMINA esa referencia de imagen completa. No dejes enlaces a archivos inexistentes.
    - Si el README referencia imágenes, usa la ruta screenshots/FILENAME (no la raíz).
-     Ejemplo: ![Vista previa](screenshots/captura.png) en vez de ![Vista previa](captura.png).
-${readmeExistingDirective}
+${readmeExistingDirective}${dateDirective}
 
 ═══════════════════════════════════════════════════════
 LENGUAJE PRIMARIO DETECTADO: ${primaryLanguage}
 REPOSITORIO: ${repoName}
 ═══════════════════════════════════════════════════════`;
 
-  // ── Llamada 2: MANUAL_TECNICO en markdown plano ───────────────────────────
   const manualExistingDirective = existingManual
     ? `\n\nCONTENIDO ACTUAL DEL MANUAL_TECNICO (debes MEJORARLO, no copiarlo ni reemplazarlo ciegamente — mantén su estructura y tono, corrige lo obsoleto y añade/aumenta secciones con información real del código):\n${existingManual}`
     : '\n\nEl MANUAL_TECNICO NO existe aún — créalo desde cero con contenido profesional.';
@@ -911,15 +896,13 @@ REQUISITOS OBLIGATORIOS PARA EL MANUAL_TECNICO.md
 5. Guía de despliegue paso a paso para el stack detectado
 
 6. Limitaciones conocidas y posibles mejoras futuras
-${manualExistingDirective}
+${manualExistingDirective}${dateDirective}
 
 ═══════════════════════════════════════════════════════
 LENGUAJE PRIMARIO DETECTADO: ${primaryLanguage}
 REPOSITORIO: ${repoName}
 ═══════════════════════════════════════════════════════`;
 
-  // ── Ejecución: 2 llamadas secuenciales en markdown plano ──────────────────
-  // Secuenciales (no Promise.all) para no disparar 429 en el free tier.
   const provider = config?.provider ?? 'groq';
   const apiKey = config?.apiKey ?? 'test-key';
   const model = config?.model ?? 'test-model';
@@ -932,15 +915,14 @@ REPOSITORIO: ${repoName}
     withLangDirective(readmeSystemPrompt, lang),
     provider, apiKey, model,
     undefined, undefined, undefined,
-    8192, // README solo cabe holgado en el free tier al ir en markdown plano.
+    8192,
   );
-  const readmeStripped = stripFences(readmeRaw).trim();
+  const readmeStripped = cleanDocFooter(stripFences(readmeRaw));
   if (!readmeStripped) {
     throw new Error('La IA no devolvió el README. Prueba con otro modelo o vuelve a intentarlo.');
   }
   const readme = readmeStripped + '\n\n' + docFooter;
 
-  // Segunda llamada DESPUÉS de la primera (secuenciales).
   const manualRaw = await callAI(
     [{ role: 'user', content: sharedUserContext }],
     withLangDirective(manualSystemPrompt, lang),
@@ -948,7 +930,7 @@ REPOSITORIO: ${repoName}
     undefined, undefined, undefined,
     8192,
   );
-  const manualStripped = stripFences(manualRaw).trim();
+  const manualStripped = cleanDocFooter(stripFences(manualRaw));
   if (!manualStripped) {
     throw new Error('La IA no devolvió el MANUAL_TECNICO. Prueba con otro modelo o vuelve a intentarlo.');
   }
@@ -974,8 +956,8 @@ export async function generateFileDoc(
   conversation?: string,
   lang: Language = 'es',
 ): Promise<string> {
-  // #24 Fase 3: el idioma de la documentación sigue al idioma activo de la interfaz.
   const langInstruction = lang === 'en' ? 'IN ENGLISH' : 'EN ESPAÑOL';
+  const currentYear = new Date().getFullYear();
   const docSystemPrompt = `Eres un experto en documentación técnica con registro PROFESIONAL. A partir del contenido de un archivo, redacta documentación clara y útil ${langInstruction}, en **Markdown**, con estas secciones:
 
 # {Título descriptivo del documento}
@@ -988,7 +970,10 @@ export async function generateFileDoc(
 ## ✅ Conclusiones / siguientes pasos
 (si aplica.)
 
-Reglas: básate ÚNICAMENTE en el contenido aportado (y, si se incluye, en la conversación con el usuario); no inventes. ${conversation ? 'INCORPORA los puntos relevantes de la conversación con el usuario que aparece abajo, sin contradecir el contenido del archivo. ' : ''}Responde SOLO con el Markdown, sin texto introductorio ni bloques de código externos que envuelvan todo.`;
+Reglas:
+- Básate ÚNICAMENTE en el contenido aportado (y, si se incluye, en la conversación con el usuario); no inventes. ${conversation ? 'INCORPORA los puntos relevantes de la conversación con el usuario que aparece abajo, sin contradecir el contenido del archivo. ' : ''}
+- Si se requiere fecha o año, utiliza el año actual (${currentYear}). No utilices fechas pasadas como 2025.
+- Responde SOLO con el Markdown, sin texto introductorio ni bloques de código externos que envuelvan todo.`;
 
   const safeContent = content.trimStart().startsWith('data:')
     ? '[ARCHIVO BINARIO O BASE64 ADJUNTO - NO SE MUESTRA CONTENIDO EN EL PROMPT]'
@@ -1006,10 +991,12 @@ Reglas: básate ÚNICAMENTE en el contenido aportado (y, si se incluye, en la co
     config.model,
   );
 
-  const doc = raw
-    .replace(/^```(?:markdown)?\s*/i, '')
-    .replace(/\s*```\s*$/, '')
-    .trim();
+  const doc = cleanDocFooter(
+    raw
+      .replace(/^```(?:markdown)?\s*/i, '')
+      .replace(/\s*```\s*$/, '')
+      .trim()
+  );
 
   if (!doc) throw new Error('La IA no devolvió documentación. Prueba con otro modelo o un archivo más pequeño.');
   return doc;
@@ -1032,6 +1019,12 @@ export async function generateSpecificDoc(
   const ext = targetPath.split('.').pop()?.toLowerCase() || '';
   const baseName = targetPath.replace(/\.[^.]+$/, '').replace(/[^\w.-]+/g, '-') || 'archivo';
 
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentDateStr = now.toLocaleDateString(lang === 'en' ? 'en-US' : 'es-ES', { month: 'long', year: 'numeric' });
+  const currentIsoDate = now.toISOString().split('T')[0];
+  const dateDirective = `\n\nFECHA Y AÑO ACTUAL EN CURSO: ${currentDateStr} (${currentIsoDate}, ${currentYear}). Si incluyes la versión o fecha de actualización, utiliza obligatoriamente el año/fecha actual (${currentYear}) y NO mantengas ni alucines con fechas pasadas como 2025.`;
+
   // Prompt base adaptado al tipo de documento
   // eslint-disable-next-line no-useless-assignment -- falso positivo: se reasigna en todas las ramas del if/else y se usa más abajo; el linter no sigue el flujo.
   let typeDirective = '';
@@ -1049,24 +1042,20 @@ export async function generateSpecificDoc(
     typeDirective = `TIPO: Documento personalizado (${targetPath}). Genera documentación profesional y útil para este archivo según su función en el repo.`;
   }
 
-  // v3.67.0 (Frente A): la instrucción del usuario tiene PRECEDENCIA sobre el
-  // contenido existente. Antes, "actualizar, no reemplazar ciegamente" + la regla
-  // "básate únicamente en el contexto" hacían que el modelo ignorara un rewrite
-  // pedido en el chat (ej. "redacta un README completamente nuevo con badges y
-  // estructura X") y produjera solo cambios triviales. Ahora: si hay instrucción
-  // del usuario, prevalece; si NO hay instrucción, se mantiene la directriz de
   // "mejora, no copies" sobre el contenido existente.
   const hasUserInstruction = Boolean(repoContext && repoContext.trim());
 
-  const existingDirective = existingContent
-    ? `\n\nCONTENIDO ACTUAL DEL ARCHIVO (úsalo como referencia${hasUserInstruction ? ' pero la instrucción del usuario prevalece sobre preservarlo' : ' — actualízalo, no reemplazarlo ciegamente; mantén la estructura existente y mejora/añade secciones'}):\n${existingContent}`
+  const cleanedExistingContent = existingContent ? cleanDocFooter(existingContent) : undefined;
+
+  const existingDirective = cleanedExistingContent
+    ? `\n\nCONTENIDO ACTUAL DEL ARCHIVO (úsalo como referencia${hasUserInstruction ? ' pero la instrucción del usuario prevalece sobre preservarlo' : ' — actualízalo, no reemplazarlo ciegamente; mantén la estructura existente y mejora/añade secciones'}):\n${cleanedExistingContent}`
     : '\n\nEl archivo NO existe aún — créalo desde cero con contenido profesional.';
 
   const userInstructionDirective = hasUserInstruction
     ? `\n\nINSTRUCCIÓN EXPLÍCITA DEL USUARIO (PREVALECE sobre el contenido actual — aplícala aunque implique reescritura completa):\n${repoContext}`
     : '';
 
-  const systemPrompt = `Eres un experto en documentación técnica con registro PROFESIONAL. Tu tarea es generar o actualizar documentación para un archivo del repo. ${langInstruction}.
+  const systemPrompt = `Eres un experto en documentación técnica con registro PROFESIONAL. Tu tarea es generar o actualizar documentación para un archivo del repo. ${langInstruction}.${dateDirective}
 
 ${typeDirective}${existingDirective}${userInstructionDirective}
 
@@ -1096,10 +1085,12 @@ Reglas:
     8192,
   );
 
-  const doc = raw
-    .replace(/^```(?:markdown)?\s*/i, '')
-    .replace(/\s*```\s*$/, '')
-    .trim();
+  const doc = cleanDocFooter(
+    raw
+      .replace(/^```(?:markdown)?\s*/i, '')
+      .replace(/\s*```\s*$/, '')
+      .trim()
+  );
 
   if (!doc) throw new Error('La IA no devolvió documentación. Prueba con otro modelo o un archivo más pequeño.');
   return doc;

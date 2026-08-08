@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.7] — 2026-08-08
+
+> **Fix duplicación de footer (`cleanDocFooter`) e inyección estricta de fecha/año actual (2026).**
+> - **Deduplicación de Footer (`cleanDocFooter`):** Se implementó saneamiento automático de firmas/footers en documentos de referencia antes de ser enviados como prompt al modelo, y sobre la salida generada por la IA antes de concatenar `docFooter`. Esto elimina la presencia de footers dobles en la vista previa y publicación.
+> - **Prevención de Alucinaciones con 2025:** Inyección dinámica de la fecha y año actual (`2026`) en las instrucciones del sistema (`generateRepoDocs`, `generateSpecificDoc`, `generateFileDoc`), con regla estricta que exige actualizar encabezados o versiones a la fecha actual y prohíbe el uso de fechas o años pasados (2025).
+> - **Tests Unitarios:** Añadidos tests unitarios en `gemini.test.ts` que validan `cleanDocFooter` y la presencia de un único footer en `generateRepoDocs`.
+>
+> Cambio de código por Antigravity 2.0 (Gemini 3.6 Flash).
+
 ## [4.0.6] — 2026-08-08
 
 > **Tests unitarios y cobertura al 100% en `rateLimitHandler.ts` (#26).**

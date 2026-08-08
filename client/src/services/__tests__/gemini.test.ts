@@ -15,6 +15,7 @@ import {
  generateRepoDocs,
  generateSpecificDoc,
  truncateByLines,
+ cleanDocFooter,
 } from '../gemini';
 
 describe('gemini.ts - Utilidades', () => {
@@ -1270,5 +1271,53 @@ describe('truncateByLines & generateFileDoc - base64 & data URI handling', () =>
     expect(userMsg.content).toContain('Contenido del archivo plano');
     expect(userMsg.content).not.toContain('CONVERSACIÓN PREVIA');
   });
+
+  describe('cleanDocFooter & deduplicación de footers', () => {
+    it('elimina bloques HTML de footer <p align="center">...', () => {
+      const docWithFooter = '# Mi Proyecto\n\nTexto principal.\n\n<p align="center">\n  <sub>Desarrollado por <a href="https://github.com/migueljerico">@migueljerico</a> · 2026</sub>\n</p>';
+      const cleaned = cleanDocFooter(docWithFooter);
+      expect(cleaned).toBe('# Mi Proyecto\n\nTexto principal.');
+    });
+
+    it('elimina footers formateados como creados/documentados por IA', () => {
+      const docWithFooter = '# Mi Proyecto\n\nContenido...\n\n<p align="center">Creado por <a href="https://github.com/user">@user</a> y documentado por Groq (Llama 3) desde la App Asistente de IA · 2026</p>';
+      const cleaned = cleanDocFooter(docWithFooter);
+      expect(cleaned).toBe('# Mi Proyecto\n\nContenido...');
+    });
+
+    it('respeta documentos que no contienen footers de autor', () => {
+      const normalDoc = '# Documento Normal\n\nEste es un texto que incluye un párrafo centrado normal:\n\n<p align="center">Logotipo del Proyecto</p>';
+      const cleaned = cleanDocFooter(normalDoc);
+      expect(cleaned).toBe(normalDoc);
+    });
+
+    it('generateRepoDocs limpia footers previos y produce un único footer al final', async () => {
+      const fetchMock = vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ choices: [{ message: { content: '# README\n\nNuevo contenido.\n\n<p align="center">Desarrollado por @olduser · 2025</p>' } }] }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ choices: [{ message: { content: '# Manual Técnico\n\nContenido manual.' } }] }),
+        });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const files = [
+        { path: 'README.md', content: '# README Antiguo\n\n<p align="center">Desarrollado por @olduser · 2025</p>' },
+        { path: 'main.ts', content: 'console.log("hello");' },
+      ];
+      const config = { provider: 'groq' as const, apiKey: 'gsk-test', model: 'llama-3.3-70b' };
+
+      const result = await generateRepoDocs('migueljerico/demo', files, config, 'es');
+
+      // Verifica que no hay múltiples etiquetas <p align="center"> en el README resultante
+      const pMatches = (result.readme.match(/<p\s+align=["']center["']/gi) || []).length;
+      expect(pMatches).toBe(1);
+      expect(result.readme).toContain('documentado por Groq');
+      expect(result.readme).not.toContain('@olduser');
+    });
+  });
 });
+
 
