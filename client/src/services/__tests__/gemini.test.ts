@@ -16,6 +16,7 @@ import {
  generateSpecificDoc,
  truncateByLines,
  cleanDocFooter,
+ injectImagePreviewBlock,
 } from '../gemini';
 
 describe('gemini.ts - Utilidades', () => {
@@ -1317,7 +1318,36 @@ describe('truncateByLines & generateFileDoc - base64 & data URI handling', () =>
       expect(result.readme).toContain('documentado por Groq');
       expect(result.readme).not.toContain('@olduser');
     });
+
+    it('injectImagePreviewBlock inserta la vista previa antes de las secciones principales', () => {
+      const readme = '# Mi App\n\nDescripción...\n\n## ⚙️ Instalación\n\n`npm install`';
+      const preview = '\n\n### 🖼️ Vista previa\n\n<p align="center"><img src="screenshots/demo.png" /></p>';
+      const result = injectImagePreviewBlock(readme, preview);
+      expect(result).toBe('# Mi App\n\nDescripción...' + preview + '\n\n## ⚙️ Instalación\n\n`npm install`');
+    });
+
+    it('generateRepoDocs inyecta vista previa de capturas adjuntas si el LLM no las incluye', async () => {
+      const fetchMock = vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ choices: [{ message: { content: '# README\n\nTexto sin imágenes.' } }] }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ choices: [{ message: { content: '# Manual Técnico' } }] }),
+        });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const files = [{ path: 'main.ts', content: 'console.log("hi");' }];
+      const config = { provider: 'groq' as const, apiKey: 'gsk-test', model: 'llama-3.3-70b' };
+
+      const result = await generateRepoDocs('user/repo', files, config, 'es', ['captura1.png']);
+
+      expect(result.readme).toContain('screenshots/captura1.png');
+      expect(result.readme).toContain('Vista previa');
+    });
   });
 });
+
 
 

@@ -781,6 +781,23 @@ export function cleanDocFooter(text: string): string {
 }
 
 /**
+ * Inyecta un bloque de vista previa de imágenes (Markdown/HTML) en una posición
+ * idónea dentro de un documento README.md (antes de secciones como Tecnologías,
+ * Instalación, Funcionalidades o Estructura).
+ */
+export function injectImagePreviewBlock(readme: string, previewBlock: string): string {
+  if (!readme || !previewBlock) return readme || '';
+  const block = previewBlock.startsWith('\n') ? previewBlock : '\n\n' + previewBlock;
+  const targetRegex = /(##\s+(?:⚙️|✨|🛠️|📁|🚀|📋)\s+)/i;
+  const match = targetRegex.exec(readme);
+  if (match) {
+    const idx = match.index;
+    return readme.slice(0, idx).trimEnd() + block + '\n\n' + readme.slice(idx);
+  }
+  return readme.trimEnd() + block;
+}
+
+/**
  * Genera documentación para un repositorio completo (README.md + MANUAL_TECNICO.md).
  */
 export async function generateRepoDocs(
@@ -788,6 +805,7 @@ export async function generateRepoDocs(
   files: Array<{ path: string; content?: string }>,
   config?: AIProviderConfig,
   lang: Language = 'es',
+  extraImageFiles?: string[],
 ): Promise<GeneratedDocs> {
   if (!files || files.length === 0) {
     throw new Error('No hay archivos para analizar en el repositorio.');
@@ -807,6 +825,10 @@ export async function generateRepoDocs(
     : `<p align="center">Creado por <a href="https://github.com/${docOwner}">@${docOwner}</a> y documentado por ${providerLabel} (${modelLabelVal}) desde la App Asistente de IA · ${docYear}</p>`;
 
   const dateDirective = `\n\n═══════════════════════════════════════════════════════\nFECHA Y AÑO ACTUAL EN CURSO (OBLIGATORIO):\n- Año actual: ${docYear}\n- Fecha actual: ${currentDateStr} (${currentIsoDate})\n\nREGLA ESTRICTA DE FECHA/AÑO: Si incluyes alguna fecha, versión o año en el documento (encabezados, badges, notas o pie de página), DEBES usar obligatoriamente la fecha u año actual indicado arriba (${docYear}). NUNCA alucines ni incluyas años o fechas pasadas (como 2025 o anteriores) para la versión o actualización actual. Si el contenido existente contenía "2025" o fechas pasadas en la cabecera/versión/fecha, ACTUALÍZALO obligatoriamente a ${docYear}.\n═══════════════════════════════════════════════════════`;
+
+  const imagesDirective = extraImageFiles && extraImageFiles.length > 0
+    ? `\n\n═══════════════════════════════════════════════════════\nCAPTURAS / IMÁGENES ADJUNTAS A SUBIR EN EL REPOSITORIO (OBLIGATORIO INCLUIR EN EL README.md):\nSe están adjuntando y subiendo las siguientes imágenes a la carpeta \`screenshots/\`:\n${extraImageFiles.map(n => `- screenshots/${n}`).join('\n')}\n\nREQUISITO OBLIGATORIO:\nEn el README.md generado, DEBES incluir explícitamente una sección o bloque de vista previa visual (en Descripción, Acceso/Demo o en una sección dedicada 🖼️ Vista previa) que muestre cada una de estas imágenes usando sintaxis Markdown o HTML centrado:\n<p align="center">\n  <img src="screenshots/${extraImageFiles[0]}" alt="Vista previa" width="750" />\n</p>\no:\n![Vista previa](screenshots/${extraImageFiles[0]})\nSi hay múltiples imágenes, incluye la vista previa de cada una.\n═══════════════════════════════════════════════════════`
+    : '';
 
   // Detectar y sanear README y MANUAL existentes para pedir "mejora" en vez de "copia"
   const rawExistingReadme = files.find(f => /^readme(\.|$)/i.test(f.path))?.content;
@@ -863,7 +885,7 @@ REQUISITOS OBLIGATORIOS PARA EL README.md
      *.svg, *.webp) que NO aparecen en la estructura del proyecto (ESTRUCTURA DEL
      PROYECTO más arriba), ELIMINA esa referencia de imagen completa. No dejes enlaces a archivos inexistentes.
    - Si el README referencia imágenes, usa la ruta screenshots/FILENAME (no la raíz).
-${readmeExistingDirective}${dateDirective}
+${readmeExistingDirective}${dateDirective}${imagesDirective}
 
 ═══════════════════════════════════════════════════════
 LENGUAJE PRIMARIO DETECTADO: ${primaryLanguage}
@@ -917,10 +939,25 @@ REPOSITORIO: ${repoName}
     undefined, undefined, undefined,
     8192,
   );
-  const readmeStripped = cleanDocFooter(stripFences(readmeRaw));
+  let readmeStripped = cleanDocFooter(stripFences(readmeRaw));
   if (!readmeStripped) {
     throw new Error('La IA no devolvió el README. Prueba con otro modelo o vuelve a intentarlo.');
   }
+
+  // Garantizar que las imágenes adjuntas queden referenciadas en el README.md
+  if (extraImageFiles && extraImageFiles.length > 0) {
+    const missingImages = extraImageFiles.filter(
+      img => !readmeStripped.toLowerCase().includes(img.toLowerCase())
+    );
+    if (missingImages.length > 0) {
+      const previewItems = missingImages
+        .map(img => `<p align="center">\n  <img src="screenshots/${img}" alt="Vista previa - ${img}" width="750" />\n</p>`)
+        .join('\n\n');
+      const previewBlock = `\n\n### 🖼️ Vista previa\n\n${previewItems}`;
+      readmeStripped = injectImagePreviewBlock(readmeStripped, previewBlock);
+    }
+  }
+
   const readme = readmeStripped + '\n\n' + docFooter;
 
   const manualRaw = await callAI(
@@ -1014,6 +1051,7 @@ export async function generateSpecificDoc(
   repoContext?: string,
   config?: AIProviderConfig,
   lang: Language = 'es',
+  extraImageFiles?: string[],
 ): Promise<string> {
   const langInstruction = lang === 'en' ? 'IN ENGLISH' : 'EN ESPAÑOL';
   const ext = targetPath.split('.').pop()?.toLowerCase() || '';
@@ -1024,6 +1062,10 @@ export async function generateSpecificDoc(
   const currentDateStr = now.toLocaleDateString(lang === 'en' ? 'en-US' : 'es-ES', { month: 'long', year: 'numeric' });
   const currentIsoDate = now.toISOString().split('T')[0];
   const dateDirective = `\n\nFECHA Y AÑO ACTUAL EN CURSO: ${currentDateStr} (${currentIsoDate}, ${currentYear}). Si incluyes la versión o fecha de actualización, utiliza obligatoriamente el año/fecha actual (${currentYear}) y NO mantengas ni alucines con fechas pasadas como 2025.`;
+
+  const imagesDirective = extraImageFiles && extraImageFiles.length > 0
+    ? `\n\n═══════════════════════════════════════════════════════\nCAPTURAS / IMÁGENES ADJUNTAS A SUBIR EN EL REPOSITORIO (OBLIGATORIO INCLUIR EN EL DOCUMENTO):\nSe están adjuntando y subiendo las siguientes imágenes a la carpeta \`screenshots/\`:\n${extraImageFiles.map(n => `- screenshots/${n}`).join('\n')}\n\nREQUISITO OBLIGATORIO:\nEn la documentación generada, DEBES incluir explícitamente la vista previa visual en Markdown o HTML centrado:\n<p align="center">\n  <img src="screenshots/${extraImageFiles[0]}" alt="Vista previa de ${extraImageFiles[0]}" width="750" />\n</p>\n═══════════════════════════════════════════════════════`
+    : '';
 
   // Prompt base adaptado al tipo de documento
   // eslint-disable-next-line no-useless-assignment -- falso positivo: se reasigna en todas las ramas del if/else y se usa más abajo; el linter no sigue el flujo.
@@ -1055,7 +1097,7 @@ export async function generateSpecificDoc(
     ? `\n\nINSTRUCCIÓN EXPLÍCITA DEL USUARIO (PREVALECE sobre el contenido actual — aplícala aunque implique reescritura completa):\n${repoContext}`
     : '';
 
-  const systemPrompt = `Eres un experto en documentación técnica con registro PROFESIONAL. Tu tarea es generar o actualizar documentación para un archivo del repo. ${langInstruction}.${dateDirective}
+  const systemPrompt = `Eres un experto en documentación técnica con registro PROFESIONAL. Tu tarea es generar o actualizar documentación para un archivo del repo. ${langInstruction}.${dateDirective}${imagesDirective}
 
 ${typeDirective}${existingDirective}${userInstructionDirective}
 
@@ -1085,12 +1127,25 @@ Reglas:
     8192,
   );
 
-  const doc = cleanDocFooter(
+  let doc = cleanDocFooter(
     raw
       .replace(/^```(?:markdown)?\s*/i, '')
       .replace(/\s*```\s*$/, '')
       .trim()
   );
+
+  if (extraImageFiles && extraImageFiles.length > 0) {
+    const missingImages = extraImageFiles.filter(
+      img => !doc.toLowerCase().includes(img.toLowerCase())
+    );
+    if (missingImages.length > 0) {
+      const previewItems = missingImages
+        .map(img => `<p align="center">\n  <img src="screenshots/${img}" alt="Vista previa - ${img}" width="750" />\n</p>`)
+        .join('\n\n');
+      const previewBlock = `\n\n### 🖼️ Vista previa\n\n${previewItems}`;
+      doc = injectImagePreviewBlock(doc, previewBlock);
+    }
+  }
 
   if (!doc) throw new Error('La IA no devolvió documentación. Prueba con otro modelo o un archivo más pequeño.');
   return doc;

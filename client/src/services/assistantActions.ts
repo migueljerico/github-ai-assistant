@@ -180,6 +180,7 @@ export async function runDocumentRepo(
   deps: ChatDeps,
   config: AIProviderConfig,
   repoInput: string,
+  extraFiles?: File[],
 ): Promise<RepoAnalysis | null | 'repo-missing'> {
   const { token, user, providerName, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading } = deps;
   const { owner, repo: repoName } = resolveRepoRef(repoInput, user.login);
@@ -203,7 +204,13 @@ export async function runDocumentRepo(
       isLoading: true,
     });
 
-    const { readme, manualTecnico, resumen } = await generateRepoDocs(`${owner}/${repoName}`, files, config, deps.lang);
+    const extraImageNames = extraFiles
+      ?.filter(f => /\.(png|jpe?g|gif|webp|svg)$/i.test(f.name))
+      .map(f => f.name);
+
+    const { readme, manualTecnico, resumen } = extraImageNames && extraImageNames.length > 0
+      ? await generateRepoDocs(`${owner}/${repoName}`, files, config, deps.lang, extraImageNames)
+      : await generateRepoDocs(`${owner}/${repoName}`, files, config, deps.lang);
 
     // #57 Tanda B: detectar si el repo ya está documentado (README.md o
     // MANUAL_TECNICO.md en la raíz) para avisar al usuario de que se actualizará.
@@ -1542,6 +1549,7 @@ export async function runGenerateSpecificDoc(
   targetPath: string,
   existingContent?: string,
   conversation?: string,
+  extraFiles?: File[],
 ): Promise<GenerateSpecificResult | null> {
   const { token, user, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading, lang } = deps;
   const { owner, repo: repoName } = resolveRepoRef(repoInput, user.login);
@@ -1569,8 +1577,13 @@ export async function runGenerateSpecificDoc(
     }
 
     const repoContext = conversation ? formatConversation([{ role: 'user', content: conversation }]) : undefined;
+    const extraImageNames = extraFiles
+      ?.filter(f => /\.(png|jpe?g|gif|webp|svg)$/i.test(f.name))
+      .map(f => f.name);
 
-    const doc = await generateSpecificDoc(targetPath, currentContent, repoContext, config, lang);
+    const doc = extraImageNames && extraImageNames.length > 0
+      ? await generateSpecificDoc(targetPath, currentContent, repoContext, config, lang, extraImageNames)
+      : await generateSpecificDoc(targetPath, currentContent, repoContext, config, lang);
 
     updateMessage(loadingId, {
       content: `✅ Documentación generada para \`${targetPath}\` en **${owner}/${repoName}**. ${currentContent ? '🔄 Se actualizará el documento existente.' : '✨ Es un documento nuevo.'} Revisa el contenido antes de publicar.`,

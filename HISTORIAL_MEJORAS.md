@@ -1,6 +1,6 @@
 # 📜 Historial de Mejoras Implementadas
 
-Registro histórico de todas las características, optimizaciones y correcciones resueltas en el proyecto **Asistente de IA de GitHub**, ordenadas cronológicamente desde la versión v1.0.0 hasta la v4.0.7.
+Registro histórico de todas las características, optimizaciones y correcciones resueltas en el proyecto **Asistente de IA de GitHub**, ordenadas cronológicamente desde la versión v1.0.0 hasta la v4.0.8.
 
 > ℹ️ Para consultar las tareas y mejoras pendientes activas, consulta el [Roadmap de Mejoras Pendientes (`MEJORAS_FUTURAS.md`)](file:///d:/ZCodeProject/github-ai-assistant/MEJORAS_FUTURAS.md).
 
@@ -92,6 +92,7 @@ Registro histórico de todas las características, optimizaciones y correcciones
 | 92 | Cobertura de Codecov patch 100% + unit tests para la sanitización de base64/data URIs en `gemini.ts`. | client/src/services/__tests__/gemini.test.ts | v4.0.5 |
 | 81 | Tests unitarios y cobertura 100% en `rateLimitHandler.ts` (#26). | client/src/utils/__tests__/rateLimitHandler.test.ts | v4.0.6 |
 | 82 | Fix duplicación de footers (`cleanDocFooter`) al documentar e inyección explícita de directiva de fecha/año actual (2026) para evitar alucinaciones con 2025. | client/src/services/gemini.ts, client/src/services/__tests__/gemini.test.ts | v4.0.7 |
+| 83 | Vista previa visual automática en `README.md` (`injectImagePreviewBlock`) para capturas adjuntas subidas a `screenshots/` y verificación de publicación vía chat. | client/src/services/gemini.ts, client/src/services/assistantActions.ts, client/src/App.tsx | v4.0.8 |
 
 ---
 

@@ -1,7 +1,8 @@
-## [4.0.6] — 2026-08-08
+## [4.0.7] — 2026-08-08
 
-> **Tests unitarios y cobertura al 100% en `rateLimitHandler.ts` (#26).**
-> - **Cobertura del módulo:** Se creó `client/src/utils/__tests__/rateLimitHandler.test.ts` con 16 tests unitarios cubriendo todas las funciones y ramas de `rateLimitHandler.ts` (`parseRateLimitHeaders`, `formatRemainingTime`, `createRateLimitCountdown`, `isRateLimitError`, `enhanceErrorWithRateLimit`).
-> - **Métricas globales:** 1.040 tests unitarios pasados en el cliente (71 suites) + 58 en el servidor (8 suites) = 1.098 unitarios + 13 E2E.
+> **Fix duplicación de footer (`cleanDocFooter`) e inyección estricta de fecha/año actual (2026).**
+> - **Deduplicación de Footer (`cleanDocFooter`):** Se implementó saneamiento automático de firmas/footers en documentos de referencia antes de ser enviados como prompt al modelo, y sobre la salida generada por la IA antes de concatenar `docFooter`. Esto elimina la presencia de footers dobles en la vista previa y publicación.
+> - **Prevención de Alucinaciones con 2025:** Inyección dinámica de la fecha y año actual (`2026`) en las instrucciones del sistema (`generateRepoDocs`, `generateSpecificDoc`, `generateFileDoc`), con regla estricta que exige actualizar encabezados o versiones a la fecha actual y prohíbe el uso de fechas o años pasados (2025).
+> - **Tests Unitarios:** Añadidos tests unitarios en `gemini.test.ts` que validan `cleanDocFooter` y la presencia de un único footer en `generateRepoDocs`.
 
 Cambio de código por Antigravity 2.0 (Gemini 3.6 Flash).

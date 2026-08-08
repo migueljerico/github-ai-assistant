@@ -187,15 +187,17 @@ runCancelAction(
     setDocumentFlowInitialRepo(undefined);
   }, []);
 
-  const flowGenerateRepo = useCallback(async (repoInput: string): Promise<RepoAnalysis | null | 'repo-missing'> => {
+  const flowGenerateRepo = useCallback(async (repoInput: string, extraFiles?: File[]): Promise<RepoAnalysis | null | 'repo-missing'> => {
     // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto
     if (!token || !user || !provider || !apiKey || !model) return null;
+    const attachedImageFiles = extraFiles ?? fileContext.map(f => f.file).filter((f): f is File => !!f);
     return runDocumentRepo(
       { token, user, providerName, model, provider, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading },
       { provider, apiKey, model, accountId, timeoutMs },
       repoInput,
+      attachedImageFiles.length > 0 ? attachedImageFiles : undefined,
     );
-  }, [token, user, provider, apiKey, model, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, accountId, timeoutMs]);
+  }, [token, user, provider, apiKey, model, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, accountId, timeoutMs, fileContext]);
 
   const flowGenerateFile = useCallback(async (): Promise<string | null> => {
     // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto
@@ -304,8 +306,17 @@ const flowGenerateSpecific = useCallback(async (repoInput: string, targetPath: s
    ].join('\n\n');
    if (compact.trim()) effectiveInstructions = compact;
  }
- return runGenerateSpecificDoc(deps, { provider, apiKey, model, accountId, timeoutMs }, repoInput, targetPath, undefined, effectiveInstructions);
-}, [token, user, providerName, model, provider, apiKey, accountId, timeoutMs, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading, conversationHistory]);
+ const attachedImageFiles = fileContext.map(f => f.file).filter((f): f is File => !!f);
+ return runGenerateSpecificDoc(
+   deps,
+   { provider, apiKey, model, accountId, timeoutMs },
+   repoInput,
+   targetPath,
+   undefined,
+   effectiveInstructions,
+   attachedImageFiles.length > 0 ? attachedImageFiles : undefined,
+ );
+}, [token, user, providerName, model, provider, apiKey, accountId, timeoutMs, t, lang, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading, conversationHistory, fileContext]);
 
 // v3.66.0 (Frente C): los 3 flowCommit*Specific reciben `repoInput` del modal
 // (lo que el usuario tecleó en el paso 2) y resuelven owner/repo con resolveRepoRef,

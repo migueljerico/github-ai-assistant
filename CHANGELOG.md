@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.8] — 2026-08-08
+
+> **Vista previa visual en `README.md` (`injectImagePreviewBlock`) para capturas adjuntas y verificación de publicación vía chat.**
+> - **Inclusión Obligatoria de Vista Previa de Imágenes:** Al documentar con imágenes/capturas adjuntas, se pasa la lista de nombres de imagen a los prompts de `generateRepoDocs` y `generateSpecificDoc` exigiendo su referencia. Además, se implementó el post-procesador `injectImagePreviewBlock` que verifica que cada imagen adjunta a subir en `screenshots/` tenga su vista previa en Markdown/HTML (`<p align="center"><img src="screenshots/IMAGEN" width="750" /></p>`).
+> - **Verificación de Publicación por Chat:** Se auditó y confirmó el funcionamiento del flujo de publicación/modificación mediante chat (`runSend`, `parseGeminiAction`, `ConfirmModal`, `runConfirmAction`, `executeAction`), el cual permite proponer y confirmar cambios directo sobre la API de GitHub REST.
+> - **Tests Unitarios:** Nuevos unit tests en `gemini.test.ts` para la inyección de vista previa visual de capturas.
+>
+> Cambio de código por Antigravity 2.0 (Gemini 3.6 Flash).
+
 ## [4.0.7] — 2026-08-08
 
 > **Fix duplicación de footer (`cleanDocFooter`) e inyección estricta de fecha/año actual (2026).**

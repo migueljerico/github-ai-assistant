@@ -2,9 +2,9 @@
 
 Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de GitHub**.
 
-**Actualizado a:** v4.0.7 — Agosto 2026
+**Actualizado a:** v4.0.8 — Agosto 2026
 
-> 📜 **Historial de Mejoras Implementadas:** Para consultar las 80+ características y correcciones resueltas desde la v1.0.0 a la v4.0.7, consulta el [Historial de Mejoras (`HISTORIAL_MEJORAS.md`)](HISTORIAL_MEJORAS.md).
+> 📜 **Historial de Mejoras Implementadas:** Para consultar las 80+ características y correcciones resueltas desde la v1.0.0 a la v4.0.8, consulta el [Historial de Mejoras (`HISTORIAL_MEJORAS.md`)](HISTORIAL_MEJORAS.md).
 
 ---
 
@@ -23,10 +23,10 @@ Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de
 #### #26 — Mantener y expandir cobertura de tests con Codecov
 **Esfuerzo:** Continuo (2-4h por sprint) · **Estado:** 🔄 En progreso
 
-**Progreso realizado (v4.0.7):** ✅ Infraestructura completa
+**Progreso realizado (v4.0.8):** ✅ Infraestructura completa
 - ✅ Vitest + Codecov + CI con GitHub Actions (cliente + servidor)
 - ✅ Badge de Codecov en README
-- ✅ **1.044 tests en el cliente (71 suites) + 58 en el servidor (8 suites)** = **1.102 unitarios** + **13 tests E2E** con Playwright. Cobertura de 100% en `rateLimitHandler.ts` (#26, v4.0.6) y saneo de footers `cleanDocFooter` (#82, v4.0.7).
+- ✅ **1.046 tests en el cliente (71 suites) + 58 en el servidor (8 suites)** = **1.104 unitarios** + **13 tests E2E** con Playwright. Cobertura de 100% en `rateLimitHandler.ts` (#26, v4.0.6), saneo de footers `cleanDocFooter` (#82, v4.0.7) e inyección de vista previa visual de capturas `injectImagePreviewBlock` (#83, v4.0.8).
 
 **Pendiente:**
 - Aumentar la cobertura global al 70%+ objetivo.
