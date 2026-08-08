@@ -2,9 +2,9 @@
 
 Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de GitHub**.
 
-**Actualizado a:** v4.0.1 — Agosto 2026
+**Actualizado a:** v4.0.5 — Agosto 2026
 
-> 📜 **Historial de Mejoras Implementadas:** Para consultar las 57+ características y correcciones resueltas desde la v1.0.0 a la v4.0.1, consulta el [Historial de Mejoras (`HISTORIAL_MEJORAS.md`)](HISTORIAL_MEJORAS.md).
+> 📜 **Historial de Mejoras Implementadas:** Para consultar las 80+ características y correcciones resueltas desde la v1.0.0 a la v4.0.5, consulta el [Historial de Mejoras (`HISTORIAL_MEJORAS.md`)](HISTORIAL_MEJORAS.md).
 
 ---
 
@@ -23,10 +23,10 @@ Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de
 #### #26 — Mantener y expandir cobertura de tests con Codecov
 **Esfuerzo:** Continuo (2-4h por sprint) · **Estado:** 🔄 En progreso
 
-**Progreso realizado (v4.0.1):** ✅ Infraestructura completa
+**Progreso realizado (v4.0.5):** ✅ Infraestructura completa
 - ✅ Vitest + Codecov + CI con GitHub Actions (cliente + servidor)
 - ✅ Badge de Codecov en README
-- ✅ **1.014 tests en el cliente (68 suites) + 58 en el servidor (8 suites)** = **1.072 unitarios** + **13 tests E2E** con Playwright. Cobertura amplia de contextos, services, utils, hooks y componentes.
+- ✅ **1.018 tests en el cliente (68 suites) + 58 en el servidor (8 suites)** = **1.076 unitarios** + **13 tests E2E** con Playwright. Cobertura amplia de contextos, services, utils, hooks y componentes.
 
 **Pendiente:**
 - Aumentar la cobertura global al 70%+ objetivo.
@@ -70,8 +70,8 @@ Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de
 
 | Categoría | Cantidad | Referencia |
 |---|---|---|
-| ✅ **Mejoras Implementadas** | 57 ítems | [HISTORIAL_MEJORAS.md](HISTORIAL_MEJORAS.md) |
-| ⏳ **Pendientes Activos** | 4 ítems (#26, #76, #66, #74) | Secciones superiores |
+| ✅ **Mejoras Implementadas** | 80 ítems | [HISTORIAL_MEJORAS.md](HISTORIAL_MEJORAS.md) |
+| ⏳ **Pendientes Activos** | 3 ítems (#26, #66, #74) | Secciones superiores |
 | 🗑️ **Descartados / Inviables** | 3 ítems (#33, #35, #36) | [HISTORIAL_MEJORAS.md](HISTORIAL_MEJORAS.md) |
 
 ---

@@ -990,9 +990,13 @@ export async function generateFileDoc(
 
 Reglas: básate ÚNICAMENTE en el contenido aportado (y, si se incluye, en la conversación con el usuario); no inventes. ${conversation ? 'INCORPORA los puntos relevantes de la conversación con el usuario que aparece abajo, sin contradecir el contenido del archivo. ' : ''}Responde SOLO con el Markdown, sin texto introductorio ni bloques de código externos que envuelvan todo.`;
 
+  const safeContent = content.trimStart().startsWith('data:')
+    ? '[ARCHIVO BINARIO O BASE64 ADJUNTO - NO SE MUESTRA CONTENIDO EN EL PROMPT]'
+    : content;
+
   const userMessage = conversation
-    ? `Archivo: ${fileName}\n\nCONTENIDO:\n${content}\n\n--- CONVERSACIÓN PREVIA CON EL USUARIO (para enriquecer la documentación) ---\n${conversation}\n--- Fin de la conversación ---`
-    : `Archivo: ${fileName}\n\nCONTENIDO:\n${content}`;
+    ? `Archivo: ${fileName}\n\nCONTENIDO:\n${safeContent}\n\n--- CONVERSACIÓN PREVIA CON EL USUARIO (para enriquecer la documentación) ---\n${conversation}\n--- Fin de la conversación ---`
+    : `Archivo: ${fileName}\n\nCONTENIDO:\n${safeContent}`;
 
   const raw = await callAI(
     [{ role: 'user', content: userMessage }],

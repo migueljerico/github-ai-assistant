@@ -1216,3 +1216,59 @@ describe('QwenCloud provider integration', () => {
     ).rejects.toThrow(/Error de autenticación o permisos en QwenCloud/);
   });
 });
+
+describe('truncateByLines & generateFileDoc - base64 & data URI handling', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('truncateByLines sustituye las URLs de datos base64 por un aviso', () => {
+    const dataUri = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    const result = truncateByLines(dataUri, 80);
+    expect(result).toBe('[ARCHIVO BINARIO O BASE64 ADJUNTO - NO SE MUESTRA CONTENIDO EN EL PROMPT]');
+  });
+
+  it('truncateByLines mantiene el contenido de texto normal', () => {
+    const text = 'linea 1\nlinea 2\nlinea 3';
+    expect(truncateByLines(text, 80)).toBe(text);
+  });
+
+  it('generateFileDoc reemplaza data URI por safeContent sin enviar base64 al prompt', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: '# Doc de captura' } }] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const config = { provider: 'groq' as const, apiKey: 'gsk-test', model: 'llama-3.3-70b' };
+    const base64Image = '  data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...';
+
+    const result = await generateFileDoc('captura.png', base64Image, config, 'Conversación previa sobre la captura', 'es');
+
+    expect(result).toBe('# Doc de captura');
+    expect(fetchMock).toHaveBeenCalled();
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    const userMsg = body.messages.find((m: { role: string }) => m.role === 'user');
+    expect(userMsg.content).toContain('[ARCHIVO BINARIO O BASE64 ADJUNTO - NO SE MUESTRA CONTENIDO EN EL PROMPT]');
+    expect(userMsg.content).not.toContain('iVBORw0KGgoAAAANSUhEUgAA');
+  });
+
+  it('generateFileDoc procesa correctamente archivo plano sin conversación', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: '# Doc de texto' } }] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const config = { provider: 'groq' as const, apiKey: 'gsk-test', model: 'llama-3.3-70b' };
+
+    const result = await generateFileDoc('readme.txt', 'Contenido del archivo plano', config, undefined, 'en');
+
+    expect(result).toBe('# Doc de texto');
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    const userMsg = body.messages.find((m: { role: string }) => m.role === 'user');
+    expect(userMsg.content).toContain('Contenido del archivo plano');
+    expect(userMsg.content).not.toContain('CONVERSACIÓN PREVIA');
+  });
+});
+
