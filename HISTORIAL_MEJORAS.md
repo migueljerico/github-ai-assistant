@@ -1,6 +1,6 @@
 # 📜 Historial de Mejoras Implementadas
 
-Registro histórico de todas las características, optimizaciones y correcciones resueltas en el proyecto **Asistente de IA de GitHub**, ordenadas cronológicamente desde la versión v1.0.0 hasta la v4.0.5.
+Registro histórico de todas las características, optimizaciones y correcciones resueltas en el proyecto **Asistente de IA de GitHub**, ordenadas cronológicamente desde la versión v1.0.0 hasta la v4.0.6.
 
 > ℹ️ Para consultar las tareas y mejoras pendientes activas, consulta el [Roadmap de Mejoras Pendientes (`MEJORAS_FUTURAS.md`)](file:///d:/ZCodeProject/github-ai-assistant/MEJORAS_FUTURAS.md).
 
@@ -88,8 +88,9 @@ Registro histórico de todas las características, optimizaciones y correcciones
 | 76 | Fix bug "Documentar → Documento específico" prevaleciendo la instrucción sobre el contenido previa. | client/src/services/gemini.ts, client/src/App.tsx | v3.67.0 |
 | 24 | **i18n v4.0.0** Internacionalización a 13 idiomas globales (ES, EN, ZH, HI, FR, AR, BN, PT, ID, UR, RU, DE, JA) con banderas vectoriales SVG y soporte RTL. Solución del bug de renderizado de banderas en Chrome/Windows. | context/LanguageContext.tsx, components/layout/{LanguageSelector.tsx,FlagIcon.tsx}, i18n/*.ts, tests | v4.0.0 |
 | 78 | Menú progresivo de herramientas avanzadas del chat (`ChatToolsMenu`) para reducir carga visual (UI Refactor). | client/src/components/chat/{ChatToolsMenu.tsx, ChatInput.tsx} | v4.0.5 |
-| 79 | Fix QwenCloud / OpenCode Zen (400 Bad Request Payload Too Large): Filtrar data URIs de base64 de imágenes adjuntas en `truncateByLines` y `generateFileDoc` para evitar que revienten el prompt al pedir documentar archivos o repositorios. | client/src/services/gemini.ts | v4.0.5 |
-| 80 | Cobertura de Codecov patch 100% + unit tests para la sanitización de base64/data URIs en `gemini.ts`. | client/src/services/__tests__/gemini.test.ts | v4.0.5 |
+| 91 | Fix QwenCloud / OpenCode Zen (400 Bad Request Payload Too Large): Filtrar data URIs de base64 de imágenes adjuntas en `truncateByLines` y `generateFileDoc` para evitar que revienten el prompt al pedir documentar archivos o repositorios. | client/src/services/gemini.ts | v4.0.5 |
+| 92 | Cobertura de Codecov patch 100% + unit tests para la sanitización de base64/data URIs en `gemini.ts`. | client/src/services/__tests__/gemini.test.ts | v4.0.5 |
+| 81 | Tests unitarios y cobertura 100% en `rateLimitHandler.ts` (#26). | client/src/utils/__tests__/rateLimitHandler.test.ts | v4.0.6 |
 
 ---
 

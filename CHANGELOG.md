@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.6] — 2026-08-08
+
+> **Tests unitarios y cobertura al 100% en `rateLimitHandler.ts` (#26).**
+> - **Cobertura del módulo:** Se creó `client/src/utils/__tests__/rateLimitHandler.test.ts` con 16 tests unitarios cubriendo todas las funciones y ramas de `rateLimitHandler.ts` (`parseRateLimitHeaders`, `formatRemainingTime`, `createRateLimitCountdown`, `isRateLimitError`, `enhanceErrorWithRateLimit`).
+> - **Métricas globales:** 1.040 tests unitarios pasados en el cliente (71 suites) + 58 en el servidor (8 suites) = 1.098 unitarios + 13 E2E.
+>
+> Cambio de código por Antigravity 2.0 (Gemini 3.6 Flash).
+
 ## [4.0.3] — 2026-08-07
 
 - fix(build): restaurados diccionarios i18n que habían sido purgados erróneamente durante la limpieza de Ai&.
