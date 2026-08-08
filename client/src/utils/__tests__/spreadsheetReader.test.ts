@@ -101,4 +101,29 @@ describe('readSpreadsheet (#28 Fase 3a)', () => {
     const bigFile = fakeFile('grande.xlsx', SPREADSHEET_MAX_FILE_SIZE + 1);
     await expect(readSpreadsheet(bigFile)).rejects.toThrow(/excede el l[ií]mite|tamaño|10 MB/i);
   });
+
+  it('hoja con líneas muy largas: recorta por límite de caracteres (MAX_CHARS_PER_SHEET)', async () => {
+    // 5 filas muy largas donde la longitud acumulada excede MAX_CHARS_PER_SHEET
+    const longLine = 'x'.repeat(4000);
+    const rows = ['header1,header2', ...Array.from({ length: 5 }, () => longLine)];
+    const csv = rows.join('\n');
+    vi.mocked(XLSX.read).mockReturnValue(workbook({ LongSheet: { ref: 'A1:B6', csv } }) as never);
+
+    const res = await readSpreadsheet(fakeFile());
+
+    expect(res.truncated).toBe(true);
+  });
+
+  it('hoja con cabecera sospechosa: emite console.warn', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    // Cabecera que no contiene ningún carácter alfanumérico (ej: caracteres nulos o símbolos)
+    const csv = '!!!,???\n1,2';
+    vi.mocked(XLSX.read).mockReturnValue(workbook({ Suspicious: { ref: 'A1:B2', csv } }) as never);
+
+    await readSpreadsheet(fakeFile());
+
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('[spreadsheetReader] Hoja "Suspicious" con cabecera sospechosa'));
+    warnSpy.mockRestore();
+  });
 });
+

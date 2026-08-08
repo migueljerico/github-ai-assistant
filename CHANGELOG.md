@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.10] — 2026-08-08
+
+> **Ampliación de la cobertura global de Codecov al 95.04% en líneas y 82.59% en ramas (15 nuevos tests unitarios en utilidades y componentes).**
+> - **Mantenimiento de Cobertura Codecov (#26):** Se incorporaron 15 nuevos tests unitarios sobre módulos con ramas y bordes no cubiertos: `pdfAdvanced.ts` (sube de 57.44% a 97.87%), `spreadsheetReader.ts` (100% líneas), `conversationIO.ts` (100% líneas), `formatResult.ts` (100% líneas), `codeHealth.ts` (100% líneas), `contextRanker.ts` (100% líneas), `AIProviderPanel.tsx` (accesibilidad por teclado Enter/Space, input de Account ID en Cloudflare y toggle de API key) y `providers.ts` (ramas sin precios de Zenmux).
+> - **Métricas de Suite:** 1.067 tests unitarios en el cliente + 58 en el servidor = 1.125 tests unitarios en total + 13 tests E2E con Playwright, todos en verde.
+>
+> Cambio de código por Antigravity (Gemini 3.6 Flash).
+
 ## [4.0.9] — 2026-08-08
 
 > **Cobertura de Codecov patch al 100% y tests unitarios adicionales para la inyección de vista previa visual de imágenes.**

@@ -24,6 +24,23 @@ describe('formatResultData', () => {
     expect(result).toContain('TypeScript');
   });
 
+  it('debería formatear repositorios privados y forks en array', () => {
+    const repos = [
+      {
+        name: 'forked-repo',
+        full_name: 'user/forked-repo',
+        description: 'A fork',
+        private: true,
+        html_url: 'https://github.com/user/forked-repo',
+        fork: true,
+      },
+    ];
+
+    const result = formatResultData(repos);
+    expect(result).toContain('Privado');
+    expect(result).toContain('🍴 Fork');
+  });
+
   it('debería manejar array vacío', () => {
     const result = formatResultData([]);
     expect(result).toBe('_No se encontraron resultados._');
@@ -62,6 +79,12 @@ describe('formatResultData', () => {
     expect(result).toContain('Hello World');
   });
 
+  it('debería truncar strings planos mayores a 1500 caracteres', () => {
+    const longStr = 'a'.repeat(1600);
+    const result = formatResultData(longStr);
+    expect(result).toContain('...');
+  });
+
   it('debería manejar objeto genérico', () => {
     const obj = { foo: 'bar', baz: 123 };
     const result = formatResultData(obj);
@@ -75,4 +98,12 @@ describe('formatResultData', () => {
     expect(result).toContain('```json');
     expect(result).toContain('"nested"');
   });
+
+  it('debería truncar JSON fallback mayores a 1200 caracteres', () => {
+    const longObj = { nested: { deep: 'x'.repeat(1300) } };
+    const result = formatResultData(longObj);
+    expect(result).toContain('...');
+  });
 });
+
+

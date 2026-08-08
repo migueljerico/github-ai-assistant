@@ -326,3 +326,38 @@ describe('AIProviderPanel — timeout (#73)', () => {
     expect(input.value).toBe('90'); // 90000ms → 90s
   });
 });
+
+describe('AIProviderPanel — interacción de teclado y visibilidad de clave', () => {
+  it('selecciona un proveedor mediante teclado (Enter / Espacio)', () => {
+    const { container } = renderPanel();
+    const groqCard = container.querySelector('#select-groq-btn') as HTMLElement;
+    expect(groqCard).toBeInTheDocument();
+
+    fireEvent.keyDown(groqCard, { key: 'Enter' });
+    expect(container.querySelector('#groq-model-select')).toBeInTheDocument();
+
+    const geminiCard = container.querySelector('#select-gemini-btn') as HTMLElement;
+    fireEvent.keyDown(geminiCard, { key: ' ' });
+    expect(container.querySelector('#gemini-model-select')).toBeInTheDocument();
+  });
+
+  it('permite ingresar el Account ID en Cloudflare y conmuta visibilidad de clave', () => {
+    const { container } = renderPanel();
+    selectProvider(container, 'cloudflare');
+
+    const accountInput = container.querySelector('#cloudflare-accountid-input') as HTMLInputElement;
+    expect(accountInput).toBeInTheDocument();
+    fireEvent.change(accountInput, { target: { value: 'acc-12345' } });
+    expect(accountInput.value).toBe('acc-12345');
+
+    const keyInput = container.querySelector('#cloudflare-key-input') as HTMLInputElement;
+    expect(keyInput.type).toBe('password');
+
+    const toggleBtn = container.querySelector('button[aria-label="Mostrar u ocultar clave API"]') || container.querySelector('.key-toggle-btn');
+    expect(toggleBtn).toBeInTheDocument();
+    fireEvent.click(toggleBtn as HTMLElement);
+
+    expect(keyInput.type).toBe('text');
+  });
+});
+

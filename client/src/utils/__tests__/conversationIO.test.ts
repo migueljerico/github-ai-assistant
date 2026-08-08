@@ -51,6 +51,35 @@ describe('serializeConversation / parseConversation', () => {
     const bad = JSON.stringify({ messages: [{ id: 'x', foo: 'bar' }] });
     expect(() => parseConversation(bad)).toThrow(/conversación exportada/i);
   });
+
+  it('lanza error claro si el JSON parseado no es un objeto o es null', () => {
+    expect(() => parseConversation('null')).toThrow(/conversación exportada/i);
+    expect(() => parseConversation('123')).toThrow(/conversación exportada/i);
+  });
+
+
+  it('asigna ID por defecto e ignora timestamps o campos malformados en mensajes', () => {
+    const raw = JSON.stringify({
+      messages: [
+        { role: 'user', content: 'test', timestamp: 'invalid-date', action: 'read' },
+        { role: 'assistant', content: 'response' }, // sin id ni timestamp
+      ],
+      conversationHistory: [
+        { role: 'user', content: 'test' },
+        { role: 'invalid_role', content: 'ignored' },
+      ],
+      repoContextName: 123, // no string -> null
+    });
+
+    const res = parseConversation(raw);
+    expect(res.messages[0].id).toBeDefined();
+    expect(res.messages[0].action).toBe('read');
+    expect(res.messages[0].timestamp).toBeInstanceOf(Date);
+    expect(res.messages[1].id).toBeDefined(); // crypto.randomUUID()
+    expect(res.messages[1].timestamp).toBeInstanceOf(Date);
+    expect(res.conversationHistory).toHaveLength(1);
+    expect(res.repoContextName).toBeNull();
+  });
 });
 
 describe('conversationFilename', () => {
@@ -58,7 +87,12 @@ describe('conversationFilename', () => {
     expect(conversationFilename('owner/repo')).toBe('conversacion-owner-repo.json');
   });
 
+  it('sustituye repo por "repo" si solo tiene caracteres especiales', () => {
+    expect(conversationFilename('---')).toBe('conversacion-repo.json');
+  });
+
   it('usa la fecha cuando no hay repo', () => {
     expect(conversationFilename(null)).toMatch(/^conversacion-\d{4}-\d{2}-\d{2}\.json$/);
   });
 });
+

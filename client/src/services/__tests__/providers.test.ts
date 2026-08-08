@@ -634,7 +634,25 @@ describe('providers — fetchModels', () => {
     expect(list!.map(m => m.value)).toEqual(['qwen3.7-flash', 'qwen3.7-plus']);
     expect(list!.every(m => m.free === true)).toBe(true);
   });
+
+  it('zenmux (fetchModels): marca free cuando pricing es undefined o no tiene precios', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          { id: 'model-nopricing' }, // sin objeto pricing -> free = true
+          { id: 'model-emptyprices', pricing: {} }, // sin prompt ni completion -> free = true
+        ],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const list = await fetchModels(PROVIDERS.zenmux, 'sk-test');
+    expect(list).toHaveLength(2);
+    expect(list!.every(m => m.free === true)).toBe(true);
+  });
 });
+
 
 describe('resolveEndpoint', () => {
   it('sustituye {account_id} por el valor real (encoded)', () => {

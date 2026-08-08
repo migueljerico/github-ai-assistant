@@ -104,5 +104,16 @@ describe('contextRanker (#49)', () => {
     it('lista vacía → []', () => {
       expect(rankFilesByQuery('algo', [], 5)).toEqual([]);
     });
+
+    it('maneja archivos con 0 tokens y términos no presentes en el df de documentos', () => {
+      const emptyFiles = [
+        mk('', ''), // 0 tokens
+        mk('doc.txt', 'contenido'),
+      ];
+      // "inexistente" no figura en ningún archivo
+      const ranked = rankFilesByQuery('inexistente', emptyFiles, 2);
+      expect(ranked).toHaveLength(2);
+    });
   });
 });
+
