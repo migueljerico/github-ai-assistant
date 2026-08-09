@@ -42,4 +42,19 @@ describe('useModalDialog', () => {
     fireEvent.keyDown(first, { key: 'Tab', shiftKey: true });
     expect(document.activeElement).toBe(last);
   });
+
+  it('soporta modales sin elementos focusables', () => {
+    function EmptyDialog({ onClose }: { onClose: () => void }) {
+      const ref = useModalDialog<HTMLDivElement>(onClose);
+      return <div ref={ref} data-testid="empty-modal">Sin botones</div>;
+    }
+    render(<EmptyDialog onClose={() => {}} />);
+    const modal = screen.getByTestId('empty-modal');
+    expect(document.activeElement).toBe(modal);
+
+    // Tab no causa error
+    fireEvent.keyDown(modal, { key: 'Tab' });
+    expect(document.activeElement).toBe(modal);
+  });
 });
+

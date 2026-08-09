@@ -31,4 +31,10 @@ describe('resolveRepoRef', () => {
     expect(resolveRepoRef('https://github.com/migueljerico/github-ai-assistant.git', 'x'))
       .toEqual({ owner: 'migueljerico', repo: 'github-ai-assistant' });
   });
+
+  it('maneja entradas con barra sin repo o partes insuficientes', () => {
+    expect(resolveRepoRef('solo-owner/', 'defaultUser'))
+      .toEqual({ owner: 'defaultUser', repo: 'solo-owner/' });
+  });
 });
+

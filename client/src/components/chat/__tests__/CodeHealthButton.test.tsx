@@ -24,8 +24,26 @@ describe('CodeHealthButton (#44)', () => {
     expect(screen.queryByPlaceholderText(/owner\/repo/)).not.toBeInTheDocument();
   });
 
+  it('cierra al pulsar el botón de cancelar (✕)', () => {
+    render(<CodeHealthButton disabled={false} onCodeHealth={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: /Salud del código/ }));
+    expect(screen.getByPlaceholderText(/owner\/repo/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '✕' }));
+    expect(screen.queryByPlaceholderText(/owner\/repo/)).not.toBeInTheDocument();
+  });
+
+  it('no envía si el valor está vacío', () => {
+    const onCH = vi.fn();
+    render(<CodeHealthButton disabled={false} onCodeHealth={onCH} />);
+    fireEvent.click(screen.getByRole('button', { name: /Salud del código/ }));
+    fireEvent.submit(screen.getByPlaceholderText(/owner\/repo/));
+    expect(onCH).not.toHaveBeenCalled();
+  });
+
   it('está deshabilitado cuando disabled=true', () => {
     render(<CodeHealthButton disabled={true} onCodeHealth={vi.fn()} />);
     expect(screen.getByRole('button', { name: /Salud del código/ })).toBeDisabled();
   });
 });
+
