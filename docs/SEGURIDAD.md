@@ -72,7 +72,9 @@ Proveedores soportados:
 - OpenCode Zen.
 - Cloudflare Workers AI.
 - Ollama Cloud.
-- Ai&.
+- Kilo.
+- BazaarLink.
+- QwenCloud.
 
 La clave:
 
@@ -565,6 +567,7 @@ Riesgos residuales:
 | Errores de UI | ErrorBoundary |
 | Confusión del usuario | Mensajes claros y flujo guiado |
 | Archivos Excel/CSV maliciosos | Límite 10 MB + validación post-parseo + aviso UI (v3.36.1 ✅) |
+| Ejecución arbitraria de JS en PDF.js (Issue #25) | Actualización `pdfjs-dist` a 6.2.108 + `enableScripting: false` + `isEvalSupported: false` (v4.0.12 ✅) |
 
 ---
 

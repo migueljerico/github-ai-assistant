@@ -41,9 +41,9 @@ APIs externas
   ├── OpenCode Zen
   ├── Cloudflare Workers AI
   ├── Ollama Cloud
-  ├── Ai&
   ├── Kilo
-  └── BazaarLink
+  ├── BazaarLink
+  └── QwenCloud
 ```
 
 ---
@@ -94,14 +94,15 @@ APIs externas
 │ ├── Zenmux                     │   │ ├── /api/openzen               │
 │ ├── OpenCode Zen               │   │ ├── /api/cloudflare            │
 │ ├── Cloudflare Workers AI      │   │ ├── /api/ollama                │
-│ └── Ollama Cloud               │   │ ├── /health                    │
+│ └── Ollama Cloud               │   │ ├── /api/kilo, /bazaarlink, /qwencloud │
+│                                │   │ ├── /health                    │
 │                                │   │ └── static files               │
 └───────────────────────────────┘   └───────────────┬───────────────┘
                                                     │
                                                     ▼
                                       ┌───────────────────────────────┐
-                                      │ Gemini + NVIDIA NIM + OpenCode Zen + Cloudflare + Ollama APIs │
-                                      │ vía proxy (bloqueo CORS/EEA del navegador)                    │
+                                      │ Gemini + NIM + OpenZen + CF + Ollama + Kilo + BazaarLink + QwenCloud │
+                                      │ vía proxy (bloqueo CORS/EEA del navegador)                          │
                                       └───────────────────────────────┘
 ```
 

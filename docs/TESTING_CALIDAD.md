@@ -20,10 +20,11 @@ El objetivo no es solo comprobar que la aplicación funciona, sino reducir regre
 
 | Métrica | Estado |
 |---|---|
-| Tests cliente | 962 (63 suites) |
+| Tests cliente | 1.083 (72 suites) |
 | Tests servidor | 58 (8 suites) |
+| Tests unitarios totales | 1.141 |
 | Tests E2E | 13 con Playwright (`e2e/`, 5 specs) |
-| Archivos de test | 63 unitarios + 5 E2E |
+| Archivos de test | 80 unitarios (72 cliente + 8 servidor) + 5 E2E |
 | Framework unitarios | Vitest |
 | Framework E2E | Playwright (chromium) |
 | Testing de componentes | React Testing Library |

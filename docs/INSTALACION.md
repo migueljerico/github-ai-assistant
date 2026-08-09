@@ -6,7 +6,7 @@ La aplicación está dividida en:
 
 - **Frontend:** React + TypeScript + Vite.
 - **Backend:** Express.js para OAuth, proxies de IA y health check.
-- **APIs externas:** GitHub REST API, Groq Cloud, Google Gemini, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI, Ollama Cloud, Ai&, Kilo, BazaarLink, QwenCloud.
+- **APIs externas:** GitHub REST API, Groq Cloud, Google Gemini, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI, Ollama Cloud, Kilo, BazaarLink, QwenCloud.
 
 ---
 
@@ -20,7 +20,7 @@ Antes de empezar necesitas:
 | npm | Incluido con Node.js |
 | Git | Requerido para clonar y trabajar con el repo |
 | GitHub OAuth App | Necesaria para login con GitHub |
-| API key de IA | Groq, Gemini, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI, Ollama Cloud, Ai&, Kilo, BazaarLink o QwenCloud |
+| API key de IA | Groq, Gemini, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI, Ollama Cloud, Kilo, BazaarLink o QwenCloud |
 
 ---
 
@@ -76,6 +76,9 @@ Necesitarás al menos una clave de:
 | OpenCode Zen | `https://opencode.ai` |
 | Cloudflare Workers AI | `https://dash.cloudflare.com` |
 | Ollama Cloud | `https://ollama.com` |
+| Kilo | `https://kilo.ai` |
+| BazaarLink | `https://bazaarlink.ai` |
+| QwenCloud | `https://qwencloud.com` |
 
 
 > La clave de IA **no** se configura en `.env`.  

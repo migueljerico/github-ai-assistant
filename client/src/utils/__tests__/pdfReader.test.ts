@@ -42,13 +42,42 @@ describe('pdfReader', () => {
   });
 
   describe('readTextFile', () => {
-    it('lee el contenido de un archivo de texto', async () => {
-      const content = await readTextFile(fileFrom('contenido plano', 'a.txt'));
-      expect(content).toBe('contenido plano');
+    it('propaga error cuando FileReader falla en readTextFile', async () => {
+      const file = fileFrom('error', 'fail.txt');
+      const originalFileReader = globalThis.FileReader;
+      class MockFileReader {
+        onerror: (() => void) | null = null;
+        readAsText() {
+          setTimeout(() => this.onerror?.(), 1);
+        }
+      }
+      globalThis.FileReader = MockFileReader as unknown as typeof FileReader;
+      try {
+        await expect(readTextFile(file)).rejects.toThrow('Error al leer el archivo');
+      } finally {
+        globalThis.FileReader = originalFileReader;
+      }
     });
   });
 
   describe('readPDFAsText', () => {
+    it('propaga error cuando FileReader falla en readPDFAsText', async () => {
+      const file = fileFrom('error', 'fail.pdf');
+      const originalFileReader = globalThis.FileReader;
+      class MockFileReader {
+        onerror: (() => void) | null = null;
+        readAsArrayBuffer() {
+          setTimeout(() => this.onerror?.(), 1);
+        }
+      }
+      globalThis.FileReader = MockFileReader as unknown as typeof FileReader;
+      try {
+        await expect(readPDFAsText(file)).rejects.toThrow('Error al leer el archivo');
+      } finally {
+        globalThis.FileReader = originalFileReader;
+      }
+    });
+
     it('extrae texto ASCII y limpia artefactos de PDF', async () => {
       const raw = 'Hola Mundo\nBT secreto ET\n/F1 12 Tf\nAdios';
       const text = await readPDFAsText(fileFrom(raw, 'doc.pdf'));

@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.13] — 2026-08-09
+
+> **Mantenimiento y expansión de cobertura de tests en Codecov (#26) y actualización integral de la documentación extendida en `/docs/`.**
+> - **Mantenimiento de Cobertura Codecov (#26):** Creación de pruebas unitarias adicionales de gestión de errores y lectura resiliente en `pdfReader.test.ts`. 1.084 tests cliente (72 suites) + 58 servidor (8 suites) = 1.142 unitarios + 13 E2E.
+> - **Actualización de Documentación (`/docs/`):** Revisión y sincronización completa de los 7 documentos (`ARQUITECTURA.md`, `COMPARATIVA_COPILOT.md`, `DESARROLLO_IA.md`, `FUNCIONALIDADES.md`, `INSTALACION.md`, `SEGURIDAD.md`, `TESTING_CALIDAD.md`) con las métricas de testing reales, la lista de 11 proveedores de IA (incluyendo `QwenCloud`, `Kilo`, `BazaarLink`) y la mitigación de seguridad PDF.js (Issue #25).
+>
+> Cambio de código por Antigravity (Gemini 3.6 Flash).
+
 ## [4.0.12] — 2026-08-09
 
 > **Corrección de la vulnerabilidad de seguridad de ejecución arbitraria de JavaScript en PDF.js (Issue #25 / CVE) mediante actualización a pdfjs-dist@6.2.108 y endurecimiento en tiempo de ejecución.**
