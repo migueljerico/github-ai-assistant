@@ -38,6 +38,12 @@ describe('pdfAdvanced', () => {
 
       const text = await readPDFAdvanced(fileFrom('Contenido Dummy', 'doc.pdf'));
       expect(text).toBe('Hola Mundo\nSegunda Pagina');
+      expect(mockGetDocument).toHaveBeenCalledWith(
+        expect.objectContaining({
+          enableScripting: false,
+          isEvalSupported: false,
+        })
+      );
     });
 
     it('cae al extractor básico cuando pdfjs falla y devuelve el texto ASCII', async () => {

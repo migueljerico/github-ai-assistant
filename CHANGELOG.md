@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.12] — 2026-08-09
+
+> **Corrección de la vulnerabilidad de seguridad de ejecución arbitraria de JavaScript en PDF.js (Issue #25 / CVE) mediante actualización a pdfjs-dist@6.2.108 y endurecimiento en tiempo de ejecución.**
+> - **Parche de Seguridad PDF.js (#25):** Actualización de la dependencia `pdfjs-dist` a la versión parcheada `6.2.108` en `client/package.json` y `client/package-lock.json`.
+> - **Hardening en Tiempo de Ejecución (#25):** Configuración explícita de `enableScripting: false` y `isEvalSupported: false` en todas las invocaciones a `pdfjsLib.getDocument(...)` dentro de `pdfAdvanced.ts` (`extractWithPDFJS` y `getPDFMetadata`).
+> - **Suite de Pruebas Unitarias:** Actualización de `pdfAdvanced.test.ts` con aserciones dedicadas verificando el desmantelamiento de scripting/eval. 1.083 tests cliente + 58 servidor = 1.141 unitarios + 13 E2E verdes.
+>
+> Cambio de código por Antigravity (Gemini 3.6 Flash).
+
 ## [4.0.11] — 2026-08-09
 
 > **Ampliación de la cobertura global de Codecov al 95.54% en líneas y 83.23% en ramas con 6 nuevos tests unitarios y 100% de cobertura en 10 componentes y utilidades clave.**
