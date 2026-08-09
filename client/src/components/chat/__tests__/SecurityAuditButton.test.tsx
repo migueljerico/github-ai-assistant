@@ -61,4 +61,30 @@ describe('SecurityAuditButton (#52, v3.43.0)', () => {
     expect(screen.queryByPlaceholderText(/owner\/repo/)).not.toBeInTheDocument();
     expect(onOpen).not.toHaveBeenCalled();
   });
+
+  it('no llama a onOpen si el valor está vacío', () => {
+    const onOpen = vi.fn();
+    render(
+      <SecurityAuditButton
+        disabled={false}
+        onOpen={onOpen}
+        repoContextName={null}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Auditar seguridad/ }));
+    fireEvent.submit(screen.getByPlaceholderText(/owner\/repo/));
+    expect(onOpen).not.toHaveBeenCalled();
+  });
+
+  it('está deshabilitado cuando disabled=true', () => {
+    render(
+      <SecurityAuditButton
+        disabled={true}
+        onOpen={vi.fn()}
+        repoContextName={null}
+      />,
+    );
+    expect(screen.getByRole('button', { name: /Auditar seguridad/ })).toBeDisabled();
+  });
 });
+

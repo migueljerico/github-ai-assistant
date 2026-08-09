@@ -82,7 +82,36 @@ describe('pdfAdvanced', () => {
       expect(meta.numPages).toBe(0);
       expect(typeof meta.fileSize).toBe('number');
     });
+  });
 
+  describe('readPDFAdvanced fallback error handling', () => {
+    it('rechaza con error cuando FileReader falla en el fallback', async () => {
+      const p = Promise.reject(new Error('pdfjs fail'));
+      p.catch(() => {});
+      mockGetDocument.mockReturnValue({ promise: p });
+
+      const mockFile = fileFrom('dummy', 'bad.pdf');
+      const realFileReader = globalThis.FileReader;
+      
+      class MockFileReader {
+        onerror: (() => void) | null = null;
+        onload: (() => void) | null = null;
+        readAsArrayBuffer() {
+          setTimeout(() => {
+            if (this.onerror) this.onerror();
+          }, 10);
+        }
+      }
+
+      globalThis.FileReader = MockFileReader as unknown as typeof FileReader;
+
+      try {
+        await expect(readPDFAdvanced(mockFile)).rejects.toThrow('Error al leer el archivo');
+      } finally {
+        globalThis.FileReader = realFileReader;
+      }
+    });
   });
 });
+
 

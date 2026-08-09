@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.11] — 2026-08-09
+
+> **Ampliación de la cobertura global de Codecov al 95.54% en líneas y 83.23% en ramas con 6 nuevos tests unitarios y 100% de cobertura en 10 componentes y utilidades clave.**
+> - **Mantenimiento de Cobertura Codecov (#26):** Creación de la suite `DocumentRepoButton.test.tsx` (100% cobertura) y expansión de tests unitarios en `AIProviderBadge.test.tsx` (100%), `LanguageSelector.test.tsx` (100%), `ConversationIOButton.test.tsx` (100%), `ChangelogButton.test.tsx` (100%), `CodeHealthButton.test.tsx` (100%), `SecurityAuditButton.test.tsx` (100%), `CodeHealthModal.test.tsx` (100%), `docxReader.test.ts` (100%), `pdfAdvanced.test.ts` (100% funciones), `repoRef.test.ts` (100%), `useModalDialog.test.tsx` (100% líneas) y `useDocTargetSelector.test.ts` (100%).
+> - **Métricas de Suite:** 1.073 tests unitarios en el cliente (72 suites) + 58 en el servidor (8 suites) = 1.131 tests unitarios en total + 13 tests E2E con Playwright, todos verdes.
+>
+> Cambio de código por Antigravity (Gemini 3.6 Flash).
+
 ## [4.0.10] — 2026-08-08
 
 > **Ampliación de la cobertura global de Codecov al 95.04% en líneas y 82.59% en ramas (15 nuevos tests unitarios en utilidades y componentes).**

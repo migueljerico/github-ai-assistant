@@ -89,4 +89,48 @@ describe('LanguageSelector', () => {
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
   });
+
+  it('debería cerrar el desplegable al hacer clic fuera', () => {
+    render(
+      <LanguageProvider>
+        <div>
+          <button data-testid="outside">Outside</button>
+          <LanguageSelector />
+        </div>
+      </LanguageProvider>
+    );
+
+    const button = screen.getByRole('button', { name: /select language/i });
+    fireEvent.click(button);
+    expect(screen.getByRole('listbox')).toBeInTheDocument();
+
+    fireEvent.mouseDown(screen.getByTestId('outside'));
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+  });
+
+  it('debería seleccionar idioma con la tecla Enter o Espacio', () => {
+    render(
+      <LanguageProvider>
+        <TestConsumer />
+      </LanguageProvider>
+    );
+
+    const button = screen.getByRole('button', { name: /select language/i });
+    fireEvent.click(button);
+
+    const options = screen.getAllByRole('option');
+    const enOption = options.find((opt) => opt.textContent?.includes('English'));
+    expect(enOption).toBeDefined();
+
+    fireEvent.keyDown(enOption!, { key: 'Enter' });
+    expect(screen.getByTestId('current-lang')).toHaveTextContent('en');
+
+    // Reopen and try Space
+    fireEvent.click(button);
+    const ptOption = screen.getAllByRole('option').find((opt) => opt.textContent?.includes('Português'));
+    expect(ptOption).toBeDefined();
+    fireEvent.keyDown(ptOption!, { key: ' ' });
+    expect(screen.getByTestId('current-lang')).toHaveTextContent('pt');
+  });
 });
+

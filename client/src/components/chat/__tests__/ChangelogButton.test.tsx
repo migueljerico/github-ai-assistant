@@ -33,8 +33,18 @@ describe('ChangelogButton (#34)', () => {
     expect(onGen).not.toHaveBeenCalled();
   });
 
+  it('cierra el formulario al pulsar el botón de cancelar (✕)', () => {
+    render(<ChangelogButton disabled={false} onGenerateChangelog={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: /Generar changelog/ }));
+    expect(screen.getByPlaceholderText(/owner\/repo o repo/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '✕' }));
+    expect(screen.queryByPlaceholderText(/owner\/repo o repo/)).not.toBeInTheDocument();
+  });
+
   it('está deshabilitado cuando disabled=true', () => {
     render(<ChangelogButton disabled={true} onGenerateChangelog={vi.fn()} />);
     expect(screen.getByRole('button', { name: /Generar changelog/ })).toBeDisabled();
   });
 });
+

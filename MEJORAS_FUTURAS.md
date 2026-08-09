@@ -2,9 +2,9 @@
 
 Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de GitHub**.
 
-**Actualizado a:** v4.0.10 — Agosto 2026
+**Actualizado a:** v4.0.11 — Agosto 2026
 
-> 📜 **Historial de Mejoras Implementadas:** Para consultar las 80+ características y correcciones resueltas desde la v1.0.0 a la v4.0.10, consulta el [Historial de Mejoras (`HISTORIAL_MEJORAS.md`)](HISTORIAL_MEJORAS.md).
+> 📜 **Historial de Mejoras Implementadas:** Para consultar las 80+ características y correcciones resueltas desde la v1.0.0 a la v4.0.11, consulta el [Historial de Mejoras (`HISTORIAL_MEJORAS.md`)](HISTORIAL_MEJORAS.md).
 
 ---
 
@@ -23,10 +23,10 @@ Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de
 #### #26 — Mantener y expandir cobertura de tests con Codecov
 **Esfuerzo:** Continuo (2-4h por sprint) · **Estado:** 🔄 En progreso
 
-**Progreso realizado (v4.0.10):** ✅ Infraestructura completa
+**Progreso realizado (v4.0.11):** ✅ Infraestructura completa
 - ✅ Vitest + Codecov + CI con GitHub Actions (cliente + servidor)
 - ✅ Badge de Codecov en README
-- ✅ **1.067 tests en el cliente (71 suites) + 58 en el servidor (8 suites)** = **1.125 unitarios** + **13 tests E2E** con Playwright. Cobertura global elevada al **95.04% en líneas** y **82.59% en ramas**. Cobertura del 97.87% en `pdfAdvanced.ts`, y 100% en `spreadsheetReader.ts`, `formatResult.ts`, `conversationIO.ts` y `codeHealth.ts`.
+- ✅ **1.073 tests en el cliente (72 suites) + 58 en el servidor (8 suites)** = **1.131 unitarios** + **13 tests E2E** con Playwright. Cobertura global elevada al **95.54% en líneas** y **83.23% en ramas**. Cobertura del 100% alcanzada en componentes (`DocumentRepoButton`, `ChangelogButton`, `CodeHealthButton`, `ConversationIOButton`, `AIProviderBadge`, `LanguageSelector`) y utilidades/hooks (`repoRef`, `docxReader`, `useModalDialog`, `useDocTargetSelector`).
 
 
 **Pendiente:**

@@ -40,10 +40,30 @@ describe('CodeHealthModal (#44)', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('invoca onClose con el botón Cerrar', () => {
+  it('invoca onClose con el botón Cerrar y con la X de la cabecera', () => {
     const onClose = vi.fn();
     render(<CodeHealthModal data={data} onClose={onClose} />);
     fireEvent.click(screen.getByRole('button', { name: /Cerrar/ }));
-    expect(onClose).toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByText('✕'));
+    expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
+  it('muestra singular y aviso de truncado cuando corresponde', () => {
+    const singleData: CodeHealth = {
+      repoName: 'owner/single',
+      languages: [],
+      debt: { total: 1, byFile: [{ path: 'src/a.ts', count: 1 }] },
+      commits: [],
+      filesAnalyzed: 1,
+      truncated: true,
+    };
+    render(<CodeHealthModal data={singleData} onClose={vi.fn()} />);
+    expect(screen.getByText('—')).toBeInTheDocument();
+    expect(screen.getByText(/1 archivo analizado/)).toBeInTheDocument();
+    expect(screen.getByText(/1 marcador de deuda/)).toBeInTheDocument();
+    expect(screen.getByText(/la deuda técnica se calcula sobre una muestra/)).toBeInTheDocument();
   });
 });
+

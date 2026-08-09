@@ -30,9 +30,9 @@ describe('docxXmlToText (helper puro)', () => {
     expect(out).toBe('Primera línea\nSegunda línea');
   });
 
-  it('decodifica entidades XML', () => {
-    const xml = '<w:p><w:r><w:t>Ventas &amp; Costes &lt; 100 &gt; 0</w:t></w:r></w:p>';
-    expect(docxXmlToText(xml)).toBe('Ventas & Costes < 100 > 0');
+  it('decodifica entidades XML nombradas, numéricas y hexadecimales', () => {
+    const xml = '<w:p><w:r><w:t>Ventas &amp; Costes &lt; 100 &gt; 0 &#65; &#x42;</w:t></w:r></w:p>';
+    expect(docxXmlToText(xml)).toBe('Ventas & Costes < 100 > 0 A B');
   });
 
   it('convierte tabs, saltos y celdas/filas de tabla', () => {
@@ -46,6 +46,7 @@ describe('docxXmlToText (helper puro)', () => {
     expect(out).toContain('c1\tc2');
   });
 });
+
 
 describe('readDocx', () => {
   beforeEach(() => { vi.clearAllMocks(); });

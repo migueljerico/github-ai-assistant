@@ -111,6 +111,19 @@ describe('useDocTargetSelector', () => {
     expect(stored.extraInstructions).toBe('Enfócate en seguridad');
   });
 
+  it('persiste cambios en bulkPaths (#58a)', () => {
+    const { result } = renderHook(() => useDocTargetSelector());
+
+    act(() => {
+      result.current.setBulkPaths(['src/a.ts', 'src/b.ts']);
+    });
+
+    expect(result.current.state.bulkPaths).toEqual(['src/a.ts', 'src/b.ts']);
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
+    expect(stored.bulkPaths).toEqual(['src/a.ts', 'src/b.ts']);
+  });
+
+
   it('actualiza updatedAt en cada cambio', () => {
     const { result } = renderHook(() => useDocTargetSelector());
 
