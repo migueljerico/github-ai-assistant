@@ -1,7 +1,7 @@
 {
   "name": "github-ai-assistant-client",
   "private": true,
-  "version": "4.0.11",
+  "version": "4.0.12",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -41,6 +41,6 @@
     "vitest": "^4.1.10"
   },
   "optionalDependencies": {
-    "pdfjs-dist": "^6.0.227"
+    "pdfjs-dist": "^6.2.108"
   }
 }

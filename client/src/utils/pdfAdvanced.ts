@@ -46,7 +46,11 @@ async function extractWithPDFJS(file: File, pdfjsLib: any): Promise<string> {
     reader.onload = async (event) => {
       try {
         const arrayBuffer = event.target?.result as ArrayBuffer;
-        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const pdf = await pdfjsLib.getDocument({
+          data: arrayBuffer,
+          enableScripting: false,
+          isEvalSupported: false,
+        }).promise;
         
         let fullText = '';
         for (let i = 1; i <= Math.min(pdf.numPages, 20); i++) {
@@ -131,7 +135,11 @@ export async function getPDFMetadata(file: File): Promise<{
   try {
     const pdfjsLib = await import('pdfjs-dist' as string);
     const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const pdf = await pdfjsLib.getDocument({
+      data: arrayBuffer,
+      enableScripting: false,
+      isEvalSupported: false,
+    }).promise;
     const metadata = await pdf.getMetadata();
 
     return {
