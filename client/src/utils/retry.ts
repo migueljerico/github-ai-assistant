@@ -69,17 +69,11 @@ export async function withTransientRetry<T>(
 // Si un proveedor cuelga, el spinner giraba indefinidamente: solo existía la
 // cancelación MANUAL (botón "Detener"). Ahora abortamos también por TIEMPOPO.
 //
-// Valor por defecto de 120s: cubre los casos legítimamente largos que ve la app
-//   • Modelos de razonamiento (p. ej. Ai& a 8192 tokens) que pueden tardar >30s.
+// Valor por defecto de 180s: cubre los casos legítimamente largos que ve la app
+//   • Modelos de razonamiento o proveedores free (p. ej. Ai& / OpenRouter / Groq a 8192 tokens) que pueden tardar >60s.
 //   • Generación de documentos (README + MANUAL_TECNICO, maxTokens 8192).
-// 120s es un equilibrio: si a los 2 min no hay respuesta, asumimos cuelgue.
-//
-// Mecanismo: combinamos el signal MANUAL del usuario con un signal de TIMEOUT.
-// AbortSignal.any([...]) aborta si cualquiera de los dos se dispara. La lógica de
-// handling ya existe (runSend/SecurityAudit muestran "⏹️ detenido" y conservan el
-// texto parcial); un timeout simplemente dispara ese mismo camino de abort, que
-// withTransientRetry ya propaga sin reintentar (líneas de arriba).
-export const DEFAULT_AI_TIMEOUT_MS = 120_000;
+// 180s (3 min) da margen suficiente sin cortar la generación de JSONs extensos en modo Acción.
+export const DEFAULT_AI_TIMEOUT_MS = 180_000;
 
 /** ¿El error viene de agotarse el timeout (AbortSignal.timeout)? Úsalo junto a
  *  isAbortError para distinguir "detenido a mano" de "cancelado por timeout". */

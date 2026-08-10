@@ -84,8 +84,8 @@ describe('retry (#40 / #50)', () => {
 
   // ── #73: timeout automático en llamadas IA ────────────────────────────────
   describe('combineSignals (#73)', () => {
-    it('expone DEFAULT_AI_TIMEOUT_MS = 120s', () => {
-      expect(DEFAULT_AI_TIMEOUT_MS).toBe(120_000);
+    it('expone DEFAULT_AI_TIMEOUT_MS = 180s', () => {
+      expect(DEFAULT_AI_TIMEOUT_MS).toBe(180_000);
     });
 
     it('devuelve undefined si no hay signal manual ni timeout', () => {

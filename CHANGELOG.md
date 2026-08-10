@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.21] — 2026-08-10
+
+> **Ampliado el tiempo de espera predeterminado a 180s (3 minutos) en `retry.ts` para generaciones de acciones con JSONs muy extensos.**
+> - **Ampliación de Timeout:** Incremento de `DEFAULT_AI_TIMEOUT_MS` a 180.000 ms (3 minutos), evitando cancelaciones automáticas prematuras ("La IA tardó demasiado...") cuando la IA genera propuestas completas de `README.md` u otros archivos grandes en el JSON de la acción.
+> - **Verificación:** 24 tests unitarios en `retry.test.ts` actualizados y pasados verde.
+>
+> Cambio de código por Antigravity (Gemini 3.6 Flash).
+
 ## [4.0.20] — 2026-08-10
 
 > **Fix de comportamiento en Modo Acción con contexto activo (`GET /user/repos` redundantes vs `PUT` directo).**

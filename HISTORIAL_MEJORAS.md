@@ -98,6 +98,7 @@ Registro histórico de todas las características, optimizaciones y correcciones
 | 96 | Inyección de `combinedContext` en `ACTION_PROMPT`, aumento de `maxTokens` a 8.192 en `attemptSend` (`assistantActions.ts`), y fallback en `parseRepoTarget` (`actionExecutor.ts`) para evitar resoluciones erróneas `owner/owner` y truncado de respuestas largas. | client/src/services/{assistantActions.ts,actionExecutor.ts}, tests | v4.0.18 |
 | 97 | Reemplazo case-insensitive de marcadores de repositorio (`OWNER`, `REPO`, `:owner`, `:repo`) en `resolveEndpoint` (`actionExecutor.ts`), evitando que endpoints devueltos por la IA como `/repos/OWNER/REPO/contents/...` fallen con 404 o marcadores sin resolver. | client/src/services/actionExecutor.ts, tests | v4.0.19 |
 | 98 | Inyección de reglas de contexto obligatorio (`📌 REGLA DE REPOSITORIO Y ARCHIVOS EN CONTEXTO (CRÍTICO)`) en `action-system.md` y cabecera explícita en `assistantActions.ts` para prohibir `GET /user/repos` o `GET` redundantes y forzar la generación directa de `PUT` al modificar archivos con contexto activo. | client/src/prompts/action-system.md, client/src/services/assistantActions.ts, tests | v4.0.20 |
+| 99 | Aumento de `DEFAULT_AI_TIMEOUT_MS` a 180s (3 minutos) en `retry.ts` para dar tiempo a modelos lentos y proveedores de IA al generar acciones `PUT` extensas en modo Acción. | client/src/utils/retry.ts, tests | v4.0.21 |
 
 ---
 
