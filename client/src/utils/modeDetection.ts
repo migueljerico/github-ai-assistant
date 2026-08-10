@@ -22,12 +22,13 @@ const CONVERSATION_KEYWORDS = [
   'documentación', 'documentacion', 'información', 'informacion',
 ];
 
-// Verbos de acción explícitos (operaciones sobre la GitHub API).
+// Verbos de acción explícitos (operaciones sobre la GitHub API o modificación de archivos/repos).
 const ACTION_KEYWORDS = [
   'lista', 'muéstrame', 'muestra', 'enséñame', 'enseñame', 'ver',
   'lee', 'leer', 'abre', 'abrir', 'carga', 'cargar',
   'crea', 'crear', 'genera', 'generar', 'haz', 'hacer',
   'actualiza', 'actualizar', 'modifica', 'modificar', 'edita', 'editar',
+  'mejora', 'mejorar', 'aplica', 'aplicar', 'corrige', 'corregir', 'arregla', 'arreglar', 'perfecciona', 'perfeccionar',
   'borra', 'borrar', 'elimina', 'eliminar', 'quita', 'quitar',
   'cierra', 'cerrar', 'reabre', 'reabrir',
   'fusiona', 'merge', 'une', 'unir',

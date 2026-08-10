@@ -1351,7 +1351,7 @@ describe('truncateByLines & generateFileDoc - base64 & data URI handling', () =>
 
       const result = await generateRepoDocs('user/repo', files, config, 'es', ['captura1.png']);
 
-      expect(result.readme).toContain('![Vista previa - captura1.png](screenshots/captura1.png)');
+      expect(result.readme).toContain('![Vista previa - captura1.png](./screenshots/captura1.png)');
       expect(result.readme).not.toContain('width="750"');
     });
 
@@ -1359,7 +1359,7 @@ describe('truncateByLines & generateFileDoc - base64 & data URI handling', () =>
       const fetchMock = vi.fn()
         .mockResolvedValueOnce({
           ok: true,
-          json: async () => ({ choices: [{ message: { content: '# README\n\n![Demo](screenshots/captura1.png)' } }] }),
+          json: async () => ({ choices: [{ message: { content: '# README\n\n![Demo](./screenshots/captura1.png)' } }] }),
         })
         .mockResolvedValueOnce({
           ok: true,
@@ -1372,8 +1372,8 @@ describe('truncateByLines & generateFileDoc - base64 & data URI handling', () =>
 
       const result = await generateRepoDocs('user/repo', files, config, 'es', ['captura1.png']);
 
-      // Solo una mención de screenshots/captura1.png
-      const matches = result.readme.match(/screenshots\/captura1\.png/g) || [];
+      // Solo una mención de ./screenshots/captura1.png
+      const matches = result.readme.match(/\.\/screenshots\/captura1\.png/g) || [];
       expect(matches.length).toBe(1);
     });
 
@@ -1387,21 +1387,21 @@ describe('truncateByLines & generateFileDoc - base64 & data URI handling', () =>
       const config = { provider: 'groq' as const, apiKey: 'gsk-test', model: 'llama-3.3-70b' };
       const doc = await generateSpecificDoc('README.md', undefined, undefined, config, 'es', ['screenshot.png']);
 
-      expect(doc).toContain('screenshots/screenshot.png');
+      expect(doc).toContain('./screenshots/screenshot.png');
       expect(doc).toContain('Vista previa');
     });
 
     it('generateSpecificDoc no duplica si el LLM ya incluye la captura adjunta', async () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({ choices: [{ message: { content: '# Doc Específico\n\n![Screenshot](screenshots/screenshot.png)' } }] }),
+        json: async () => ({ choices: [{ message: { content: '# Doc Específico\n\n![Screenshot](./screenshots/screenshot.png)' } }] }),
       });
       vi.stubGlobal('fetch', fetchMock);
 
       const config = { provider: 'groq' as const, apiKey: 'gsk-test', model: 'llama-3.3-70b' };
       const doc = await generateSpecificDoc('README.md', undefined, undefined, config, 'es', ['screenshot.png']);
 
-      const matches = doc.match(/screenshots\/screenshot\.png/g) || [];
+      const matches = doc.match(/\.\/screenshots\/screenshot\.png/g) || [];
       expect(matches.length).toBe(1);
     });
 

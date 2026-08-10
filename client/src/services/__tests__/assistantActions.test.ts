@@ -59,6 +59,13 @@ vi.mock('../docPublisher', () => ({
   uploadFilesToRepo: vi.fn(),
   // v3.66.0 (Frente D): isImageFile real para que runAttachFile decida bien.
   isImageFile: (name: string) => /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(name),
+  uploadPathFor: (name: string) => {
+    const ext = name.split('.').pop()?.toLowerCase() || '';
+    const safe = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w.-]+/g, '_').replace(/_+/g, '_');
+    if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'].includes(ext)) return `screenshots/${safe}`;
+    if (['xlsx', 'xls', 'csv', 'json', 'parquet'].includes(ext)) return `data/${safe}`;
+    return safe;
+  },
   // #58 (b): constantes reales (no mocks) para que runDocumentRepo las use.
   README_PATH: 'README.md',
   MANUAL_PATH: 'MANUAL_TECNICO.md',
@@ -245,6 +252,18 @@ describe('runDocumentRepo', () => {
     await runDocumentRepo(deps, CONFIG, 'owner/repo', [imageFile]);
 
     expect(generateRepoDocs).toHaveBeenCalledWith('owner/repo', expect.any(Array), CONFIG, 'es', ['screen.png']);
+  });
+
+  it('propaga extraFiles saneando acentos en nombres de imagen a generateRepoDocs', async () => {
+    vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'a' }], totalScanned: 1, truncated: false, allPaths: ['a'] } as any);
+    vi.mocked(generateRepoDocs).mockResolvedValue({ readme: 'R', manualTecnico: 'M' } as any);
+    const deps = makeDeps();
+
+    const imageFile = new File(['dummy'], 'Captura_Infografía_Notebook.png', { type: 'image/png' });
+    await runDocumentRepo(deps, CONFIG, 'owner/repo', [imageFile]);
+
+    expect(generateRepoDocs).toHaveBeenCalledWith('owner/repo', expect.any(Array), CONFIG, 'es', ['Captura_Infografia_Notebook.png']);
   });
 
   it('#58 (b): cuando alreadyDocumented=true, trae el README/MANUAL actual y lo propaga', async () => {

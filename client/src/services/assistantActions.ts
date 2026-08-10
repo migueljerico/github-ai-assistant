@@ -19,7 +19,7 @@ import type { RepoTreeFile } from './github';
 import { rankFilesByQuery } from '../utils/contextRanker';
 import { isContextTooLargeError } from '../utils/retry';
 import { languageDistribution, countTechnicalDebt, commitsByWeek, type LanguageSlice, type TechnicalDebt, type CommitWeek } from '../utils/codeHealth';
-import { writeDocFiles, createDocsDraftPr, publishFileDoc, uploadFilesToRepo, README_PATH, MANUAL_PATH, publishBulkCommit, publishBulkDraftPr, isImageFile } from './docPublisher';
+import { writeDocFiles, createDocsDraftPr, publishFileDoc, uploadFilesToRepo, README_PATH, MANUAL_PATH, publishBulkCommit, publishBulkDraftPr, isImageFile, uploadPathFor } from './docPublisher';
 import type { DocTarget } from './docPublisher';
 import { summarizeThread, parseThreadInput, listOpenThreads, formatThreadList } from './threadSummary';
 import { generateChangelog } from './changelogGenerator';
@@ -206,7 +206,7 @@ export async function runDocumentRepo(
 
     const extraImageNames = extraFiles
       ?.filter(f => /\.(png|jpe?g|gif|webp|svg)$/i.test(f.name))
-      .map(f => f.name);
+      .map(f => uploadPathFor(f.name).replace(/^screenshots\//, ''));
 
     const { readme, manualTecnico, resumen } = extraImageNames && extraImageNames.length > 0
       ? await generateRepoDocs(`${owner}/${repoName}`, files, config, deps.lang, extraImageNames)
@@ -1581,7 +1581,7 @@ export async function runGenerateSpecificDoc(
     const repoContext = conversation ? formatConversation([{ role: 'user', content: conversation }]) : undefined;
     const extraImageNames = extraFiles
       ?.filter(f => /\.(png|jpe?g|gif|webp|svg)$/i.test(f.name))
-      .map(f => f.name);
+      .map(f => uploadPathFor(f.name).replace(/^screenshots\//, ''));
 
     const doc = extraImageNames && extraImageNames.length > 0
       ? await generateSpecificDoc(targetPath, currentContent, repoContext, config, lang, extraImageNames)

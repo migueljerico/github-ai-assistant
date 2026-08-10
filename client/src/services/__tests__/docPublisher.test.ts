@@ -269,11 +269,11 @@ describe('docPublisher', () => {
       await publishFileDoc(TOKEN, OWNER, REPO, 'README.md', '# Mi README', { extraFiles });
 
       // El content escrito (5º arg de createOrUpdateFile) ahora termina con la
-      // sección Capturas enlazando la imagen desde screenshots/. El .xlsx NO aparece
+      // sección Capturas enlazando la imagen desde ./screenshots/. El .xlsx NO aparece
       // (no es imagen).
       const writtenContent = vi.mocked(createOrUpdateFile).mock.calls[0][4] as string;
       expect(writtenContent).toContain('# Mi README');
-      expect(writtenContent).toContain('![dashboard](screenshots/dashboard.png)');
+      expect(writtenContent).toContain('![dashboard](./screenshots/dashboard.png)');
       expect(writtenContent).not.toContain('datos.xlsx');
     });
 
@@ -312,16 +312,16 @@ describe('buildImageMarkdown / isImageFile (v3.66.0 Frente D1)', () => {
     expect(buildImageMarkdown(['notas.txt', 'datos.csv'])).toBe('');
   });
 
-  it('buildImageMarkdown genera una línea markdown por imagen, enlazando screenshots/', () => {
+  it('buildImageMarkdown genera una línea markdown por imagen, enlazando ./screenshots/', () => {
     const md = buildImageMarkdown(['dashboard.png', 'login.jpeg']);
     expect(md).toContain('## 📸 Capturas');
-    expect(md).toContain('![dashboard](screenshots/dashboard.png)');
-    expect(md).toContain('![login](screenshots/login.jpeg)');
+    expect(md).toContain('![dashboard](./screenshots/dashboard.png)');
+    expect(md).toContain('![login](./screenshots/login.jpeg)');
   });
 
   it('buildImageMarkdown ignora los no-imágenes mezclados', () => {
     const md = buildImageMarkdown(['captura.png', 'datos.xlsx', 'notas.txt']);
-    expect(md).toContain('![captura](screenshots/captura.png)');
+    expect(md).toContain('![captura](./screenshots/captura.png)');
     expect(md).not.toContain('datos.xlsx');
     expect(md).not.toContain('notas.txt');
   });
@@ -370,6 +370,8 @@ describe('uploadPathFor (#28 4b)', () => {
   it('imágenes → screenshots/, datos → data/, resto → raíz', () => {
     expect(uploadPathFor('captura.PNG')).toBe('screenshots/captura.PNG');
     expect(uploadPathFor('mi foto.jpg')).toBe('screenshots/mi_foto.jpg');
+    expect(uploadPathFor('Captura_Infografía_Notebook.png')).toBe('screenshots/Captura_Infografia_Notebook.png');
+    expect(uploadPathFor('Imagen con diseño y animación.jpg')).toBe('screenshots/Imagen_con_diseno_y_animacion.jpg');
     expect(uploadPathFor('Empleados.xlsx')).toBe('data/Empleados.xlsx');
     expect(uploadPathFor('datos.csv')).toBe('data/datos.csv');
     expect(uploadPathFor('LICENSE.txt')).toBe('LICENSE.txt');

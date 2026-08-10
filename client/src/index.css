@@ -751,23 +751,28 @@ textarea.input { resize: none; line-height: 1.6; }
   font-size: 0.8rem;
   font-weight: 500;
   font-family: var(--font-sans);
+  max-width: 100%;
 }
 .repo-context-clear {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border: none;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.2);
   color: inherit;
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
+  font-weight: bold;
   line-height: 1;
-  padding: 0 2px;
-  opacity: 0.7;
-  transition: opacity var(--transition);
+  padding: 3px 8px;
+  border-radius: 4px;
+  opacity: 0.85;
+  transition: all var(--transition);
 }
 .repo-context-clear:hover {
   opacity: 1;
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
 }
 
 /* ── Multi-Repo ───────────────────────────────────────────────────────────── */

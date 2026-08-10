@@ -92,6 +92,11 @@ describe('modeDetection', () => {
       expect(r!.suggestMode).toBe('chat');
     });
 
+    it('en action + petición con "mejora mi README" → NO sugiere chat (es una acción de edición)', () => {
+      const r = detectModeMismatch('mejora mi README.md como hemos hablado en el último mensaje', 'action');
+      expect(r).toBeNull();
+    });
+
     it('en review + petición de opinión → sugiere chat', () => {
       const r = detectModeMismatch('dame tu opinión sobre el código', 'review');
       expect(r).not.toBeNull();

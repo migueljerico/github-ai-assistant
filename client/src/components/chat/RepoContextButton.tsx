@@ -39,14 +39,17 @@ export default function RepoContextButton({
   // Contexto ya cargado → mostrar chip con opción de descartar
   if (activeContext) {
     return (
-      <span className="repo-context-chip" id="repo-context-chip">
-        📂 {t('chat.contextPrefix')}: <strong>{activeContext}</strong>
+      <span className="repo-context-chip" id="repo-context-chip" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', boxSizing: 'border-box' }}>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
+          📂 {t('chat.contextPrefix')}: <strong>{activeContext}</strong>
+        </span>
         <button
           type="button"
           className="repo-context-clear"
           onClick={onClearContext}
           aria-label={t('chat.contextClearAria')}
           title={t('chat.contextClearTitle')}
+          style={{ marginLeft: '8px', flexShrink: 0 }}
         >
           ✕
         </button>

@@ -93,7 +93,8 @@ Registro histórico de todas las características, optimizaciones y correcciones
 | 81 | Tests unitarios y cobertura 100% en `rateLimitHandler.ts` (#26). | client/src/utils/__tests__/rateLimitHandler.test.ts | v4.0.6 |
 | 82 | Fix duplicación de footers (`cleanDocFooter`) al documentar e inyección explícita de directiva de fecha/año actual (2026) para evitar alucinaciones con 2025. | client/src/services/gemini.ts, client/src/services/__tests__/gemini.test.ts | v4.0.7 |
 | 83 | Vista previa visual automática en `README.md` (`injectImagePreviewBlock`) para capturas adjuntas subidas a `screenshots/` y verificación de publicación vía chat. | client/src/services/gemini.ts, client/src/services/assistantActions.ts, client/src/App.tsx | v4.0.8 |
-| 84 | Cobertura de Codecov patch 100% para las funciones de vista previa de imagen `injectImagePreviewBlock` y flujos de documentación con capturas en `gemini.test.ts` y `assistantActions.test.ts`. | client/src/services/__tests__/gemini.test.ts, client/src/services/__tests__/assistantActions.test.ts | v4.0.9 |
+| 96 | Cobertura de Codecov patch 100% para las funciones de vista previa de imagen `injectImagePreviewBlock` y flujos de documentación con capturas en `gemini.test.ts` y `assistantActions.test.ts`. | client/src/services/__tests__/gemini.test.ts, client/src/services/__tests__/assistantActions.test.ts | v4.0.9 |
+| 95 | Fix resolución de capturas (`./screenshots/`), sanitización de diacríticos (`normalize('NFD')` en `sanitizeRepoPath`), posicionamiento sin desbordamiento de `ChatToolsMenu`, mejora del área de clic de `✕` en chips de contexto y habilitación del verbo "mejora" en modo Acción. | client/src/services/{gemini.ts,docPublisher.ts,assistantActions.ts}, client/src/components/chat/{ChatToolsMenu.tsx,RepoContextButton.tsx}, client/src/utils/modeDetection.ts, tests | v4.0.17 |
 
 ---
 

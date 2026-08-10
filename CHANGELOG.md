@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.17] — 2026-08-10
+
+> **Fix de sintaxis `./screenshots/` en vista previa de imágenes, normalización de acentos/diacríticos en nombres de archivo, ajuste visual de `ChatToolsMenu` y corrección de intenciones en modo Acción.**
+> - **Sintaxis `./screenshots/` en Vista Previa:** Estandarización de plantillas, prompts e inyectores automáticos en `gemini.ts` y `docPublisher.ts` para usar `./screenshots/filename.png` en el contenido Markdown del README, manteniendo el hospedaje real del archivo en la carpeta `screenshots/` de GitHub via API.
+> - **Normalización de Diacríticos (`sanitizeRepoPath`):** Incorporación de `.normalize('NFD').replace(/[\u0300-\u036f]/g, '')` en `docPublisher.ts` para que capturas con vocales acentuadas (`Captura_Infografía_Notebook.png`) se conviertan a caracteres ASCII limpios (`Captura_Infografia_Notebook.png`) con vocal `i` en lugar de guiones bajos (`_`). Sincronización en `assistantActions.ts` para coincidencia al 100% entre Markdown y path de subida.
+> - **Ajuste Visual de `ChatToolsMenu` & Botón `✕`:** Cambio de posicionamiento del desplegable a `right: 0` para evitar la superposición con el panel de Historial de sesión. Ampliación del área de clic y estilos flexbox del botón `✕` para descartar contexto de repo activo (`RepoContextButton.tsx` / `index.css`).
+> - **Fix de intenciones en Modo Acción:** Adición de verbos de edición e incremento (`mejora`, `mejorar`, `aplica`, `aplicar`, `corrige`, `corregir`, `arregla`, `arreglar`) en `ACTION_KEYWORDS` (`modeDetection.ts`), evitando falsos desajustes de modo al pedir "mejora mi README.md" en modo Acción.
+> - **Verificación y Cobertura:** 1.179 tests unitarios cliente + 58 servidor = 1.237 unitarios verdes (100% pasados), 0 errores de ESLint y compilación TypeScript `tsc -b` impecable.
+>
+> Cambio de código por Antigravity (Gemini 3.6 Flash).
+
 ## [4.0.16] — 2026-08-10
 
 > **Fix de resolución de distorsión en capturas de pantalla de documentación, corrección de carga de contexto remota en repositorios con rama `master` / no-`main` y expansión a 1.175 unitarios verdes.**

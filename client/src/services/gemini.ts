@@ -827,7 +827,7 @@ export async function generateRepoDocs(
   const dateDirective = `\n\n═══════════════════════════════════════════════════════\nFECHA Y AÑO ACTUAL EN CURSO (OBLIGATORIO):\n- Año actual: ${docYear}\n- Fecha actual: ${currentDateStr} (${currentIsoDate})\n\nREGLA ESTRICTA DE FECHA/AÑO: Si incluyes alguna fecha, versión o año en el documento (encabezados, badges, notas o pie de página), DEBES usar obligatoriamente la fecha u año actual indicado arriba (${docYear}). NUNCA alucines ni incluyas años o fechas pasadas (como 2025 o anteriores) para la versión o actualización actual. Si el contenido existente contenía "2025" o fechas pasadas en la cabecera/versión/fecha, ACTUALÍZALO obligatoriamente a ${docYear}.\n═══════════════════════════════════════════════════════`;
 
   const imagesDirective = extraImageFiles && extraImageFiles.length > 0
-    ? `\n\n═══════════════════════════════════════════════════════\nCAPTURAS / IMÁGENES ADJUNTAS A SUBIR EN EL REPOSITORIO (OBLIGATORIO INCLUIR EN EL README.md):\nSe están adjuntando y subiendo las siguientes imágenes a la carpeta \`screenshots/\`:\n${extraImageFiles.map(n => `- screenshots/${n}`).join('\n')}\n\nREQUISITO OBLIGATORIO:\nEn el README.md generado, DEBES incluir explícitamente una sección o bloque de vista previa visual (en Descripción, Acceso/Demo o en una sección dedicada 🖼️ Vista previa) que muestre cada una de estas imágenes usando sintaxis Markdown estándar (NUNCA envuelvas en <p align="center"> ni uses anchos fijos como width="750"):\n![Vista previa](screenshots/${extraImageFiles[0]})\nSi hay múltiples imágenes, incluye la vista previa de cada una.\n═══════════════════════════════════════════════════════`
+    ? `\n\n═══════════════════════════════════════════════════════\nCAPTURAS / IMÁGENES ADJUNTAS A SUBIR EN EL REPOSITORIO (OBLIGATORIO INCLUIR EN EL README.md):\nSe están adjuntando y subiendo las siguientes imágenes a la carpeta \`./screenshots/\`:\n${extraImageFiles.map(n => `- ./screenshots/${n}`).join('\n')}\n\nREQUISITO OBLIGATORIO:\nEn el README.md generado, DEBES incluir explícitamente una sección o bloque de vista previa visual (en Descripción, Acceso/Demo o en una sección dedicada 🖼️ Vista previa) que muestre cada una de estas imágenes usando sintaxis Markdown estándar (NUNCA envuelvas en <p align="center"> ni uses anchos fijos como width="750"):\n![Vista previa](./screenshots/${extraImageFiles[0]})\nSi hay múltiples imágenes, incluye la vista previa de cada una.\n═══════════════════════════════════════════════════════`
     : '';
 
   // Detectar y sanear README y MANUAL existentes para pedir "mejora" en vez de "copia"
@@ -884,7 +884,7 @@ REQUISITOS OBLIGATORIOS PARA EL README.md
    - Si el README existente referencia archivos de imagen (*.png, *.jpg, *.gif,
      *.svg, *.webp) que NO aparecen en la estructura del proyecto (ESTRUCTURA DEL
      PROYECTO más arriba), ELIMINA esa referencia de imagen completa. No dejes enlaces a archivos inexistentes.
-   - Si el README referencia imágenes, usa la ruta screenshots/FILENAME (no la raíz) y sintaxis Markdown ![alt](screenshots/FILENAME) (NUNCA fijes anchos como width="750" ni envuelvas en <p align="center"> para no distorsionar ni forzar alineado centrado).
+   - Si el README referencia imágenes, usa la ruta ./screenshots/FILENAME (no la raíz) y sintaxis Markdown ![alt](./screenshots/FILENAME) (NUNCA fijes anchos como width="750" ni envuelvas en <p align="center"> para no distorsionar ni forzar alineado centrado).
 ${readmeExistingDirective}${dateDirective}${imagesDirective}
 
 ═══════════════════════════════════════════════════════
@@ -951,7 +951,7 @@ REPOSITORIO: ${repoName}
     );
     if (missingImages.length > 0) {
       const previewItems = missingImages
-        .map(img => `![Vista previa - ${img}](screenshots/${img})`)
+        .map(img => `![Vista previa - ${img}](./screenshots/${img})`)
         .join('\n\n');
       const previewBlock = `\n\n### 🖼️ Vista previa\n\n${previewItems}`;
       readmeStripped = injectImagePreviewBlock(readmeStripped, previewBlock);
@@ -1064,7 +1064,7 @@ export async function generateSpecificDoc(
   const dateDirective = `\n\nFECHA Y AÑO ACTUAL EN CURSO: ${currentDateStr} (${currentIsoDate}, ${currentYear}). Si incluyes la versión o fecha de actualización, utiliza obligatoriamente el año/fecha actual (${currentYear}) y NO mantengas ni alucines con fechas pasadas como 2025.`;
 
   const imagesDirective = extraImageFiles && extraImageFiles.length > 0
-    ? `\n\n═══════════════════════════════════════════════════════\nCAPTURAS / IMÁGENES ADJUNTAS A SUBIR EN EL REPOSITORIO (OBLIGATORIO INCLUIR EN EL DOCUMENTO):\nSe están adjuntando y subiendo las siguientes imágenes a la carpeta \`screenshots/\`:\n${extraImageFiles.map(n => `- screenshots/${n}`).join('\n')}\n\nREQUISITO OBLIGATORIO:\nEn la documentación generada, DEBES incluir explícitamente la vista previa visual en Markdown estándar (sin <p align="center"> ni anchos fijos como width="750"):\n![Vista previa de ${extraImageFiles[0]}](screenshots/${extraImageFiles[0]})\n═══════════════════════════════════════════════════════`
+    ? `\n\n═══════════════════════════════════════════════════════\nCAPTURAS / IMÁGENES ADJUNTAS A SUBIR EN EL REPOSITORIO (OBLIGATORIO INCLUIR EN EL DOCUMENTO):\nSe están adjuntando y subiendo las siguientes imágenes a la carpeta \`./screenshots/\`:\n${extraImageFiles.map(n => `- ./screenshots/${n}`).join('\n')}\n\nREQUISITO OBLIGATORIO:\nEn la documentación generada, DEBES incluir explícitamente la vista previa visual en Markdown estándar (sin <p align="center"> ni anchos fijos como width="750"):\n![Vista previa de ${extraImageFiles[0]}](./screenshots/${extraImageFiles[0]})\n═══════════════════════════════════════════════════════`
     : '';
 
   // Prompt base adaptado al tipo de documento
@@ -1140,7 +1140,7 @@ Reglas:
     );
     if (missingImages.length > 0) {
       const previewItems = missingImages
-        .map(img => `![Vista previa - ${img}](screenshots/${img})`)
+        .map(img => `![Vista previa - ${img}](./screenshots/${img})`)
         .join('\n\n');
       const previewBlock = `\n\n### 🖼️ Vista previa\n\n${previewItems}`;
       doc = injectImagePreviewBlock(doc, previewBlock);

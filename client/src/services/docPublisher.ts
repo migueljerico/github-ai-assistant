@@ -105,9 +105,13 @@ export async function writeDocTargets(
   }
 }
 
-/** Sanea el nombre de un fichero para usarlo como ruta de repo (sin espacios raros). */
+/** Sanea el nombre de un fichero para usarlo como ruta de repo (normalizando acentos y sin espacios raros). */
 function sanitizeRepoPath(name: string): string {
-  return name.replace(/[^\w.-]+/g, '_').replace(/_+/g, '_') || 'archivo';
+  return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w.-]+/g, '_')
+    .replace(/_+/g, '_') || 'archivo';
 }
 
 const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp']);
@@ -133,7 +137,7 @@ export function buildImageMarkdown(fileNames: string[], heading = '## 📸 Captu
   const lines = images.map(name => {
     const dest = uploadPathFor(name);
     const alt = name.replace(/\.[^.]+$/, '').replace(/[^\w\s-]+/g, ' ').trim() || 'captura';
-    return `![${alt}](${dest})`;
+    return `![${alt}](./${dest})`;
   });
   return `\n\n${heading}\n\n${lines.join('\n\n')}\n`;
 }
