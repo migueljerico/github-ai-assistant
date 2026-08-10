@@ -78,7 +78,7 @@ describe('commitsByWeek', () => {
   it('calcula correctamente el lunes para commits realizados en domingo (day === 0)', () => {
     // 2026-08-09 es Domingo. Debe retroceder 6 días al Lunes 2026-08-03.
     const sundayIso = '2026-08-09T12:00:00Z';
-    const result = commitsByWeek([sundayIso], 1);
+    const result = commitsByWeek([sundayIso], 1, new Date(sundayIso));
     expect(result[0].weekStart).toBe('2026-08-03');
     expect(result[0].count).toBe(1);
   });

@@ -87,7 +87,7 @@ function mondayOf(date: Date): string {
  * Agrupa fechas ISO de commit por semana (lunes) y devuelve las últimas `weeks`
  * semanas en orden cronológico, rellenando con 0 las semanas sin commits.
  */
-export function commitsByWeek(dates: string[], weeks = 12): CommitWeek[] {
+export function commitsByWeek(dates: string[], weeks = 12, now = new Date()): CommitWeek[] {
   const counts: Record<string, number> = {};
   for (const iso of dates) {
     const d = new Date(iso);
@@ -98,7 +98,7 @@ export function commitsByWeek(dates: string[], weeks = 12): CommitWeek[] {
 
   // Construir las últimas `weeks` semanas hasta el lunes de la semana actual.
   const out: CommitWeek[] = [];
-  const monday = new Date(`${mondayOf(new Date())}T00:00:00Z`);
+  const monday = new Date(`${mondayOf(now)}T00:00:00Z`);
   for (let i = weeks - 1; i >= 0; i--) {
     const wk = new Date(monday);
     wk.setUTCDate(wk.getUTCDate() - i * 7);

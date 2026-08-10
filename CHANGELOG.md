@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.14] — 2026-08-10
+
+> **Fix de fallos de test post-merge de Dependabot (#26) y estabilización del cálculo de semanas en `codeHealth.ts`.**
+> - **Fix de Dependabot / CodeHealth (#26):** Solución de la falla en la suite de pruebas `codeHealth.test.ts` tras la actualización de dependencias de Dependabot. Se parametrizó el cálculo de fecha de referencia en `commitsByWeek` (`codeHealth.ts`), eliminando la acoplación al reloj del sistema e independizándolo del día de ejecución (domingo/lunes).
+> - **Verificación:** 1.084 tests cliente + 58 servidor = 1.142 unitarios verdes, 0 errores de linter y build de TypeScript estricto verificado.
+>
+> Cambio de código por Antigravity (Gemini 3.6 Flash).
+
 ## [4.0.13] — 2026-08-09
 
 > **Mantenimiento y expansión de cobertura de tests en Codecov (#26) y actualización integral de la documentación extendida en `/docs/`.**
