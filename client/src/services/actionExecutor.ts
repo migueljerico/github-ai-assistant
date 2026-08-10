@@ -97,12 +97,15 @@ function resolveEndpoint(
   user: { login: string },
   repoTarget: { owner: string; repo: string }
 ): string {
-  return endpoint
+  let res = endpoint
     .replace(/\{username\}/g, user.login)
-    .replace(/\{owner\}/g, repoTarget.owner || user.login)
-    .replace(/\{repo\}/g, repoTarget.repo)
+    .replace(/\{owner\}|:owner|\{OWNER\}|:OWNER|\bOWNER\b/g, repoTarget.owner || user.login)
     .replace(/\{path\}/g, '') // strip literal {path} if present
     .replace(/\{branch\}/g, 'HEAD');
+  if (repoTarget.repo) {
+    res = res.replace(/\{repo\}|:repo|\{REPO\}|:REPO|\bREPO\b/g, repoTarget.repo);
+  }
+  return res;
 }
 
 /**

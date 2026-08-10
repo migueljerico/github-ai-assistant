@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.19] — 2026-08-10
+
+> **Fix de resolución de marcadores de endpoint (`OWNER`, `REPO`, `:owner`, `:repo`) en `actionExecutor.ts`.**
+> - **Sustitución de Marcadores de Repositorio:** Actualización de `resolveEndpoint` en `actionExecutor.ts` para resolver de forma flexible marcadores en mayúsculas (`OWNER`, `REPO`), con comillas o sintaxis de ruta `:owner`/`:repo`. Esto soluciona los fallos `404 Not Found` en llamadas donde el LLM devolvía endpoints literales como `/repos/OWNER/REPO/contents/README.md`.
+> - **Verificación:** 37 tests unitarios en `actionExecutor.test.ts` verdes (100% pasados).
+>
+> Cambio de código por Antigravity (Gemini 3.6 Flash).
+
 ## [4.0.18] — 2026-08-10
 
 > **Fix de inyección de contexto en Modo Acción (`ACTION_PROMPT`), resolución de repositorios por defecto en `actionExecutor.ts` y ampliación de tokens de salida a 8.192.**

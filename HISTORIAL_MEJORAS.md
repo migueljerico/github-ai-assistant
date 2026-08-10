@@ -96,6 +96,7 @@ Registro histórico de todas las características, optimizaciones y correcciones
 | 96 | Cobertura de Codecov patch 100% para las funciones de vista previa de imagen `injectImagePreviewBlock` y flujos de documentación con capturas en `gemini.test.ts` y `assistantActions.test.ts`. | client/src/services/__tests__/gemini.test.ts, client/src/services/__tests__/assistantActions.test.ts | v4.0.9 |
 | 95 | Fix resolución de capturas (`./screenshots/`), sanitización de diacríticos (`normalize('NFD')` en `sanitizeRepoPath`), posicionamiento sin desbordamiento de `ChatToolsMenu`, mejora del área de clic de `✕` en chips de contexto y habilitación del verbo "mejora" en modo Acción. | client/src/services/{gemini.ts,docPublisher.ts,assistantActions.ts}, client/src/components/chat/{ChatToolsMenu.tsx,RepoContextButton.tsx}, client/src/utils/modeDetection.ts, tests | v4.0.17 |
 | 96 | Inyección de `combinedContext` en `ACTION_PROMPT`, aumento de `maxTokens` a 8.192 en `attemptSend` (`assistantActions.ts`), y fallback en `parseRepoTarget` (`actionExecutor.ts`) para evitar resoluciones erróneas `owner/owner` y truncado de respuestas largas. | client/src/services/{assistantActions.ts,actionExecutor.ts}, tests | v4.0.18 |
+| 97 | Reemplazo case-insensitive de marcadores de repositorio (`OWNER`, `REPO`, `:owner`, `:repo`) en `resolveEndpoint` (`actionExecutor.ts`), evitando que endpoints devueltos por la IA como `/repos/OWNER/REPO/contents/...` fallen con 404 o marcadores sin resolver. | client/src/services/actionExecutor.ts, tests | v4.0.19 |
 
 ---
 
