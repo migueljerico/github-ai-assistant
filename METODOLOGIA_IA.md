@@ -161,9 +161,10 @@ contener:
 - **Qué se acaba de cerrar** (1-3 frases, con número de issue y archivo clave).
 - **Próximo trabajo priorizado** (sacado de `MEJORAS_FUTURAS.md`, con
   estimación).
-- **Reglas de la sesión** (economía de contexto: subagentes Explore con
-  informes compactos, lecturas con offset/limit, outputs filtrados; push+tag
-  automáticos; expansión continua de cobertura Codecov al 100%; crédito de modelo).
+- **Reglas de la sesión** (lectura obligatoria de AGENTS.md, CLAUDE.md y METODOLOGIA_IA.md
+  antes de tocar código; economía de contexto: subagentes Explore con informes
+  compactos, lecturas con offset/limit, outputs filtrados; push+tag automáticos;
+  expansión continua de cobertura Codecov al 100%; crédito de modelo).
 
 El asistente lo entrega como último mensaje de la sesión, en un bloque de
 código para copiar fácil. Si queda trabajo a medias (contra la regla de §2), el

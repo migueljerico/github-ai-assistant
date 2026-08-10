@@ -111,7 +111,7 @@ Compacto, para copiar/pegar en la siguiente sesión:
 - **Próximo trabajo priorizado** (de MEJORAS_FUTURAS.md):
   1. <ítem, con estimación>
   2. <ítem>
-- **Reglas de sesión:** economía de contexto (subagentes Explore con informes
+- **Reglas de sesión:** lectura obligatoria de AGENTS.md, CLAUDE.md y METODOLOGIA_IA.md antes de tocar código; economía de contexto (subagentes Explore con informes
   compactos, lecturas con offset/limit, outputs filtrados); push+tag automáticos;
   expansión continua de cobertura Codecov (objetivo 100%); crédito de modelo.
 ```
@@ -121,8 +121,9 @@ lo declara **sin inflar** lo conseguido.
 
 ---
 
-## Reglas de sesión (economía de contexto y cobertura)
+## Reglas de sesión (lectura inicial, economía de contexto y cobertura)
 
+- **Lectura obligatoria al arrancar:** leer en este orden `AGENTS.md`, `CLAUDE.md` y `METODOLOGIA_IA.md` **antes de tocar código en cada sesión** (regla no negociable).
 - **Subagentes Explore** para búsquedas amplias; pídeles informes compactos
   (file:line + conclusión), no volcados de archivos.
 - Lee con `offset`/`limit` en archivos grandes; no los leas enteros.

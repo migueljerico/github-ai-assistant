@@ -479,7 +479,8 @@ El flujo con el usuario es siempre el mismo, **no lo cambies**:
       la imagen debe coincidir con el hash del commit recién pusheado).
    10. **Mensaje de handoff** (bloque de código listo para copiar en la siguiente
        sesión: repo, versión, qué se cerró, próximo trabajo priorizado, reglas de
-       economía de contexto, expansión continua de cobertura Codecov al 100% y crédito).
+       sesión incluyendo la lectura obligatoria de AGENTS.md, CLAUDE.md y METODOLOGIA_IA.md
+       antes de tocar código, economía de contexto, expansión continua de cobertura Codecov al 100% y crédito).
 3. **No hay puntos de parada manuales** en la rutina de cierre: el push, el tag,
    el GitHub release **y el deploy a Cloud Run** son todos automáticos. Lo único
    que espera confirmación del usuario son acciones **fuera** de esta rutina.
