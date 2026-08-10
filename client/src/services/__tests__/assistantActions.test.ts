@@ -1673,6 +1673,7 @@ describe('runSecurityAudit (#52)', () => {
   const CONFIG = { provider: 'groq' as const, apiKey: 'k', model: 'm' };
 
   it('camino feliz: carga archivos sensibles, llama a callAI en modo chat con SECURITY_PROMPT', async () => {
+    vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
     // fetchRepoTreeRecursive devuelve allPaths con un workflow (lo descubre resolveSensitivePaths).
     vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({
       files: [], totalScanned: 0, truncated: false, allPaths: ['.github/workflows/ci.yml'],

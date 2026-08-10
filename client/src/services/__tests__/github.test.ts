@@ -478,6 +478,51 @@ describe('github.ts', () => {
       expect(res.files).toHaveLength(1);
       expect(res.allPaths).toEqual(['README.md']);
     });
+
+    it('fetchRepoTreeRecursive usa main si getRepo falla al resolver branch omitido', async () => {
+      vi.mocked(fetch).mockImplementation((url) => {
+        const u = String(url);
+        if (u.endsWith('/repos/o/r')) {
+          return Promise.resolve({ ok: false, status: 500, json: async () => ({ message: 'Error' }) } as any);
+        }
+        if (u.endsWith('/git/trees/main?recursive=1')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              truncated: false,
+              tree: [{ path: 'README.md', type: 'blob', size: 10, sha: '1' }],
+            }),
+          } as any);
+        }
+        return Promise.resolve({ ok: true, json: async () => ({ content: btoa('x'), encoding: 'base64' }) } as any);
+      });
+
+      const { fetchRepoTreeRecursive } = await import('../github');
+      const res = await fetchRepoTreeRecursive('tok', 'o', 'r');
+      expect(res.allPaths).toEqual(['README.md']);
+    });
+
+    it('fetchRepoTreeRecursive relanza el error 404 si la rama por defecto es la misma', async () => {
+      vi.mocked(fetch).mockImplementation((url) => {
+        const u = String(url);
+        if (u.endsWith('/git/trees/main?recursive=1')) {
+          return Promise.resolve({ ok: false, status: 404, json: async () => ({ message: 'Not Found' }) } as any);
+        }
+        if (u.endsWith('/repos/o/r')) {
+          return Promise.resolve({ ok: true, json: async () => ({ default_branch: 'main' }) } as any);
+        }
+        return Promise.resolve({ ok: true, json: async () => ({}) } as any);
+      });
+
+      const { fetchRepoTreeRecursive } = await import('../github');
+      await expect(fetchRepoTreeRecursive('tok', 'o', 'r', 'main')).rejects.toThrow();
+    });
+
+    it('fetchRepoTreeRecursive relanza errores no-404 (ej. 500)', async () => {
+      vi.mocked(fetch).mockResolvedValue({ ok: false, status: 500, json: async () => ({ message: 'Server Error' }) } as any);
+      const { fetchRepoTreeRecursive } = await import('../github');
+      await expect(fetchRepoTreeRecursive('tok', 'o', 'r', 'main')).rejects.toThrow();
+    });
   });
 
   describe('repoExists', () => {
