@@ -336,6 +336,7 @@ describe('runDocumentRepo', () => {
 
 describe('runLoadRepoContext', () => {
   it('devuelve el contexto en el camino feliz (owner por defecto = usuario)', async () => {
+    vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
     vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'a' }], totalScanned: 1, truncated: false } as any);
     vi.mocked(buildRepoContextSummary).mockReturnValue('CTX');
     const deps = makeDeps();

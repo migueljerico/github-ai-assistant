@@ -288,7 +288,8 @@ export async function runLoadRepoContext(deps: ChatDeps, repoInput: string, prov
   });
 
   try {
-    const { files, totalScanned, truncated, allPaths } = await fetchRepoTreeRecursive(token, owner, repoName);
+    const meta = await getRepo(token, owner, repoName);
+    const { files, totalScanned, truncated, allPaths } = await fetchRepoTreeRecursive(token, owner, repoName, meta.default_branch);
     const safeAllPaths = allPaths ?? files.map(f => f.path);
     // Contexto inicial (sin pregunta aún): árbol completo + primeros archivos por prioridad.
     // En cada turno, runSend lo reconstruye seleccionando los relevantes a la pregunta (#49).
@@ -685,7 +686,8 @@ async function resolveSensitivePaths(token: string, owner: string, repo: string)
   const fixed = ['package.json', 'package-lock.json', 'Dockerfile', '.env.example', 'requirements.txt', 'go.mod', 'Cargo.toml'];
   const discovered: string[] = [];
   try {
-    const { allPaths } = await fetchRepoTreeRecursive(token, owner, repo);
+    const meta = await getRepo(token, owner, repo);
+    const { allPaths } = await fetchRepoTreeRecursive(token, owner, repo, meta.default_branch);
     for (const p of allPaths ?? []) {
       if (p.startsWith('.github/workflows/') && /\.(ya?ml)$/i.test(p)) discovered.push(p);
       else if (p.startsWith('entrypoints/') && /\.(js|ts|py|sh)$/i.test(p)) discovered.push(p);

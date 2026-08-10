@@ -1351,8 +1351,8 @@ describe('truncateByLines & generateFileDoc - base64 & data URI handling', () =>
 
       const result = await generateRepoDocs('user/repo', files, config, 'es', ['captura1.png']);
 
-      expect(result.readme).toContain('screenshots/captura1.png');
-      expect(result.readme).toContain('Vista previa');
+      expect(result.readme).toContain('![Vista previa - captura1.png](screenshots/captura1.png)');
+      expect(result.readme).not.toContain('width="750"');
     });
 
     it('generateRepoDocs no duplica la vista previa si el LLM ya incluyó la captura', async () => {
@@ -1403,6 +1403,25 @@ describe('truncateByLines & generateFileDoc - base64 & data URI handling', () =>
 
       const matches = doc.match(/screenshots\/screenshot\.png/g) || [];
       expect(matches.length).toBe(1);
+    });
+
+    it('generateSpecificDoc soporta distintas rutas objetivo (MEJORAS_FUTURAS, MANUAL_TECNICO, docs/, custom)', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ choices: [{ message: { content: '# Documentación generada' } }] }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const config = { provider: 'groq' as const, apiKey: 'gsk-test', model: 'llama-3.3-70b' };
+      const d1 = await generateSpecificDoc('MEJORAS_FUTURAS.md', undefined, undefined, config, 'es');
+      const d2 = await generateSpecificDoc('MANUAL_TECNICO.md', undefined, undefined, config, 'es');
+      const d3 = await generateSpecificDoc('docs/guia.md', undefined, undefined, config, 'es');
+      const d4 = await generateSpecificDoc('custom/notas.txt', undefined, undefined, config, 'es');
+
+      expect(d1).toContain('Documentación generada');
+      expect(d2).toContain('Documentación generada');
+      expect(d3).toContain('Documentación generada');
+      expect(d4).toContain('Documentación generada');
     });
   });
 });

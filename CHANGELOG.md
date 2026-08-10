@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.16] — 2026-08-10
+
+> **Fix de resolución de distorsión en capturas de pantalla de documentación, corrección de carga de contexto remota en repositorios con rama `master` / no-`main` y expansión a 1.175 unitarios verdes.**
+> - **Fix Resolución e Imágenes en README / Docs:** Eliminación de los atributos `width="750"` y contenedores `<p align="center">` en prompts e inyectores de `gemini.ts`. Estandarizado en sintaxis Markdown nativa limpia `![Vista previa](screenshots/filename.png)` para que GitHub renderice las capturas a resolución nativa 1:1 sin estiramiento ni desenfoque.
+> - **Fix 404 Carga de Contexto (`default_branch`):** Resuelto el fallo `404 Not Found` al añadir o cargar el contexto de repositorios cuya rama por defecto no es `main` (tales como `migueljerico/notebooklm-ia-generativa` o `migueljerico/gamma-presentacion-asistentes-virtuales`). Se actualizó `runLoadRepoContext` y `resolveSensitivePaths` en `assistantActions.ts` para obtener `meta.default_branch` real vía API y se añadió fallback automático con reintento en `fetchRepoTreeRecursive` (`github.ts`).
+> - **Expansión de Cobertura Codecov (#26):** Creación de 3 nuevas suites de pruebas unitarias (`HistoryPanel.test.tsx`, `ThemeToggle.test.tsx`, `CodeHealthCharts.test.tsx`) y adición de casos de prueba para fallback de ramas, mapeo de nombres en Gemini y filtros Groq.
+> - **Verificación:** 1.117 tests cliente + 58 servidor = 1.175 unitarios verdes, 0 errores de ESLint y build de TypeScript estricto verificado.
+>
+> Cambio de código por Antigravity (Gemini 3.6 Flash).
+
 ## [4.0.15] — 2026-08-10
 
 > **Expansión masiva de cobertura Codecov a 1.160 unitarios verdes (93.89% líneas / 84.85% ramas) y formalización de la regla permanente de handoff en governance.**

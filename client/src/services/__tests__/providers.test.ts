@@ -651,6 +651,22 @@ describe('providers — fetchModels', () => {
     expect(list).toHaveLength(2);
     expect(list!.every(m => m.free === true)).toBe(true);
   });
+
+  it('fetchModels groq ordena alfabéticamente y descarta deprecados', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          { id: 'llama-3.3-70b-versatile' }, // deprecado -> filtrado
+          { id: 'llama-3.3-70b-specdec' },
+          { id: 'llama3-70b-8192' },
+        ],
+      }),
+    }));
+    const list = await fetchModels(PROVIDERS.groq, 'gsk-key');
+    expect(list).toBeDefined();
+    expect(list!.map(m => m.value)).toEqual(expect.arrayContaining(['llama-3.3-70b-specdec', 'llama3-70b-8192']));
+  });
 });
 
 

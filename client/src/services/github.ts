@@ -480,12 +480,39 @@ export async function fetchRepoTreeRecursive(
   token: string,
   owner: string,
   repo: string,
-  defaultBranch = 'main'
+  defaultBranch?: string
 ): Promise<FetchTreeResult> {
-  const treeRes = await ghFetch<{
-    tree: Array<{ path: string; type: string; size?: number; sha: string }>;
-    truncated: boolean;
-  }>(token, `/repos/${owner}/${repo}/git/trees/${defaultBranch}?recursive=1`);
+  let branch = defaultBranch;
+  if (!branch) {
+    try {
+      const meta = await getRepo(token, owner, repo);
+      branch = meta.default_branch || 'main';
+    } catch {
+      branch = 'main';
+    }
+  }
+
+  let treeRes;
+  try {
+    treeRes = await ghFetch<{
+      tree: Array<{ path: string; type: string; size?: number; sha: string }>;
+      truncated: boolean;
+    }>(token, `/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`);
+  } catch (err) {
+    if (err instanceof GitHubAPIError && err.status === 404) {
+      const meta = await getRepo(token, owner, repo);
+      if (meta.default_branch && meta.default_branch !== branch) {
+        treeRes = await ghFetch<{
+          tree: Array<{ path: string; type: string; size?: number; sha: string }>;
+          truncated: boolean;
+        }>(token, `/repos/${owner}/${repo}/git/trees/${meta.default_branch}?recursive=1`);
+      } else {
+        throw err;
+      }
+    } else {
+      throw err;
+    }
+  }
 
   const allFiles = treeRes.tree
     .filter(item => item.type === 'blob')

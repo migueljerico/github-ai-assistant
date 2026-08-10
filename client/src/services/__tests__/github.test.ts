@@ -451,6 +451,33 @@ describe('github.ts', () => {
       // MEJORAS_FUTURAS.md (prioridad subida en #49) entra entre los archivos con contenido
       expect(res.files.map(f => f.path)).toContain('MEJORAS_FUTURAS.md');
     });
+
+    it('resuelve default_branch via getRepo cuando defaultBranch es omitido o cuando /git/trees/main da 404 (fallback a master)', async () => {
+      vi.mocked(fetch).mockImplementation((url) => {
+        const u = String(url);
+        if (u.endsWith('/git/trees/main?recursive=1')) {
+          return Promise.resolve({ ok: false, status: 404, json: async () => ({ message: 'Not Found' }) } as any);
+        }
+        if (u.endsWith('/repos/o/r')) {
+          return Promise.resolve({ ok: true, json: async () => ({ default_branch: 'master' }) } as any);
+        }
+        if (u.endsWith('/git/trees/master?recursive=1')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              truncated: false,
+              tree: [{ path: 'README.md', type: 'blob', size: 10, sha: '1' }],
+            }),
+          } as any);
+        }
+        return Promise.resolve({ ok: true, json: async () => ({ content: btoa('x'), encoding: 'base64' }) } as any);
+      });
+
+      const { fetchRepoTreeRecursive } = await import('../github');
+      const res = await fetchRepoTreeRecursive('tok', 'o', 'r');
+      expect(res.files).toHaveLength(1);
+      expect(res.allPaths).toEqual(['README.md']);
+    });
   });
 
   describe('repoExists', () => {
