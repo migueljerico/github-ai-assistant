@@ -77,8 +77,10 @@ el release):
    - `npm run test:server` — todo verde.
    - `npm run test:coverage` (client) — sin bajar del umbral global (70% en
      lines/functions/branches/statements). **REGLA DE ORO DE COBERTURA (Codecov patch):**
-     Todo cambio o condicional nuevo añadido en el diff (p. ej. en `gemini.ts`, `providers.ts`, `retry.ts`)
+     Todo cambio o condicional nuevo añadido en el diff (p. ej. en `gemini.ts`, `providers.ts`, `retry.ts`, `modeDetection.ts`, `ChatToolsMenu.tsx`)
      DEBE incluir obligatoriamente su correspondiente test unitario que lo cubra al 100%.
+     ⚠️ **REVISIÓN OBLIGATORIA DEL CODECOV PATCH CHECK:** Este apartado es la causa principal de fallos en CI (`codecov/patch - X% vs target Y%`).
+     Se debe revisar SIEMPRE que cada línea y rama condicional nueva del diff (`git status` / `git diff`) esté cubierta al 100% por pruebas unitarias.
      NUNCA commitear ni pushear si alguna línea o condicional nuevo queda sin test. El CI fallará en `codecov/patch`.
    - `npm run build` (TS estricto).
 6. **Commit** convencional (`feat:`/`fix:`/`chore(vX.Y.Z):`) con TODOS los cambios

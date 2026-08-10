@@ -110,8 +110,10 @@ sesión:
 4. **Ejecutar en una rama** nacida de `main` actualizado (trunk-based). Commits
    atómicos con Conventional Commits.
 5. **Verificar** antes de pushear: `npm run build` (tsc estricto), `npm run lint`
-   (0 errores), `npm run test:run` (suite completa verde). Reportar los números
-   reales.
+   (0 errores), `npm run test:run` (suite completa verde) y `npm run test:coverage`
+   (revisión obligatoria del `codecov/patch`: 100% de las líneas/condicionales nuevos
+   del diff cubiertos por tests unitarios para evitar fallos en CI). Reportar los
+   números reales.
 6. **Cerrar la gestión** (rutina automática desde v3.23.2, ver §2 "Rutina de
    cierre"): bump + `CHANGELOG.md` + commit + **push a `main`** + **tag
    anotado** + **GitHub release** + **mensaje de handoff**. El deploy a
