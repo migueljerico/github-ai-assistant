@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.18] — 2026-08-10
+
+> **Fix de inyección de contexto en Modo Acción (`ACTION_PROMPT`), resolución de repositorios por defecto en `actionExecutor.ts` y ampliación de tokens de salida a 8.192.**
+> - **Inyección de Contexto en Modo Acción:** Actualización de `attemptSend` en `assistantActions.ts` para inyectar automáticamente `combinedContext` (resumen de archivos del repositorio activo cargado en memoria) antes de `ACTION_PROMPT`. Esto evita que la IA intente adivinar el nombre del repositorio o genere lecturas previas innecesarias para archivos cuyo contenido ya está en contexto.
+> - **Ampliación de Límite de Tokens (8.192):** Incremento de `maxTokens` a `8192` en las llamadas a `callAI` en `attemptSend`, garantizando que las respuestas con JSON de acciones extensos (como `PUT` con propuestas completas de `README.md`) no se corten ni truncen.
+> - **Resolución de Repositorio Objetivo (`parseRepoTarget`):** Añadido soporte para `activeRepoName` en `parseRepoTarget` (`actionExecutor.ts`), evitando que repositorios sin calificar o referencias ambiguas con el nombre de usuario se resuelvan por error como `owner/owner`.
+> - **Verificación:** 1.122 tests unitarios en cliente (129 en `assistantActions` + 37 en `actionExecutor`) = 1.180 unitarios verdes (100% pasados).
+>
+> Cambio de código por Antigravity (Gemini 3.6 Flash).
+
 ## [4.0.17] — 2026-08-10
 
 > **Fix de sintaxis `./screenshots/` en vista previa de imágenes, normalización de acentos/diacríticos en nombres de archivo, ajuste visual de `ChatToolsMenu` y corrección de intenciones en modo Acción.**

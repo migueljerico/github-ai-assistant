@@ -976,11 +976,11 @@ export async function runSend(deps: SendDeps, config: AIProviderConfig, params: 
       const combinedContext = [repoContextText, ...fileContext.map(f => f.contextText)].filter(Boolean).join('\n\n');
       const basePrompt = finalMode === 'chat'
         ? (combinedContext ? chatPromptWithContext(combinedContext) : CHAT_PROMPT)
-        : ACTION_PROMPT;
+        : (combinedContext ? `${combinedContext}\n\n═══════════════════════════════════════════════════════\n${ACTION_PROMPT}` : ACTION_PROMPT);
       // #24 Fase 3: la directiva de idioma SOLO aplica al modo chat (texto Markdown).
       const systemPrompt = finalMode === 'chat' ? withLangDirective(basePrompt, deps.lang) : basePrompt;
       try {
-        const rawResponse = await callAI(newHistory, systemPrompt, config.provider, config.apiKey, config.model, finalMode, onToken, params.signal, undefined, config.accountId, config.timeoutMs);
+        const rawResponse = await callAI(newHistory, systemPrompt, config.provider, config.apiKey, config.model, finalMode, onToken, params.signal, 8192, config.accountId, config.timeoutMs);
         return { rawResponse, consultedPaths };
       } catch (err) {
         // #50: si el contexto es demasiado grande, reintentar con menos archivos (una sola vez).

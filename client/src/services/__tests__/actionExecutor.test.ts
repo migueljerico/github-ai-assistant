@@ -611,4 +611,19 @@ describe('actionExecutor.ts', () => {
       expect(result.success).toBe(false);
     });
   });
+
+  describe('parseRepoTarget', () => {
+    it('resuelve owner/repo cuando viene completo', () => {
+      expect(parseRepoTarget('owner/repo', mockUser)).toEqual({ owner: 'owner', repo: 'repo' });
+    });
+
+    it('resuelve repo del usuario autenticado cuando solo viene el nombre', () => {
+      expect(parseRepoTarget('mi-repo', mockUser)).toEqual({ owner: 'testuser', repo: 'mi-repo' });
+    });
+
+    it('cae a activeRepoName cuando repoFullName es null o igual al usuario login', () => {
+      expect(parseRepoTarget(null, mockUser, 'owner/active-repo')).toEqual({ owner: 'owner', repo: 'active-repo' });
+      expect(parseRepoTarget('testuser', mockUser, 'testuser/github-ai-assistant')).toEqual({ owner: 'testuser', repo: 'github-ai-assistant' });
+    });
+  });
 });

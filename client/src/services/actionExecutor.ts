@@ -56,14 +56,20 @@ export interface ExecutionCallbacks {
  *
  * @param repoFullName - Repo name from the AI action (may be null, "name", or "owner/name")
  * @param user         - The authenticated GitHub user (provides the default owner)
+ * @param activeRepoName - Active repository name from chat context
  */
 export function parseRepoTarget(
   repoFullName: string | null,
-  user: { login: string }
+  user: { login: string },
+  activeRepoName?: string | null,
 ): { owner: string; repo: string } {
+  if (activeRepoName && activeRepoName.includes('/') && (!repoFullName || repoFullName === user.login)) {
+    const [owner, repo] = activeRepoName.split('/', 2);
+    return { owner, repo };
+  }
   if (!repoFullName) return { owner: user.login, repo: '' };
   if (repoFullName.includes('/')) {
-    const [owner, repo] = repoFullName.split('/');
+    const [owner, repo] = repoFullName.split('/', 2);
     return { owner, repo };
   }
   return { owner: user.login, repo: repoFullName };
@@ -107,6 +113,8 @@ function resolveEndpoint(
  * @param action     - The confirmed action to execute
  * @param targetRepo - Optional override for the target repo (used in multi-repo mode)
  * @param t          - Translation function (i18n) for localized result messages (#56)
+ * @param commitMessage - Custom commit message for file modifications
+ * @param activeRepoName - Active repository name from chat context
  * @returns ExecutionResult with success flag, message, and optional data
  */
 export async function executeAction(
@@ -119,10 +127,11 @@ export async function executeAction(
   // Si llega, reemplaza al fallback "chore: update …". Solo relevante para
   // acciones PUT/DELETE sobre archivos; el resto de métodos lo ignoran.
   commitMessage?: string,
+  activeRepoName?: string | null,
 ): Promise<ExecutionResult> {
   const repoTarget = targetRepo
     ? { owner: targetRepo.owner.login, repo: targetRepo.name }
-    : parseRepoTarget(action.repo, user);
+    : parseRepoTarget(action.repo, user, activeRepoName);
 
   // Resolve any placeholder tokens the AI left in the endpoint
   const endpoint = resolveEndpoint(action.endpoint, user, repoTarget);
