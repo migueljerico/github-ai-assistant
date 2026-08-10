@@ -163,7 +163,7 @@ contener:
   estimación).
 - **Reglas de la sesión** (economía de contexto: subagentes Explore con
   informes compactos, lecturas con offset/limit, outputs filtrados; push+tag
-  automáticos; crédito de modelo).
+  automáticos; expansión continua de cobertura Codecov al 100%; crédito de modelo).
 
 El asistente lo entrega como último mensaje de la sesión, en un bloque de
 código para copiar fácil. Si queda trabajo a medias (contra la regla de §2), el

@@ -125,5 +125,30 @@ describe('readSpreadsheet (#28 Fase 3a)', () => {
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('[spreadsheetReader] Hoja "Suspicious" con cabecera sospechosa'));
     warnSpy.mockRestore();
   });
+
+  it('archivo sin extensión: procesa como arrayBuffer (no csv)', async () => {
+    vi.mocked(XLSX.read).mockReturnValue(workbook({ Sheet1: { ref: 'A1:A2', csv: 'a\n1' } }) as never);
+
+    await readSpreadsheet(fakeFile('datos_sin_extension'));
+
+    expect(XLSX.read).toHaveBeenCalledWith(expect.any(ArrayBuffer), { type: 'array' });
+  });
+
+  it('hoja sin propiedad !ref: calcula totalRows y totalCols como 0', async () => {
+    vi.mocked(XLSX.read).mockReturnValue({
+      SheetNames: ['NoRef'],
+      Sheets: { NoRef: { __csv: 'a,b\n1,2' } },
+    } as never);
+
+    const res = await readSpreadsheet(fakeFile());
+
+    expect(res.text).toContain('0 filas × 0 columnas');
+  });
+
+  it('workbook con SheetNames nulo/undefined: lanza error de workbook vacío', async () => {
+    vi.mocked(XLSX.read).mockReturnValue({ SheetNames: undefined, Sheets: {} } as never);
+
+    await expect(readSpreadsheet(fakeFile())).rejects.toThrow(/vac[ií]a|no se pudo leer/i);
+  });
 });
 

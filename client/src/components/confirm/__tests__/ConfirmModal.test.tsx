@@ -253,4 +253,22 @@ describe('ConfirmModal', () => {
     fireEvent.click(screen.getByRole('button', { name: /confirmar y ejecutar/i }));
     expect(onConfirm).toHaveBeenCalledWith(undefined);
   });
+
+  it('permite alternar el repositorio activo haciendo clic en los botones de repo en multi-repo', () => {
+    const targetRepos = [
+      { id: 1, name: 'repo1', full_name: 'testuser/repo1', owner: { login: 'testuser' } },
+      { id: 2, name: 'repo2', full_name: 'testuser/repo2', owner: { login: 'testuser' } },
+    ] as any;
+
+    render(
+      <ConfirmModal
+        {...defaultProps}
+        pendingAction={{ action: mockAction, targetRepos }}
+      />
+    );
+
+    const repo2Tab = screen.getByText('repo2');
+    fireEvent.click(repo2Tab);
+    expect(repo2Tab).toHaveClass('btn-secondary');
+  });
 });

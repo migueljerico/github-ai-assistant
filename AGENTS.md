@@ -113,7 +113,7 @@ Compacto, para copiar/pegar en la siguiente sesión:
   2. <ítem>
 - **Reglas de sesión:** economía de contexto (subagentes Explore con informes
   compactos, lecturas con offset/limit, outputs filtrados); push+tag automáticos;
-  crédito de modelo.
+  expansión continua de cobertura Codecov (objetivo 100%); crédito de modelo.
 ```
 
 Si queda trabajo a medias (contra la regla de §2 de METODOLOGIA_IA.md), el handoff
@@ -121,12 +121,13 @@ lo declara **sin inflar** lo conseguido.
 
 ---
 
-## Reglas de sesión (economía de contexto)
+## Reglas de sesión (economía de contexto y cobertura)
 
 - **Subagentes Explore** para búsquedas amplias; pídeles informes compactos
   (file:line + conclusión), no volcados de archivos.
 - Lee con `offset`/`limit` en archivos grandes; no los leas enteros.
 - Filtra outputs de bash (`grep`, `head`, `tail`); evita `cat` de archivos largos.
+- **Expansión continua de cobertura Codecov:** maximizar y avanzar hacia el 100% de cobertura en todos los módulos/componentes (regla permanente de sesión).
 - Crédito: atribuye siempre el modelo que hizo el trabajo (`Cambio de código por
   ZCode (GLM-5.2)` en commit/release/changelog).
 

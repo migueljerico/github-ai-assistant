@@ -56,5 +56,22 @@ describe('useModalDialog', () => {
     fireEvent.keyDown(modal, { key: 'Tab' });
     expect(document.activeElement).toBe(modal);
   });
+
+  it('ignora teclas que no sean ni Escape ni Tab', () => {
+    const onClose = vi.fn();
+    render(<Dialog onClose={onClose} />);
+    const first = screen.getByText('primero');
+    fireEvent.keyDown(first, { key: 'Enter' });
+    expect(onClose).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(first);
+  });
+
+  it('soporta la renderización cuando el ref no está asignado a ningún nodo', () => {
+    function UnattachedComponent() {
+      useModalDialog<HTMLDivElement>(() => {});
+      return <div>Sin ref</div>;
+    }
+    expect(() => render(<UnattachedComponent />)).not.toThrow();
+  });
 });
 

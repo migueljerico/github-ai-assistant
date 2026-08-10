@@ -31,7 +31,7 @@ reemplazan. Saltarse este paso es la causa nº1 de trabajar en bucle.
 
 ## 1. Visión general
 
-**GitHub AI Assistant** (v4.0.14) es una app web que permite operar la **GitHub
+**GitHub AI Assistant** (v4.0.15) es una app web que permite operar la **GitHub
 REST API en lenguaje natural** a través de un proveedor de IA (Google Gemini,
 Groq Cloud, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI,
 la IA propone una acción, y
@@ -479,7 +479,7 @@ El flujo con el usuario es siempre el mismo, **no lo cambies**:
       la imagen debe coincidir con el hash del commit recién pusheado).
    10. **Mensaje de handoff** (bloque de código listo para copiar en la siguiente
        sesión: repo, versión, qué se cerró, próximo trabajo priorizado, reglas de
-       economía de contexto y crédito).
+       economía de contexto, expansión continua de cobertura Codecov al 100% y crédito).
 3. **No hay puntos de parada manuales** en la rutina de cierre: el push, el tag,
    el GitHub release **y el deploy a Cloud Run** son todos automáticos. Lo único
    que espera confirmación del usuario son acciones **fuera** de esta rutina.

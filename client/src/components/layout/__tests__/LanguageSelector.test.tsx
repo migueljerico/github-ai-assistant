@@ -132,5 +132,17 @@ describe('LanguageSelector', () => {
     fireEvent.keyDown(ptOption!, { key: ' ' });
     expect(screen.getByTestId('current-lang')).toHaveTextContent('pt');
   });
+
+  it('cae al idioma por defecto (ES) si el valor del contexto es desconocido', () => {
+    sessionStorage.setItem('app_language', 'xx_invalid');
+    render(
+      <LanguageProvider>
+        <LanguageSelector />
+      </LanguageProvider>
+    );
+
+    const button = screen.getByRole('button', { name: /select language/i });
+    expect(button).toHaveTextContent('ES');
+  });
 });
 

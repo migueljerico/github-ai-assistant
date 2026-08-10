@@ -97,4 +97,24 @@ describe('ChatToolsMenu', () => {
     fireEvent.click(btn);
     expect(screen.queryByRole('menu')).toBeNull();
   });
+
+  it('soporta navegación por teclado en un menú sin elementos interactivos', () => {
+    render(
+      <LanguageProvider>
+        <ChatToolsMenu>
+          <div>Texto plano sin botones</div>
+        </ChatToolsMenu>
+      </LanguageProvider>
+    );
+
+    const btn = screen.getByRole('button', { name: /Más herramientas/i });
+    fireEvent.click(btn);
+
+    const menu = screen.getByRole('menu');
+    expect(menu).toBeInTheDocument();
+
+    expect(() => {
+      fireEvent.keyDown(menu, { key: 'ArrowDown' });
+    }).not.toThrow();
+  });
 });

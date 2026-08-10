@@ -122,3 +122,26 @@ describe('ChatInput — botón 🖼️ Documentar con capturas (v3.66.0 Frente D
     expect(props.onOpenDocumentFlow).toHaveBeenCalledWith('migueljerico/github-ai-assistant');
   });
 });
+
+describe('ChatInput — atajos de teclado y entrada de texto', () => {
+  it('envía el mensaje al pulsar Enter sin Shift cuando hay contenido y no está deshabilitado', () => {
+    const { props } = setup({ value: 'Hola mundo' });
+    const textarea = screen.getByRole('textbox');
+    fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false });
+    expect(props.onSend).toHaveBeenCalledTimes(1);
+  });
+
+  it('NO envía el mensaje al pulsar Enter cuando el texto está vacío o disabled es true', () => {
+    const { props } = setup({ value: '   ', disabled: true });
+    const textarea = screen.getByRole('textbox');
+    fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false });
+    expect(props.onSend).not.toHaveBeenCalled();
+  });
+
+  it('llama a onChange cuando el usuario escribe en el textarea', () => {
+    const { props } = setup({ value: '' });
+    const textarea = screen.getByRole('textbox');
+    fireEvent.change(textarea, { target: { value: 'Nuevo texto' } });
+    expect(props.onChange).toHaveBeenCalledWith('Nuevo texto');
+  });
+});

@@ -120,4 +120,47 @@ describe('AIProviderContext', () => {
     expect(result.current.apiKey).toBe('test-key');
     expect(result.current.model).toBe('llama-3.3-70b');
   });
+
+  it('lanza error si useAIProvider se usa fuera de AIProviderContextProvider', () => {
+    expect(() => renderHook(() => useAIProvider())).toThrow(
+      'useAIProvider must be used within AIProviderContextProvider'
+    );
+  });
+
+  it('permite conectar con accountId y timeoutMs opcionales', () => {
+    const { result } = renderHook(() => useAIProvider(), {
+      wrapper: AIProviderContextProvider,
+    });
+
+    act(() => {
+      result.current.connect('cloudflare', 'token', 'model-x', 'acc-123');
+      result.current.setTimeoutMs(30000);
+    });
+
+    expect(result.current.accountId).toBe('acc-123');
+    expect(result.current.timeoutMs).toBe(30000);
+  });
+
+  it('setTimeoutMs actualiza el timeout y persiste la preferencia si hay proveedor/modelo conectados', () => {
+    const { result } = renderHook(() => useAIProvider(), {
+      wrapper: AIProviderContextProvider,
+    });
+
+    act(() => {
+      result.current.connect('groq', 'key', 'llama-3.3-70b');
+    });
+
+    act(() => {
+      result.current.setTimeoutMs(45000);
+    });
+
+    expect(result.current.timeoutMs).toBe(45000);
+    const raw = sessionStorage.getItem('ai_provider_pref') || '';
+    expect(JSON.parse(raw)).toMatchObject({ provider: 'groq', model: 'llama-3.3-70b', timeoutMs: 45000 });
+
+    act(() => {
+      result.current.setTimeoutMs(null);
+    });
+    expect(result.current.timeoutMs).toBeNull();
+  });
 });

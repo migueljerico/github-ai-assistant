@@ -306,4 +306,30 @@ describe('readPowerBI — Power Query / M (#28 Fase 3b-bis)', () => {
     expect(res.text).toContain('- DesdeMashup');
     expect(res.text).not.toContain('- DesdeSchema');
   });
+
+  it('Report/Layout corrupto (JSON inválido): ignora el informe y no se rompe', async () => {
+    mockZip({
+      'Report/Layout': u16le('{ json-invalido ', true),
+      'DataModelSchema': u16le(schema([
+        { name: 'T', columns: ['c'], measures: [] },
+      ])),
+    });
+
+    const res = await readPowerBI(fakeFile('corrupto.pbit'));
+
+    expect(res.text).toContain('Tabla "T"');
+    expect(res.text).not.toContain('Página');
+  });
+
+  it('DataModelSchema corrupto (JSON inválido): ignora el modelo y procesa solo el informe', async () => {
+    mockZip({
+      'Report/Layout': u16le(layout([{ name: 'SoloReport', visuals: ['card'] }])),
+      'DataModelSchema': u16le('no es json valido'),
+    });
+
+    const res = await readPowerBI(fakeFile('schema_corrupto.pbit'));
+
+    expect(res.text).toContain('Página "SoloReport"');
+    expect(res.text).not.toContain('Tabla "');
+  });
 });

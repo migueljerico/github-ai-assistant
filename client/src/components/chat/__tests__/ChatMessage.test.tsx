@@ -99,3 +99,50 @@ describe('ChatMessageBubble — botón 1-clic de cambio de modo (v3.56.0)', () =
     expect(onSwitchMode).toHaveBeenCalledWith('action', 'crea un archivo README.md');
   });
 });
+
+describe('ChatMessageBubble — tarjetas de acción y avatares', () => {
+  it('renderiza la tarjeta de acción de lectura cuando requiereConfirmacion es false', () => {
+    render(<ChatMessageBubble message={msg({
+      role: 'assistant',
+      content: 'Buscando archivos...',
+      action: {
+        tipo: 'lectura',
+        accion: 'Buscar archivos',
+        endpoint: '/repos/owner/repo/contents',
+        metodo: 'GET',
+        requiereConfirmacion: false,
+        repo: 'owner/repo',
+        archivo: 'src/main.ts',
+        contenidoPropuesto: '',
+        payload: {},
+      },
+    })} />);
+
+    expect(screen.getByText(/Acción de lectura/i)).toBeInTheDocument();
+    expect(screen.getByText('Buscar archivos')).toBeInTheDocument();
+    expect(screen.getByText('📁 owner/repo')).toBeInTheDocument();
+    expect(screen.getByText('📄 src/main.ts')).toBeInTheDocument();
+    expect(screen.getByText('GET /repos/owner/repo/contents')).toBeInTheDocument();
+  });
+
+  it('renderiza la tarjeta de acción pendiente de confirmación cuando requiereConfirmacion es true', () => {
+    render(<ChatMessageBubble message={msg({
+      role: 'assistant',
+      content: 'Voy a modificar el archivo',
+      action: {
+        tipo: 'escritura',
+        accion: 'Crear commit',
+        endpoint: '/repos/owner/repo/contents/file.txt',
+        metodo: 'PUT',
+        requiereConfirmacion: true,
+        repo: 'owner/repo',
+        archivo: 'file.txt',
+        contenidoPropuesto: 'Nuevo',
+        payload: {},
+      },
+    })} />);
+
+    expect(screen.getByText(/Acción pendiente de confirmación/i)).toBeInTheDocument();
+    expect(screen.getByText('Crear commit')).toBeInTheDocument();
+  });
+});

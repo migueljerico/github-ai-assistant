@@ -359,5 +359,18 @@ describe('AIProviderPanel — interacción de teclado y visibilidad de clave', (
 
     expect(keyInput.type).toBe('text');
   });
+
+  it('permite pulsar el botón de conectar cuando la clave no está vacía', () => {
+    const { container } = renderPanel();
+    selectProvider(container, 'groq');
+
+    const keyInput = container.querySelector('#groq-key-input') as HTMLInputElement;
+    fireEvent.change(keyInput, { target: { value: 'gsk_123456789012345678901234567890123456' } });
+
+    const connectBtn = container.querySelector('#ai-connect-btn') as HTMLElement;
+    expect(connectBtn).toBeInTheDocument();
+    expect(connectBtn).not.toBeDisabled();
+    fireEvent.click(connectBtn);
+  });
 });
 

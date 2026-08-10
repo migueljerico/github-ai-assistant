@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.15] — 2026-08-10
+
+> **Expansión masiva de cobertura Codecov a 1.160 unitarios verdes (93.89% líneas / 84.85% ramas) y formalización de la regla permanente de handoff en governance.**
+> - **Expansión de Cobertura Codecov (#26):** Creación y ampliación de suites de prueba unitarias en `AIProviderContext.test.tsx`, `ChatMessage.test.tsx`, `spreadsheetReader.test.ts`, `powerbiReader.test.ts`, `AIProviderPanel.test.tsx`, `useModalDialog.test.tsx`, `ChatToolsMenu.test.tsx`, `ConfirmModal.test.tsx`, `LanguageSelector.test.tsx` y `ChatInputModes.test.tsx`.
+> - **Cobertura Destacada:** Cobertura del 100% alcanzada en `AIProviderContext`, `ConfirmModal`, `useModalDialog`, `ChatMessage` (líneas), `DocumentRepoButton`, `ChangelogButton`, `CodeHealthButton`, `ConversationIOButton`, `AIProviderBadge`, `LanguageSelector` y utilidades/hooks (`repoRef`, `docxReader`, `useDocTargetSelector`).
+> - **Governance & Reglas de Handoff:** Incorporación formal de la regla permanente de expansión continua de cobertura Codecov (objetivo 100%) en la plantilla de handoff y reglas de sesión de `AGENTS.md`, `CLAUDE.md` y `METODOLOGIA_IA.md`.
+> - **Verificación:** 1.102 tests cliente + 58 servidor = 1.160 unitarios verdes, 0 errores de ESLint y build de TypeScript estricto limpio.
+>
+> Cambio de código por Antigravity (Gemini 3.6 Flash).
+
 ## [4.0.14] — 2026-08-10
 
 > **Fix de fallos de test post-merge de Dependabot (#26) y estabilización del cálculo de semanas en `codeHealth.ts`.**
