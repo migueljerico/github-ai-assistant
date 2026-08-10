@@ -976,7 +976,7 @@ export async function runSend(deps: SendDeps, config: AIProviderConfig, params: 
       const combinedContext = [repoContextText, ...fileContext.map(f => f.contextText)].filter(Boolean).join('\n\n');
       const basePrompt = finalMode === 'chat'
         ? (combinedContext ? chatPromptWithContext(combinedContext) : CHAT_PROMPT)
-        : (combinedContext ? `${combinedContext}\n\n═══════════════════════════════════════════════════════\n${ACTION_PROMPT}` : ACTION_PROMPT);
+        : (combinedContext ? `📌 REPOSITORIO Y ARCHIVOS EN CONTEXTO ACTIVO:\n${combinedContext}\n\n═══════════════════════════════════════════════════════\n${ACTION_PROMPT}` : ACTION_PROMPT);
       // #24 Fase 3: la directiva de idioma SOLO aplica al modo chat (texto Markdown).
       const systemPrompt = finalMode === 'chat' ? withLangDirective(basePrompt, deps.lang) : basePrompt;
       try {

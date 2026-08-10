@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.20] — 2026-08-10
+
+> **Fix de comportamiento en Modo Acción con contexto activo (`GET /user/repos` redundantes vs `PUT` directo).**
+> - **Directiva Estricta de Contexto (`action-system.md`):** Incorporación de la regla `📌 REGLA DE REPOSITORIO Y ARCHIVOS EN CONTEXTO (CRÍTICO)` en `action-system.md` y la cabecera `📌 REPOSITORIO Y ARCHIVOS EN CONTEXTO ACTIVO:` en `assistantActions.ts`. Se prohíbe explícitamente a la IA generar acciones de listado de repositorios (`GET /user/repos`) o lecturas redundantes (`GET`) cuando el contexto del repositorio y archivo deseado ya está en memoria, forzando la propuesta directa de la acción de edición (`PUT`).
+> - **Verificación:** 1.125 tests unitarios pasados (100% verde).
+>
+> Cambio de código por Antigravity (Gemini 3.6 Flash).
+
 ## [4.0.19] — 2026-08-10
 
 > **Fix de resolución de marcadores de endpoint (`OWNER`, `REPO`, `:owner`, `:repo`) en `actionExecutor.ts`.**

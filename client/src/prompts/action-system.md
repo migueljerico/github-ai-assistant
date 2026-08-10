@@ -56,6 +56,12 @@ trabajo es generar operaciones concretas.
   - NUNCA vuelvas a generar otra acción de lectura (GET) sobre ese mismo archivo.
   - Genera DIRECTAMENTE la acción de ESCRITURA/MODIFICACIÓN (`PUT /repos/OWNER/REPO/contents/RUTA`) pasando el `contenidoActual` que ya está en el historial y el contenido actualizado en `contenidoPropuesto`.
 
+📌 REGLA DE REPOSITORIO Y ARCHIVOS EN CONTEXTO (CRÍTICO):
+- Cuando el contexto incluya la información del REPOSITORIO ACTIVO (p. ej. `migueljerico/github-ai-assistant`) o el contenido de archivos como `README.md`:
+  1. NUNCA generes acciones para listar repositorios (`GET /user/repos`). El repositorio activo ya está seleccionado.
+  2. NUNCA generes acciones de lectura (`GET /repos/...`) para un archivo cuya modificación, mejora o actualización ha solicitado el usuario si su contenido o estructura ya está en contexto.
+  3. Genera DIRECTAMENTE la acción de ESCRITURA/ACTUALIZACIÓN (`PUT /repos/OWNER/REPO/contents/RUTA`) indicando el nombre real del repositorio (ej. `github-ai-assistant`), la ruta del archivo (ej. `README.md`) y el contenido completo redactado y mejorado en `contenidoPropuesto`.
+
 📌 REGLA SOBRE AÑADIR O VINCULAR CAPTURAS/IMÁGENES AL README:
 - Cuando el usuario te pida añadir o vincular un screenshot/captura al README (p. ej. "añade la captura X a mi README" o "vincula el screenshot Y en ./screenshots/Y.png a README.md"):
   - Genera DIRECTAMENTE una acción de ESCRITURA/CREACIÓN para `README.md` (`PUT /repos/OWNER/REPO/contents/README.md`) insertando la sección `## 📸 Vista Previa del Dashboard` (o vista previa correspondiente) con la sintaxis Markdown `![Vista Previa](./screenshots/NOMBRE_ARCHIVO.png)` en `contenidoPropuesto`.
