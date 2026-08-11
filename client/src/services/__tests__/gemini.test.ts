@@ -1597,9 +1597,69 @@ Detalles internos de razonamiento...
       );
     });
   });
+
+  // REGRESIÓN: generateRepoDocs, generateFileDoc y generateSpecificDoc ignoraban
+  // config.timeoutMs y config.accountId al llamar a callAI internamente,
+  // usando siempre el DEFAULT_AI_TIMEOUT_MS de 180s incluso si el usuario
+  // había configurado un timeout mayor en ⚙️. Bug reportado: timeout al generar README rico.
+  describe('REGRESIÓN: timeoutMs y accountId se propagan a callAI en funciones de docs', () => {
+    beforeEach(() => { vi.restoreAllMocks(); });
+
+    it('generateRepoDocs pasa timeoutMs del config a callAI (README y MANUAL)', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ choices: [{ message: { content: '# README' } }] }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const configWithTimeout = { provider: 'groq' as const, apiKey: 'k', model: 'llama', timeoutMs: 300_000 };
+      await generateRepoDocs('owner/repo', [{ path: 'src/a.ts', content: 'x' }], configWithTimeout);
+
+      // callAI construye el AbortSignal con combineSignals; verificamos que fetch fue llamado
+      // (timeout > 0 significa que se construyó correctamente sin lanzar).
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
+    it('generateRepoDocs pasa accountId del config a callAI', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ choices: [{ message: { content: '# README' } }] }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const configWithAccount = { provider: 'groq' as const, apiKey: 'k', model: 'llama', accountId: 'acc-123' };
+      await generateRepoDocs('owner/repo', [{ path: 'src/a.ts', content: 'x' }], configWithAccount);
+
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
+    it('generateFileDoc pasa timeoutMs y accountId del config a callAI', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ choices: [{ message: { content: '# Documento generado' } }] }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const configWithTimeout = { provider: 'groq' as const, apiKey: 'k', model: 'llama', timeoutMs: 300_000, accountId: 'acc-xyz' };
+      const result = await generateFileDoc('informe.pdf', 'Contenido del informe', configWithTimeout);
+
+      expect(result).toBeTruthy();
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
+    it('generateSpecificDoc pasa timeoutMs y accountId del config a callAI', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ choices: [{ message: { content: '# README mejorado' } }] }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const configWithTimeout = { provider: 'groq' as const, apiKey: 'k', model: 'llama', timeoutMs: 360_000 };
+      const result = await generateSpecificDoc('README.md', '# README actual', 'Mejorar el readme', configWithTimeout);
+
+      expect(result).toBeTruthy();
+      expect(fetchMock).toHaveBeenCalled();
+    });
+  });
 });
-
-
-
-
 

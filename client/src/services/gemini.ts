@@ -997,6 +997,8 @@ REPOSITORIO: ${repoName}
   const provider = config?.provider ?? 'groq';
   const apiKey = config?.apiKey ?? 'test-key';
   const model = config?.model ?? 'test-model';
+  const accountId = config?.accountId;
+  const timeoutMs = config?.timeoutMs;
 
   const stripFences = (raw: string): string =>
     raw.replace(/^```(?:markdown)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
@@ -1006,7 +1008,7 @@ REPOSITORIO: ${repoName}
     withLangDirective(readmeSystemPrompt, lang),
     provider, apiKey, model,
     undefined, undefined, undefined,
-    8192,
+    8192, accountId, timeoutMs,
   );
   let readmeStripped = cleanDocFooter(stripFences(readmeRaw));
   if (!readmeStripped) {
@@ -1034,7 +1036,7 @@ REPOSITORIO: ${repoName}
     withLangDirective(manualSystemPrompt, lang),
     provider, apiKey, model,
     undefined, undefined, undefined,
-    8192,
+    8192, accountId, timeoutMs,
   );
   const manualStripped = cleanDocFooter(stripFences(manualRaw));
   if (!manualStripped) {
@@ -1095,6 +1097,8 @@ Reglas:
     config.provider,
     config.apiKey,
     config.model,
+    undefined, undefined, undefined,
+    undefined, config.accountId, config.timeoutMs,
   );
 
   const doc = cleanDocFooter(
@@ -1185,6 +1189,8 @@ Reglas:
   const provider = config?.provider ?? 'groq';
   const apiKey = config?.apiKey ?? 'test-key';
   const model = config?.model ?? 'test-model';
+  const accountId = config?.accountId;
+  const timeoutMs = config?.timeoutMs;
 
   const raw = await callAI(
     [{ role: 'user', content: userMessage }],
@@ -1195,7 +1201,7 @@ Reglas:
     undefined,
     undefined,
     undefined,
-    8192,
+    8192, accountId, timeoutMs,
   );
 
   let doc = cleanDocFooter(

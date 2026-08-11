@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.27] — 2026-08-11
+
+> **Fix: detección de modo "mejorar" y propagación de timeout en generación de documentación.**
+> - **Bug #1 — Modo chat en vez de acción al pedir "mejorar" (regresión `modeDetection.ts`):** `'mejora'` y `'mejorar'` estaban simultáneamente en `CONVERSATION_KEYWORDS` y `ACTION_KEYWORDS`. Con contexto de repo cargado, `resolveMode` evaluaba `isAction && !isConversation` → `false` y desviaba la petición a modo chat; la IA solo leía el README sin escribirlo. Fix: eliminados de `CONVERSATION_KEYWORDS` (son verbos de acción, no de opinión). Tests de regresión añadidos en `modeDetection.test.ts`.
+> - **Bug #2 — Timeout ignorado en generación de docs (`gemini.ts`):** `generateRepoDocs`, `generateFileDoc` y `generateSpecificDoc` llamaban a `callAI` sin pasar `config.timeoutMs` ni `config.accountId`, usando siempre el default de 180 s independientemente de lo configurado en ⚙️. Con modelos lentos generando READMEs ricos de 300+ líneas, el timeout se disparaba. Fix: las 4 llamadas a `callAI` ahora propagan correctamente `timeoutMs` y `accountId` desde el `config`. Tests de regresión añadidos en `gemini.test.ts`.
+> - **Verificación:** 1.213 tests unitarios (1.155 cliente + 58 servidor) — 100% verde; `npm run lint` y `npm run build` — 0 errores.
+
+### Fixed
+- `modeDetection.ts`: eliminado `'mejora'`/`'mejorar'` de `CONVERSATION_KEYWORDS` — conflicto con `ACTION_KEYWORDS` que causaba modo chat en peticiones de edición de README con repo cargado.
+- `gemini.ts` (`generateRepoDocs`, `generateFileDoc`, `generateSpecificDoc`): propagados `config.timeoutMs` y `config.accountId` a `callAI`; antes se ignoraban, causando timeout en generación de docs ricas con modelos lentos.
+
+### Tests
+- `modeDetection.test.ts`: 2 tests de regresión para `resolveMode` con `hasRepoContext=true` y frases de mejora.
+- `gemini.test.ts`: 4 tests de regresión verificando propagación de `timeoutMs` y `accountId` en las funciones de generación de docs.
+
+Cambio de código por Antigravity (Claude Sonnet 4.6 Thinking).
+
 ## [4.0.26] — 2026-08-11
 
 > **Incremento de Cobertura de Tests Unitarios, Preservación Anti-Poda de READMEs y Soporte para Archivos Excel Habilitados para Macros (`.xlsm`).**

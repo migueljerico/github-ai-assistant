@@ -12,7 +12,7 @@ const CONVERSATION_KEYWORDS = [
   'opinión', 'opinion', 'qué opinas', 'que opinas', 'piensas',
   'consejo', 'recomendación', 'recomendacion', 'recomiendas',
   'crítica', 'critica', 'constructiva', 'constructivo', 'feedback',
-  'mejora', 'mejorar', 'propón', 'propon', 'propuesta', 'sugerencia',
+  'propón', 'propon', 'propuesta', 'sugerencia',
   'analiza', 'análisis', 'analisis', 'evalúa', 'evalua', 'valoración',
   'qué te parece', 'que te parece', 'cómo puedo', 'como puedo',
   'debería', 'deberia', 'es buena', 'es malo', 'es mejor',

@@ -44,6 +44,15 @@ describe('modeDetection', () => {
     it('acción explícita → action aunque haya contexto', () => {
       expect(resolveMode('crea un README en el repo', 'auto', true)).toBe('action');
     });
+    // Regresión: "mejorar" estaba en CONVERSATION_KEYWORDS Y ACTION_KEYWORDS a la vez.
+    // Con hasRepoContext=true la condición isAction && !isConversation fallaba (isConversation=true)
+    // y la petición caía a chat → la IA solo leía sin escribir nada.
+    it('REGRESIÓN: "mejorar mi readme" con repo cargado → action (no chat)', () => {
+      expect(resolveMode('simplemente quiero mejorar mi readme.md del repo, manteniendo la estructura actual sin romperla', 'auto', true)).toBe('action');
+    });
+    it('REGRESIÓN: "mejora" en imperativo con repo cargado → action', () => {
+      expect(resolveMode('mejora el readme del repo sin romper su estructura', 'auto', true)).toBe('action');
+    });
   });
 
   describe('resolveMode — auto CON archivo adjunto (#28 fix, siempre chat)', () => {

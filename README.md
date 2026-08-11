@@ -2,7 +2,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge" alt="Estado" />
-  <a href="https://github.com/migueljerico/github-ai-assistant/releases"><img src="https://img.shields.io/badge/Versión-v4.0.26-blue?style=for-the-badge" alt="Versión" /></a>
+  <a href="https://github.com/migueljerico/github-ai-assistant/releases"><img src="https://img.shields.io/badge/Versión-v4.0.27-blue?style=for-the-badge" alt="Versión" /></a>
 
 
   <a href="./LICENSE"><img src="https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge" alt="License" /></a>
@@ -85,7 +85,7 @@ Todo bajo el principio:
 | ⏱️ Tiempo de desarrollo | 2 meses de desarrollo continuo |
 | ⚡ Latencia observada | ~400ms Groq / ~1.2s Gemini, variable según modelo y contexto |
 | 🛡️ Seguridad | Zero-Storage: credenciales solo en memoria React |
-| 🧪 Tests | 1.131 tests unitarios (1.073 cliente + 58 servidor) + 13 E2E (Playwright) |
+| 🧪 Tests | 1.213 tests unitarios (1.155 cliente + 58 servidor) + 13 E2E (Playwright) |
 | 🌐 i18n | 13 idiomas globales (ES, EN, ZH, HI, FR, AR, BN, PT, ID, UR, RU, DE, JA) con soporte RTL |
 | 🌍 Deploy | Google Cloud Run |
 | 📦 Stack | React + TypeScript + Express + Vite |
@@ -240,7 +240,7 @@ Ver detalle en ./docs/SEGURIDAD.md.
 
 El proyecto usa **Vitest**, **React Testing Library**, **Playwright**, **GitHub Actions** y **Codecov**.
 
-- **1072 tests unitarios (1014 cliente + 58 servidor)** + **13 tests E2E** con Playwright (5 specs)
+- **1.213 tests unitarios (1.155 cliente + 58 servidor)** + **13 tests E2E** con Playwright (5 specs)
 - Tests unitarios, integración y componentes
 - Tests del servidor
 - Tests E2E del flujo crítico en navegador real (auth → chat → acción confirmada), del toggle de tema, de i18n, de persistencia y de accesibilidad (foco visible `:focus-visible` + `prefers-reduced-motion`, WCAG 2.4.7/2.3.3)
