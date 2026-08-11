@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.22] — 2026-08-11
+
+> **Sincronización de Timeout a 180s en UI/i18n, Fix de Modo Acción tras Chat (Qwen 3.8 Max) y Ajuste Visual de ChatToolsMenu.**
+> - **Timeout de 180s en la UI:** Actualizado el placeholder (`180`), comentarios y los 13 diccionarios de idiomas (`i18n/*.ts`) en `AIProviderPanel.tsx` para reflejar el timeout predeterminado de 180 segundos (`DEFAULT_AI_TIMEOUT_MS`).
+> - **Robustecimiento de Modo Acción tras Chat (Qwen 3.8 Max):** 
+>   - Inyección de directiva explícita de `RECORDATORIO MODO ACCIÓN` en `assistantActions.ts` al ejecutar una acción tras haber estado en conversación chat.
+>   - Extracción de candidatos JSON contenidos en bloques markdown (` ```json `) en cualquier parte de la respuesta (`extractJsonCandidates`).
+>   - Saneamiento de saltos de línea crudos dentro de cadenas de texto JSON en `contenidoPropuesto` (`sanitizeUnescapedStringChars`).
+>   - Normalización case-insensitive de método a mayúsculas (`metodo: "PUT"`) y tipo a minúsculas (`tipo: "escritura"`) en `isValidAction`.
+> - **Alineación de ChatToolsMenu:** Cambio de posicionamiento CSS a `left: 0`, `right: 'auto'` en `ChatToolsMenu.tsx` para abrir desplegándose hacia la derecha sin invadir el panel de Plantillas.
+> - **Verificación:** Pruebas unitarias ampliadas y pasadas al 100% verde en `gemini.test.ts`, `assistantActions.test.ts`, `AIProviderPanel.test.tsx` y `ChatToolsMenu.test.tsx`.
+>
+> Cambio de código por Antigravity (Gemini 3.6 Flash).
+
 ## [4.0.21] — 2026-08-10
 
 > **Ampliado el tiempo de espera predeterminado a 180s (3 minutos) en `retry.ts` para generaciones de acciones con JSONs muy extensos.**

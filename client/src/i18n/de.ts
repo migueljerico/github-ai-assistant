@@ -108,7 +108,7 @@ export const de = {
   'aipanel.footer4': 'Anbieter und Modell',
   'aipanel.footer5': 'gespeichert, um die Auswahl zu erleichtern.',
   'aipanel.timeoutLabel': 'Time-out (Sekunden)',
-  'aipanel.timeoutHint': 'Die Generierung wird abgebrochen, wenn der Anbieter nicht rechtzeitig antwortet. Leer = 120s.',
+  'aipanel.timeoutHint': 'Die Generierung wird abgebrochen, wenn der Anbieter nicht rechtzeitig antwortet. Leer = 180s.',
   'provider.gemini.cardDesc': 'Gemini 2.5/3.x and Gemma · active free tier',
   'provider.gemini.signupLabel': 'Get free API key at aistudio.google.com →',
   'provider.gemini.model.recommended': 'Gemini 2.5 Flash ⭐ Recommended',

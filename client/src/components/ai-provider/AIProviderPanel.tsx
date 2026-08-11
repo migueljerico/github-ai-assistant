@@ -32,7 +32,7 @@ export default function AIProviderPanel() {
   const [errorMsg, setErrorMsg] = useState('');
   // #Cloudflare: account_id aparte de la API key (Workers AI lo exige en la ruta URL).
   const [accountId, setAccountId] = useState('');
-  // #73: timeout de la llamada IA en segundos (120 por defecto). Se muestra vacío
+  // #73: timeout de la llamada IA en segundos (180 por defecto). Se muestra vacío
   // si el usuario quiere el default. Persiste vía providerPrefs (sessionStorage).
   const [timeoutSec, setTimeoutSec] = useState<string>(() => {
     const saved = loadProviderPref()?.timeoutMs;
@@ -118,7 +118,7 @@ export default function AIProviderPanel() {
     if (id !== 'cloudflare') setAccountId('');
   };
 
-  // #73: actualiza el timeout del contexto. Vacío → default (120s). Validado 10–600s.
+  // #73: actualiza el timeout del contexto. Vacío → default (180s). Validado 10–600s.
   const changeTimeout = (raw: string) => {
     setTimeoutSec(raw);
     const n = Number(raw);
@@ -305,7 +305,7 @@ export default function AIProviderPanel() {
                       min={10}
                       max={600}
                       step={10}
-                      placeholder="120"
+                      placeholder="180"
                       value={timeoutSec}
                       onChange={e => changeTimeout(e.target.value)}
                       autoComplete="off"

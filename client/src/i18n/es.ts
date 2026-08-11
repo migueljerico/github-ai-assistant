@@ -116,7 +116,7 @@ export const es = {
   'aipanel.footer5': 'elegidos (no la clave) para no tener que reseleccionarlos.',
   // #73 — Timeout automático en llamadas IA
   'aipanel.timeoutLabel': 'Timeout (segundos)',
-  'aipanel.timeoutHint': 'La generación se cancela si el proveedor no responde a tiempo. Vacío = 120 s. Súbelo (máx. 600) para modelos de razonamiento o documentos largos; bájalo (mín. 10) si detectas un cuelgue.',
+  'aipanel.timeoutHint': 'La generación se cancela si el proveedor no responde a tiempo. Vacío = 180 s. Súbelo (máx. 600) para modelos de razonamiento o documentos largos; bájalo (mín. 10) si detectas un cuelgue.',
   'provider.gemini.cardDesc': 'Gemini 2.5/3.x y Gemma · free tier activo',
   'provider.gemini.signupLabel': 'Obtener clave gratuita en aistudio.google.com →',
   'provider.gemini.model.recommended': 'Gemini 2.5 Flash ⭐ Recomendado',
