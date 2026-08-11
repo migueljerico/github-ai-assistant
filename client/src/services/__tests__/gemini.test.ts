@@ -1506,6 +1506,79 @@ Detalles internos de razonamiento...
       expect(action?.tipo).toBe('creacion');
       expect(action?.metodo).toBe('POST');
     });
+
+    it('sanea caracteres escapados, retornos de carro \\r y tabulaciones \\t en cadenas de texto JSON', () => {
+      const jsonWithSpecialChars = `{
+  "tipo": "escritura",
+  "accion": "Test caracteres \\"escapados\\" y \\\\ backslash",
+  "metodo": "PUT",
+  "repo": "owner/repo",
+  "archivo": "table.tsv",
+  "contenidoPropuesto": "Col1\tCol2\r\nVal1\tVal2",
+  "requiereConfirmacion": true
+}`;
+      const action = parseGeminiAction(jsonWithSpecialChars);
+      expect(action).not.toBeNull();
+      expect(action?.contenidoPropuesto).toContain('Col1\tCol2');
+    });
+
+    it('devuelve razonamiento explícito ante método no-string o no permitido en isValidAction', () => {
+      const res1 = parseGeminiActionWithReason('{"tipo":"escritura","accion":"a","metodo":123}');
+      expect(res1.action).toBeNull();
+      if ('error' in res1) expect(res1.error).toContain('método');
+
+      const res2 = parseGeminiActionWithReason('{"tipo":"escritura","accion":"a","metodo":"INVALID"}');
+      expect(res2.action).toBeNull();
+      if ('error' in res2) expect(res2.error).toContain('método');
+    });
+
+    it('devuelve razonamiento explícito ante tipo no-string o no reconocido en isValidAction', () => {
+      const res1 = parseGeminiActionWithReason('{"tipo":123,"accion":"a","metodo":"PUT"}');
+      expect(res1.action).toBeNull();
+      if ('error' in res1) expect(res1.error).toContain('tipo');
+
+      const res2 = parseGeminiActionWithReason('{"tipo":"invalido","accion":"a","metodo":"PUT"}');
+      expect(res2.action).toBeNull();
+      if ('error' in res2) expect(res2.error).toContain('tipo');
+    });
+
+    it('devuelve razonamiento explícito ante endpoint inválido o requiereConfirmacion no booleano', () => {
+      const res1 = parseGeminiActionWithReason('{"tipo":"escritura","accion":"a","metodo":"PUT","endpoint":123}');
+      expect(res1.action).toBeNull();
+      if ('error' in res1) expect(res1.error).toContain('endpoint');
+
+      const res2 = parseGeminiActionWithReason('{"tipo":"escritura","accion":"a","metodo":"PUT","endpoint":"http://external.com/api"}');
+      expect(res2.action).toBeNull();
+      if ('error' in res2) expect(res2.error).toContain('endpoint');
+
+      const res3 = parseGeminiActionWithReason('{"tipo":"escritura","accion":"a","metodo":"PUT","endpoint":"relative/path"}');
+      expect(res3.action).toBeNull();
+      if ('error' in res3) expect(res3.error).toContain('endpoint');
+
+      const res4 = parseGeminiActionWithReason('{"tipo":"escritura","accion":"a","metodo":"PUT","requiereConfirmacion":"true"}');
+      expect(res4.action).toBeNull();
+      if ('error' in res4) expect(res4.error).toContain('requiereConfirmacion');
+    });
+
+    it('soporta extractJsonCandidates con bloques vacíos o múltiples bloques markdown', () => {
+      const raw = `Texto explicativo
+\`\`\`json
+\`\`\`
+\`\`\`json
+{
+  "tipo": "escritura",
+  "accion": "Crear ok",
+  "metodo": "PUT",
+  "repo": "owner/repo",
+  "archivo": "ok.ts",
+  "contenidoPropuesto": "code",
+  "requiereConfirmacion": true
+}
+\`\`\``;
+      const action = parseGeminiAction(raw);
+      expect(action).not.toBeNull();
+      expect(action?.archivo).toBe('ok.ts');
+    });
   });
 });
 

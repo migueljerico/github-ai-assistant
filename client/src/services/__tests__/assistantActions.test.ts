@@ -2117,4 +2117,38 @@ describe('runSend — Transición Modo Chat a Modo Acción', () => {
       action: expect.objectContaining({ archivo: 'test.ts' }),
     }));
   });
+
+  it('NO inyecta el RECORDATORIO MODO ACCIÓN si es el primer mensaje de la conversación', async () => {
+    vi.mocked(resolveMode).mockReturnValue('action');
+    vi.mocked(getFileContents).mockResolvedValue({ content: '' } as any);
+    const mockAction: any = {
+      tipo: 'escritura',
+      accion: 'Crear archivo',
+      metodo: 'PUT',
+      repo: 'owner/repo',
+      archivo: 'first.ts',
+      contenidoPropuesto: 'code',
+      requiereConfirmacion: true,
+    };
+    vi.mocked(parseGeminiAction).mockReturnValue(mockAction);
+    vi.mocked(parseGeminiActionWithReason).mockReturnValue({ action: mockAction } as any);
+    vi.mocked(callAI).mockResolvedValue(JSON.stringify(mockAction));
+
+    const deps = makeDeps();
+    const sendParams: any = {
+      userText: 'Crea un archivo first.ts con el código',
+      conversationHistory: [],
+      modeOverride: 'action',
+      repoContext: null,
+      fileContext: [],
+      multiRepoEnabled: false,
+      selectedRepos: [],
+    };
+
+    await runSend(deps, CONFIG, sendParams);
+
+    expect(callAI).toHaveBeenCalled();
+    const systemPromptUsed = vi.mocked(callAI).mock.calls[0][1];
+    expect(systemPromptUsed).not.toContain('RECORDATORIO MODO ACCIÓN');
+  });
 });
