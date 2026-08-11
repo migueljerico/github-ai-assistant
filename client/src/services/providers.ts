@@ -898,7 +898,18 @@ export async function fetchModels(
   } else if (def.id === 'qwencloud') {
     // QwenCloud (qwencloud.com / DashScope): pasarela OpenAI-compatible.
     // Identifica modelos de chat/código filtrando los no-chat (embeddings, rerank, audio, vision...).
+    // Distingue los modelos gratuitos (Qwen / DeepSeek) de los modelos comerciales de pago (GLM 5.2, Zhipu, Baichuan, Minimax...).
     const QWENCLOUD_EXCLUDED = ['embed', 'whisper', 'tts', 'asr', 'rerank', 'clip', 'audio', 'wan', 'happyhorse', 'image'];
+    const QWENCLOUD_FREE_PATTERNS = ['qwen', 'deepseek'];
+    const QWENCLOUD_PAID_PATTERNS = ['glm', 'zhipu', 'baichuan', 'minimax', 'moonshot', 'yi', 'claude', 'gpt'];
+
+    const isQwencloudFree = (id: string): boolean => {
+      const low = id.toLowerCase();
+      if (low.endsWith(':free') || low.endsWith('-free')) return true;
+      if (QWENCLOUD_PAID_PATTERNS.some(p => low.includes(p))) return false;
+      return QWENCLOUD_FREE_PATTERNS.some(p => low.includes(p));
+    };
+
     type QwencloudItem = {
       id: string;
       name?: string;
@@ -915,7 +926,7 @@ export async function fetchModels(
       .map((m) => ({
         value: m.id,
         label: m.name || m.display_name || m.id,
-        free: true,
+        free: isQwencloudFree(m.id),
       }))
       .sort((a: ModelOption, b: ModelOption) => (Number(b.free) - Number(a.free)) || a.label.localeCompare(b.label));
   } else {

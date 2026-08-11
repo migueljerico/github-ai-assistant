@@ -615,14 +615,15 @@ describe('providers — fetchModels', () => {
     await expect(fetchModels(PROVIDERS.groq, 'gsk_test')).rejects.toThrow('empty catalog');
   });
 
-  it('qwencloud (fetchModels): filtra no-chat (embed, whisper, tts...) y marca free', async () => {
+  it('qwencloud (fetchModels): filtra no-chat (embed, whisper, tts...) y distingue modelos free (Qwen/DeepSeek) de pago (GLM 5.2)', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
         data: [
           { id: 'qwen3.7-flash', name: 'Qwen 3.7 Flash' },
           { id: 'qwen3-embed', name: 'Qwen Embed' }, // excluido
-          { id: 'qwen3.7-plus', name: 'Qwen 3.7 Plus' },
+          { id: 'glm-5.2-fast-preview', name: 'GLM 5.2 Fast Preview' }, // comercial de pago -> free: false
+          { id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash' }, // free: true
         ],
       }),
     });
@@ -630,9 +631,14 @@ describe('providers — fetchModels', () => {
 
     const list = await fetchModels(PROVIDERS.qwencloud, 'sk-test');
     expect(list).toBeDefined();
-    expect(list!.length).toBe(2);
-    expect(list!.map(m => m.value)).toEqual(['qwen3.7-flash', 'qwen3.7-plus']);
-    expect(list!.every(m => m.free === true)).toBe(true);
+    expect(list!.length).toBe(3);
+    // Gratis primero (qwen3.7-flash, deepseek-v4-flash), luego de pago (glm-5.2-fast-preview)
+    const qwenModel = list!.find(m => m.value === 'qwen3.7-flash');
+    const deepseekModel = list!.find(m => m.value === 'deepseek-v4-flash');
+    const glmModel = list!.find(m => m.value === 'glm-5.2-fast-preview');
+    expect(qwenModel?.free).toBe(true);
+    expect(deepseekModel?.free).toBe(true);
+    expect(glmModel?.free).toBe(false);
   });
 
   it('zenmux (fetchModels): marca free cuando pricing es undefined o no tiene precios', async () => {

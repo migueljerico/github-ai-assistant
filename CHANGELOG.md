@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.25] — 2026-08-11
+
+> **Corrección de Etiquetado y Filtrado de Modelos Gratuitos vs Pago en QwenCloud (`providers.ts`).**
+> - **Fix de Etiqueta FREE Errónea en Modelos de Pago (`GLM 5.2`):** Actualizado el helper `fetchModels` para `qwencloud` en `providers.ts`. Anteriormente, el catálogo dinámico de QwenCloud marcaba indiscriminadamente todos los modelos devueltos como `free: true`. Ahora se clasifican adecuadamente mediante `isQwencloudFreeModel`: los modelos nativos de la capa gratuita (`qwen*`, `deepseek*`) conservan el flag `free: true` y la insignia `🆓`, mientras que modelos comerciales de pago de terceros (`glm-5.2`, `zhipu`, `baichuan`, `minimax`, `moonshot`, `yi`...) se clasifican como `free: false`, eliminando la etiqueta engañosa.
+> - **Verificación:** Pruebas unitarias en `providers.test.ts` ampliadas y verificadas al 100% verde (49 tests pasados).
+>
+> Cambio de código por Antigravity (Gemini 3.6 Flash).
+
 ## [4.0.24] — 2026-08-11
 
 > **Elevación del Timeout del Servidor Proxy Backend (`server/index.js`) a 180s (3 minutos).**
