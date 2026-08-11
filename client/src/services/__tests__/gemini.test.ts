@@ -550,7 +550,7 @@ describe('Cancelación de la generación (#40)', () => {
 });
 
 // #73: timeout automático en llamadas IA. callAI combina el signal manual con uno
-// de timeout (default 120s) y lo pasa al fetch. El timeout dispara el mismo camino
+// de timeout (default 180s) y lo pasa al fetch. El timeout dispara el mismo camino
 // de abort que el botón Detener (withTransientRetry no reintenta).
 describe('Timeout automático (#73)', () => {
   beforeEach(() => { vi.restoreAllMocks(); });
@@ -1422,6 +1422,89 @@ describe('truncateByLines & generateFileDoc - base64 & data URI handling', () =>
       expect(d2).toContain('Documentación generada');
       expect(d3).toContain('Documentación generada');
       expect(d4).toContain('Documentación generada');
+    });
+  });
+
+  describe('Robustecimiento de Parseo JSON y Qwen 3.8 Max', () => {
+    it('extrae candidatos JSON de bloques markdown embebidos en prosa (estilo Qwen 3.8 Max)', () => {
+      const qwenResponse = `Claro, aquí tienes la acción solicitada para crear el archivo:
+
+\`\`\`json
+{
+  "tipo": "escritura",
+  "accion": "Crear README.md",
+  "metodo": "put",
+  "repo": "owner/repo",
+  "archivo": "README.md",
+  "contenidoPropuesto": "# Titulo",
+  "requiereConfirmacion": true
+}
+\`\`\`
+
+¿Deseas que realice alguna otra acción?`;
+
+      const action = parseGeminiAction(qwenResponse);
+      expect(action).not.toBeNull();
+      expect(action?.metodo).toBe('PUT');
+      expect(action?.tipo).toBe('escritura');
+      expect(action?.archivo).toBe('README.md');
+    });
+
+    it('sanea saltos de línea crudos dentro de cadenas de texto en JSON (contenidoPropuesto multilínea)', () => {
+      const jsonWithRawNewlines = `{
+  "tipo": "escritura",
+  "accion": "Crear archivo con saltos de línea crudos",
+  "metodo": "PUT",
+  "repo": "owner/repo",
+  "archivo": "doc.md",
+  "contenidoPropuesto": "# Título principal
+Línea 1 del documento
+Línea 2 del documento",
+  "requiereConfirmacion": true
+}`;
+
+      const action = parseGeminiAction(jsonWithRawNewlines);
+      expect(action).not.toBeNull();
+      expect(action?.contenidoPropuesto).toContain('# Título principal');
+      expect(action?.contenidoPropuesto).toContain('Línea 1 del documento');
+    });
+
+    it('normaliza método a mayúsculas y tipo a minúsculas en isValidAction', () => {
+      const raw = `{
+  "tipo": "ESCRITURA",
+  "accion": "Actualizar archivo",
+  "metodo": "patch",
+  "repo": "owner/repo",
+  "archivo": "index.ts",
+  "contenidoPropuesto": "console.log('hi');",
+  "requiereConfirmacion": true
+}`;
+      const action = parseGeminiAction(raw);
+      expect(action).not.toBeNull();
+      expect(action?.metodo).toBe('PATCH');
+      expect(action?.tipo).toBe('escritura');
+    });
+
+    it('ignora etiquetas de pensamiento o detalles como <thought> y <details>', () => {
+      const raw = `<thought>
+Analizando la petición del usuario para crear un archivo...
+</thought>
+<details>
+Detalles internos de razonamiento...
+</details>
+\`\`\`json
+{
+  "tipo": "creacion",
+  "accion": "Crear repo test",
+  "metodo": "POST",
+  "repo": "owner/test",
+  "requiereConfirmacion": true
+}
+\`\`\``;
+      const action = parseGeminiAction(raw);
+      expect(action).not.toBeNull();
+      expect(action?.tipo).toBe('creacion');
+      expect(action?.metodo).toBe('POST');
     });
   });
 });

@@ -108,7 +108,7 @@ export const ru = {
   'aipanel.footer4': 'provider and model',
   'aipanel.footer5': 'are remembered (not the key) so you don\'t have to reselect them.',
   'aipanel.timeoutLabel': 'Тайм-аут (секунды)',
-  'aipanel.timeoutHint': 'Генерация отменяется при отсутствии ответа. Пусто = 120 с.',
+  'aipanel.timeoutHint': 'Генерация отменяется при отсутствии ответа. Пусто = 180 с.',
   'provider.gemini.cardDesc': 'Gemini 2.5/3.x and Gemma · active free tier',
   'provider.gemini.signupLabel': 'Get free API key at aistudio.google.com →',
   'provider.gemini.model.recommended': 'Gemini 2.5 Flash ⭐ Recommended',

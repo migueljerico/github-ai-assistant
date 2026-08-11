@@ -108,7 +108,7 @@ export const zh = {
   'aipanel.footer4': '提供商和模型',
   'aipanel.footer5': '（不保存密钥），以便无需重新选择。',
   'aipanel.timeoutLabel': '超时时间 (秒)',
-  'aipanel.timeoutHint': '如果提供商未及时响应，生成将被取消。留空 = 120 秒。长文档或推理模型请提高（最多 600 秒）；卡顿时可调低（最少 10 秒）。',
+  'aipanel.timeoutHint': '如果提供商未及时响应，生成将被取消。留空 = 180 秒。长文档或推理模型请提高（最多 600 秒）；卡顿时可调低（最少 10 秒）。',
   'provider.gemini.cardDesc': 'Gemini 2.5/3.x and Gemma · active free tier',
   'provider.gemini.signupLabel': 'Get free API key at aistudio.google.com →',
   'provider.gemini.model.recommended': 'Gemini 2.5 Flash ⭐ Recommended',

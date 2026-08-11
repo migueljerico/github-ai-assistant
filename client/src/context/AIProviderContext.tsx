@@ -10,7 +10,7 @@ export interface AIProviderState {
   model: string | null;
   /** Solo Cloudflare Workers AI: account_id necesario en la ruta URL del endpoint. */
   accountId: string | null;
-  /** #73: timeout de la llamada IA en ms (null = default 120s). Configurable en el panel. */
+  /** #73: timeout de la llamada IA en ms (null = default 180s). Configurable en el panel. */
   timeoutMs: number | null;
   isConnected: boolean;
   connectedAt: number | null;
@@ -37,7 +37,7 @@ export function AIProviderContextProvider({ children }: { children: ReactNode })
   const [model, setModel] = useState<string | null>(null);
   const [accountId, setAccountId] = useState<string | null>(null);
   const [connectedAt, setConnectedAt] = useState<number | null>(null);
-  // #73: timeout configurable. null = default (120s). Se hidrata del sessionStorage
+  // #73: timeout configurable. null = default (180s). Se hidrata del sessionStorage
   // al conectar (connect) y persiste ahí; mientras no haya conexión, null.
   const [timeoutMs, setTimeoutMsState] = useState<number | null>(null);
 

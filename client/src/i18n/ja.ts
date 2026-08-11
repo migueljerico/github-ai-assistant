@@ -108,7 +108,7 @@ export const ja = {
   'aipanel.footer4': 'provider and model',
   'aipanel.footer5': 'are remembered (not the key) so you don\'t have to reselect them.',
   'aipanel.timeoutLabel': 'タイムアウト (秒)',
-  'aipanel.timeoutHint': 'プロバイダーが時間内に応答しない場合生成はキャンセルされます。空 = 120秒。',
+  'aipanel.timeoutHint': 'プロバイダーが時間内に応答しない場合生成はキャンセルされます。空 = 180秒。',
   'provider.gemini.cardDesc': 'Gemini 2.5/3.x and Gemma · active free tier',
   'provider.gemini.signupLabel': 'Get free API key at aistudio.google.com →',
   'provider.gemini.model.recommended': 'Gemini 2.5 Flash ⭐ Recommended',

@@ -14,7 +14,7 @@ const STORAGE_KEY = 'ai_provider_pref';
 export interface ProviderPref {
   provider: AIProviderType;
   model: string;
-  /** #73: timeout de la llamada IA en ms. null/undefined = default (120s). */
+  /** #73: timeout de la llamada IA en ms. null/undefined = default (180s). */
   timeoutMs?: number;
 }
 

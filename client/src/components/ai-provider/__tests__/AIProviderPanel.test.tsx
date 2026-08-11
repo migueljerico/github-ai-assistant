@@ -290,7 +290,7 @@ describe('AIProviderPanel — timeout (#73)', () => {
     const input = container.querySelector('#groq-timeout-input') as HTMLInputElement;
     expect(input).toBeInTheDocument();
     expect(input.type).toBe('number');
-    expect(input.placeholder).toBe('120'); // default
+    expect(input.placeholder).toBe('180'); // default
   });
 
   it('muestra la etiqueta y el hint traducidos', () => {

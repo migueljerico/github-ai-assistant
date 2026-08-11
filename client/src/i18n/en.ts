@@ -114,7 +114,7 @@ export const en = {
   'aipanel.footer5': 'are remembered (not the key) so you don\'t have to reselect them.',
   // #73 — Automatic timeout on AI calls
   'aipanel.timeoutLabel': 'Timeout (seconds)',
-  'aipanel.timeoutHint': 'Generation is cancelled if the provider takes too long. Empty = 120 s. Raise it (max 600) for reasoning models or long documents; lower it (min 10) if you notice a hang.',
+  'aipanel.timeoutHint': 'Generation is cancelled if the provider takes too long. Empty = 180 s. Raise it (max 600) for reasoning models or long documents; lower it (min 10) if you notice a hang.',
   'provider.gemini.cardDesc': 'Gemini 2.5/3.x and Gemma · active free tier',
   'provider.gemini.signupLabel': 'Get free API key at aistudio.google.com →',
   'provider.gemini.model.recommended': 'Gemini 2.5 Flash ⭐ Recommended',

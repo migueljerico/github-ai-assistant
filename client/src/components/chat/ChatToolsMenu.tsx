@@ -86,8 +86,8 @@ export default function ChatToolsMenu({ children, disabled }: ChatToolsMenuProps
           style={{
             position: 'absolute',
             bottom: '100%',
-            right: 0,
-            left: 'auto',
+            left: 0,
+            right: 'auto',
             transform: 'none',
             marginBottom: '8px',
             backgroundColor: 'var(--bg-elevated, #fff)',

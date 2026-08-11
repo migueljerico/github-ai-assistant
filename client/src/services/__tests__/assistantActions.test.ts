@@ -2076,3 +2076,45 @@ describe('runSecurityAudit — timeout vs Detener (#73)', () => {
     expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'error' }));
   });
 });
+
+describe('runSend — Transición Modo Chat a Modo Acción', () => {
+  it('inyecta la directiva RECORDATORIO MODO ACCIÓN cuando hay historial conversacional previo', async () => {
+    vi.mocked(resolveMode).mockReturnValue('action');
+    vi.mocked(getFileContents).mockResolvedValue({ content: '' } as any);
+    const mockAction: any = {
+      tipo: 'escritura',
+      accion: 'Crear archivo',
+      metodo: 'PUT',
+      repo: 'owner/repo',
+      archivo: 'test.ts',
+      contenidoPropuesto: 'code',
+      requiereConfirmacion: true,
+    };
+    vi.mocked(parseGeminiAction).mockReturnValue(mockAction);
+    vi.mocked(parseGeminiActionWithReason).mockReturnValue({ action: mockAction } as any);
+    vi.mocked(callAI).mockResolvedValue(JSON.stringify(mockAction));
+
+    const deps = makeDeps();
+    const sendParams: any = {
+      userText: 'Crea un archivo test.ts con el código',
+      conversationHistory: [
+        { role: 'user', content: 'Hola' },
+        { role: 'assistant', content: '¡Hola! ¿En qué te puedo ayudar?' },
+      ],
+      modeOverride: 'action',
+      repoContext: null,
+      fileContext: [],
+      multiRepoEnabled: false,
+      selectedRepos: [],
+    };
+
+    await runSend(deps, CONFIG, sendParams);
+
+    expect(callAI).toHaveBeenCalled();
+    const systemPromptUsed = vi.mocked(callAI).mock.calls[0][1];
+    expect(systemPromptUsed).toContain('RECORDATORIO MODO ACCIÓN');
+    expect(deps.setPendingAction).toHaveBeenCalledWith(expect.objectContaining({
+      action: expect.objectContaining({ archivo: 'test.ts' }),
+    }));
+  });
+});

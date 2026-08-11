@@ -974,9 +974,16 @@ export async function runSend(deps: SendDeps, config: AIProviderConfig, params: 
     for (let attempt = 0; ; attempt++) {
       const { contextText: repoContextText, consultedPaths } = buildContextForBudget(activeBudget);
       const combinedContext = [repoContextText, ...fileContext.map(f => f.contextText)].filter(Boolean).join('\n\n');
-      const basePrompt = finalMode === 'chat'
+      let basePrompt = finalMode === 'chat'
         ? (combinedContext ? chatPromptWithContext(combinedContext) : CHAT_PROMPT)
         : (combinedContext ? `📌 REPOSITORIO Y ARCHIVOS EN CONTEXTO ACTIVO:\n${combinedContext}\n\n═══════════════════════════════════════════════════════\n${ACTION_PROMPT}` : ACTION_PROMPT);
+
+      // Si se ejecuta en modo Acción y hay historial previo de conversación (tras chat),
+      // reforzamos la directiva para que modelos como Qwen 3.8 Max no imiten el tono conversacional anterior.
+      if (finalMode === 'action' && newHistory.length > 1) {
+        basePrompt += '\n\n═══════════════════════════════════════════════════════\n⚠️ RECORDATORIO MODO ACCIÓN: El historial previo contiene mensajes conversacionales. AHORA DEBES RESPONDER EXCLUSIVAMENTE CON EL OBJETO JSON DE LA ACCIÓN. No incluyas explicaciones, saludos ni prosa fuera del JSON.';
+      }
+
       // #24 Fase 3: la directiva de idioma SOLO aplica al modo chat (texto Markdown).
       const systemPrompt = finalMode === 'chat' ? withLangDirective(basePrompt, deps.lang) : basePrompt;
       try {

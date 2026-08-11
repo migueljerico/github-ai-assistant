@@ -201,7 +201,7 @@ export interface AIProviderConfig {
   model: string;
   /** Solo Cloudflare Workers AI: account_id necesario en la ruta URL del endpoint. */
   accountId?: string | null;
-  /** #73: timeout de la llamada IA en ms (null/undefined = default 120s). */
+  /** #73: timeout de la llamada IA en ms (null/undefined = default 180s). */
   timeoutMs?: number | null;
 }
 
@@ -443,7 +443,7 @@ export async function callAI(
   //   3) 4096 (default histórico; antes solo se aplicaba en la rama OpenAI-compat,
   //      ahora también en Gemini para coherencia entre transportes).
   const effectiveMaxTokens = maxTokens ?? def.maxOutputTokens ?? 4096;
-  // #73: combina el signal MANUAL del usuario con uno de TIMEOUT (120s por defecto).
+  // #73: combina el signal MANUAL del usuario con uno de TIMEOUT (180s por defecto).
   // null/undefined → default; <=0 → desactiva el timeout en una llamada concreta.
   const effectiveTimeout = timeoutMs ?? DEFAULT_AI_TIMEOUT_MS;
   const combinedSignal = combineSignals(signal, effectiveTimeout);
@@ -507,24 +507,57 @@ export async function validateProviderKey(
   }
 }
 
-// ── Response parsing ──────────────────────────────────────────────────────────
-// #40: allowlists para validar el JSON de acción antes de proponer→confirmar→ejecutar.
-const ALLOWED_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
-const ALLOWED_TYPES = new Set(['lectura', 'escritura', 'creacion', 'listado', 'borrado']);
-
-type ValidationResult = { ok: true } | { ok: false; reason: string };
+/**
+ * Sanea caracteres de control y saltos de línea crudos dentro de valores string en JSON
+ * producidos por modelos como Qwen o DeepSeek al emitir documentos multilínea.
+ */
+function sanitizeUnescapedStringChars(input: string): string {
+  let result = '';
+  let inString = false;
+  let escaped = false;
+  for (let i = 0; i < input.length; i++) {
+    const ch = input[i];
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+        result += ch;
+      } else if (ch === '\\') {
+        escaped = true;
+        result += ch;
+      } else if (ch === '"') {
+        inString = false;
+        result += ch;
+      } else if (ch === '\n') {
+        result += '\\n';
+      } else if (ch === '\r') {
+        result += '\\r';
+      } else if (ch === '\t') {
+        result += '\\t';
+      } else {
+        result += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inString = true;
+      }
+      result += ch;
+    }
+  }
+  return result;
+}
 
 /**
  * Normaliza un fragmento de texto JSON antes de parsearlo. Algunos modelos devuelven
  * JSON casi válido con defectos muy repetidos; en vez de descartarlo, lo reparo aquí
  * cuando es seguro (no inventa datos):
- *  - comentarios JS (`// ...` y `/* ... *\/`) → eliminados.
+ *  - comentarios de bloque y línea → eliminados.
  *  - trailing commas (`,}` o `,]`) → eliminadas.
  *  - comillas tipográficas (“ ” ‘ ’) → comillas rectas estándar.
+ *  - saltos de línea crudos dentro de strings ("contenidoPropuesto") → escapados a \n.
  * Si el texto no es JSON repairable, se devuelve tal cual y JSON.parse dará el error.
  */
 function normalizeJsonText(input: string): string {
-  return input
+  const cleanedComments = input
     // comentarios de bloque y de línea (fuera de strings es seguro enough para LLM output)
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/(^|[^:])\/\/.*$/gm, '$1')
@@ -533,7 +566,14 @@ function normalizeJsonText(input: string): string {
     .replace(/[‘’]/g, "'")
     // trailing commas antes de } o ]
     .replace(/,(\s*[}\]])/g, '$1');
+
+  return sanitizeUnescapedStringChars(cleanedComments);
 }
+
+const ALLOWED_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
+const ALLOWED_TYPES = new Set(['lectura', 'escritura', 'creacion', 'listado', 'borrado', 'edicion', 'eliminacion', 'consulta', 'configuracion']);
+
+type ValidationResult = { ok: true } | { ok: false; reason: string };
 
 /**
  * Valida la forma de una acción ya parseada (#40). Refuerza la garantía
@@ -546,7 +586,13 @@ function isValidAction(a: Record<string, unknown>): ValidationResult {
   if (!a.tipo || !a.accion || !a.metodo) {
     return { ok: false, reason: 'faltan campos obligatorios (tipo, accion o metodo)' };
   }
-  if (typeof a.metodo !== 'string' || !ALLOWED_METHODS.has(a.metodo.toUpperCase())) {
+  if (typeof a.metodo === 'string') {
+    a.metodo = a.metodo.toUpperCase();
+  }
+  if (typeof a.tipo === 'string') {
+    a.tipo = a.tipo.toLowerCase();
+  }
+  if (typeof a.metodo !== 'string' || !ALLOWED_METHODS.has(a.metodo)) {
     return { ok: false, reason: `método "${a.metodo}" no permitido` };
   }
   if (typeof a.tipo !== 'string' || !ALLOWED_TYPES.has(a.tipo)) {
@@ -630,8 +676,10 @@ export function parseGeminiActions(rawText: string): GeminiAction[] {
   const results: GeminiAction[] = [];
   const cleaned = rawText
     .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/<thought>[\s\S]*?<\/thought>/gi, '')
     .replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '')
     .replace(/<reflection>[\s\S]*?<\/reflection>/gi, '')
+    .replace(/<details>[\s\S]*?<\/details>/gi, '')
     .trim();
   let searchFrom = 0;
   while (searchFrom < cleaned.length) {
@@ -675,8 +723,8 @@ function firstBalancedJsonObjectFrom(text: string, start: number): string | null
 
 /**
  * Extrae posibles substrings JSON de la respuesta del modelo, en orden de
- * preferencia: (1) la cadena entera sin fences, (2) el primer bloque `{...}`
- * balanceado (para modelos que envuelven el JSON en prosa).
+ * preferencia: (1) la cadena entera sin fences, (2) bloques ```json ... ``` embebidos,
+ * (3) el primer bloque `{...}` balanceado.
  */
 function extractJsonCandidates(rawText: string): string[] {
   const candidates: string[] = [];
@@ -685,20 +733,39 @@ function extractJsonCandidates(rawText: string): string[] {
   // se queda con el JSON de ejemplo del interior del <think> y descarta el real.
   const cleaned = rawText
     .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/<thought>[\s\S]*?<\/thought>/gi, '')
     .replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '')
     .replace(/<reflection>[\s\S]*?<\/reflection>/gi, '')
+    .replace(/<details>[\s\S]*?<\/details>/gi, '')
     .trim();
+
   // (1) cadena entera sin fences ```json ... ```
   const stripped = cleaned
     .replace(/^```(?:json)?\s*/i, '')
     .replace(/\s*```\s*$/, '')
     .trim();
   candidates.push(stripped);
-  // (2) primer {...} balanceado (ignora strings con llaves escapadas)
+
+  // (2) extraer el contenido de cualquier bloque ```json ... ``` embebido en prosa (p. ej. Qwen 3.8 Max)
+  const fenceRegex = /```(?:json)?\s*([\s\S]*?)\s*```/gi;
+  let match: RegExpExecArray | null;
+  while ((match = fenceRegex.exec(cleaned)) !== null) {
+    const fenceContent = match[1].trim();
+    if (fenceContent && !candidates.includes(fenceContent)) {
+      candidates.push(fenceContent);
+    }
+  }
+
+  // (3) primer {...} balanceado (ignora strings con llaves escapadas)
   const balanced = firstBalancedJsonObject(cleaned);
-  if (balanced && balanced !== stripped) candidates.push(balanced);
+  if (balanced && !candidates.includes(balanced)) candidates.push(balanced);
+
   return candidates;
 }
+
+
+
+
 
 /** Encuentra el primer objeto JSON balanceado `{...}` dentro de un texto. */
 function firstBalancedJsonObject(text: string): string | null {
