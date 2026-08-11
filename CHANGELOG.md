@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.23] — 2026-08-11
+
+> **Fix de alineación visual del menú desplegable `Más herramientas` (`ChatToolsMenu.tsx`) hacia la izquierda.**
+> - **Alineación Hacia la Izquierda (`right: 0`, `left: 'auto'`):** Cambio de posicionamiento CSS del menú desplegable en `ChatToolsMenu.tsx` para alinearse al borde derecho del botón y desplegarse hacia la izquierda dentro del contenedor central del chat, evitando que invada y tape el panel lateral de Historial de la derecha.
+> - **Verificación:** Pruebas unitarias de `ChatToolsMenu.test.tsx` verificadas al 100% verde.
+>
+> Cambio de código por Antigravity (Gemini 3.6 Flash).
+
 ## [4.0.22] — 2026-08-11
 
 > **Sincronización de Timeout a 180s en UI/i18n, Fix de Modo Acción tras Chat (Qwen 3.8 Max) y Ajuste Visual de ChatToolsMenu.**
