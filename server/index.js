@@ -204,10 +204,10 @@ const qwencloudModelsLimiter = rateLimit({
 const NIM_BASE_URL = 'https://integrate.api.nvidia.com/v1';
 
 // ─── #73: timeout automático en llamadas IA (defensa en profundidad server) ───
-// El cliente ya aborta su signal a los timeoutMs, pero si desaparece (pestaña
-// cerrada), el proxy soltaría la conexión upstream igualmente a este tope. 120s
+// El cliente ya aborta su signal a los timeoutMs (default 180s / 3 min), pero si
+// desaparece (pestaña cerrada), el proxy soltaría la conexión upstream igualmente a este tope. 180s
 // cubre modelos de razonamiento y generación de docs largos (maxTokens 8192).
-const UPSTREAM_TIMEOUT_MS = 120_000;
+const UPSTREAM_TIMEOUT_MS = 180_000;
 
 /** AbortSignal que se dispara a los UPSTREAM_TIMEOUT_MS. Fallback setTimeout si el
  *  runtime carece de AbortSignal.timeout (Node <17.3). */
@@ -281,7 +281,7 @@ function isUpstreamTimeout(err) {
 
     // #38: streaming vía SSE. Obtenemos el stream ANTES de enviar cabeceras, para
     // que un fallo de setup (clave/modelo inválida) salga como JSON de error.
-    // #73: requestOptions.signal aplica el timeout de 120s al SDK de Gemini.
+    // #73: requestOptions.signal aplica el timeout de 180s al SDK de Gemini.
     if (stream) {
       const result = await chat.sendMessageStream(lastMessage.content, { signal: upstreamSignal() });
       res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
@@ -456,7 +456,7 @@ app.post('/api/nim', nimLimiter, validateChatBody, async (req, res) => {
         ...(req.headers['accept'] ? { 'Accept': req.headers['accept'] } : {}),
       },
       body: JSON.stringify(req.body),
-      signal: upstreamSignal(), // #73: timeout 120s (defensa en profundidad)
+      signal: upstreamSignal(), // #73: timeout 180s (defensa en profundidad)
     });
     // Log de status upstream: los errores de NIM (401/403/404/429/5xx) dejan de ser
     // opacos. Solo el status (sin body ni auth) — zero-PII.
@@ -528,7 +528,7 @@ app.post('/api/openzen', openzenLimiter, validateChatBody, async (req, res) => {
         ...(req.headers['accept'] ? { 'Accept': req.headers['accept'] } : {}),
       },
       body: JSON.stringify(req.body),
-      signal: upstreamSignal(), // #73: timeout 120s (defensa en profundidad)
+      signal: upstreamSignal(), // #73: timeout 180s (defensa en profundidad)
     });
     log.info('upstream', { provider: 'openzen', flow: 'chat', status: upstream.status, ct: upstream.headers.get('content-type') || '-', requestId: req.id });
     res.status(upstream.status);
@@ -657,7 +657,7 @@ app.post('/api/cloudflare', cloudflareLimiter, validateChatBody, async (req, res
         ...(req.headers['accept'] ? { 'Accept': req.headers['accept'] } : {}),
       },
       body: JSON.stringify(req.body),
-      signal: upstreamSignal(), // #73: timeout 120s (defensa en profundidad)
+      signal: upstreamSignal(), // #73: timeout 180s (defensa en profundidad)
     });
     log.info('upstream', { provider: 'cloudflare', flow: 'chat', status: upstream.status, ct: upstream.headers.get('content-type') || '-', requestId: req.id });
 
@@ -797,7 +797,7 @@ app.post('/api/ollama', ollamaLimiter, validateChatBody, async (req, res) => {
         ...(req.headers['accept'] ? { 'Accept': req.headers['accept'] } : {}),
       },
       body: JSON.stringify(req.body),
-      signal: upstreamSignal(), // #73: timeout 120s (defensa en profundidad)
+      signal: upstreamSignal(), // #73: timeout 180s (defensa en profundidad)
     });
     log.info('upstream', { provider: 'ollama', flow: 'chat', status: upstream.status, ct: upstream.headers.get('content-type') || '-', requestId: req.id });
     res.status(upstream.status);
@@ -888,7 +888,7 @@ app.post('/api/kilo', kiloLimiter, validateChatBody, async (req, res) => {
         ...(req.headers['accept'] ? { 'Accept': req.headers['accept'] } : {}),
       },
       body: JSON.stringify(req.body),
-      signal: upstreamSignal(), // #73: timeout 120s (defensa en profundidad)
+      signal: upstreamSignal(), // #73: timeout 180s (defensa en profundidad)
     });
     log.info('upstream', { provider: 'kilo', flow: 'chat', status: upstream.status, ct: upstream.headers.get('content-type') || '-', requestId: req.id });
     res.status(upstream.status);

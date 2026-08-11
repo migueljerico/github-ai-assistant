@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.24] — 2026-08-11
+
+> **Elevación del Timeout del Servidor Proxy Backend (`server/index.js`) a 180s (3 minutos).**
+> - **Fix de HTTP 504 Gateway Timeout en `/api/qwencloud`:** Sincronizado `UPSTREAM_TIMEOUT_MS` en `server/index.js` y `server/__tests__/upstreamTimeout.test.js` a 180_000 ms (180s), evitando que el proxy Express cancele las llamadas a QwenCloud / Qwen 3.8 Max a los 120s cuando el modelo está generando propuestas de código extensas.
+> - **Verificación:** Pruebas unitarias de servidor `npm run test:server` verificadas al 100% verde (58 tests pasados).
+>
+> Cambio de código por Antigravity (Gemini 3.6 Flash).
+
 ## [4.0.23] — 2026-08-11
 
 > **Fix de alineación visual del menú desplegable `Más herramientas` (`ChatToolsMenu.tsx`) hacia la izquierda.**

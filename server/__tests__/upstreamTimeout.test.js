@@ -3,7 +3,7 @@ import request from 'supertest';
 import express from 'express';
 
 // ── #73: timeout automático en llamadas IA (defensa en profundidad server) ────
-// El proxy server aplica signal: AbortSignal.timeout(120s) al fetch upstream; si
+// El proxy server aplica signal: AbortSignal.timeout(180s) al fetch upstream; si
 // este se dispara (o el cliente desaparece), el catch responde 504 Gateway
 // Timeout con un mensaje accionable, en vez del 502 genérico.
 //
@@ -11,7 +11,7 @@ import express from 'express';
 // Replicamos el handler de un proxy POST (mismo patrón que /api/nim etc.) con la
 // lógica de timeout real (isUpstreamTimeout) inline, y mockeamos fetch para que
 // rechace con un error de timeout. Así validamos el shaping 504 del producto.
-const UPSTREAM_TIMEOUT_MS = 120_000;
+const UPSTREAM_TIMEOUT_MS = 180_000;
 function upstreamSignal() {
   if (typeof AbortSignal?.timeout === 'function') return AbortSignal.timeout(UPSTREAM_TIMEOUT_MS);
   const controller = new AbortController();
