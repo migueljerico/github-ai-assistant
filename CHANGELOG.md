@@ -5,7 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.26] — 2026-08-11
+
+> **Incremento de Cobertura de Tests Unitarios, Preservación Anti-Poda de READMEs y Soporte para Archivos Excel Habilitados para Macros (`.xlsm`).**
+> - **Incremento de Cobertura de Tests (Codecov):** Adición de nuevas pruebas unitarias en `gemini.test.ts`, `assistantActions.test.ts`, `actionExecutor.test.ts`, `providers.test.ts` y `github.test.ts`. 1149 tests unitarios del cliente pasados en verde (100%), alcanzando un 96.97% de cobertura de líneas en el módulo `services/`.
+> - **Preservación No Destructiva de Documentación (Anti-Poda):** Actualización de prompts en `gemini.ts` para obligar a modelos estrictos (como Qwen 3.8 Max) a **conservar y enriquecer** todas las secciones ricas de READMEs preexistentes (badges, métricas, seguridad Zero-Storage, comparativas y capturas).
+> - **Soporte de Hojas de Cálculo `.xlsm`:** Incorporación completa de la extensión `.xlsm` en la validación de adjuntos (`pdfReader.ts`), enrutado de lectura estructurada SheetJS (`assistantActions.ts`), avisos de interfaz (`FileAttachButton.tsx`) y subida a la carpeta `data/` del repositorio (`docPublisher.ts`).
+> - **Verificación:** `npm run lint` y `npm run build` en `client/` superados con cero errores.
+>
+> Cambio de código por Antigravity (Gemini 3.6 Flash).
+
 ## [4.0.25] — 2026-08-11
+
 
 > **Corrección de Etiquetado y Filtrado de Modelos Gratuitos vs Pago en QwenCloud (`providers.ts`).**
 > - **Fix de Etiqueta FREE Errónea en Modelos de Pago (`GLM 5.2`):** Actualizado el helper `fetchModels` para `qwencloud` en `providers.ts`. Anteriormente, el catálogo dinámico de QwenCloud marcaba indiscriminadamente todos los modelos devueltos como `free: true`. Ahora se clasifican adecuadamente mediante `isQwencloudFreeModel`: los modelos nativos de la capa gratuita (`qwen*`, `deepseek*`) conservan el flag `free: true` y la insignia `🆓`, mientras que modelos comerciales de pago de terceros (`glm-5.2`, `zhipu`, `baichuan`, `minimax`, `moonshot`, `yi`...) se clasifican como `free: false`, eliminando la etiqueta engañosa.

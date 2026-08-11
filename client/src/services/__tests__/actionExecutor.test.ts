@@ -604,11 +604,51 @@ describe('actionExecutor.ts', () => {
     it('devuelve unknownWorkflowAction cuando el endpoint no es /rerun', async () => {
       const action: GeminiAction = {
         tipo: 'lectura', accion: 'Ver runs', endpoint: '/repos/o/r/actions/runs/99',
-        metodo: 'GET', repo: 'r', archivo: null, contenidoPropuesto: null,
+        metodo: 'POST', repo: 'r', archivo: null, contenidoPropuesto: null,
         payload: {}, requiereConfirmacion: false,
       };
       const result = await executeWorkflowAction(mockToken, mockUser, action, targetRepo);
       expect(result.success).toBe(false);
+      expect(result.message).toBe('Acción de workflow no reconocida');
+    });
+
+    it('ejecuta rerun de workflow usando mensaje fallback cuando t no está definido', async () => {
+      vi.mocked(triggerWorkflowRun).mockResolvedValue({ status: 202 } as any);
+      const action: GeminiAction = {
+        tipo: 'escritura', accion: 'Rerun', endpoint: '/repos/o/r/actions/runs/99/rerun',
+        metodo: 'POST', repo: 'r', archivo: null, contenidoPropuesto: null,
+        payload: {}, requiereConfirmacion: true,
+      };
+      const result = await executeWorkflowAction(mockToken, mockUser, action, targetRepo);
+      expect(result.success).toBe(true);
+      expect(result.message).toBe('Workflow re-ejecutado correctamente');
+    });
+  });
+
+  describe('executePRAction - Cobertura de mensajes fallback', () => {
+    it('mergea PR usando mensaje fallback cuando t no está definido', async () => {
+      vi.mocked(mergePullRequest).mockResolvedValue({ merged: true } as any);
+      const targetRepo: GitHubRepo = { name: 'r', owner: { login: 'o' } } as any;
+      const action: GeminiAction = {
+        tipo: 'escritura', accion: 'Merge PR', endpoint: '/repos/o/r/pulls/10/merge',
+        metodo: 'PUT', repo: 'r', archivo: null, contenidoPropuesto: null,
+        payload: {}, requiereConfirmacion: true,
+      };
+      const result = await executePRAction(mockToken, mockUser, action, targetRepo);
+      expect(result.success).toBe(true);
+      expect(result.message).toBe('Pull Request fusionado correctamente');
+    });
+
+    it('devuelve mensaje fallback para acción de PR no reconocida', async () => {
+      const targetRepo: GitHubRepo = { name: 'r', owner: { login: 'o' } } as any;
+      const action: GeminiAction = {
+        tipo: 'escritura', accion: 'Desconocida', endpoint: '/repos/o/r/pulls/10/unknown',
+        metodo: 'POST', repo: 'r', archivo: null, contenidoPropuesto: null,
+        payload: {}, requiereConfirmacion: true,
+      };
+      const result = await executePRAction(mockToken, mockUser, action, targetRepo);
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Acción de PR no reconocida');
     });
   });
 
@@ -627,3 +667,4 @@ describe('actionExecutor.ts', () => {
     });
   });
 });
+

@@ -57,6 +57,8 @@ vi.mock('../docPublisher', () => ({
   createDocsDraftPr: vi.fn(),
   publishFileDoc: vi.fn(),
   uploadFilesToRepo: vi.fn(),
+  publishBulkCommit: vi.fn(),
+  publishBulkDraftPr: vi.fn(),
   // v3.66.0 (Frente D): isImageFile real para que runAttachFile decida bien.
   isImageFile: (name: string) => /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(name),
   uploadPathFor: (name: string) => {
@@ -124,7 +126,7 @@ import { readSpreadsheet } from '../../utils/spreadsheetReader';
 import { readPowerBI } from '../../utils/powerbiReader';
 import { readDocx } from '../../utils/docxReader';
 import { fetchRepoTreeRecursive, getFileContents, createRepo, repoExists, getRepo, updateRepo, listCommitDates, listRecentCommits, getCommit } from '../github';
-import { writeDocFiles, createDocsDraftPr, publishFileDoc, uploadFilesToRepo } from '../docPublisher';
+import { writeDocFiles, createDocsDraftPr, publishFileDoc, uploadFilesToRepo, publishBulkCommit, publishBulkDraftPr } from '../docPublisher';
 import { summarizeThread, parseThreadInput, listOpenThreads, formatThreadList } from '../threadSummary';
 import { generateChangelog } from '../changelogGenerator';
 import { executeAction, executeActionMultiRepo } from '../actionExecutor';
@@ -159,6 +161,7 @@ import {
   buildSignature,
   fetchExistingFileDoc,
   docPathFor,
+  runPublishBulk,
 } from '../assistantActions';
 
 const CONFIG = { provider: 'groq' as const, apiKey: 'k', model: 'm' };
@@ -2152,3 +2155,75 @@ describe('runSend — Transición Modo Chat a Modo Acción', () => {
     expect(systemPromptUsed).not.toContain('RECORDATORIO MODO ACCIÓN');
   });
 });
+
+describe('runCreateFileRelease - Manejo de errores al adjuntar assets', () => {
+  it('notifica advertencia en chat si falla la subida de un asset adjunto', async () => {
+    vi.mocked(suggestNextVersion).mockResolvedValue('v1.1.0');
+    vi.mocked(createGitHubRelease).mockResolvedValue({ url: 'http://rel.url', id: 42 });
+    vi.mocked(uploadReleaseAsset).mockRejectedValue(new Error('Fallo de red al subir asset'));
+
+    const deps = makeDeps();
+    const mockFile = new File(['content'], 'source.pdf', { type: 'application/pdf' });
+
+    await runCreateFileRelease(deps, 'owner', 'repo', 'source.pdf', 'Doc note', 'v1.1.0', mockFile);
+
+    expect(deps.addMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining('El release se creó, pero no pude adjuntar **source.pdf**: Fallo de red al subir asset'),
+      }),
+    );
+    expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'completed' }));
+  });
+});
+
+describe('runPublishBulk - Cobertura completa', () => {
+  it('publica un commit bulk exitosamente', async () => {
+    vi.mocked(publishBulkCommit).mockResolvedValue({ commitSha: '1234567890abcdef' });
+    const deps = makeDeps();
+    const targets = [{ path: 'README.md', content: 'hello' }, { path: 'DOC.md', content: 'world' }];
+
+    await runPublishBulk(deps, 'owner', 'repo', targets, 'commit');
+
+    expect(publishBulkCommit).toHaveBeenCalledWith('tok', 'owner', 'repo', targets);
+    expect(deps.addMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining('✅ Bulk de 2 archivos commiteado atómicamente en **owner/repo**'),
+      }),
+    );
+    expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'completed' }));
+  });
+
+  it('publica un Draft PR bulk exitosamente', async () => {
+    vi.mocked(publishBulkDraftPr).mockResolvedValue({ pr: { number: 99, html_url: 'http://pr.url' } as any, branchName: 'docs/auto-bulk-123' });
+
+    const deps = makeDeps();
+    const targets = [{ path: 'README.md', content: 'hello' }];
+
+    await runPublishBulk(deps, 'owner', 'repo', targets, 'draftpr');
+
+    expect(publishBulkDraftPr).toHaveBeenCalledWith('tok', 'owner', 'repo', targets);
+    expect(deps.addMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining('✅ Draft PR [#99](http://pr.url) con 1 archivo'),
+      }),
+    );
+    expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'completed' }));
+  });
+
+  it('captura errores al fallar la publicación bulk', async () => {
+    vi.mocked(publishBulkCommit).mockRejectedValue(new Error('Conflicto de fusion'));
+    const deps = makeDeps();
+    const targets = [{ path: 'README.md', content: 'hello' }];
+
+    await runPublishBulk(deps, 'owner', 'repo', targets, 'commit');
+
+    expect(deps.addMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining('❌ Error al publicar el bulk de 1 archivo'),
+      }),
+    );
+    expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'error' }));
+  });
+});
+
+

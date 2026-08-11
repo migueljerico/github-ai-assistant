@@ -917,8 +917,9 @@ export async function generateRepoDocs(
     `CONTENIDO DE ARCHIVOS CLAVE:\n\n${fileContents}`;
 
   const readmeExistingDirective = existingReadme
-    ? `\n\nCONTENIDO ACTUAL DEL README (debes MEJORARLO, no copiarlo ni reemplazarlo ciegamente — mantén su estructura y tono, corrige lo obsoleto y añade/aumenta secciones con información real del código):\n${existingReadme}`
+    ? `\n\nCONTENIDO ACTUAL DEL README (debes MEJORARLO y ENRIQUECERLO — REGLA DE ORO DE PRESERVACIÓN: CONSERVA TODAS SUS SECCIONES RICAS PREEXISTENTES. No lo reemplaces por una plantilla simplificada; conserva todos sus badges, tablas de métricas, capturas, modelo de seguridad, comparativas y secciones detalladas, actualizando solo datos obsoletos):\n${existingReadme}`
     : '\n\nEl README NO existe aún — créalo desde cero con contenido profesional.';
+
 
   const readmeSystemPrompt = `Eres un experto en documentación técnica de software de nivel profesional.
 Tu tarea es analizar el código de un repositorio y generar el contenido del archivo README.md en Markdown plano, completo, detallado y visualmente atractivo. Responde ÚNICAMENTE con el Markdown del README, sin texto introductorio ni bloques de código externos que envuelvan todo.
@@ -930,7 +931,7 @@ REQUISITOS OBLIGATORIOS PARA EL README.md
 1. CABECERA:
    - Título con emoji descriptivo del proyecto
    - Fila de badges shields.io (for-the-badge): lenguaje principal, framework/stack,
-     estado (Publicado/En desarrollo), tipo de licencia
+     estado (Publicado/En desarrollo), tipo de licencia, CI/E2E/cobertura y proveedores
    - Tagline en cursiva describiendo el proyecto en una frase
 
 2. SECCIONES (en este orden, con emojis en los títulos):
@@ -943,7 +944,8 @@ REQUISITOS OBLIGATORIOS PARA EL README.md
    🛠️ Tecnologías (tabla: Herramienta | Versión/Detalle | Uso en el proyecto)
    📚 Contexto formativo o motivación del proyecto (si aplica)
 
-3. CALIDAD:
+3. CALIDAD Y PRESERVACIÓN NO DESTRUCTIVA:
+   - REGLA DE PRESERVACIÓN Y ENRIQUECIMIENTO: Si el README existente ya posee secciones ricas (como métricas del proyecto, seguridad Zero-Storage, comparativas, desarrollo asistido por IA, limitaciones conocidas, contexto educativo, galerías de capturas o grupos extensos de badges), MANTÉN Y AMPLÍA TODAS ESTAS SECCIONES. NUNCA resumas ni elimines contenido rico preexistente.
    - Usa el contenido REAL del código para las explicaciones (nombres de funciones, rutas, comandos)
    - Los bloques de código deben contener comandos reales (npm install, python main.py, etc.)
    - Las tablas deben tener filas con información concreta, no placeholders genéricos
@@ -1144,7 +1146,7 @@ export async function generateSpecificDoc(
   } else if (targetPath.startsWith('docs/') || targetPath.startsWith('doc/')) {
     typeDirective = 'TIPO: Documentación de proyecto. Genera documentación completa y profesional para el archivo indicado, con secciones descriptivas, ejemplos y tablas.';
   } else if (targetPath.toLowerCase() === 'readme.md') {
-    typeDirective = 'TIPO: README. Genera un README profesional con: título, badges, descripción, funcionalidades, instalación, uso, estructura del proyecto, tecnologías y footer.';
+    typeDirective = 'TIPO: README. Genera o actualiza un README profesional. Si el archivo ya posee secciones detalladas (Badges de estado/CI/E2E/cobertura/stack/proveedores, Métricas, Capturas, Seguridad Zero-Storage, Comparativas, Desarrollo con IA, Limitaciones), MANTÉN TODAS ESTAS SECCIONES Y ENRIQUÉCELAS. Prohibido podar o simplificar un README rico preexistente.';
   } else if (targetPath.toLowerCase() === 'manual_tecnico.md' || targetPath.toLowerCase() === 'manual-tecnico.md') {
     typeDirective = 'TIPO: Manual técnico. Genera documentación técnica detallada: arquitectura, diagrama ASCII, estructura del proyecto, flujos, servicios, seguridad y despliegue.';
   } else {
@@ -1157,8 +1159,9 @@ export async function generateSpecificDoc(
   const cleanedExistingContent = existingContent ? cleanDocFooter(existingContent) : undefined;
 
   const existingDirective = cleanedExistingContent
-    ? `\n\nCONTENIDO ACTUAL DEL ARCHIVO (úsalo como referencia${hasUserInstruction ? ' pero la instrucción del usuario prevalece sobre preservarlo' : ' — actualízalo, no reemplazarlo ciegamente; mantén la estructura existente y mejora/añade secciones'}):\n${cleanedExistingContent}`
+    ? `\n\nCONTENIDO ACTUAL DEL ARCHIVO (úsalo como referencia — actualízalo, no reemplazarlo ciegamente; REGLA DE PRESERVACIÓN: úsalo como base y ENRIQUÉCELO${hasUserInstruction ? ' aplicando la instrucción del usuario' : ' — MANTÉN TODAS LAS SECCIONES RICAS EXISTENTES (tablas, métricas, badges, comparativas) y no podes contenido de calidad'}):\n${cleanedExistingContent}`
     : '\n\nEl archivo NO existe aún — créalo desde cero con contenido profesional.';
+
 
   const userInstructionDirective = hasUserInstruction
     ? `\n\nINSTRUCCIÓN EXPLÍCITA DEL USUARIO (PREVALECE sobre el contenido actual — aplícala aunque implique reescritura completa):\n${repoContext}`
@@ -1171,8 +1174,9 @@ ${typeDirective}${existingDirective}${userInstructionDirective}
 Reglas:
 - ${hasUserInstruction ? 'APLICA la instrucción del usuario indicada arriba, aunque implique reescribir el archivo desde cero o contradecir la estructura existente.' : 'Básate en el contexto aportado; no inventes información sobre el repo que no esté en el contexto.'}
 - Usa Markdown limpio y profesional (emojis en títulos, tablas, bloques de código cuando corresponda).
-- ${hasUserInstruction ? 'No limites la reescritura para preservar lo existente: el usuario ha pedido cambios concretos.' : 'Si hay contenido existente, respeta su estructura y tono; solo actualiza/añade.'}
+- ${hasUserInstruction ? 'No limites la reescritura para preservar lo existente: el usuario ha pedido cambios concretos.' : 'Si hay contenido existente, respeta su estructura y tono; solo actualiza/añade. PROHIBIDO eliminar secciones ricas como métricas, seguridad o comparativas.'}
 - Responde SOLO con el Markdown del documento, sin texto introductorio ni bloques de código externos que envuelvan todo.`;
+
 
   const userMessage = hasUserInstruction
     ? `Documento objetivo: \`${targetPath}\`\n\nReescribe el archivo aplicando la siguiente instrucción del usuario (es lo que ha pedido explícitamente):\n\n---\n${repoContext}\n---\n\nGenera ÚNICAMENTE el Markdown resultante.`

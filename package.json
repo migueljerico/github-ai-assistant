@@ -1,7 +1,8 @@
 {
   "name": "github-ai-assistant",
-  "version": "4.0.25",
+  "version": "4.0.26",
   "description": "Un asistente de IA que lee repositorios de GitHub sin necesidad de clonarlos",
+
   "type": "module",
   "main": "server/index.js",
   "scripts": {

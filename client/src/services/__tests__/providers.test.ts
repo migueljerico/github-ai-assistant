@@ -673,7 +673,43 @@ describe('providers — fetchModels', () => {
     expect(list).toBeDefined();
     expect(list!.map(m => m.value)).toEqual(expect.arrayContaining(['llama-3.3-70b-specdec', 'llama3-70b-8192']));
   });
+
+  it('fetchModels: cae a m.id cuando un modelo en el catálogo dinámico no tiene la propiedad name', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          { id: 'llama-3.3-70b-specdec' }, // sin name
+        ],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const list = await fetchModels(PROVIDERS.groq, 'gsk-test');
+    expect(list).toBeDefined();
+    expect(list!).toHaveLength(1);
+    expect(list![0].label).toBe('llama-3.3-70b-specdec');
+  });
+
+
+  it('nvidia (fetchModels): ordena por tiebreaker alfabético cuando dos modelos comparten la misma prioridad featured', async () => {
+    const def = { ...PROVIDERS.nvidia, modelsEndpoint: 'https://nim/models' };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: [
+        { id: 'nvidia/b-model-featured', name: 'B Model' },
+        { id: 'nvidia/a-model-featured', name: 'A Model' },
+      ] }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ 'featured-models': [
+        { model: 'nvidia/b-model-featured' },
+        { model: 'nvidia/a-model-featured' },
+      ] }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const list = await fetchModels(def, 'key');
+    expect(list!.map(m => m.value)).toEqual(['nvidia/a-model-featured', 'nvidia/b-model-featured']);
+  });
 });
+
 
 
 describe('resolveEndpoint', () => {

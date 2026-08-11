@@ -1579,8 +1579,26 @@ Detalles internos de razonamiento...
       expect(action).not.toBeNull();
       expect(action?.archivo).toBe('ok.ts');
     });
+
+    it('devuelve null en parseGeminiAction cuando hay llaves desbalanceadas { sin cerrar (cobertura extractBalancedJsonObject)', () => {
+      const rawUnbalanced = 'Texto con { llave abierta pero nunca cerrada';
+      const action = parseGeminiAction(rawUnbalanced);
+      expect(action).toBeNull();
+
+      const reasonRes = parseGeminiActionWithReason(rawUnbalanced);
+      expect(reasonRes.action).toBeNull();
+    });
+  });
+
+  describe('generateRepoDocs - Cobertura de errores', () => {
+    it('lanza un error explicativo cuando la lista de archivos está vacía', async () => {
+      await expect(generateRepoDocs('owner/repo', [])).rejects.toThrow(
+        'No hay archivos para analizar en el repositorio.',
+      );
+    });
   });
 });
+
 
 
 

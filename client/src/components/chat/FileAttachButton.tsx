@@ -31,7 +31,8 @@ export default function FileAttachButton({ disabled, fileNames, onAttach, onClea
     e.target.value = ''; // permite volver a elegir los mismos archivos
   };
 
-  const isSpreadsheet = fileNames.some(n => /\.(xlsx?|csv)$/i.test(n));
+  const isSpreadsheet = fileNames.some(n => /\.(xlsx?|xlsm|csv)$/i.test(n));
+
 
   return (
     <>
@@ -61,7 +62,8 @@ export default function FileAttachButton({ disabled, fileNames, onAttach, onClea
               {fileNames.map((name, i) => (
                 <span key={`${name}-${i}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
                   <strong style={{ fontWeight: 400, opacity: 0.85 }}>{name}</strong>
-                  {/\.(xlsx?|csv)$/i.test(name) && (
+                  {/\.(xlsx?|xlsm|csv)$/i.test(name) && (
+
                     <span style={{ fontSize: '0.7rem', opacity: 0.6, marginLeft: '4px' }}>
                       {t('chat.attachFileXlsxWarning', { maxMb: MAX_SIZE_MB })}
                     </span>

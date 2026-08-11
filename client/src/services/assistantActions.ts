@@ -1200,7 +1200,8 @@ export async function runAttachFile(deps: ChatDeps, file: File): Promise<FileCon
     const docHint = deps.t('chat.attachDocHint');
 
     // #28 Fase 3a — hojas de cálculo: muestra de filas + aviso de tokens (evita 400).
-    if (ext === 'xlsx' || ext === 'xls' || ext === 'csv') {
+    if (ext === 'xlsx' || ext === 'xlsm' || ext === 'xls' || ext === 'csv') {
+
       const { text, summary, truncated } = await readSpreadsheet(file);
       // El tamaño ya está acotado en readSpreadsheet (muestra de filas + tope por
       // hoja), así que NO reusamos el recorte a 4000 chars de formatFileContentForAI

@@ -115,7 +115,8 @@ function sanitizeRepoPath(name: string): string {
 }
 
 const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp']);
-const DATA_EXTS = new Set(['xlsx', 'xls', 'csv', 'json', 'parquet']);
+const DATA_EXTS = new Set(['xlsx', 'xlsm', 'xls', 'csv', 'json', 'parquet']);
+
 
 /** v3.66.0 (Frente D1): ¿es un archivo de imagen (por extensión)? */
 export function isImageFile(fileName: string): boolean {

@@ -56,9 +56,10 @@ function limitCsv(csv: string, maxRows: number, maxChars: number): { text: strin
 }
 
 /**
- * Lee un Excel (.xlsx/.xls) o CSV y devuelve cabeceras + una muestra de filas por
+ * Lee un Excel (.xlsx/.xlsm/.xls) o CSV y devuelve cabeceras + una muestra de filas por
  * hoja, junto con un resumen y si se truncó. Lanza un error claro si está vacío.
  */
+
 export async function readSpreadsheet(file: File): Promise<SpreadsheetResult> {
   // Mitigación v3.36.1: límite de tamaño antes de parsear (10 MB)
   if (file.size > SPREADSHEET_MAX_FILE_SIZE) {

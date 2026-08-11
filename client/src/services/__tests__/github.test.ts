@@ -1093,4 +1093,36 @@ describe('github.ts', () => {
       expect(out.files).toEqual([]);
     });
   });
+
+  describe('github.ts - Coberturas faltantes especificas', () => {
+    it('clasifica prioridad de archivos desconocidos cayendo al score por defecto 5 (cobertura línea 448)', async () => {
+      const { fetchRepoTreeRecursive } = await import('../github');
+      vi.mocked(fetch).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          truncated: false,
+          tree: [{ path: 'custom_data.xyz', type: 'blob', size: 10, sha: '1' }],
+        }),
+      } as any);
+      vi.mocked(fetch).mockResolvedValueOnce({
+        ok: true, json: async () => ({ content: btoa('custom text') }),
+      } as any);
+
+      const res = await fetchRepoTreeRecursive('tok', 'o', 'r', 'main');
+      expect(res.files.map(f => f.path)).toContain('custom_data.xyz');
+    });
+
+    it('pagina varias paginas en getPullReviewComments hasta recibir un batch menor que perPage (cobertura línea 704)', async () => {
+      const page1 = Array.from({ length: 100 }, (_, i) => ({ id: i, body: `comment_${i}` }));
+      const page2 = [{ id: 101, body: 'final' }];
+      vi.mocked(fetch)
+        .mockResolvedValueOnce({ ok: true, json: async () => page1 } as any)
+        .mockResolvedValueOnce({ ok: true, json: async () => page2 } as any);
+
+      const comments = await getPullReviewComments('tok', 'o', 'r', 10);
+      expect(comments).toHaveLength(101);
+      expect(fetch).toHaveBeenCalledTimes(2);
+    });
+  });
 });
+

@@ -11,7 +11,7 @@ import { readPDFAdvanced } from './pdfAdvanced';
 export const SUPPORTED_FILE_EXTENSIONS = [
   'pdf', 'txt', 'md', 'markdown', 'json', 'csv', 'yaml', 'yml',
   'js', 'jsx', 'ts', 'tsx', 'py', 'html', 'css', 'xml', 'log', 'env',
-  'xlsx', 'xls', // #28 Fase 3a — hojas de cálculo (Excel) vía SheetJS
+  'xlsx', 'xlsm', 'xls', // #28 Fase 3a — hojas de cálculo (Excel con/sin macros) vía SheetJS
   'pbix', 'pbit', // #28 Fase 3b — Power BI (ZIP); solo se lee la estructura JSON
   'docx', // #28 — documentos Word (ZIP OOXML); se lee el texto de word/document.xml
   'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', // v3.66.0 (Frente D) — capturas para docs
@@ -36,9 +36,10 @@ export function assertSupportedFile(file: File): void {
   if (!SUPPORTED_FILE_EXTENSIONS.includes(ext)) {
     throw new Error(
       `No puedo leer archivos «.${ext || '?'}» todavía. Por ahora acepto PDF, documentos Word (.docx), ` +
-      `hojas de cálculo (Excel, CSV), archivos Power BI (.pbix, .pbit) y archivos de texto/código.`,
+      `hojas de cálculo (Excel .xlsx/.xlsm/.xls, CSV), archivos Power BI (.pbix, .pbit) y archivos de texto/código.`,
     );
   }
+
   const maxBytes = POWERBI_EXTENSIONS.includes(ext) ? MAX_POWERBI_SIZE_BYTES : MAX_FILE_SIZE_BYTES;
   if (file.size > maxBytes) {
     const mb = (file.size / 1024 / 1024).toFixed(1);

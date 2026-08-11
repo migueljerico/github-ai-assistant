@@ -117,9 +117,11 @@ describe('assertSupportedFile (#28)', () => {
 
   it('acepta hojas de cálculo Excel/CSV (#28 Fase 3a)', () => {
     expect(() => assertSupportedFile(fileFrom('x', 'ventas.xlsx'))).not.toThrow();
+    expect(() => assertSupportedFile(fileFrom('x', 'macros.xlsm'))).not.toThrow();
     expect(() => assertSupportedFile(fileFrom('x', 'datos.xls'))).not.toThrow();
     expect(() => assertSupportedFile(fileFrom('x', 'export.csv'))).not.toThrow();
   });
+
 
   it('acepta archivos Power BI .pbix/.pbit (#28 Fase 3b)', () => {
     expect(() => assertSupportedFile(fileFrom('x', 'informe.pbix'))).not.toThrow();

@@ -145,10 +145,15 @@ describe('readSpreadsheet (#28 Fase 3a)', () => {
     expect(res.text).toContain('0 filas × 0 columnas');
   });
 
-  it('workbook con SheetNames nulo/undefined: lanza error de workbook vacío', async () => {
-    vi.mocked(XLSX.read).mockReturnValue({ SheetNames: undefined, Sheets: {} } as never);
+  it('soporta archivos Excel habilitados para macros (.xlsm)', async () => {
+    vi.mocked(XLSX.read).mockReturnValue(workbook({ Macros: { ref: 'A1:B2', csv: 'col1,col2\nval1,val2' } }) as never);
 
-    await expect(readSpreadsheet(fakeFile())).rejects.toThrow(/vac[ií]a|no se pudo leer/i);
+    const res = await readSpreadsheet(fakeFile('macros.xlsm'));
+
+    expect(XLSX.read).toHaveBeenCalledWith(expect.any(ArrayBuffer), { type: 'array' });
+    expect(res.text).toContain('Hoja "Macros"');
+    expect(res.summary).toContain('Macros');
   });
 });
+
 
