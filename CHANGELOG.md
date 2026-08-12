@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.29] — 2026-08-12
+
+> **Fix & Quality: Corrección de error 400 en documentación de repositorios, ampliación de validación a 2MB y corrección de detección free en Zenmux (`pricings`).**
+> - **Error 400 y Límites Proxy:** Elevado `MAX_CONTENT_BYTES` en `server/validators.js` de 100KB a 2MB. Los prompts de documentación multi-archivo superaban los 100KB y eran rechazados por el proxy Express con HTTP 400 (`validateChatBody`).
+> - **Extracción de Errores & Contexto:** Mejorada la extracción de cadenas de error en `callOpenAICompatible` (`client/src/services/gemini.ts`) para soportar `error`, `detail`, `message` y `errors[0].message`. Ampliada la regex `isTooLarge` para detectar adecuadamente respuestas de exceso de contexto de NVIDIA NIM y OpenAI-compatible (marcando `contextTooLarge: true`).
+> - **Zenmux (detección `pricings` plural):** Corregido bug de detección en `fetchModels` (`providers.ts`): la API de Zenmux devuelve la propiedad `pricings` en plural (`m.pricings`), lo que causaba que `m.pricing` fuera `undefined` y los 6 modelos free (`agnes-2.5-flash`, `ling-3.0-tiny`, `deepseek-v4-flash-free`, `agnes-2.0-flash`, `glm-4.7-flash-free`, `glm-4.6v-flash-free`) aparecieran sin la etiqueta 🆓 ni ordenados al inicio.
+> - **Tests & Calidad:** 1.161/1.161 tests unitarios cliente en verde + 58/58 tests servidor (100% éxito). `npm run lint` 0 errores, `npm run build` limpio.
+
+### Fixed
+- `server/validators.js`: elevado `MAX_CONTENT_BYTES` a 2MB (2.000.000 bytes) para permitir el análisis y la documentación de repositorios con múltiples archivos sin romper la validación HTTP 400.
+- `client/src/services/gemini.ts`: lectura robusta de mensajes de error devueltos como texto en `error`, `detail` y `message`; ampliación de la expresión regular `isTooLarge` para capturar errores de contexto y tokens en NVIDIA NIM.
+- `client/src/services/providers.ts`: soporte para `m.pricings || m.pricing` en Zenmux, garantizando que los 6 modelos free reales sean identificados con 🆓 y priorizados correctamente.
+
+### Tests
+- `server/__tests__/validators.test.js`: actualizado para validar el nuevo límite de 2MB.
+- `client/src/services/__tests__/gemini.test.ts`: añadidos tests de regresión para extracción de errores directos y `contextTooLarge` en NVIDIA NIM.
+- `client/src/services/__tests__/providers.test.ts`: añadido test de regresión para `pricings` en plural en Zenmux.
+
+Cambio de código por Antigravity (Gemini 3.6 Flash / Antigravity 2.0).
+
 ## [4.0.28] — 2026-08-12
 
 > **Fix & Enhancement: actualización y corrección de catálogos de modelos para NVIDIA Build (NIM), Zenmux y OpenCode Zen.**

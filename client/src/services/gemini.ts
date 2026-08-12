@@ -289,13 +289,21 @@ async function callOpenAICompatible(
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({})) as Record<string, unknown>;
-    const msg = (err?.error as Record<string, unknown>)?.message as string | undefined;
+    const rawError = err?.error;
+    const msg = typeof rawError === 'string'
+      ? rawError
+      : (rawError as Record<string, unknown>)?.message as string | undefined
+        || (err?.message as string | undefined)
+        || (err?.detail as string | undefined)
+        || (Array.isArray(err?.errors) && typeof (err.errors[0] as Record<string, unknown>)?.message === 'string'
+            ? (err.errors[0] as Record<string, unknown>).message as string
+            : undefined);
     // #50: distinguir el error de contexto excesivo (TPM/context length) del de
     // saturación del tier. El primero se marca con `contextTooLarge` para que runSend
     // pueda reintentar con menos contexto y mostrar un mensaje accionable; el segundo
     // mantiene el hint de "prueba otro modelo".
     const base = msg || `AI provider error ${res.status}`;
-    const isTooLarge = typeof msg === 'string' && /too large|reduce the length|tokens per minute|context length|maximum.{0,12}tokens|payload too/i.test(msg);
+    const isTooLarge = typeof msg === 'string' && /too large|reduce the length|tokens per minute|context length|context window|maximum.{0,12}tokens|payload too|input length|exceeds max|exceeds the max|too long|out of range|token limit/i.test(msg);
     if (isTooLarge || res.status === 413) {
       throw Object.assign(new Error(base), { status: res.status, contextTooLarge: true });
     }

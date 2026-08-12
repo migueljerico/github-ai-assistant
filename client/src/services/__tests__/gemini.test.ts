@@ -1661,5 +1661,67 @@ Detalles internos de razonamiento...
       expect(fetchMock).toHaveBeenCalled();
     });
   });
+
+  describe('callAI / callOpenAICompatible - Extracción de errores y contextTooLarge', () => {
+    beforeEach(() => { vi.restoreAllMocks(); });
+
+    it('extrae el mensaje de error cuando err.error es un string', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: async () => ({ error: 'El mensaje de error directo en la clave error' }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      await expect(callAI([{ role: 'user', content: 'hola' }], 'sys', 'groq', 'key', 'model')).rejects.toThrow(
+        'El mensaje de error directo en la clave error',
+      );
+    });
+
+    it('extrae el mensaje de error cuando viene en err.detail o err.message', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: async () => ({ detail: 'Detalle específico del error 400 de API' }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      await expect(callAI([{ role: 'user', content: 'hola' }], 'sys', 'groq', 'key', 'model')).rejects.toThrow(
+        'Detalle específico del error 400 de API',
+      );
+    });
+
+    it('extrae el mensaje de error cuando viene en err.errors[0].message', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: async () => ({ errors: [{ message: 'Error formateado en array de errores' }] }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      await expect(callAI([{ role: 'user', content: 'hola' }], 'sys', 'groq', 'key', 'model')).rejects.toThrow(
+        'Error formateado en array de errores',
+      );
+    });
+
+    it('marca contextTooLarge: true ante error 400 de NVIDIA NIM con input length / context window', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: async () => ({ error: 'input length + max_tokens (36192) exceeds max context length (32768)' }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      try {
+        await callAI([{ role: 'user', content: 'hola' }], 'sys', 'nvidia', 'key', 'model');
+        expect.unreachable('Debería haber lanzado error');
+      } catch (err: any) {
+        expect(err.message).toContain('input length + max_tokens');
+        expect(err.contextTooLarge).toBe(true);
+        expect(err.status).toBe(400);
+      }
+    });
+  });
 });
+
 

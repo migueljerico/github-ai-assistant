@@ -19,7 +19,7 @@
 // aplicación por diseño (el frontend solo usa sesión para OAuth login).
 
 export const MAX_MESSAGES = 200;       // turnos máximos por petición
-export const MAX_CONTENT_BYTES = 100_000;  // ~100KB por mensaje (texto plano)
+export const MAX_CONTENT_BYTES = 2_000_000;  // ~2MB por mensaje (texto plano/análisis multi-fichero)
 
 const VALID_ROLES = new Set(['system', 'user', 'assistant', 'developer', 'tool']);
 

@@ -709,20 +709,22 @@ describe('providers — fetchModels', () => {
     expect(glmModel?.free).toBe(false);
   });
 
-  it('zenmux (fetchModels): marca free SOLO cuando el objeto pricing existe y sus valores son 0 (v4.0.28)', async () => {
+  it('zenmux (fetchModels): marca free SOLO cuando el objeto pricing/pricings existe y sus valores son 0 (v4.0.28)', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
         data: [
           { id: 'model-nopricing' }, // sin objeto pricing -> free = false (modelo de pago de Zenmux)
           { id: 'model-emptyprices', pricing: {} }, // objeto pricing presente pero vacío -> free = true
+          { id: 'sapiens-ai/agnes-2.5-flash', display_name: 'Agnes 2.5', pricings: { completion: [{ value: 0 }], prompt: [{ value: 0 }] } }, // API real usa pricings en plural
         ],
       }),
     }));
     const list = await fetchModels(PROVIDERS.zenmux, 'sk-test');
-    expect(list).toHaveLength(2);
+    expect(list).toHaveLength(3);
     expect(list!.find(m => m.value === 'model-nopricing')!.free).toBe(false);
     expect(list!.find(m => m.value === 'model-emptyprices')!.free).toBe(true);
+    expect(list!.find(m => m.value === 'sapiens-ai/agnes-2.5-flash')!.free).toBe(true);
   });
 
   it('fetchModels groq ordena alfabéticamente y descarta deprecados', async () => {

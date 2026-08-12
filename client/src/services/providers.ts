@@ -799,24 +799,25 @@ export async function fetchModels(
     // Filtrar modelos obviamente no-chat (embedding, whisper, etc.)
     const ZENMUX_EXCLUDED = ['embed', 'whisper', 'tts', 'asr', 'rerank', 'vision', 'clip', 'audio'];
     models = data.data
-      .filter((m: { id: string; display_name?: string; name?: string; pricing?: { prompt?: Array<{ value: number | string }>; completion?: Array<{ value: number | string }> } }) => !ZENMUX_EXCLUDED.some(p => m.id.toLowerCase().includes(p)))
-      .map((m: { id: string; display_name?: string; name?: string; pricing?: { prompt?: Array<{ value: number | string }>; completion?: Array<{ value: number | string }> } }) => {
-        const pricing = m.pricing;
+      .filter((m: { id: string; display_name?: string; name?: string; pricings?: Record<string, Array<{ value?: number | string; price?: number | string }>>; pricing?: Record<string, Array<{ value?: number | string; price?: number | string }>> }) => !ZENMUX_EXCLUDED.some(p => m.id.toLowerCase().includes(p)))
+      .map((m: { id: string; display_name?: string; name?: string; pricings?: Record<string, Array<{ value?: number | string; price?: number | string }>>; pricing?: Record<string, Array<{ value?: number | string; price?: number | string }>> }) => {
+        const pricing = m.pricings || m.pricing;
         let free = false;
         if (pricing) {
-          // Solo free si el campo pricing existe Y todos sus precios son 0.
-          const promptPrice = pricing.prompt;
-          const completionPrice = pricing.completion;
-          if (!promptPrice && !completionPrice) {
-            // pricing existe pero sin arrays → pricing real a 0 (p. ej. { input: 0, output: 0 })
+          // Solo free si el campo pricing/pricings existe Y todos sus precios son 0.
+          const promptPrice = pricing.prompt || [];
+          const completionPrice = pricing.completion || [];
+          if (promptPrice.length === 0 && completionPrice.length === 0) {
             free = true;
           } else {
-            const allZero = [...(promptPrice || []), ...(completionPrice || [])]
-              .every(p => Number(p.value) === 0);
+            const allZero = [...promptPrice, ...completionPrice]
+              .every(p => Number(p.value ?? p.price ?? 0) === 0);
             free = allZero;
           }
         }
-        // Si !pricing: modelo de pago sin campo (comportamiento de la API Zenmux) → free=false
+        if (!free && m.id.toLowerCase().endsWith('-free')) {
+          free = true;
+        }
         return {
           value: m.id,
           label: m.display_name || m.name || m.id,
