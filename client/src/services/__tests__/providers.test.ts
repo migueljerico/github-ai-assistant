@@ -51,11 +51,11 @@ describe('providers — registro', () => {
     // NVIDIA NIM: proxy backend /api/nim (CORS de NIM)
     expect(PROVIDERS.nvidia.transport).toBe('openai-compatible');
     expect(PROVIDERS.nvidia.chatEndpoint).toBe('/api/nim');
-    expect(PROVIDERS.nvidia.modelsEndpoint).toBeUndefined();
-    // OpenCode Zen: proxy /api/openzen (CORS de opencode.ai), catálogo estático
+    expect(PROVIDERS.nvidia.modelsEndpoint).toBe('/api/nim/models');
+    // OpenCode Zen: proxy /api/openzen (CORS de opencode.ai), catálogo dinámico (v4.0.28)
     expect(PROVIDERS.openzen.transport).toBe('openai-compatible');
     expect(PROVIDERS.openzen.chatEndpoint).toBe('/api/openzen');
-    expect(PROVIDERS.openzen.modelsEndpoint).toBeUndefined();
+    expect(PROVIDERS.openzen.modelsEndpoint).toBe('/api/openzen/models');
     // Cloudflare: proxy /api/cloudflare (CORS de Cloudflare), catálogo dinámico vía proxy
     expect(PROVIDERS.cloudflare.transport).toBe('openai-compatible');
     expect(PROVIDERS.cloudflare.chatEndpoint).toBe('/api/cloudflare');
@@ -85,27 +85,47 @@ describe('providers — registro', () => {
     expect(def.staticModels.length).toBe(3);
   });
 
-  it('openzen: fallback incluye los 8 modelos free de 2026-08-05 (incluido longcat-2.0-free, nuevo)', () => {
+  it('openzen: fallback actualizado 2026-08-12 — hy3-free, ling-3.0-tiny-free y nemotron-3.5-lightning-free; retirados longcat-2.0-free y north-mini-code-free', () => {
     const def = PROVIDERS.openzen;
     // big-pickle es la excepción sin sufijo -free
     expect(def.staticModels.some(m => m.value === 'big-pickle')).toBe(true);
-    // longcat-2.0-free: nuevo modelo añadido en v3.68.7 (faltaba en el fallback anterior)
-    expect(def.staticModels.some(m => m.value === 'longcat-2.0-free')).toBe(true);
-    expect(def.staticModels.find(m => m.value === 'longcat-2.0-free')?.free).toBe(true);
+    // Nuevos modelos (2026-08-12)
+    expect(def.staticModels.some(m => m.value === 'hy3-free')).toBe(true);
+    expect(def.staticModels.find(m => m.value === 'hy3-free')?.free).toBe(true);
+    expect(def.staticModels.some(m => m.value === 'ling-3.0-tiny-free')).toBe(true);
+    expect(def.staticModels.find(m => m.value === 'ling-3.0-tiny-free')?.free).toBe(true);
+    expect(def.staticModels.some(m => m.value === 'nemotron-3.5-lightning-free')).toBe(true);
+    expect(def.staticModels.find(m => m.value === 'nemotron-3.5-lightning-free')?.free).toBe(true);
+    // Retirados: ya no deben aparecer
+    expect(def.staticModels.some(m => m.value === 'longcat-2.0-free')).toBe(false);
+    expect(def.staticModels.some(m => m.value === 'north-mini-code-free')).toBe(false);
     // Total: 8 modelos en el fallback
     expect(def.staticModels.length).toBe(8);
     // Todos marcados como free
     expect(def.staticModels.every(m => m.free === true)).toBe(true);
   });
 
-  it('nvidia NIM: fallback actualizado 2026-08-05 — Nemotron Super 49B presente, qwen3-next-80b retirado (ID inexistente en API real)', () => {
+  it('nvidia NIM: fallback actualizado 2026-08-12 — Nemotron 3.5 Lightning y Muse Glimmer presentes (free endpoint)', () => {
     const def = PROVIDERS.nvidia;
     // Nemotron Super 49B v1: confirmado en integrate.api.nvidia.com/v1/models
     expect(def.staticModels.some(m => m.value === 'nvidia/llama-3.3-nemotron-super-49b-v1')).toBe(true);
-    // Step 3.7 Flash: nuevo modelo confirmado en API real
+    // Step 3.7 Flash: modelo confirmado en API real
     expect(def.staticModels.some(m => m.value === 'stepfun-ai/step-3.7-flash')).toBe(true);
+    // Nuevos modelos free endpoint nim_type_preview (2026-08-12)
+    expect(def.staticModels.some(m => m.value === 'nvidia/nemotron-3.5-lightning-30b-a3b')).toBe(true);
+    expect(def.staticModels.some(m => m.value === 'meta/muse-glimmer-30b')).toBe(true);
     // qwen3-next-80b-a3b-instruct: ID que no existe en la API real → eliminado del fallback
     expect(def.staticModels.some(m => m.value === 'qwen/qwen3-next-80b-a3b-instruct')).toBe(false);
+  });
+
+  it('nvidia NIM: catálogo DINÁMICO habilitado — modelsEndpoint apunta al proxy /api/nim/models (v4.0.28)', () => {
+    const def = PROVIDERS.nvidia;
+    // Catálogo dinámico: modelsEndpoint configurado (antes era estático sin endpoint)
+    expect(def.modelsEndpoint).toBe('/api/nim/models');
+    // Requiere key para consultar el catálogo (nvapi-...)
+    expect(def.modelsNeedKey).toBe(true);
+    // chatEndpoint sigue siendo el proxy (CORS)
+    expect(def.chatEndpoint).toBe('/api/nim');
   });
 });
 
@@ -263,20 +283,49 @@ describe('providers — fetchModels', () => {
     expect(cached).not.toContain('sk-or'); // nunca la key
   });
 
-  it('nvidia: catálogo estático (NIM_FALLBACK) — fetchModels devuelve null sin endpoint dinámico', async () => {
-    // v3.32.1+: NVIDIA usa catálogo estático (NIM_FALLBACK) como Gemini, para
-    // evitar el catálogo dinámico ruidoso de NIM. Sin modelsEndpoint, fetchModels
-    // devuelve null y NO llama a la API.
-    const fetchMock = vi.fn();
+  it('nvidia NIM: catálogo DINÁMICO — fetchModels invoca /api/nim/models con key (v4.0.28)', async () => {
+    // v4.0.28: NVIDIA ahora tiene modelsEndpoint habilitado (/api/nim/models).
+    // Con key, fetchModels llama al proxy y devuelve el catálogo filtrado con NIM_EXCLUDED.
+    const mockModels = [
+      { id: 'nvidia/nemotron-3-ultra-550b-a55b', name: 'Nemotron 3 Ultra' },
+      { id: 'nvidia/nemotron-3.5-lightning-30b-a3b', name: 'Nemotron 3.5 Lightning' },
+      { id: 'meta/muse-glimmer-30b', name: 'Muse Glimmer 30B' },
+      { id: 'nvidia/embed-model', name: 'Embed (excluded)' },       // excluido por NIM_EXCLUDED
+      { id: 'nvidia/rerank-model', name: 'Rerank (excluded)' },     // excluido por NIM_EXCLUDED
+    ];
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ data: mockModels }),
+    }).mockResolvedValueOnce({
+      // Segunda llamada: featured-models.json (best-effort, puede fallar)
+      ok: false,
+    });
     vi.stubGlobal('fetch', fetchMock);
 
-    expect(await fetchModels(PROVIDERS.nvidia, 'nvapi_test')).toBeNull();
-    expect(fetchMock).not.toHaveBeenCalled();
-    // El catálogo estático son los 13 modelos curados de NIM_FALLBACK.
+    const list = await fetchModels(PROVIDERS.nvidia, 'nvapi-test');
+    expect(list).not.toBeNull();
+    // Chat Nemotron filtrado correctamente
+    expect(list!.some(m => m.value === 'nvidia/nemotron-3-ultra-550b-a55b')).toBe(true);
+    expect(list!.some(m => m.value === 'nvidia/nemotron-3.5-lightning-30b-a3b')).toBe(true);
+    expect(list!.some(m => m.value === 'meta/muse-glimmer-30b')).toBe(true);
+    // No-chat excluidos por NIM_EXCLUDED
+    expect(list!.some(m => m.value === 'nvidia/embed-model')).toBe(false);
+    expect(list!.some(m => m.value === 'nvidia/rerank-model')).toBe(false);
+    // Sin key: devuelve null (modelsNeedKey: true)
+    vi.stubGlobal('fetch', vi.fn());
+    expect(await fetchModels(PROVIDERS.nvidia, '')).toBeNull();
+    expect(await fetchModels(PROVIDERS.nvidia, undefined)).toBeNull();
+  });
+
+  it('nvidia NIM: fallback estático tiene 15 modelos incluyendo los 2 nuevos free endpoint (v4.0.28)', () => {
+    // El NIM_FALLBACK es la red de seguridad cuando el catálogo dinámico no está disponible.
     const values = PROVIDERS.nvidia.staticModels.map(m => m.value);
     expect(values).toContain('nvidia/nemotron-3-ultra-550b-a55b');
     expect(values).toContain('z-ai/glm-5.2');
-    expect(values.length).toBe(13);
+    // Nuevos (2026-08-12)
+    expect(values).toContain('nvidia/nemotron-3.5-lightning-30b-a3b');
+    expect(values).toContain('meta/muse-glimmer-30b');
+    expect(values.length).toBe(15);
   });
 
   it('zenmux: marca free por pricing 0, filtra no-chat, ordena free primero', async () => {
@@ -305,29 +354,48 @@ describe('providers — fetchModels', () => {
     expect(list!.find(m => m.value === 'paid/model')!.free).toBe(false);
   });
 
-  it('openzen: usa catálogo estático (OPENZEN_FALLBACK) sin fetch dinámico (CORS)', async () => {
-    const fetchMock = vi.fn();
+  it('openzen: catálogo DINÁMICO vía /api/openzen/models — filtra sufijo -free y big-pickle (v4.0.28)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          { id: 'big-pickle', object: 'model' },
+          { id: 'mimo-v2.5-free', object: 'model' },
+          { id: 'hy3-free', object: 'model' },
+          { id: 'laguna-s-2.1-free', object: 'model' },
+          { id: 'ling-3.0-tiny-free', object: 'model' },
+          { id: 'nemotron-3-ultra-free', object: 'model' },
+          { id: 'nemotron-3.5-lightning-free', object: 'model' },
+          { id: 'deepseek-v4-flash-free', object: 'model' },
+          { id: 'deepseek-v4-pro', object: 'model' },   // pago — excluido
+          { id: 'gpt-5.5', object: 'model' },            // pago — excluido
+          { id: 'kimi-k3', object: 'model' },            // pago — excluido
+        ],
+      }),
+    });
     vi.stubGlobal('fetch', fetchMock);
 
-    // Sin modelsEndpoint, fetchModels devuelve null (usa staticModels)
-    const list = await fetchModels(PROVIDERS.openzen);
-    expect(list).toBeNull();
-    expect(fetchMock).not.toHaveBeenCalled();
-    // El catálogo estático son los 8 modelos de OPENZEN_FALLBACK (2026-08-05)
-    const values = PROVIDERS.openzen.staticModels.map(m => m.value);
-    expect(values).toEqual([
-      'big-pickle',
-      'mimo-v2.5-free',
-      'laguna-s-2.1-free',
-      'ling-3.0-flash-free',
-      'longcat-2.0-free',
-      'north-mini-code-free',
-      'nemotron-3-ultra-free',
-      'deepseek-v4-flash-free',
-    ]);
-    // Todos son free (los 8 de la fuente oficial opencode.ai/docs/es/zen/#pricing)
-    expect(PROVIDERS.openzen.staticModels.every(m => m.free)).toBe(true);
+    const list = await fetchModels(PROVIDERS.openzen, 'sk-test-key');
+    expect(list).not.toBeNull();
+    const ids = list!.map(m => m.value);
+    // Solo modelos -free o big-pickle
+    expect(ids).toContain('big-pickle');
+    expect(ids).toContain('hy3-free');
+    expect(ids).toContain('ling-3.0-tiny-free');
+    expect(ids).toContain('nemotron-3.5-lightning-free');
+    expect(ids).toContain('deepseek-v4-flash-free');
+    // Modelos de pago excluidos
+    expect(ids).not.toContain('deepseek-v4-pro');
+    expect(ids).not.toContain('gpt-5.5');
+    expect(ids).not.toContain('kimi-k3');
+    // Todos marcados como free
+    expect(list!.every(m => m.free)).toBe(true);
+    // OPENZEN_FALLBACK es la red de seguridad (8 modelos)
     expect(PROVIDERS.openzen.staticModels.length).toBe(8);
+    expect(PROVIDERS.openzen.staticModels.every(m => m.free)).toBe(true);
+    // Sin key: devuelve null (modelsNeedKey: true)
+    expect(await fetchModels(PROVIDERS.openzen, '')).toBeNull();
+    expect(await fetchModels(PROVIDERS.openzen, undefined)).toBeNull();
   });
 
   it('cloudflare: devuelve null sin accountId (exige X-Account-Id aunque el endpoint no lleve {account_id})', async () => {
@@ -559,7 +627,7 @@ describe('providers — fetchModels', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const list = await fetchModels(def);
+    const list = await fetchModels(def, 'sk-test-key');
     const ids = list!.map(m => m.value);
     expect(ids).toEqual(['ling-3.0-flash-free', 'nemotron-3-ultra-free']);
     expect(list!.every(m => m.free === true)).toBe(true);
@@ -641,21 +709,20 @@ describe('providers — fetchModels', () => {
     expect(glmModel?.free).toBe(false);
   });
 
-  it('zenmux (fetchModels): marca free cuando pricing es undefined o no tiene precios', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
+  it('zenmux (fetchModels): marca free SOLO cuando el objeto pricing existe y sus valores son 0 (v4.0.28)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
         data: [
-          { id: 'model-nopricing' }, // sin objeto pricing -> free = true
-          { id: 'model-emptyprices', pricing: {} }, // sin prompt ni completion -> free = true
+          { id: 'model-nopricing' }, // sin objeto pricing -> free = false (modelo de pago de Zenmux)
+          { id: 'model-emptyprices', pricing: {} }, // objeto pricing presente pero vacío -> free = true
         ],
       }),
-    });
-    vi.stubGlobal('fetch', fetchMock);
-
+    }));
     const list = await fetchModels(PROVIDERS.zenmux, 'sk-test');
     expect(list).toHaveLength(2);
-    expect(list!.every(m => m.free === true)).toBe(true);
+    expect(list!.find(m => m.value === 'model-nopricing')!.free).toBe(false);
+    expect(list!.find(m => m.value === 'model-emptyprices')!.free).toBe(true);
   });
 
   it('fetchModels groq ordena alfabéticamente y descarta deprecados', async () => {
@@ -747,7 +814,7 @@ describe('modelLabel (v3.31.0)', () => {
   });
 
   it('zenmux: devuelve label legible para modelos free en fallback', () => {
-    expect(modelLabel('zenmux', 'inclusionai/ling-3.0-flash')).toBe('Ling 3.0 Flash');
+    expect(modelLabel('zenmux', 'sapiens-ai/agnes-2.5-flash')).toBe('Agnes 2.5 Flash');
     expect(modelLabel('zenmux', 'z-ai/glm-4.7-flash-free')).toBe('GLM 4.7 Flash');
     expect(modelLabel('zenmux', 'z-ai/glm-4.6v-flash-free')).toBe('GLM 4.6V Flash');
     // Modelo dinámico no en fallback → value tal cual

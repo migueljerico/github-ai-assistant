@@ -214,13 +214,18 @@ const NIM_FEATURED_URL = 'https://assets.ngc.nvidia.com/products/api-catalog/fea
 
 // Fallback de NVIDIA NIM mientras carga el catálogo o si la API falla.
 // Modelos chat/código destacados confirmados en la fuente oficial
-// (integrate.api.nvidia.com/v1/models, 2026-08-05). NIM NO distingue gratis/pago
+// (integrate.api.nvidia.com/v1/models, 2026-08-12). NIM NO distingue gratis/pago
 // en la API → sin flag free (el acceso free es un entitlement del programa Developer).
+// El catálogo DINÁMICO se habilita vía modelsEndpoint: '/api/nim/models' (proxy
+// en server/index.js línea 480). NIM_FALLBACK es red de seguridad mientras carga.
 const NIM_FALLBACK: ModelOption[] = [
   { value: 'nvidia/nemotron-3-ultra-550b-a55b', label: 'Nemotron 3 Ultra ⭐', recommended: true },
   { value: 'nvidia/llama-3.3-nemotron-super-49b-v1', label: 'Nemotron Super 49B' },
   { value: 'nvidia/nemotron-3-super-120b-a12b', label: 'Nemotron 3 Super 120B' },
   { value: 'nvidia/nemotron-3-nano-30b-a3b', label: 'Nemotron 3 Nano 30B' },
+  // Nuevos modelos free endpoint (nim_type_preview, 2026-08-12)
+  { value: 'nvidia/nemotron-3.5-lightning-30b-a3b', label: 'Nemotron 3.5 Lightning 30B ⚡' },
+  { value: 'meta/muse-glimmer-30b', label: 'Muse Glimmer 30B' },
   { value: 'z-ai/glm-5.2', label: 'GLM 5.2' },
   { value: 'deepseek-ai/deepseek-v4-pro', label: 'DeepSeek V4 Pro' },
   { value: 'deepseek-ai/deepseek-v4-flash', label: 'DeepSeek V4 Flash' },
@@ -232,31 +237,36 @@ const NIM_FALLBACK: ModelOption[] = [
   { value: 'mistralai/mistral-medium-3.5-128b', label: 'Mistral Medium 3.5' },
 ];
 
-// Fallback de Zenmux — los 4 modelos FREE confirmados hoy en la fuente oficial
-// (https://zenmux.ai/models?price_filter=free, 2026-07-31). El catálogo dinámico es la
+// Fallback de Zenmux — los 6 modelos FREE confirmados hoy en la fuente oficial
+// (https://zenmux.ai/models?price_filter=free, 2026-08-12). El catálogo dinámico es la
 // fuente viva; este array es red de seguridad mientras carga o si la API falla.
-// `inclusionai/ling-3.0-flash` NO lleva sufijo -free (su pricing es 0/0 sin sufijo).
+// IDs autoritativos extraídos de la web de Zenmux (sin sufijo -free los agnes y ling-tiny,
+// con sufijo -free los deepseek y glm — igual que aparecen en la API de Zenmux).
 const ZENMUX_FALLBACK: ModelOption[] = [
   { value: 'deepseek/deepseek-v4-flash-free', label: 'DeepSeek V4 Flash', free: true, recommended: true },
-  { value: 'inclusionai/ling-3.0-flash', label: 'Ling 3.0 Flash', free: true },
+  { value: 'sapiens-ai/agnes-2.5-flash', label: 'Agnes 2.5 Flash', free: true },
+  { value: 'inclusionai/ling-3.0-tiny', label: 'Ling 3.0 Tiny', free: true },
+  { value: 'sapiens-ai/agnes-2.0-flash', label: 'Agnes 2.0 Flash', free: true },
   { value: 'z-ai/glm-4.7-flash-free', label: 'GLM 4.7 Flash', free: true },
   { value: 'z-ai/glm-4.6v-flash-free', label: 'GLM 4.6V Flash', free: true },
 ];
 
 // Fallback de OpenCode Zen mientras carga el catálogo dinámico o si la API falla.
 // Los 8 modelos FREE confirmados hoy en la fuente oficial
-// (https://opencode.ai/docs/es/zen/#pricing, 2026-08-05). El catálogo real es PÚBLICO y se
+// (https://opencode.ai/docs/es/zen/#pricing, 2026-08-12). El catálogo real es PÚBLICO y se
 // filtra a los gratuitos (sufijo "-free"); este fallback es red de seguridad.
 // `big-pickle` es la excepción sin sufijo. Token keyless `public`.
+// Cambios respecto a 2026-08-05: longcat-2.0-free y north-mini-code-free retirados;
+// nuevos: hy3-free, ling-3.0-tiny-free, nemotron-3.5-lightning-free.
 const OPENZEN_FALLBACK: ModelOption[] = [
   { value: 'big-pickle', label: 'Big Pickle (free)', free: true, recommended: true },
-  { value: 'mimo-v2.5-free', label: 'MiMo-V2.5 (free)', free: true },
-  { value: 'laguna-s-2.1-free', label: 'Laguna S 2.1 (free)', free: true },
-  { value: 'ling-3.0-flash-free', label: 'Ling 3.0 Flash (free)', free: true },
-  { value: 'longcat-2.0-free', label: 'LongCat-2.0 (free)', free: true },
-  { value: 'north-mini-code-free', label: 'North Mini Code (free)', free: true },
-  { value: 'nemotron-3-ultra-free', label: 'Nemotron 3 Ultra (free)', free: true },
   { value: 'deepseek-v4-flash-free', label: 'DeepSeek V4 Flash (free)', free: true },
+  { value: 'mimo-v2.5-free', label: 'MiMo-V2.5 (free)', free: true },
+  { value: 'hy3-free', label: 'Hy3 (free)', free: true },
+  { value: 'laguna-s-2.1-free', label: 'Laguna S 2.1 (free)', free: true },
+  { value: 'ling-3.0-tiny-free', label: 'Ling 3.0 Tiny (free)', free: true },
+  { value: 'nemotron-3-ultra-free', label: 'Nemotron 3 Ultra (free)', free: true },
+  { value: 'nemotron-3.5-lightning-free', label: 'Nemotron 3.5 Lightning (free)', free: true },
 ];
 
 // Fallback de Cloudflare Workers AI — modelos @cf/ text-generation verificados hoy
@@ -420,10 +430,13 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     // bloquean con "Failed to fetch". El proxy en server/index.js reenvía la
     // petición al upstream (https://integrate.api.nvidia.com/v1/chat/completions)
     // de servidor a servidor, donde CORS no aplica (mismo patrón que /api/gemini).
-    // El CATÁLOGO de modelos es ESTÁTICO (NIM_FALLBACK): el catálogo dinámico de
-    // NIM es enorme y ruidoso (chat + embeddings + rerank + vision + safety…),
-    // así que mostramos solo la lista curada de 12 modelos que configuramos aquí.
+    // El CATÁLOGO de modelos es DINÁMICO vía /api/nim/models (proxy en
+    // server/index.js línea 480). NIM_FALLBACK es red de seguridad mientras carga.
+    // El catálogo dinámico se filtra con NIM_EXCLUDED (no-chat) y se enriquece
+    // con featured-models.json (NGC) para priorizar los 57 free endpoints activos.
     chatEndpoint: '/api/nim',
+    modelsEndpoint: '/api/nim/models',
+    modelsNeedKey: true, // NIM requiere nvapi-... key para consultar el catálogo
     staticModels: NIM_FALLBACK,
     defaultModel: NIM_FALLBACK[0].value,
     keyPlaceholder: 'nvapi-...',
@@ -458,11 +471,13 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     cardDesc: 'provider.openzen.cardDesc',
     transport: 'openai-compatible',
     // Proxy backend /api/openzen (elude bloqueo CORS de opencode.ai).
-    // El catálogo es ESTÁTICO (OPENZEN_FALLBACK): el endpoint de modelos opencode.ai
-    // no envía Access-Control-Allow-Origin y el navegador lo bloquea. Usamos la lista
-    // curada de 5 modelos conocidos.
+    // El catálogo es DINÁMICO vía /api/openzen/models (proxy añadido v4.0.28,
+    // retransmite a https://opencode.ai/zen/v1/models). La rama `openzen` de
+    // fetchModels filtra solo los que terminan en '-free' o son 'big-pickle'.
+    // OPENZEN_FALLBACK es red de seguridad mientras carga o si la API falla.
     chatEndpoint: '/api/openzen',
-    modelsNeedKey: false, // OpenCode Zen NO requiere API key (catálogo público)
+    modelsEndpoint: '/api/openzen/models',
+    modelsNeedKey: true, // /zen/v1/models requiere Authorization: Bearer <key>
     staticModels: OPENZEN_FALLBACK,
     defaultModel: OPENZEN_FALLBACK[0].value,
     keyPlaceholder: 'API key de opencode.ai',
@@ -776,8 +791,12 @@ export async function fetchModels(
 
     models = nimModels;
   } else if (def.id === 'zenmux') {
-    // Zenmux: catálogo con pricing → marcar free donde pricing sea 0 o ausente
-    // (patrón OpenRouter). Filtrar modelos obviamente no-chat (embedding, whisper, etc.)
+    // Zenmux: catálogo con pricing → marcar free SOLO cuando el campo `pricing`
+    // existe Y todos sus valores son 0. Si `pricing` es undefined/null, NO se
+    // marca como free (la API de Zenmux omite el campo en modelos de pago, no
+    // en los gratuitos — lección registrada v4.0.28: la lógica anterior marcaba
+    // todos los modelos sin pricing como free, mostrando erróneamente todos como 🆓).
+    // Filtrar modelos obviamente no-chat (embedding, whisper, etc.)
     const ZENMUX_EXCLUDED = ['embed', 'whisper', 'tts', 'asr', 'rerank', 'vision', 'clip', 'audio'];
     models = data.data
       .filter((m: { id: string; display_name?: string; name?: string; pricing?: { prompt?: Array<{ value: number | string }>; completion?: Array<{ value: number | string }> } }) => !ZENMUX_EXCLUDED.some(p => m.id.toLowerCase().includes(p)))
@@ -785,12 +804,12 @@ export async function fetchModels(
         const pricing = m.pricing;
         // eslint-disable-next-line no-useless-assignment -- falso positivo: el linter no sigue el closure del .map(); `free` se lee en el return de abajo.
         let free = false;
-        if (!pricing) {
-          free = true;
-        } else {
+        if (pricing) {
+          // Solo free si el campo pricing existe Y todos sus precios son 0.
           const promptPrice = pricing.prompt;
           const completionPrice = pricing.completion;
           if (!promptPrice && !completionPrice) {
+            // pricing existe pero sin arrays → pricing real a 0 (p. ej. { input: 0, output: 0 })
             free = true;
           } else {
             const allZero = [...(promptPrice || []), ...(completionPrice || [])]
@@ -798,6 +817,7 @@ export async function fetchModels(
             free = allZero;
           }
         }
+        // Si !pricing: modelo de pago sin campo (comportamiento de la API Zenmux) → free=false
         return {
           value: m.id,
           label: m.display_name || m.name || m.id,
@@ -812,7 +832,7 @@ export async function fetchModels(
     // se identifican por el sufijo "-free". Búsqueda dinámica de SOLO los modelos
     // free (decisión del usuario). Todos los listados se marcan como free.
     models = data.data
-      .filter((m: { id: string }) => m.id.toLowerCase().endsWith('-free'))
+      .filter((m: { id: string }) => m.id.toLowerCase().endsWith('-free') || m.id.toLowerCase() === 'big-pickle')
       .sort((a: { id: string }, b: { id: string }) => a.id.localeCompare(b.id))
       .map((m: { id: string }) => ({ value: m.id, label: m.id, free: true }));
   } else if (def.id === 'cloudflare') {

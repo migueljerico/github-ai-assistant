@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.28] — 2026-08-12
+
+> **Fix & Enhancement: actualización y corrección de catálogos de modelos para NVIDIA Build (NIM), Zenmux y OpenCode Zen.**
+> - **NVIDIA Build (NIM):** Habilitado el catálogo dinámico de modelos mediante el proxy `/api/nim/models` (`modelsEndpoint`). Actualizado `NIM_FALLBACK` con los nuevos modelos free endpoint `nvidia/nemotron-3.5-lightning-30b-a3b` y `meta/muse-glimmer-30b`.
+> - **Zenmux:** Corregida la detección de modelos gratuitos en `fetchModels` (sólo se marcan como `free` cuando el objeto `pricing` existe y todos sus precios son `0`, ya que la API de Zenmux omite el campo `pricing` en los modelos de pago). Actualizado `ZENMUX_FALLBACK` a los 6 modelos free reales confirmados (`agnes-2.5-flash`, `ling-3.0-tiny`, `agnes-2.0-flash`, `deepseek-v4-flash-free`, `glm-4.7-flash-free`, `glm-4.6v-flash-free`).
+> - **OpenCode Zen:** Añadido proxy backend `GET /api/openzen/models` en `server/index.js` y habilitado `modelsEndpoint` dinámico. Actualizado `OPENZEN_FALLBACK` con los 8 modelos free actuales de la fuente oficial (`big-pickle`, `deepseek-v4-flash-free`, `mimo-v2.5-free`, `hy3-free`, `laguna-s-2.1-free`, `ling-3.0-tiny-free`, `nemotron-3-ultra-free`, `nemotron-3.5-lightning-free`).
+> - **Verificación:** 53/53 tests en `providers.test.ts` pasando al 100%, `npm run lint` y `npm run build` sin errores.
+
+### Added
+- `server/index.js`: proxy endpoint `GET /api/openzen/models` con rate limiting para habilitar el catálogo dinámico de OpenCode Zen eludiendo el bloqueo CORS.
+
+### Fixed
+- `providers.ts` (`nvidia`): habilitado `modelsEndpoint: '/api/nim/models'` y añadido `nemotron-3.5-lightning-30b-a3b` y `muse-glimmer-30b` al fallback estático.
+- `providers.ts` (`zenmux`): corregido bug de marcación gratuita cuando `!pricing`. `ZENMUX_FALLBACK` actualizado con los 6 modelos free oficiales.
+- `providers.ts` (`openzen`): habilitado `modelsEndpoint: '/api/openzen/models'`, `modelsNeedKey: true`, soporte para `big-pickle` en catálogo dinámico y `OPENZEN_FALLBACK` actualizado con los 8 modelos oficiales.
+
+### Tests
+- `providers.test.ts`: actualización y adición de tests de regresión para catálogo dinámico de NIM, OpenCode Zen y filtrado de pricing de Zenmux (100% patch coverage).
+
+Cambio de código por Antigravity (Claude Sonnet 4.6 Thinking / Gemini 3.6 Flash).
+
 ## [4.0.27] — 2026-08-11
 
 > **Fix: detección de modo "mejorar" y propagación de timeout en generación de documentación.**

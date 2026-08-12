@@ -544,6 +544,38 @@ app.post('/api/openzen', openzenLimiter, validateChatBody, async (req, res) => {
   }
 });
 
+// GET /api/openzen/models — catálogo dinámico de OpenCode Zen (v4.0.28)
+// opencode.ai NO envía CORS → el navegador bloquea las llamadas directas.
+// Este proxy reenvía a https://opencode.ai/zen/v1/models con la key del usuario.
+// La rama `openzen` de fetchModels filtra los modelos free por sufijo '-free'.
+app.get('/api/openzen/models', openzenLimiter, async (req, res) => {
+  const auth = req.headers.authorization || '';
+  if (!auth.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Falta la API key (header Authorization: Bearer ...)' });
+  }
+  try {
+    const upstream = await fetch('https://opencode.ai/zen/v1/models', {
+      headers: { 'Authorization': auth },
+    });
+    if (!upstream.ok) {
+      let message = 'Error al contactar con OpenCode Zen';
+      try {
+        const body = await upstream.json();
+        message = body?.error?.message || body?.error || message;
+      } catch { /* respuesta no-JSON */ }
+      const safeStatus = (upstream.status >= 400 && upstream.status < 600) ? upstream.status : 500;
+      return res.status(safeStatus).json({ error: message });
+    }
+    const data = await upstream.json();
+    res.json(data);
+  } catch (err) {
+    log.error('proxy_error', { provider: 'openzen', flow: 'models', requestId: req.id, error: err?.message || String(err) });
+    const status = err?.status ?? 502;
+    const safeStatus = (status >= 400 && status < 600) ? status : 502;
+    res.status(safeStatus).json({ error: 'Error al contactar con OpenCode Zen' });
+  }
+});
+
 // ─── Zenmux Proxy ─────────────────────────────────────────────────────────────
 app.post('/api/zenmux', zenmuxLimiter, validateChatBody, async (req, res) => {
   const auth = req.headers.authorization || '';
