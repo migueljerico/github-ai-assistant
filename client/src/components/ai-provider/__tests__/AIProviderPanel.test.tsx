@@ -56,7 +56,7 @@ describe('AIProviderPanel — NVIDIA NIM', () => {
     expect(screen.getByText(/Modelos optimizados/)).toBeInTheDocument();
   });
 
-  it('muestra catálogo fallback con Nemotron 3 Ultra recomendado y 12 modelos', () => {
+  it('muestra catálogo fallback con Nemotron 3 Ultra recomendado y 15 modelos', () => {
     const { container } = renderPanel();
     selectProvider(container, 'nvidia');
 
@@ -68,7 +68,7 @@ describe('AIProviderPanel — NVIDIA NIM', () => {
     expect(labels).toContain('GLM 5.2');
     expect(labels).toContain('Llama 3.3 70B');
     expect(labels).toContain('DeepSeek V4 Pro');
-    expect(select.options.length).toBe(13); // fallback tiene 13 modelos
+    expect(select.options.length).toBe(getProvider('nvidia').staticModels.length); // 15 modelos
   });
 
   it('valida prefijo de clave nvapi-', () => {
