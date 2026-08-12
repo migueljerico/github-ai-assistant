@@ -802,7 +802,6 @@ export async function fetchModels(
       .filter((m: { id: string; display_name?: string; name?: string; pricing?: { prompt?: Array<{ value: number | string }>; completion?: Array<{ value: number | string }> } }) => !ZENMUX_EXCLUDED.some(p => m.id.toLowerCase().includes(p)))
       .map((m: { id: string; display_name?: string; name?: string; pricing?: { prompt?: Array<{ value: number | string }>; completion?: Array<{ value: number | string }> } }) => {
         const pricing = m.pricing;
-        // eslint-disable-next-line no-useless-assignment -- falso positivo: el linter no sigue el closure del .map(); `free` se lee en el return de abajo.
         let free = false;
         if (pricing) {
           // Solo free si el campo pricing existe Y todos sus precios son 0.
