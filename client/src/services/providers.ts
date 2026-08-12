@@ -804,16 +804,10 @@ export async function fetchModels(
         const pricing = m.pricings || m.pricing;
         let free = false;
         if (pricing) {
-          // Solo free si el campo pricing/pricings existe Y todos sus precios son 0.
           const promptPrice = pricing.prompt || [];
           const completionPrice = pricing.completion || [];
-          if (promptPrice.length === 0 && completionPrice.length === 0) {
-            free = true;
-          } else {
-            const allZero = [...promptPrice, ...completionPrice]
-              .every(p => Number(p.value ?? p.price ?? 0) === 0);
-            free = allZero;
-          }
+          const allPrices = [...promptPrice, ...completionPrice];
+          free = allPrices.length === 0 || allPrices.every(p => Number(p.value ?? p.price ?? 0) === 0);
         }
         if (!free && m.id.toLowerCase().endsWith('-free')) {
           free = true;

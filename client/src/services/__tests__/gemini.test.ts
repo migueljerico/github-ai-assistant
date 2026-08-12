@@ -1679,28 +1679,50 @@ Detalles internos de razonamiento...
     });
 
     it('extrae el mensaje de error cuando viene en err.detail o err.message', async () => {
-      const fetchMock = vi.fn().mockResolvedValue({
+      const fetchMock1 = vi.fn().mockResolvedValue({
         ok: false,
         status: 400,
         json: async () => ({ detail: 'Detalle específico del error 400 de API' }),
       });
-      vi.stubGlobal('fetch', fetchMock);
+      vi.stubGlobal('fetch', fetchMock1);
 
       await expect(callAI([{ role: 'user', content: 'hola' }], 'sys', 'groq', 'key', 'model')).rejects.toThrow(
         'Detalle específico del error 400 de API',
       );
+
+      const fetchMock2 = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: async () => ({ message: 'Mensaje directo en la raíz' }),
+      });
+      vi.stubGlobal('fetch', fetchMock2);
+
+      await expect(callAI([{ role: 'user', content: 'hola' }], 'sys', 'groq', 'key', 'model')).rejects.toThrow(
+        'Mensaje directo en la raíz',
+      );
     });
 
-    it('extrae el mensaje de error cuando viene en err.errors[0].message', async () => {
-      const fetchMock = vi.fn().mockResolvedValue({
+    it('extrae el mensaje de error cuando viene en err.errors[0].message y cae a fallback si es inválido', async () => {
+      const fetchMock1 = vi.fn().mockResolvedValue({
         ok: false,
         status: 400,
         json: async () => ({ errors: [{ message: 'Error formateado en array de errores' }] }),
       });
-      vi.stubGlobal('fetch', fetchMock);
+      vi.stubGlobal('fetch', fetchMock1);
 
       await expect(callAI([{ role: 'user', content: 'hola' }], 'sys', 'groq', 'key', 'model')).rejects.toThrow(
         'Error formateado en array de errores',
+      );
+
+      const fetchMock2 = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: async () => ({ errors: [123] }),
+      });
+      vi.stubGlobal('fetch', fetchMock2);
+
+      await expect(callAI([{ role: 'user', content: 'hola' }], 'sys', 'groq', 'key', 'model')).rejects.toThrow(
+        'AI provider error 400',
       );
     });
 

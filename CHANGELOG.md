@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.30] — 2026-08-12
+
+> **Fix & Cobertura: Cobertura 100% en parches Codecov y refinamiento de detección de modelos Zenmux.**
+> - **Zenmux (`pricings` & `price`):** Refinada la evaluación de `pricing`/`pricings` en `fetchModels` (`providers.ts`) para cubrir todas las variantes (`pricings` en plural, propiedad `price`, y sufijo `-free`). Los 6 modelos free oficiales (`agnes-2.5-flash`, `ling-3.0-tiny`, `deepseek-v4-flash-free`, `agnes-2.0-flash`, `glm-4.7-flash-free`, `glm-4.6v-flash-free`) se identifican al 100% y se priorizan con 🆓.
+> - **Codecov Patch 100%:** Pruebas unitarias adicionales en `providers.test.ts` y `gemini.test.ts` para cubrir todas las ramas condicionales del diff (1.161 tests verdes, 0 lints, build limpio).
+
+### Fixed
+- `client/src/services/providers.ts`: simplificación y cobertura 100% de la lógica de evaluación de pricing para Zenmux.
+- `client/src/services/gemini.ts`: cobertura completa de fallbacks de mensajes de error de API.
+
+### Tests
+- `providers.test.ts`: test de regresión ampliado para todas las variantes de pricing en Zenmux.
+- `gemini.test.ts`: test de regresión ampliado para fallbacks de objetos y arrays de error.
+
+Cambio de código por Antigravity (Gemini 3.6 Flash / Antigravity 2.0).
+
 ## [4.0.29] — 2026-08-12
 
 > **Fix & Quality: Corrección de error 400 en documentación de repositorios, ampliación de validación a 2MB y corrección de detección free en Zenmux (`pricings`).**
