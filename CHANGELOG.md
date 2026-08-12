@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.31] — 2026-08-12
+
+> **Fix & Feature: Sincronización dinámico-flexible de timeouts (hasta 600s), gestión mejorada de HTTP 402/504 y revisión de proveedores (NIM, QwenCloud, Zenmux y más).**
+> - **Sincronización de Timeouts (hasta 600s / 10 min):** Eliminada la restricción rígida de 180s en el servidor Express (`server/index.js`). Añadida la función `getUpstreamTimeout(req)` para leer la cabecera `X-Timeout-Ms` o `req.body.timeoutMs` enviada desde el cliente, permitiendo hasta 600.000 ms (10 min) configurables en ⚙️ para tareas intensivas (como la generación de documentación de repositorios).
+> - **Tratamiento Explícito de Errores 402 y 504:** 
+>   - **HTTP 402 (Payment Required):** `callOpenAICompatible` y `validateProviderKey` en `client/src/services/gemini.ts` identifican cuando un proveedor (NIM, Zenmux, QwenCloud, etc.) devuelve 402 por saldo/créditos agotados o falta de cuota en la cuenta, ofreciendo un mensaje claro y orientativo.
+>   - **HTTP 504 (Gateway Timeout):** Mensaje explícito orientando al usuario a subir el timeout en ⚙️ o a elegir un modelo más rápido.
+> - **Revisión de Proveedores:** Verificación completa de la pila de 11 proveedores (`gemini`, `groq`, `openrouter`, `nvidia`, `zenmux`, `openzen`, `cloudflare`, `ollama`, `kilo`, `bazaarlink`, `qwencloud`), asegurando la propagación de `X-Timeout-Ms` y `accountId`.
+> - **Cobertura & Calidad:** 1.165/1.165 tests cliente + 60/60 tests servidor (100% verde), 0 lints, build TS estricto limpio.
+
+### Added
+- `server/index.js`: función `getUpstreamTimeout(req)` y parametrización de `upstreamSignal(customTimeoutMs)` para aceptar timeouts de hasta 600s por petición.
+- `client/src/services/gemini.ts`: propagación de la cabecera `X-Timeout-Ms` en `callOpenAICompatible` y `callGeminiDirect`, y manejo explicativo de status 402 (créditos agotados) y 504 (timeout).
+
+### Fixed
+- Error de timeout involuntario a los 180s en proxies Express cuando el usuario había configurado timeouts mayores en ⚙️.
+- Mensajes opacos o engañosos al recibir respuestas HTTP 402 (Payment Required) o 504 (Gateway Timeout).
+
+### Tests
+- `server/__tests__/upstreamTimeout.test.js`: pruebas unitarias para `getUpstreamTimeout` y la cabecera `X-Timeout-Ms`.
+- `client/src/services/__tests__/gemini.test.ts`: pruebas unitarias para status 402, 504 y la cabecera `X-Timeout-Ms`.
+
+Cambio de código por Antigravity (Gemini 3.6 Flash / Antigravity 2.0).
+
 ## [4.0.30] — 2026-08-12
 
 > **Fix & Cobertura: Cobertura 100% en parches Codecov y refinamiento de detección de modelos Zenmux.**

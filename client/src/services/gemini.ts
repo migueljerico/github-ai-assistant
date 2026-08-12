@@ -254,6 +254,7 @@ async function callOpenAICompatible(
   signal?: AbortSignal,  // ← #40: permite cancelar la petición (botón Detener)
   maxTokens?: number,  // ← v3.31.0: límite de salida (4096 por defecto; docs usa 8192)
   accountId?: string | null,  // ← v3.33.1: Cloudflare — se envía como header X-Account-Id al proxy
+  timeoutMs?: number | null,
 ): Promise<string> {
   // Modo chat necesita más creatividad (0.7); modo acción debe ser determinista
   // para producir JSON estable (0.1). Por defecto se mantiene el comportamiento
@@ -282,6 +283,7 @@ async function callOpenAICompatible(
       'Content-Type': 'application/json',
       ...extraHeaders,
       ...(accountId ? { 'X-Account-Id': accountId } : {}),
+      ...(timeoutMs ? { 'X-Timeout-Ms': String(timeoutMs) } : {}),
     },
     body: JSON.stringify(body),
     signal,
@@ -330,6 +332,14 @@ async function callOpenAICompatible(
       const hint = ' — Demasiadas peticiones o límite de cuota alcanzado (429). Los modelos gratuitos tienen límites estrictos de peticiones por minuto. Espera un momento o cambia de proveedor.';
       throw Object.assign(new Error(base + hint), { status: res.status });
     }
+    if (res.status === 402) {
+      const hint = ' — Créditos agotados o cuenta sin saldo suficiente en el proveedor (402 Payment Required). Revisa tus créditos o añade saldo/cambia de proveedor en ⚙️.';
+      throw Object.assign(new Error((msg || base) + hint), { status: 402 });
+    }
+    if (res.status === 504) {
+      const hint = msg ? '' : ' — La petición tardó demasiado en responder (504 Gateway Timeout). Prueba a aumentar el timeout en ⚙️ o a elegir un modelo más rápido.';
+      throw Object.assign(new Error((msg || base) + hint), { status: 504 });
+    }
     if (res.status === 401) {
       throw Object.assign(new Error(base), { status: 401 });
     }
@@ -376,6 +386,7 @@ async function callGeminiDirect(
   onToken?: (textSoFar: string) => void,  // ← #38: streaming opcional (vía proxy SSE)
   signal?: AbortSignal,  // ← #40: permite cancelar la petición (botón Detener)
   maxTokens?: number,  // ← v3.31.0: límite de salida (docs usa 8192)
+  timeoutMs?: number | null,
 ): Promise<string> {
   const stream = Boolean(onToken);
   const body: Record<string, unknown> = { apiKey, model, messages, systemPrompt };
@@ -385,10 +396,14 @@ async function callGeminiDirect(
   if (stream) body.stream = true;
   // v3.31.0: límite de salida. El proxy lo traduce a generationConfig.maxOutputTokens.
   if (maxTokens) body.maxOutputTokens = maxTokens;
+  if (timeoutMs) body.timeoutMs = timeoutMs;
 
   const res = await fetch('/api/gemini', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(timeoutMs ? { 'X-Timeout-Ms': String(timeoutMs) } : {}),
+    },
     body: JSON.stringify(body),
     signal,
   });
@@ -463,8 +478,8 @@ export async function callAI(
   const chatEndpoint = resolveEndpoint(def.chatEndpoint!, accountId);
   return withTransientRetry(() =>
     def.transport === 'gemini-proxy'
-      ? callGeminiDirect(apiKey, model, messages, systemPrompt, mode, onToken, combinedSignal, effectiveMaxTokens)
-      : callOpenAICompatible(chatEndpoint, apiKey, model, messages, systemPrompt, mode, def.extraHeaders, onToken, combinedSignal, effectiveMaxTokens, accountId),
+      ? callGeminiDirect(apiKey, model, messages, systemPrompt, mode, onToken, combinedSignal, effectiveMaxTokens, effectiveTimeout)
+      : callOpenAICompatible(chatEndpoint, apiKey, model, messages, systemPrompt, mode, def.extraHeaders, onToken, combinedSignal, effectiveMaxTokens, accountId, effectiveTimeout),
   );
 }
 
@@ -508,6 +523,12 @@ export async function validateProviderKey(
       return {
         valid: false,
         error: `Clave inválida, compruébala en el panel de ${def.name}`,
+      };
+    }
+    if (status === 402 || message.includes('402')) {
+      return {
+        valid: false,
+        error: `Créditos agotados o cuenta sin saldo en ${def.name} (402 Payment Required)`,
       };
     }
     if (status === 429 || message.includes('429')) return { valid: true };

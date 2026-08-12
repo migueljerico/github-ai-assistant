@@ -12,12 +12,24 @@ import express from 'express';
 // lógica de timeout real (isUpstreamTimeout) inline, y mockeamos fetch para que
 // rechace con un error de timeout. Así validamos el shaping 504 del producto.
 const UPSTREAM_TIMEOUT_MS = 180_000;
-function upstreamSignal() {
-  if (typeof AbortSignal?.timeout === 'function') return AbortSignal.timeout(UPSTREAM_TIMEOUT_MS);
+function getUpstreamTimeout(req) {
+  const headerVal = req?.headers ? req.headers['x-timeout-ms'] : undefined;
+  const bodyVal = req?.body?.timeoutMs;
+  const parsed = parseInt(headerVal || bodyVal, 10);
+  if (!isNaN(parsed) && parsed > 0 && parsed <= 600_000) {
+    return parsed;
+  }
+  return UPSTREAM_TIMEOUT_MS;
+}
+
+function upstreamSignal(customTimeoutMs) {
+  const timeoutMs = (typeof customTimeoutMs === 'number' && customTimeoutMs > 0) ? customTimeoutMs : UPSTREAM_TIMEOUT_MS;
+  if (typeof AbortSignal?.timeout === 'function') return AbortSignal.timeout(timeoutMs);
   const controller = new AbortController();
-  setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+  setTimeout(() => controller.abort(), timeoutMs);
   return controller.signal;
 }
+
 function isUpstreamTimeout(err) {
   const name = err?.name;
   if (name === 'TimeoutError' || name === 'AbortError') return true;
@@ -35,7 +47,7 @@ const createTestApp = () => {
         method: 'POST',
         headers: { 'Authorization': auth, 'Content-Type': 'application/json' },
         body: JSON.stringify(req.body),
-        signal: upstreamSignal(),
+        signal: upstreamSignal(getUpstreamTimeout(req)),
       });
       res.status(upstream.status);
       await upstream.text(); // piped
@@ -77,6 +89,20 @@ describe('Proxy upstream timeout → 504 (#73)', () => {
     expect(init.signal).toBeInstanceOf(AbortSignal);
   });
 
+  it('respeta la cabecera X-Timeout-Ms cuando la envía el cliente', async () => {
+    fetchSpy.mockResolvedValue(new Response('OK', { status: 200 }));
+
+    const res = await request(app)
+      .post('/api/test-proxy')
+      .set('Authorization', 'Bearer KEY')
+      .set('X-Timeout-Ms', '600000')
+      .send({ messages: [{ role: 'user', content: 'hola' }] });
+
+    expect(res.status).toBe(200);
+    const init = fetchSpy.mock.calls[0][1];
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+  });
+
   it('detecta también AbortError puro como timeout (segundo camino del helper)', async () => {
     fetchSpy.mockRejectedValue(Object.assign(new Error('aborted'), { name: 'AbortError' }));
     const res = await request(app)
@@ -102,11 +128,19 @@ describe('Proxy upstream timeout → 504 (#73)', () => {
   });
 });
 
-describe('upstreamSignal / isUpstreamTimeout (unitarios)', () => {
+describe('upstreamSignal / isUpstreamTimeout / getUpstreamTimeout (unitarios)', () => {
   it('upstreamSignal devuelve un AbortSignal no abortado', () => {
     const sig = upstreamSignal();
     expect(sig).toBeInstanceOf(AbortSignal);
     expect(sig.aborted).toBe(false);
+  });
+
+  it('getUpstreamTimeout lee X-Timeout-Ms o timeoutMs y valida el rango', () => {
+    expect(getUpstreamTimeout({ headers: { 'x-timeout-ms': '300000' } })).toBe(300000);
+    expect(getUpstreamTimeout({ body: { timeoutMs: 600000 } })).toBe(600000);
+    expect(getUpstreamTimeout({ headers: { 'x-timeout-ms': 'invalid' } })).toBe(180000);
+    expect(getUpstreamTimeout({ headers: { 'x-timeout-ms': '9999999' } })).toBe(180000);
+    expect(getUpstreamTimeout(null)).toBe(180000);
   });
 
   it('isUpstreamTimeout reconoce TimeoutError, AbortError y mensajes con timeout', () => {

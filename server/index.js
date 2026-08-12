@@ -209,12 +209,25 @@ const NIM_BASE_URL = 'https://integrate.api.nvidia.com/v1';
 // cubre modelos de razonamiento y generación de docs largos (maxTokens 8192).
 const UPSTREAM_TIMEOUT_MS = 180_000;
 
-/** AbortSignal que se dispara a los UPSTREAM_TIMEOUT_MS. Fallback setTimeout si el
- *  runtime carece de AbortSignal.timeout (Node <17.3). */
-function upstreamSignal() {
-  if (typeof AbortSignal?.timeout === 'function') return AbortSignal.timeout(UPSTREAM_TIMEOUT_MS);
+/** Obtiene el timeout deseado para el fetch upstream a partir del header X-Timeout-Ms o req.body.timeoutMs.
+ *  Permite hasta 600,000ms (10 min) para tareas pesadas (documentación de repos), fallback a UPSTREAM_TIMEOUT_MS (180s). */
+function getUpstreamTimeout(req) {
+  const headerVal = req?.headers ? req.headers['x-timeout-ms'] : undefined;
+  const bodyVal = req?.body?.timeoutMs;
+  const parsed = parseInt(headerVal || bodyVal, 10);
+  if (!isNaN(parsed) && parsed > 0 && parsed <= 600_000) {
+    return parsed;
+  }
+  return UPSTREAM_TIMEOUT_MS;
+}
+
+/** AbortSignal que se dispara tras customTimeoutMs (o UPSTREAM_TIMEOUT_MS por defecto).
+ *  Fallback setTimeout si el runtime carece de AbortSignal.timeout (Node <17.3). */
+function upstreamSignal(customTimeoutMs) {
+  const timeoutMs = (typeof customTimeoutMs === 'number' && customTimeoutMs > 0) ? customTimeoutMs : UPSTREAM_TIMEOUT_MS;
+  if (typeof AbortSignal?.timeout === 'function') return AbortSignal.timeout(timeoutMs);
   const controller = new AbortController();
-  setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+  setTimeout(() => controller.abort(), timeoutMs);
   return controller.signal;
 }
 
@@ -283,7 +296,7 @@ function isUpstreamTimeout(err) {
     // que un fallo de setup (clave/modelo inválida) salga como JSON de error.
     // #73: requestOptions.signal aplica el timeout de 180s al SDK de Gemini.
     if (stream) {
-      const result = await chat.sendMessageStream(lastMessage.content, { signal: upstreamSignal() });
+      const result = await chat.sendMessageStream(lastMessage.content, { signal: upstreamSignal(getUpstreamTimeout(req)) });
       res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
@@ -296,7 +309,7 @@ function isUpstreamTimeout(err) {
       return res.end();
     }
 
-    const result = await chat.sendMessage(lastMessage.content, { signal: upstreamSignal() });
+    const result = await chat.sendMessage(lastMessage.content, { signal: upstreamSignal(getUpstreamTimeout(req)) });
     // v3.66.0 (Frente B): inspeccionar finishReason/blockReason ANTES de devolver el
     // texto. El SDK puede devolver text()="" sin lanzar cuando la respuesta se trunca
     // (MAX_TOKENS) o se bloquea por seguridad (promptFeedback.blockReason). Antes eso
@@ -456,7 +469,7 @@ app.post('/api/nim', nimLimiter, validateChatBody, async (req, res) => {
         ...(req.headers['accept'] ? { 'Accept': req.headers['accept'] } : {}),
       },
       body: JSON.stringify(req.body),
-      signal: upstreamSignal(), // #73: timeout 180s (defensa en profundidad)
+      signal: upstreamSignal(getUpstreamTimeout(req)), // #73: timeout configurable (defensa en profundidad)
     });
     // Log de status upstream: los errores de NIM (401/403/404/429/5xx) dejan de ser
     // opacos. Solo el status (sin body ni auth) — zero-PII.
@@ -528,7 +541,7 @@ app.post('/api/openzen', openzenLimiter, validateChatBody, async (req, res) => {
         ...(req.headers['accept'] ? { 'Accept': req.headers['accept'] } : {}),
       },
       body: JSON.stringify(req.body),
-      signal: upstreamSignal(), // #73: timeout 180s (defensa en profundidad)
+      signal: upstreamSignal(getUpstreamTimeout(req)), // #73: timeout configurable (defensa en profundidad)
     });
     log.info('upstream', { provider: 'openzen', flow: 'chat', status: upstream.status, ct: upstream.headers.get('content-type') || '-', requestId: req.id });
     res.status(upstream.status);
@@ -591,7 +604,7 @@ app.post('/api/zenmux', zenmuxLimiter, validateChatBody, async (req, res) => {
         ...(req.headers['accept'] ? { 'Accept': req.headers['accept'] } : {}),
       },
       body: JSON.stringify(req.body),
-      signal: upstreamSignal(),
+      signal: upstreamSignal(getUpstreamTimeout(req)),
     });
     log.info('upstream', { provider: 'zenmux', flow: 'chat', status: upstream.status, ct: upstream.headers.get('content-type') || '-', requestId: req.id });
     res.status(upstream.status);
@@ -689,7 +702,7 @@ app.post('/api/cloudflare', cloudflareLimiter, validateChatBody, async (req, res
         ...(req.headers['accept'] ? { 'Accept': req.headers['accept'] } : {}),
       },
       body: JSON.stringify(req.body),
-      signal: upstreamSignal(), // #73: timeout 180s (defensa en profundidad)
+      signal: upstreamSignal(getUpstreamTimeout(req)), // #73: timeout configurable (defensa en profundidad)
     });
     log.info('upstream', { provider: 'cloudflare', flow: 'chat', status: upstream.status, ct: upstream.headers.get('content-type') || '-', requestId: req.id });
 
@@ -829,7 +842,7 @@ app.post('/api/ollama', ollamaLimiter, validateChatBody, async (req, res) => {
         ...(req.headers['accept'] ? { 'Accept': req.headers['accept'] } : {}),
       },
       body: JSON.stringify(req.body),
-      signal: upstreamSignal(), // #73: timeout 180s (defensa en profundidad)
+      signal: upstreamSignal(getUpstreamTimeout(req)), // #73: timeout configurable (defensa en profundidad)
     });
     log.info('upstream', { provider: 'ollama', flow: 'chat', status: upstream.status, ct: upstream.headers.get('content-type') || '-', requestId: req.id });
     res.status(upstream.status);
@@ -920,7 +933,7 @@ app.post('/api/kilo', kiloLimiter, validateChatBody, async (req, res) => {
         ...(req.headers['accept'] ? { 'Accept': req.headers['accept'] } : {}),
       },
       body: JSON.stringify(req.body),
-      signal: upstreamSignal(), // #73: timeout 180s (defensa en profundidad)
+      signal: upstreamSignal(getUpstreamTimeout(req)), // #73: timeout configurable (defensa en profundidad)
     });
     log.info('upstream', { provider: 'kilo', flow: 'chat', status: upstream.status, ct: upstream.headers.get('content-type') || '-', requestId: req.id });
     res.status(upstream.status);
@@ -992,7 +1005,7 @@ app.post('/api/bazaarlink', bazaarlinkLimiter, validateChatBody, async (req, res
         ...(req.headers['accept'] ? { 'Accept': req.headers['accept'] } : {}),
       },
       body: JSON.stringify(req.body),
-      signal: upstreamSignal(),
+      signal: upstreamSignal(getUpstreamTimeout(req)),
     });
     log.info('upstream', { provider: 'bazaarlink', flow: 'chat', status: upstream.status, ct: upstream.headers.get('content-type') || '-', requestId: req.id });
     res.status(upstream.status);
@@ -1066,7 +1079,7 @@ app.post('/api/qwencloud', qwencloudLimiter, validateChatBody, async (req, res) 
           ...(req.headers['accept'] ? { 'Accept': req.headers['accept'] } : {}),
         },
         body: JSON.stringify(req.body),
-        signal: upstreamSignal(),
+        signal: upstreamSignal(getUpstreamTimeout(req)),
       });
       // Si la región devuelve cualquier estado que NO sea 401 (mismatch regional), significa que la clave fue aceptada por esta región (200 OK o 403 de cuotas/activación)
       if (upstream.ok || upstream.status !== 401) break;

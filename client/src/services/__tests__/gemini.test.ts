@@ -1743,6 +1743,68 @@ Detalles internos de razonamiento...
         expect(err.status).toBe(400);
       }
     });
+
+    it('procesa el error 402 (Payment Required) informando de créditos agotados', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 402,
+        json: async () => ({ error: 'Payment required: credits exhausted' }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      try {
+        await callAI([{ role: 'user', content: 'hola' }], 'sys', 'nvidia', 'key', 'model');
+        expect.unreachable('Debería haber lanzado error');
+      } catch (err: any) {
+        expect(err.status).toBe(402);
+        expect(err.message).toContain('Créditos agotados o cuenta sin saldo');
+      }
+    });
+
+    it('procesa el error 504 (Gateway Timeout) indicando que la petición tardó demasiado', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 504,
+        json: async () => ({ error: 'NVIDIA NIM tardó demasiado (timeout)' }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      try {
+        await callAI([{ role: 'user', content: 'hola' }], 'sys', 'nvidia', 'key', 'model');
+        expect.unreachable('Debería haber lanzado error');
+      } catch (err: any) {
+        expect(err.status).toBe(504);
+        expect(err.message).toContain('NVIDIA NIM tardó demasiado (timeout)');
+      }
+    });
+
+    it('envía la cabecera X-Timeout-Ms al proxy cuando se pasa timeoutMs', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ text: 'Respuesta OK', choices: [{ message: { content: 'Respuesta OK' } }] }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      await callAI([{ role: 'user', content: 'hola' }], 'sys', 'nvidia', 'key', 'model', undefined, undefined, undefined, 4096, undefined, 600000);
+
+      expect(fetchMock).toHaveBeenCalled();
+      const headers = fetchMock.mock.calls[0][1].headers;
+      expect(headers['X-Timeout-Ms']).toBe('600000');
+    });
+
+    it('envía la cabecera X-Timeout-Ms al proxy de Gemini cuando se llama a callGeminiDirect', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ text: 'Respuesta Gemini OK' }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      await callAI([{ role: 'user', content: 'hola' }], 'sys', 'gemini', 'key', 'gemini-2.5-flash', undefined, undefined, undefined, 4096, undefined, 300000);
+
+      expect(fetchMock).toHaveBeenCalled();
+      const headers = fetchMock.mock.calls[0][1].headers;
+      expect(headers['X-Timeout-Ms']).toBe('300000');
+    });
   });
 });
 
