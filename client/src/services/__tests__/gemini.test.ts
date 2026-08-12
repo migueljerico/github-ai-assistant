@@ -17,6 +17,7 @@ import {
  truncateByLines,
  cleanDocFooter,
  injectImagePreviewBlock,
+ validateProviderKey,
 } from '../gemini';
 
 describe('gemini.ts - Utilidades', () => {
@@ -1778,6 +1779,40 @@ Detalles internos de razonamiento...
       }
     });
 
+    it('procesa el error 504 (Gateway Timeout) sin mensaje específico en el body', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 504,
+        json: async () => ({}),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      try {
+        await callAI([{ role: 'user', content: 'hola' }], 'sys', 'nvidia', 'key', 'model');
+        expect.unreachable('Debería haber lanzado error');
+      } catch (err: any) {
+        expect(err.status).toBe(504);
+        expect(err.message).toContain('La petición tardó demasiado en responder');
+      }
+    });
+
+    it('procesa el error 402 sin mensaje directo en la clave error', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 402,
+        json: async () => ({}),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      try {
+        await callAI([{ role: 'user', content: 'hola' }], 'sys', 'nvidia', 'key', 'model');
+        expect.unreachable('Debería haber lanzado error');
+      } catch (err: any) {
+        expect(err.status).toBe(402);
+        expect(err.message).toContain('Créditos agotados');
+      }
+    });
+
     it('envía la cabecera X-Timeout-Ms al proxy cuando se pasa timeoutMs', async () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
@@ -1804,6 +1839,36 @@ Detalles internos de razonamiento...
       expect(fetchMock).toHaveBeenCalled();
       const headers = fetchMock.mock.calls[0][1].headers;
       expect(headers['X-Timeout-Ms']).toBe('300000');
+    });
+  });
+
+  describe('validateProviderKey - validación con status 402 (créditos agotados)', () => {
+    beforeEach(() => { vi.restoreAllMocks(); });
+
+    it('devuelve valid: false con mensaje accionable de créditos agotados cuando responde status 402', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 402,
+        json: async () => ({ error: 'Payment Required' }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const res = await validateProviderKey('nvidia', 'key', 'model');
+      expect(res.valid).toBe(false);
+      expect(res.error).toContain('Créditos agotados');
+    });
+
+    it('devuelve valid: false cuando el mensaje de error contiene 402', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: async () => ({ error: 'Upstream returned HTTP 402 Payment Required' }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const res = await validateProviderKey('nvidia', 'key', 'model');
+      expect(res.valid).toBe(false);
+      expect(res.error).toContain('Créditos agotados');
     });
   });
 });
