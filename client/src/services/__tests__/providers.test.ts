@@ -63,8 +63,12 @@ describe('providers — registro', () => {
     expect(PROVIDERS.cloudflare.modelsNeedKey).toBe(true);
   });
 
-  it('gemini incluye gemini-3-flash-preview en staticModels', () => {
+  it('gemini incluye gemini-3-flash-preview y gemini-3.7-flash en staticModels', () => {
     expect(PROVIDERS.gemini.staticModels.some(m => m.value === 'gemini-3-flash-preview')).toBe(true);
+    const m37 = PROVIDERS.gemini.staticModels.find(m => m.value === 'gemini-3.7-flash');
+    expect(m37).toBeDefined();
+    expect(m37?.label).toBe('provider.gemini.model.flash37');
+    expect(m37?.description).toBe('provider.gemini.model.flash37Desc');
   });
 
   it('kilo: openai-compatible vía proxy backend /api/kilo (sin CORS upstream), catálogo público, modelos free con sufijo :free', () => {
@@ -235,7 +239,7 @@ describe('providers — fetchModels', () => {
 
     expect(await fetchModels(PROVIDERS.gemini, 'AIzaSy_test')).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
-    // El catálogo fijo tiene los 18 modelos operativos a día de hoy.
+    // El catálogo fijo tiene los 19 modelos operativos a día de hoy.
     const values = PROVIDERS.gemini.staticModels.map(m => m.value);
     expect(values).toEqual([
       'gemini-2.5-flash',
@@ -256,6 +260,7 @@ describe('providers — fetchModels', () => {
       'gemini-3.5-flash',
       'gemini-3.5-flash-lite',
       'gemini-3.6-flash',
+      'gemini-3.7-flash',
     ]);
   });
 

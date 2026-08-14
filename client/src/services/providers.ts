@@ -54,7 +54,7 @@ export interface ProviderDef {
 // Catálogo FIJO de Gemini. El listado dinámico vía proxy fue retirado: la API
 // de Google no era fiable en prod (CORS/fallo del proxy), devolvía modelos
 // incompatibles y el usuario no veía los modelos correctos. Esta lista es la
-// fuente única de verdad — contiene exactamente los 18 modelos operativos a día de hoy.
+// fuente única de verdad — contiene exactamente los 19 modelos operativos a día de hoy.
 const GEMINI_MODELS: ModelOption[] = [
   {
     value: 'gemini-2.5-flash',
@@ -146,6 +146,11 @@ const GEMINI_MODELS: ModelOption[] = [
     value: 'gemini-3.6-flash',
     label: 'provider.gemini.model.flash36',
     description: 'provider.gemini.model.flash36Desc',
+  },
+  {
+    value: 'gemini-3.7-flash',
+    label: 'provider.gemini.model.flash37',
+    description: 'provider.gemini.model.flash37Desc',
   },
 ];
 

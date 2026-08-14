@@ -135,7 +135,7 @@ describe('AIProviderPanel — recuerda proveedor/modelo (#40)', () => {
 });
 
 describe('AIProviderPanel — catálogo fijo de Gemini (v3.24.0)', () => {
-  it('muestra los 18 modelos fijos sin hacer ningún fetch dinámico', () => {
+  it('muestra los 19 modelos fijos sin hacer ningún fetch dinámico', () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
 
@@ -147,7 +147,7 @@ describe('AIProviderPanel — catálogo fijo de Gemini (v3.24.0)', () => {
     expect(select).toBeInTheDocument();
 
     const values = Array.from(select.options).map(o => o.value);
-    // Los 18 modelos operativos del catálogo fijo a día de hoy.
+    // Los 19 modelos operativos del catálogo fijo a día de hoy.
     expect(values).toEqual([
       'gemini-2.5-flash',
       'gemini-2.5-pro',
@@ -167,6 +167,7 @@ describe('AIProviderPanel — catálogo fijo de Gemini (v3.24.0)', () => {
       'gemini-3.5-flash',
       'gemini-3.5-flash-lite',
       'gemini-3.6-flash',
+      'gemini-3.7-flash',
     ]);
 
     // No hay catálogo dinámico: fetch nunca se llama para Gemini.
@@ -371,6 +372,24 @@ describe('AIProviderPanel — interacción de teclado y visibilidad de clave', (
     expect(connectBtn).toBeInTheDocument();
     expect(connectBtn).not.toBeDisabled();
     fireEvent.click(connectBtn);
+  });
+});
+
+describe('AIProviderPanel — Gemini con Gemini 3.7 Flash', () => {
+  it('renderiza el selector de Gemini con 19 modelos y permite seleccionar Gemini 3.7 Flash', () => {
+    const { container } = renderPanel();
+    selectProvider(container, 'gemini');
+
+    const select = container.querySelector('#gemini-model-select') as HTMLSelectElement;
+    expect(select).toBeInTheDocument();
+
+    const options = Array.from(select.options).map(o => o.value);
+    expect(options).toContain('gemini-3.7-flash');
+    expect(options).toContain('gemini-2.5-flash');
+    expect(options.length).toBe(19);
+
+    fireEvent.change(select, { target: { value: 'gemini-3.7-flash' } });
+    expect(select.value).toBe('gemini-3.7-flash');
   });
 });
 
