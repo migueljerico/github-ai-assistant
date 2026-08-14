@@ -710,3 +710,64 @@ describe('DocumentFlowModal — Fix #XX: auto-fill, validación y limpieza local
     expect(screen.queryByText(/No encontré el repositorio/)).not.toBeInTheDocument();
   });
 });
+
+describe('DocumentFlowModal — Paso 4 acciones de publicación avanzadas', () => {
+  it('Paso 4 flujo archivo: ejecuta commit, draft PR y release', async () => {
+    const props = setup({
+      hasAttachedFile: true,
+      attachedFileName: 'spec.md',
+    });
+
+    // Paso 1: elegir archivo
+    fireEvent.click(screen.getByRole('button', { name: /Archivo adjunto/ }));
+    // Paso 2: generar
+    fireEvent.click(screen.getByRole('button', { name: /Generar documentación/ }));
+    // Paso 3: continuar
+    await waitFor(() => expect(screen.getByRole('button', { name: /Continuar/ })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /Continuar/ }));
+
+    // Paso 4: input de destino para archivo
+    const destRepoInput = document.getElementById('flow-dest-input') as HTMLInputElement;
+    expect(destRepoInput).toBeInTheDocument();
+    fireEvent.change(destRepoInput, { target: { value: 'owner/test-dest-repo' } });
+
+    // Commit
+    const commitBtn = screen.getByRole('button', { name: /Commit directo/i });
+    fireEvent.click(commitBtn);
+    await waitFor(() => expect(props.onPublishFile).toHaveBeenCalled());
+  });
+
+  it('Paso 4 flujo bulk: ejecuta commit directo y draft PR', async () => {
+    const props = setup({
+      repoFileTree: [{ path: 'src/index.ts' }, { path: 'src/App.tsx' }],
+    });
+
+    // Paso 1: elegir lote
+    fireEvent.click(screen.getByText('Varios archivos a la vez'));
+    // Paso 2: escribir repo y seleccionar archivos
+    const repoInput = document.getElementById('flow-bulk-repo-input') as HTMLInputElement;
+    fireEvent.change(repoInput, { target: { value: 'owner/bulk-repo' } });
+
+    const codeNode = screen.getByText('src/index.ts');
+    fireEvent.click(codeNode);
+
+    const genBulkBtn = document.getElementById('flow-generate-bulk-btn') as HTMLElement;
+    fireEvent.click(genBulkBtn);
+
+    // Paso 3: continuar
+    await waitFor(() => expect(screen.getByRole('button', { name: /Continuar/ })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /Continuar/ }));
+
+    // Paso 4: botones bulk
+    const commitBulkBtn = document.getElementById('flow-bulk-commit-btn') as HTMLElement;
+    expect(commitBulkBtn).toBeInTheDocument();
+    fireEvent.click(commitBulkBtn);
+    await waitFor(() => expect(props.onCommitBulk).toHaveBeenCalled());
+
+    const draftPrBulkBtn = document.getElementById('flow-bulk-draftpr-btn') as HTMLElement;
+    expect(draftPrBulkBtn).toBeInTheDocument();
+    fireEvent.click(draftPrBulkBtn);
+    await waitFor(() => expect(props.onDraftPrBulk).toHaveBeenCalled());
+  });
+});
+

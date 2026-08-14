@@ -2,9 +2,9 @@
 
 Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de GitHub**.
 
-**Actualizado a:** v4.0.32 — Agosto 2026
+**Actualizado a:** v4.0.33 — Agosto 2026
 
-> 📜 **Historial de Mejoras Implementadas:** Para consultar las 100+ características y correcciones resueltas desde la v1.0.0 a la v4.0.32, consulta el [Historial de Mejoras (`HISTORIAL_MEJORAS.md`)](HISTORIAL_MEJORAS.md).
+> 📜 **Historial de Mejoras Implementadas:** Para consultar las 100+ características y correcciones resueltas desde la v1.0.0 a la v4.0.33, consulta el [Historial de Mejoras (`HISTORIAL_MEJORAS.md`)](HISTORIAL_MEJORAS.md).
 
 
 ---
@@ -24,10 +24,10 @@ Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de
 #### #26 — Mantener y expandir cobertura de tests con Codecov
 **Esfuerzo:** Continuo (2-4h por sprint) · **Estado:** 🔄 En progreso
 
-**Progreso realizado (v4.0.15):** ✅ Infraestructura completa, reglas permanentes documentadas y suites ampliadas
+**Progreso realizado (v4.0.33):** ✅ Infraestructura completa, reglas permanentes documentadas y suites ampliadas
 - ✅ Vitest + Codecov + CI con GitHub Actions (cliente + servidor)
 - ✅ Badge de Codecov en README
-- ✅ **1.165 tests en el cliente (75 suites) + 60 en el servidor (8 suites)** = **1.225 unitarios** + **13 tests E2E** con Playwright. Cobertura global del cliente ampliada al **93.89% en líneas** y **84.85% en ramas**. Cobertura del 100% alcanzada en `AIProviderContext`, `ConfirmModal`, `useModalDialog`, `ChatMessage` (líneas), `DocumentRepoButton`, `ChangelogButton`, `CodeHealthButton`, `ConversationIOButton`, `AIProviderBadge`, `LanguageSelector` y utilidades/hooks (`repoRef`, `docxReader`, `useDocTargetSelector`). Norma permanente de handoff añadida en governance.
+- ✅ **1.182 tests en el cliente (75 suites) + 60 en el servidor (8 suites)** = **1.242 unitarios** + **13 tests E2E** con Playwright. Cobertura global del cliente ampliada al **>96% en líneas** y **100% de cobertura en parches Codecov**. Cobertura del 100% alcanzada en `ErrorBoundary`, `FileAttachButton`, `AIProviderContext`, `ConfirmModal`, `useModalDialog`, `ChatMessage` (líneas), `DocumentRepoButton`, `ChangelogButton`, `CodeHealthButton`, `ConversationIOButton`, `AIProviderBadge`, `LanguageSelector` y utilidades/hooks (`repoRef`, `docxReader`, `useDocTargetSelector`, `modelLabels`, `retry`).
 
 
 **Pendiente:**
@@ -48,7 +48,7 @@ Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de
 #### #66 — Revisión periódica del catálogo Gemini (cada 2-3 meses)
 **Esfuerzo:** ~1h cada revisión · **Estado:** ⏳ Pendiente (Próxima revisión: ~Octubre 2026)
 
-**Contexto:** El catálogo de Gemini es estático (`GEMINI_MODELS` en `client/src/services/providers.ts`, 18 modelos) para garantizar fiabilidad y evitar incluir modelos no-chat expuestos por la API de Google.
+**Contexto:** El catálogo de Gemini es estático (`GEMINI_MODELS` en `client/src/services/providers.ts`, 19 modelos) para garantizar fiabilidad y evitar incluir modelos no-chat expuestos por la API de Google.
 
 **Procedimiento de revisión:**
 1. Consultar la API oficial de Google Gemini (`GET /v1beta/models`).

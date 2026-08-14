@@ -117,4 +117,18 @@ describe('ChatToolsMenu', () => {
       fireEvent.keyDown(menu, { key: 'ArrowDown' });
     }).not.toThrow();
   });
+
+  it('respeta la propiedad disabled deshabilitando el botón principal', () => {
+    render(
+      <LanguageProvider>
+        <ChatToolsMenu disabled={true}>
+          <button>Opcion</button>
+        </ChatToolsMenu>
+      </LanguageProvider>
+    );
+
+    const btn = screen.getByRole('button', { name: /Más herramientas/i });
+    expect(btn).toBeDisabled();
+  });
 });
+

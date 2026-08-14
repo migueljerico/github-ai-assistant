@@ -332,4 +332,39 @@ describe('readPowerBI — Power Query / M (#28 Fase 3b-bis)', () => {
     expect(res.text).toContain('Página "SoloReport"');
     expect(res.text).not.toContain('Tabla "');
   });
+
+  it('DataMashup corrupto o con excepción en descompresión: se ignora sin romper el informe', async () => {
+    let calls = 0;
+    vi.mocked(unzipSync).mockImplementation(() => {
+      calls++;
+      if (calls === 1) {
+        return {
+          'Report/Layout': u16le(layout([{ name: 'ReportOk', visuals: ['card'] }])),
+          'DataMashup': new Uint8Array([0x01, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0xFF, 0xFF]),
+        } as never;
+      }
+      throw new Error('Zip interno corrupto');
+    });
+
+    const res = await readPowerBI(fakeFile('mashup_err.pbix'));
+    expect(res.text).toContain('Página "ReportOk"');
+  });
+
+  it('recorta el contenido si supera MAX_POWERBI_CHARS y marca truncated = true', async () => {
+    const hugeTables = Array.from({ length: 25 }, (_, i) => ({
+      name: `TablaMuyLarga_${i}`,
+      columns: Array.from({ length: 25 }, (_, j) => `ColumnaLargaDetalladaConNombreExcesivo_${j}`),
+      measures: Array.from({ length: 25 }, (_, k) => [`MedidaLarga_${k}`, `CALCULATE(SUM(Tabla[Col]), FILTER(ALL(Tabla), Tabla[Val] > ${k}))`]) as Array<[string, string]>,
+    }));
+
+    mockZip({
+      'Report/Layout': u16le(layout([{ name: 'P1', visuals: ['card'] }])),
+      'DataModelSchema': u16le(schema(hugeTables)),
+    });
+
+    const res = await readPowerBI(fakeFile('enorme.pbit'));
+    expect(res.truncated).toBe(true);
+    expect(res.text).toContain('_(contenido recortado por tamaño)_');
+  });
 });
+
