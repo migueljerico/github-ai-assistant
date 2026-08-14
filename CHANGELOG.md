@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.32] — 2026-08-14
+
+> **Feature: Incorporación de Gemini 3.7 Flash y revisión del catálogo de Google Gemini.**
+> - **Gemini 3.7 Flash:** Añadido `gemini-3.7-flash` al catálogo estático oficial de Google Gemini (`client/src/services/providers.ts`), alcanzando 19 modelos operativos.
+> - **Internacionalización completa:** Añadidas etiquetas descriptivas y textos en los 13 diccionarios de idiomas soportados (`es`, `en`, `ar`, `bn`, `de`, `fr`, `hi`, `id`, `ja`, `pt`, `ru`, `ur`, `zh`).
+> - **Utilidades y UI:** Mapeo amigable en `client/src/utils/modelLabels.ts` y soporte completo en el selector de modelos de `AIProviderPanel`.
+> - **Cobertura & Calidad:** 100% de cobertura en el diff patch para Codecov con nuevas pruebas unitarias en `providers.test.ts`, `modelLabels.test.ts`, `AIProviderPanel.test.tsx` e `i18n.test.ts` (1.170 tests cliente + 60 servidor en verde, 0 lints, build limpio).
+
+### Added
+- `client/src/services/providers.ts`: modelo `gemini-3.7-flash` en `GEMINI_MODELS` con descripciones de razonamiento híbrido y alta velocidad.
+- `client/src/i18n/*.ts`: claves `provider.gemini.model.flash37` y `provider.gemini.model.flash37Desc` en los 13 diccionarios.
+- `client/src/utils/modelLabels.ts`: entrada para `gemini-3.7-flash`.
+
+### Tests
+- `client/src/services/__tests__/providers.test.ts`: aserción de los 19 modelos estáticos de Gemini y test unitario específico para `gemini-3.7-flash`.
+- `client/src/utils/__tests__/modelLabels.test.ts`: validación de la etiqueta de `gemini-3.7-flash`.
+- `client/src/components/ai-provider/__tests__/AIProviderPanel.test.tsx`: validación del selector de modelos con 19 opciones y selección interactiva de `gemini-3.7-flash`.
+- `client/src/i18n/__tests__/i18n.test.ts`: comprobación de paridad del 100% de claves en los 13 diccionarios.
+
+Cambio de código por Antigravity (Gemini 3.7 Flash).
+
 ## [4.0.31] — 2026-08-12
 
 > **Fix & Feature: Sincronización dinámico-flexible de timeouts (hasta 600s), gestión mejorada de HTTP 402/504 y revisión de proveedores (NIM, QwenCloud, Zenmux y más).**
