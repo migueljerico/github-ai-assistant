@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import ErrorBoundary from '../ErrorBoundary';
 
@@ -33,4 +33,24 @@ describe('ErrorBoundary', () => {
     expect(screen.getByText(/algo ha fallado/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /recargar/i })).toBeInTheDocument();
   });
+
+  it('al pulsar el botón de recargar ejecuta window.location.reload', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const reloadMock = vi.fn();
+    Object.defineProperty(window, 'location', {
+      value: { reload: reloadMock },
+      writable: true,
+    });
+
+    render(
+      <ErrorBoundary>
+        <Boom />
+      </ErrorBoundary>,
+    );
+
+    const btn = screen.getByRole('button', { name: /recargar/i });
+    fireEvent.click(btn);
+    expect(reloadMock).toHaveBeenCalled();
+  });
 });
+

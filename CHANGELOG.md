@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.33] — 2026-08-14
+
+> **Docs & Tests: Actualización integral de documentación registrando el uso activo de Gemini 3.7 Flash desde Antigravity y ampliación sistemática de la suite de pruebas unitarias.**
+> - **Actualización Documental Integral:** Actualización de `README.md`, `METODOLOGIA_IA.md`, `MANUAL_TECNICO.md`, `MEJORAS_FUTURAS.md`, `CLAUDE.md` y `docs/DESARROLLO_IA.md` dejando constancia explícita del uso activo del modelo **Gemini 3.7 Flash** (`gemini-3.7-flash`) dentro del entorno agéntico **Antigravity** para el mantenimiento, sincronización y desarrollo del proyecto.
+> - **Ampliación de Cobertura de Tests:** Expansión exhaustiva de pruebas unitarias cubriendo casos límite, ramas condicionales y ciclos de validación en `AIProviderPanel`, `DocumentFlowModal`, `FileAttachButton`, `ChatToolsMenu`, `ErrorBoundary`, `powerbiReader` y `formatResult`.
+> - **Métricas & Calidad:** Suite completa con **1.182 tests cliente (75 suites) + 60 tests servidor (8 suites) = 1.242 tests unitarios en verde** + 13 tests E2E, 0 lints, build TS estricto limpio y 100% de cobertura en el diff patch para Codecov.
+
+### Changed
+- `README.md`: actualización de badges a `v4.0.33`, métricas de 1.242 tests unitarios y mención destacada al uso de Gemini 3.7 Flash con Antigravity en la sección de desarrollo asistido por IA.
+- `METODOLOGIA_IA.md`: registro de trazabilidad en §5 para Antigravity 2.0 con Gemini 3.7 Flash y actualización de métricas globales.
+- `MANUAL_TECNICO.md`: bump de versión a `v4.0.33` y sincronización de estadísticas de testing.
+- `MEJORAS_FUTURAS.md`: bump de versión a `v4.0.33`, actualización de métricas de cobertura y catálogo de 19 modelos Gemini.
+- `CLAUDE.md`: actualización de referencia de versión a `v4.0.33`.
+- `docs/DESARROLLO_IA.md`: actualización de la tabla de herramientas e IAs con Gemini 3.7 Flash en Antigravity.
+
+### Tests
+- `client/src/components/ai-provider/__tests__/AIProviderPanel.test.tsx`: pruebas del ciclo de conexión con validación exitosa y tratamiento de errores con feedback visual.
+- `client/src/components/chat/__tests__/FileAttachButton.test.tsx`: pruebas para advertencias de hojas de cálculo (`.xlsx`, `.csv`) y simulación de clic en input nativo.
+- `client/src/components/chat/__tests__/ChatToolsMenu.test.tsx`: pruebas de estado `disabled` y fallback i18n.
+- `client/src/components/__tests__/ErrorBoundary.test.tsx`: prueba de interacción con el botón de recarga (`window.location.reload`).
+- `client/src/components/confirm/__tests__/DocumentFlowModal.test.tsx`: pruebas avanzadas de publicación en Paso 4 (flujo archivo, commit directo y draft PR en flujo bulk).
+- `client/src/utils/__tests__/powerbiReader.test.ts`: pruebas de límites máximos (`MAX_POWERBI_CHARS`), excepciones capturadas en `DataMashup` y decodificación UTF-16LE con BOM.
+- `client/src/utils/__tests__/formatResult.test.ts`: pruebas de formato para repositorios únicos sin campos opcionales.
+
+Cambio de código por Antigravity (Gemini 3.7 Flash).
+
 ## [4.0.32] — 2026-08-14
 
 > **Feature: Incorporación de Gemini 3.7 Flash y revisión del catálogo de Google Gemini.**

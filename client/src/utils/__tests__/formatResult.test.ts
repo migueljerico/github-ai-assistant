@@ -63,6 +63,23 @@ describe('formatResultData', () => {
     expect(result).toContain('⭐ Estrellas: 5');
   });
 
+  it('debería formatear repositorio único público sin campos opcionales', () => {
+    const repo = {
+      name: 'public-repo',
+      full_name: 'user/public-repo',
+      private: false,
+      html_url: 'https://github.com/user/public-repo',
+    };
+
+    const result = formatResultData(repo);
+    expect(result).toContain('**user/public-repo**');
+    expect(result).toContain('Público');
+    expect(result).toContain('🔗 https://github.com/user/public-repo');
+    expect(result).not.toContain('Lenguaje:');
+    expect(result).not.toContain('⭐ Estrellas:');
+  });
+
+
   it('debería manejar contenido de archivo', () => {
     const fileContent = {
       content: 'SGVsbG8gV29ybGQ=',

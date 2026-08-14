@@ -64,4 +64,24 @@ describe('FileAttachButton (#28, #57 Tanda B multi-archivo)', () => {
     render(<FileAttachButton disabled={false} fileNames={['captura1.png']} onAttach={vi.fn()} onClearAt={vi.fn()} />);
     expect(screen.getByRole('button', { name: /Adjuntar más/ })).toBeInTheDocument();
   });
+
+  it('al pulsar el botón de adjuntar dispara el click en el input oculto', () => {
+    const { container } = render(<FileAttachButton disabled={false} fileNames={[]} onAttach={vi.fn()} onClearAt={vi.fn()} />);
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const clickSpy = vi.spyOn(input, 'click');
+
+    const btn = screen.getByRole('button', { name: /Adjuntar archivo/ });
+    fireEvent.click(btn);
+
+    expect(clickSpy).toHaveBeenCalled();
+  });
+
+  it('muestra aviso de tamaño para hojas de cálculo (.xlsx / .csv) en vista individual y múltiple', () => {
+    const { rerender } = render(<FileAttachButton disabled={false} fileNames={['datos.xlsx']} onAttach={vi.fn()} onClearAt={vi.fn()} />);
+    expect(screen.getByText(/fuentes confiables/i)).toBeInTheDocument();
+
+    rerender(<FileAttachButton disabled={false} fileNames={['doc.md', 'tabla.csv']} onAttach={vi.fn()} onClearAt={vi.fn()} />);
+    expect(screen.getByText(/fuentes confiables/i)).toBeInTheDocument();
+  });
 });
+

@@ -361,17 +361,44 @@ describe('AIProviderPanel — interacción de teclado y visibilidad de clave', (
     expect(keyInput.type).toBe('text');
   });
 
-  it('permite pulsar el botón de conectar cuando la clave no está vacía', () => {
+  it('maneja el flujo exitoso de validación y conexión', async () => {
+    const geminiService = await import('../../../services/gemini');
+    const spy = vi.spyOn(geminiService, 'validateProviderKey').mockResolvedValue({ valid: true });
+
     const { container } = renderPanel();
     selectProvider(container, 'groq');
 
     const keyInput = container.querySelector('#groq-key-input') as HTMLInputElement;
-    fireEvent.change(keyInput, { target: { value: 'gsk_123456789012345678901234567890123456' } });
+    fireEvent.change(keyInput, { target: { value: 'gsk_validkey123456789' } });
 
     const connectBtn = container.querySelector('#ai-connect-btn') as HTMLElement;
-    expect(connectBtn).toBeInTheDocument();
-    expect(connectBtn).not.toBeDisabled();
     fireEvent.click(connectBtn);
+
+    await waitFor(() => {
+      expect(spy).toHaveBeenCalled();
+    });
+
+    spy.mockRestore();
+  });
+
+  it('maneja el flujo de error de validación mostrando mensaje de error', async () => {
+    const geminiService = await import('../../../services/gemini');
+    const spy = vi.spyOn(geminiService, 'validateProviderKey').mockResolvedValue({ valid: false, error: 'Clave inválida proporcionada' });
+
+    const { container } = renderPanel();
+    selectProvider(container, 'groq');
+
+    const keyInput = container.querySelector('#groq-key-input') as HTMLInputElement;
+    fireEvent.change(keyInput, { target: { value: 'gsk_invalidkey' } });
+
+    const connectBtn = container.querySelector('#ai-connect-btn') as HTMLElement;
+    fireEvent.click(connectBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Clave inválida proporcionada/)).toBeInTheDocument();
+    });
+
+    spy.mockRestore();
   });
 });
 
@@ -392,4 +419,5 @@ describe('AIProviderPanel — Gemini con Gemini 3.7 Flash', () => {
     expect(select.value).toBe('gemini-3.7-flash');
   });
 });
+
 
