@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.34] — 2026-08-16
+
+> **Tests: expansión de cobertura Codecov (+30 tests) sobre servicios sin testear — `gemini.ts` alcanza el 100% de líneas. Cambios realizados desde ZCode con GLM-5.3.**
+> - **Cobertura:** suite cliente de 1.182 → **1.212 tests** (75 suites) y cobertura global de 95,22→**96,26%** statements / 86,67→**88,22%** branches / 94,63→**95,4%** functions / 97,47→**98,27%** lines. `gemini.ts` sube de 94,56% a **100% en líneas**; `github.ts`, `docPublisher.ts` y `threadSummary.ts` quedan al 100% en líneas y funciones; `providers.ts` al 99,5% statements.
+> - **Métricas & Calidad:** 1.212 tests cliente + 60 tests servidor = **1.272 tests unitarios en verde**, 0 errores de lint, build TS estricto limpio y solo código de test añadido (sin cambios de fuente: cobertura de parche 100% por construcción).
+
+### Tests
+- `client/src/services/__tests__/gemini.test.ts` (+16): `buildSecurityAuditContext` (#52, sin testear): bloques por archivo, filtrado de vacíos, truncado `maxLinesPerFile` y mensaje guía sin archivos; rutas restantes de `validateProviderKey` (éxito groq y gemini-proxy, 401, 429→válida, error genérico); extracción de errores HTTP de `callOpenAICompatible` (cuerpo sin JSON → "AI provider error NNN", Cloudflare 403 con hint del plan Free, 429 genérico testeado vía `validateProviderKey` para evitar el backoff de reintento); errores del proxy de Gemini (`!res.ok` con y sin campo `error`); streaming sin contenido en ambos transportes; diagnóstico de JSON truncado (registro de que Node ≥21 cambió el mensaje de V8 y la forma que dispara el detector es "Unexpected end of JSON input"); límites del escáner balanceado de `parseGeminiActions` (sin llave, sin cerrar, comillas escapadas); y `generateSpecificDoc` con documento vacío tras limpiar fences.
+- `client/src/services/__tests__/github.test.ts` (+2): orden completo de `priorityScore` (README→package.json→configs→código→fallback) y reintento con la rama por defecto tras 404 en una rama pedida explícitamente.
+- `client/src/services/__tests__/providers.test.ts` (+3): modelo de OpenRouter sin objeto `pricing` → `free:false`; deduplicación de ids duplicados en los catálogos de BazaarLink y QwenCloud; sufijo `-free` prevalece sobre los patrones de pago en QwenCloud.
+- `client/src/services/__tests__/threadSummary.test.ts` (+1): `parseThreadInput` devuelve `null` con prefijo de 3 segmentos (`a/b/c#42`).
+- `client/src/services/__tests__/changelogGenerator.test.ts` (+1): la sección `## Otros` entra en el prompt cuando hay commits sin prefijo Conventional.
+- `client/src/services/__tests__/docPublisher.test.ts` (+3): `writeDocFiles` con `extraFiles` sube cada adjunto vía `createOrUpdateBinaryFile` a `screenshots/`; sin `extraFiles` no llama al binario; `uploadFilesToRepo` enruta imagen→`screenshots/` y datos→`data/` con la rama propagada.
+
+### Changed
+- `README.md`: badge `v4.0.34`, métricas de 1.272 tests unitarios y constancia de la ampliación realizada desde ZCode con GLM-5.3.
+- `METODOLOGIA_IA.md`: fila de trazabilidad en §5 para ZCode (GLM-5.3).
+- `MANUAL_TECNICO.md`, `MEJORAS_FUTURAS.md`, `CLAUDE.md`: bump de versión a `v4.0.34` y sincronización de métricas (#26).
+
+Cambio de código por ZCode (GLM-5.3).
+
 ## [4.0.33] — 2026-08-14
 
 > **Docs & Tests: Actualización integral de documentación registrando el uso activo de Gemini 3.7 Flash desde Antigravity y ampliación sistemática de la suite de pruebas unitarias.**

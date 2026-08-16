@@ -28,7 +28,7 @@ import {
   createCommit,
   updateRef,
 } from '../github';
-import { writeDocFiles, buildDocsPrBody, createDocsDraftPr, publishFileDoc, uploadPathFor, writeDocTargets, commitMultipleFiles, publishBulkCommit, publishBulkDraftPr, buildBulkPrBody, buildImageMarkdown, isImageFile } from '../docPublisher';
+import { writeDocFiles, buildDocsPrBody, createDocsDraftPr, publishFileDoc, uploadPathFor, writeDocTargets, commitMultipleFiles, publishBulkCommit, publishBulkDraftPr, buildBulkPrBody, buildImageMarkdown, isImageFile, uploadFilesToRepo } from '../docPublisher';
 
 const TOKEN = 'tok';
 const OWNER = 'owner';
@@ -460,5 +460,57 @@ describe('#58 (a) bulk atómico (Git Data API)', () => {
       const body = buildBulkPrBody([{ path: 'a.md', content: 'x' }], 'Creado por @x y documentado por IA');
       expect(body).toContain('Creado por @x');
     });
+  });
+});
+
+// ── Expansión de cobertura (#26) — subida de adjuntos (v3.67.3) ───────────────
+
+describe('writeDocFiles / uploadFilesToRepo — archivos adjuntos extra (#26)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('writeDocFiles con extraFiles: sube cada adjunto vía createOrUpdateBinaryFile tras el README y el MANUAL', async () => {
+    vi.mocked(getFileContents)
+      .mockResolvedValueOnce({ sha: 'readme-sha' } as any)
+      .mockResolvedValueOnce({ sha: 'manual-sha' } as any)
+      .mockResolvedValue({ sha: undefined } as any); // adjuntos: no existen aún
+    vi.mocked(createOrUpdateFile).mockResolvedValue({ commit: { sha: 'c' }, content: { sha: 'c', name: 'x', path: 'x', type: 'file' } as any });
+
+    const captura = new File([new Uint8Array([1, 2, 3])], 'captura.png', { type: 'image/png' });
+    await writeDocFiles(TOKEN, OWNER, REPO, '# R', '# M', 'docs/auto-1', undefined, [captura]);
+
+    // README + MANUAL por createOrUpdateFile...
+    expect(createOrUpdateFile).toHaveBeenCalledTimes(2);
+    // ...y la imagen por createOrUpdateBinaryFile en screenshots/ (v3.67.3)
+    expect(createOrUpdateBinaryFile).toHaveBeenCalledTimes(1);
+    const [t, o, r, path, bytes, , , branch] = vi.mocked(createOrUpdateBinaryFile).mock.calls[0];
+    expect(t).toBe(TOKEN);
+    expect(o).toBe(OWNER);
+    expect(r).toBe(REPO);
+    expect(path).toBe('screenshots/captura.png');
+    expect(bytes).toBeInstanceOf(Uint8Array);
+    expect(branch).toBe('docs/auto-1');
+  });
+
+  it('writeDocFiles SIN extraFiles: no toca createOrUpdateBinaryFile', async () => {
+    vi.mocked(getFileContents).mockResolvedValue({ sha: 's' } as any);
+    vi.mocked(createOrUpdateFile).mockResolvedValue({ commit: { sha: 'c' }, content: { sha: 'c', name: 'x', path: 'x', type: 'file' } as any });
+
+    await writeDocFiles(TOKEN, OWNER, REPO, '# R', '# M');
+    expect(createOrUpdateBinaryFile).not.toHaveBeenCalled();
+  });
+
+  it('uploadFilesToRepo: enruta cada fichero por tipo (imagen→screenshots/, datos→data/)', async () => {
+    vi.mocked(getFileContents).mockResolvedValue({ sha: 's' } as any);
+
+    const imagen = new File([new Uint8Array([1])], 'foto.jpg', { type: 'image/jpeg' });
+    const datos = new File([new Uint8Array([2])], 'tabla.csv', { type: 'text/csv' });
+    await uploadFilesToRepo(TOKEN, OWNER, REPO, [imagen, datos], 'docs/auto-2');
+
+    expect(createOrUpdateBinaryFile).toHaveBeenCalledTimes(2);
+    const paths = vi.mocked(createOrUpdateBinaryFile).mock.calls.map(c => c[3]);
+    expect(paths).toEqual(['screenshots/foto.jpg', 'data/tabla.csv']);
+    expect(vi.mocked(createOrUpdateBinaryFile).mock.calls.every(c => c[7] === 'docs/auto-2')).toBe(true);
   });
 });

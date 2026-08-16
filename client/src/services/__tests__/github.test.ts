@@ -523,6 +523,63 @@ describe('github.ts', () => {
       const { fetchRepoTreeRecursive } = await import('../github');
       await expect(fetchRepoTreeRecursive('tok', 'o', 'r', 'main')).rejects.toThrow();
     });
+
+    // ── Expansión de cobertura (#26) — ramas de priorityScore y refetch 404 ────
+
+    it('ordena por prioridad: package.json y configs antes que ficheros sin patrón', async () => {
+      vi.mocked(fetch).mockImplementation(((url: any) => {
+        const u = String(url);
+        if (u.includes('/git/trees/')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              truncated: false,
+              tree: [
+                { path: 'LICENSE', type: 'blob', size: 10, sha: '0' },        // prioridad 5 (fallback)
+                { path: 'app.py', type: 'blob', size: 10, sha: '1' },         // prioridad 4 (código)
+                { path: 'vite.config.yaml', type: 'blob', size: 10, sha: '2' },// prioridad 3 (config)
+                { path: 'package.json', type: 'blob', size: 10, sha: '3' },    // prioridad 1
+                { path: 'README.md', type: 'blob', size: 10, sha: '4' },       // prioridad 0
+              ],
+            }),
+          });
+        }
+        // getFileContents
+        return Promise.resolve({ ok: true, json: async () => ({ content: btoa('x'), encoding: 'base64' }) });
+      }) as any);
+
+      const { fetchRepoTreeRecursive } = await import('../github');
+      const res = await fetchRepoTreeRecursive('tok', 'o', 'r', 'main');
+
+      // allPaths queda ordenado por priorityScore ascendente
+      expect(res.allPaths).toEqual(['README.md', 'package.json', 'vite.config.yaml', 'app.py', 'LICENSE']);
+    });
+
+    it('404 en la rama pedida explícitamente: reintenta con la rama por defecto del repo', async () => {
+      vi.mocked(fetch).mockImplementation((url) => {
+        const u = String(url);
+        if (u.endsWith('/git/trees/develop?recursive=1')) {
+          return Promise.resolve({ ok: false, status: 404, json: async () => ({ message: 'Not Found' }) } as any);
+        }
+        if (u.endsWith('/repos/o/r')) {
+          return Promise.resolve({ ok: true, json: async () => ({ default_branch: 'main' }) } as any);
+        }
+        if (u.endsWith('/git/trees/main?recursive=1')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              truncated: false,
+              tree: [{ path: 'README.md', type: 'blob', size: 10, sha: '1' }],
+            }),
+          } as any);
+        }
+        return Promise.resolve({ ok: true, json: async () => ({ content: btoa('x'), encoding: 'base64' }) } as any);
+      });
+
+      const { fetchRepoTreeRecursive } = await import('../github');
+      const res = await fetchRepoTreeRecursive('tok', 'o', 'r', 'develop');
+      expect(res.allPaths).toEqual(['README.md']);
+    });
   });
 
   describe('repoExists', () => {

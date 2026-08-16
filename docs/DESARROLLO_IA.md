@@ -363,7 +363,8 @@ Cada propuesta se revisa según criterios como:
 
 | IA / herramienta | Rol principal |
 |---|---|
-| **Antigravity 2.0 / Gemini 3.7 Flash** | Entorno de desarrollo agéntico principal y modelo activo actualmente en uso (v4.0.32–v4.0.33): soporte de Gemini 3.7 Flash en catálogo nativo con 13 idiomas, sincronización documental integral, optimización de timeouts y ampliación sistemática de cobertura hacia el 100% en Codecov |
+| **ZCode / GLM-5.3** | Modelo activo en v4.0.34 (2026-08-16): expansión de cobertura Codecov (#26) con +30 tests sobre servicios sin testear — `gemini.ts` al 100% de líneas, `github.ts`/`docPublisher.ts`/`threadSummary.ts` al 100% en líneas y funciones; cobertura global 96,26% statements / 88,22% branches con 1.272 tests unitarios en verde, y sincronización documental integral |
+| **Antigravity 2.0 / Gemini 3.7 Flash** | Entorno de desarrollo agéntico principal en el ciclo v4.0.32–v4.0.33: soporte de Gemini 3.7 Flash en catálogo nativo con 13 idiomas, sincronización documental integral, optimización de timeouts y ampliación sistemática de cobertura hacia el 100% en Codecov |
 | **Antigravity 2.0 / Gemini 3.6 Flash** | Desarrollo agéntico previo desde v3.68.0: integración de nuevos proveedores (Kilo, BazaarLink), resolución de rate limiting 429 y mantenimiento de releases |
 | **Claude / Claude Code** | Arquitectura, revisión crítica, documentación e implementación asistida |
 | **Antigravity 2.0** | Construcción inicial agéntica de la versión full-stack |

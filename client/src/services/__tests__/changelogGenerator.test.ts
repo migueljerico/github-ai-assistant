@@ -129,6 +129,21 @@ describe('generateChangelog (#34)', () => {
     const userMsg = vi.mocked(callAI).mock.calls[0][0][0].content;
     expect(userMsg).toContain('nueva funcionalidad');
   });
+
+  it('incluye la sección "## Otros" en el prompt cuando hay commits sin prefijo reconocido (#26)', async () => {
+    vi.mocked(getLatestReleaseTag).mockResolvedValue(null);
+    vi.mocked(listRecentCommits).mockResolvedValue([
+      mk('feat: algo'),
+      mk('cambios varios'), // sin prefijo → va a "otros"
+    ]);
+    vi.mocked(callAI).mockResolvedValue('notas');
+
+    await generateChangelog('tok', 'o', 'r', CONFIG);
+
+    const userMsg = vi.mocked(callAI).mock.calls[0][0][0].content;
+    expect(userMsg).toContain('## Otros');
+    expect(userMsg).toContain('cambios varios');
+  });
 });
 
 describe('classifyCommits — edge cases (#34, #26)', () => {

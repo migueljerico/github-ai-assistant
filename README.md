@@ -2,7 +2,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge" alt="Estado" />
-  <a href="https://github.com/migueljerico/github-ai-assistant/releases"><img src="https://img.shields.io/badge/Versión-v4.0.33-blue?style=for-the-badge" alt="Versión" /></a>
+  <a href="https://github.com/migueljerico/github-ai-assistant/releases"><img src="https://img.shields.io/badge/Versión-v4.0.34-blue?style=for-the-badge" alt="Versión" /></a>
 
 
   <a href="./LICENSE"><img src="https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge" alt="License" /></a>
@@ -85,7 +85,7 @@ Todo bajo el principio:
 | ⏱️ Tiempo de desarrollo | 2 meses de desarrollo continuo |
 | ⚡ Latencia observada | ~400ms Groq / ~1.2s Gemini, variable según modelo y contexto |
 | 🛡️ Seguridad | Zero-Storage: credenciales solo en memoria React |
-| 🧪 Tests | 1.242 tests unitarios (1.182 cliente + 60 servidor) + 13 E2E (Playwright) |
+| 🧪 Tests | 1.272 tests unitarios (1.212 cliente + 60 servidor) + 13 E2E (Playwright) |
 | 🌐 i18n | 13 idiomas globales (ES, EN, ZH, HI, FR, AR, BN, PT, ID, UR, RU, DE, JA) con soporte RTL |
 | 🌍 Deploy | Google Cloud Run |
 | 📦 Stack | React + TypeScript + Express + Vite |
@@ -240,7 +240,7 @@ Ver detalle en ./docs/SEGURIDAD.md.
 
 El proyecto usa **Vitest**, **React Testing Library**, **Playwright**, **GitHub Actions** y **Codecov**.
 
-- **1.225 tests unitarios (1.165 cliente + 60 servidor)** + **13 tests E2E** con Playwright (5 specs)
+- **1.272 tests unitarios (1.212 cliente + 60 servidor)** + **13 tests E2E** con Playwright (5 specs)
 - Tests unitarios, integración y componentes
 - Tests del servidor
 - Tests E2E del flujo crítico en navegador real (auth → chat → acción confirmada), del toggle de tema, de i18n, de persistencia y de accesibilidad (foco visible `:focus-visible` + `prefers-reduced-motion`, WCAG 2.4.7/2.3.3)
@@ -304,7 +304,8 @@ http://localhost:5173
 
 Este proyecto fue construido con un flujo humano ↔ IA basado en validación cruzada, revisión crítica y dogfooding.
 
-- **Antigravity 2.0 / Gemini 3.7 Flash:** entorno de desarrollo agéntico principal y modelo activo actualmente en uso. Desde **v3.68.0** y consolidado en **v4.0.32/v4.0.33 (2026-08-14)**, asume el desarrollo agéntico integral del proyecto: incorporación de Gemini 3.7 Flash (`gemini-3.7-flash`) al catálogo nativo con soporte i18n en 13 idiomas, sincronización y mantenimiento documental de todo el repositorio, optimización de timeouts y reintentos, y ampliación sistemática de la suite de pruebas unitarias hacia el 100% de cobertura en Codecov.
+- **ZCode (builtin:zai-start-plan/GLM-5.3):** modelo activo en **v4.0.34 (2026-08-16)** — expansión de cobertura Codecov (#26) con **+30 tests unitarios** sobre servicios sin testear: `gemini.ts` al **100% de líneas** (`buildSecurityAuditContext` del Modo Auditoría, rutas de `validateProviderKey`, errores HTTP de ambos transportes, streaming vacío, diagnóstico de JSON truncado y límites del escáner balanceado), `priorityScore` y refetch 404 en `github.ts`, dedup de catálogos y detección free en `providers.ts`, y subida de adjuntos en `docPublisher.ts`. Cobertura global del cliente: 95,22→**96,26%** statements y 86,67→**88,22%** branches; suite total 1.272 unitarios en verde. Sincronización documental completa (CHANGELOG, METODOLOGIA_IA, MANUAL_TECNICO, MEJORAS_FUTURAS, CLAUDE.md).
+- **Antigravity 2.0 / Gemini 3.7 Flash:** entorno de desarrollo agéntico principal en el ciclo v3.68.0–v4.0.33 (2026-08-14): incorporación de Gemini 3.7 Flash (`gemini-3.7-flash`) al catálogo nativo con soporte i18n en 13 idiomas, sincronización y mantenimiento documental de todo el repositorio, optimización de timeouts y reintentos, y ampliación sistemática de la suite de pruebas unitarias hacia el 100% de cobertura en Codecov.
 - **Antigravity 2.0 / Gemini 3.6 Flash:** desarrollo agéntico previo, integración de proveedores Kilo y BazaarLink, solución de error 429 de rate limit, reintentos transitorios y mantenimiento de releases.
 - **Claude / Claude Code:** arquitectura, revisión crítica, implementación asistida y documentación.
 - **Antigravity 2.0:** construcción inicial agéntica de la versión full-stack.
