@@ -59,6 +59,11 @@ describe('parseThreadInput', () => {
     expect(parseThreadInput('')).toBeNull();
     expect(parseThreadInput('???')).toBeNull();
   });
+
+  it('devuelve null con número pero prefijo que no es owner/repo ni repo simple (#26)', () => {
+    // 'a/b/c#42': el prefijo tiene 3 segmentos → ni owner/repo ni palabra única.
+    expect(parseThreadInput('a/b/c#42')).toBeNull();
+  });
 });
 
 describe('listOpenThreads / formatThreadList', () => {

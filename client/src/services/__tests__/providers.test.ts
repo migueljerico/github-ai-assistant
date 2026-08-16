@@ -834,3 +834,67 @@ describe('modelLabel (v3.31.0)', () => {
     expect(modelLabel('zenmux', 'nuevo/modelo-zenmux')).toBe('nuevo/modelo-zenmux');
   });
 });
+
+// ── Expansión de cobertura (#26) — ramas de fetchModels sin testear ───────────
+
+describe('providers — fetchModels (ramas de deduplicación y detección free)', () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+    vi.restoreAllMocks();
+  });
+
+  it('openrouter: modelo sin objeto pricing y sin sufijo :free → free: false', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          { id: 'meta/no-pricing-model', name: 'Sin pricing' },   // sin pricing → no free
+          { id: 'meta/zero', name: 'Zero', pricing: { prompt: '0', completion: '0' } }, // free por pricing
+        ],
+      }),
+    }));
+
+    const list = await fetchModels(PROVIDERS.openrouter);
+    expect(list!.find(m => m.value === 'meta/no-pricing-model')!.free).toBe(false);
+    expect(list!.find(m => m.value === 'meta/zero')!.free).toBe(true);
+  });
+
+  it('bazaarlink: ids duplicados en el catálogo se deduplican (queda la 1ª aparición)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          { id: 'dup/model:free', display_name: 'Primera aparición' },
+          { id: 'dup/model:free', display_name: 'Segunda aparición' },
+          { id: 'otro/model:free', display_name: 'Otro' },
+        ],
+      }),
+    }));
+
+    const list = await fetchModels(PROVIDERS.bazaarlink);
+    const dup = list!.filter(m => m.value === 'dup/model:free');
+    expect(dup).toHaveLength(1);
+    expect(dup[0].label).toBe('Primera aparición');
+    expect(list!.find(m => m.value === 'otro/model:free')).toBeDefined();
+  });
+
+  it('qwencloud: id con sufijo -free marca free aunque el patrón pago aparezca antes, y deduplica ids', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          // -free gana sobre el patrón de pago (glm-) del mismo id
+          { id: 'glm-5.2-flash-free', name: 'GLM Free' },
+          { id: 'glm-5.2-flash-free', name: 'Duplicado' },
+          { id: 'minimax-m2', name: 'Minimax M2' }, // pago, sin -free
+        ],
+      }),
+    }));
+
+    const list = await fetchModels(PROVIDERS.qwencloud, 'sk-test');
+    const glm = list!.filter(m => m.value === 'glm-5.2-flash-free');
+    expect(glm).toHaveLength(1);
+    expect(glm[0].free).toBe(true);
+    expect(list!.find(m => m.value === 'minimax-m2')!.free).toBe(false);
+  });
+});

@@ -18,6 +18,7 @@ import {
  cleanDocFooter,
  injectImagePreviewBlock,
  validateProviderKey,
+ buildSecurityAuditContext,
 } from '../gemini';
 
 describe('gemini.ts - Utilidades', () => {
@@ -1870,6 +1871,267 @@ Detalles internos de razonamiento...
       expect(res.valid).toBe(false);
       expect(res.error).toContain('Créditos agotados');
     });
+  });
+});
+
+// ── Expansión de cobertura (#26) — rutas sin testear de gemini.ts ──────────────
+
+describe('buildSecurityAuditContext (#52) — contexto del Modo Auditoría de Seguridad', () => {
+  it('con archivos sensibles con contenido: cabecera + un bloque por archivo', () => {
+    const out = buildSecurityAuditContext('o/r', [
+      { path: 'package.json', content: '{ "name": "x" }' },
+      { path: 'Dockerfile', content: 'FROM node:22-alpine' },
+    ]);
+    expect(out).toContain('Repositorio: o/r');
+    expect(out).toContain('ARCHIVOS SENSIBLES CARGADOS PARA LA AUDITORÍA');
+    expect(out).toContain('### package.json');
+    expect(out).toContain('### Dockerfile');
+  });
+
+  it('filtra archivos sin contenido (o en blanco) y trunca por líneas con maxLinesPerFile', () => {
+    const many = Array.from({ length: 5 }, (_, i) => `línea ${i + 1}`).join('\n');
+    const out = buildSecurityAuditContext('o/r', [
+      { path: 'a.txt' },                 // sin contenido → filtrado
+      { path: 'b.txt', content: '   ' }, // en blanco → filtrado
+      { path: 'c.txt', content: many },  // truncado a 2 líneas
+    ], { maxLinesPerFile: 2 });
+    expect(out).not.toContain('### a.txt');
+    expect(out).not.toContain('### b.txt');
+    expect(out).toContain('### c.txt');
+    expect(out).toContain('línea 1');
+    expect(out).toContain('línea 2');
+    expect(out).not.toContain('línea 3');
+    expect(out).toContain('líneas más'); // marcador de truncado
+  });
+
+  it('sin archivos sensibles útiles: mensaje que guía al usuario (sin callejón sin salida)', () => {
+    const out = buildSecurityAuditContext('o/r', []);
+    expect(out).toContain('No se encontraron archivos sensibles');
+    expect(out).toContain('comparta manualmente');
+  });
+});
+
+describe('validateProviderKey — rutas restantes (éxito, 401, 429, error genérico)', () => {
+  beforeEach(() => { vi.restoreAllMocks(); });
+
+  it('clave válida (groq): devuelve { valid: true } sin error', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: 'Hi' } }] }),
+    }));
+
+    const res = await validateProviderKey('groq', 'key', 'llama');
+    expect(res).toEqual({ valid: true });
+  });
+
+  it('transporte gemini-proxy: valida contra /api/gemini y acepta la clave', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ text: 'Hola' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = await validateProviderKey('gemini', 'key', 'gemini-2.5-flash');
+    expect(res).toEqual({ valid: true });
+    expect(String(fetchMock.mock.calls[0][0])).toContain('/api/gemini');
+  });
+
+  it('401: marca la clave como inválida con mensaje accionable del panel', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ error: 'Unauthorized' }),
+    }));
+
+    const res = await validateProviderKey('groq', 'bad-key', 'llama');
+    expect(res.valid).toBe(false);
+    expect(res.error).toContain('Clave inválida');
+  });
+
+  it('429: lo trata como clave VÁLIDA (el proveedor la aceptó; es rate limit del tier)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+      json: async () => ({ error: 'rate limited' }),
+    }));
+
+    const res = await validateProviderKey('zenmux', 'key', 'model');
+    expect(res).toEqual({ valid: true });
+  });
+
+  it('error genérico: devuelve valid: false con el mensaje del proveedor', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 522,
+      json: async () => ({ error: 'upstream boom' }),
+    }));
+
+    const res = await validateProviderKey('groq', 'key', 'llama');
+    expect(res.valid).toBe(false);
+    expect(res.error).toContain('upstream boom');
+  });
+});
+
+describe('callOpenAICompatible — extracción de errores HTTP', () => {
+  beforeEach(() => { vi.restoreAllMocks(); });
+
+  it('cuerpo de error sin JSON válido: cae al mensaje genérico "AI provider error NNN"', async () => {
+    // 400 no es transitorio → sin reintentos → test rápido.
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => { throw new Error('not json'); },
+    }));
+
+    await expect(
+      callAI([{ role: 'user', content: 'x' }], 'sys', 'groq', 'k', 'm'),
+    ).rejects.toThrow(/AI provider error 400/);
+  });
+
+  it('Cloudflare 403: hint de modelo no disponible en la cuenta (plan Free)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 403,
+      json: async () => ({ error: 'forbidden' }),
+    }));
+
+    await expect(
+      callAI([{ role: 'user', content: 'x' }], 'sys', 'cloudflare', 'k', 'm'),
+    ).rejects.toThrow(/no disponible en tu cuenta Cloudflare/);
+  });
+
+  it('429 genérico (Zenmux): hint de rate limit del tier gratuito (vía validateProviderKey, sin retry)', async () => {
+    // validateProviderKey llama a callOpenAICompatible directamente (sin
+    // withTransientRetry), así cubrimos la rama 429 sin esperar backoffs.
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+      json: async () => ({ error: 'rate limited' }),
+    }));
+
+    await expect(
+      validateProviderKey('zenmux', 'key', 'model'),
+    ).resolves.toEqual({ valid: true });
+  });
+});
+
+describe('callGeminiDirect — errores del proxy de Gemini', () => {
+  beforeEach(() => { vi.restoreAllMocks(); });
+
+  it('!res.ok: propaga el error del proxy (campo error) con el status', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ error: 'proxy caído' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      callAI([{ role: 'user', content: 'x' }], 'sys', 'gemini', 'k', 'gemini-2.5-flash'),
+    ).rejects.toThrow('proxy caído');
+  });
+
+  it('!res.ok sin campo error: mensaje genérico "Gemini proxy error NNN"', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({}),
+    }));
+
+    await expect(
+      callAI([{ role: 'user', content: 'x' }], 'sys', 'gemini', 'k', 'gemini-2.5-flash'),
+    ).rejects.toThrow(/Gemini proxy error 401/);
+  });
+});
+
+describe('callAI — streaming sin contenido (#38)', () => {
+  beforeEach(() => { vi.restoreAllMocks(); });
+
+  it('openai-compatible: stream sin deltas válidos → error accionable', async () => {
+    const encoder = new TextEncoder();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      body: new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+          controller.close();
+        },
+      }),
+    }));
+
+    await expect(
+      callAI([{ role: 'user', content: 'x' }], 'sys', 'groq', 'k', 'm', 'chat', () => {}),
+    ).rejects.toThrow(/no devolvió contenido/);
+  });
+
+  it('gemini-proxy: stream sin chunks {text} → error accionable', async () => {
+    const encoder = new TextEncoder();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      body: new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+          controller.close();
+        },
+      }),
+    }));
+
+    await expect(
+      callAI([{ role: 'user', content: 'x' }], 'sys', 'gemini', 'k', 'gemini-2.5-flash', 'chat', () => {}),
+    ).rejects.toThrow(/no devolvió contenido/);
+  });
+});
+
+describe('parseGeminiActionWithReason — diagnóstico de JSON truncado', () => {
+  it('objeto cortado antes del valor (Unexpected end of JSON input): error que explica el corte', () => {
+    // Node ≥21 cambia el mensaje de V8: un string sin cerrar da "Unterminated
+    // string", que el detector no matchea. La forma que sí produce "Unexpected
+    // end of JSON input" es truncar justo después de los dos puntos de una clave.
+    const raw = '{"tipo":"actualizacion","accion":"Actualizar issue","contenidoPropuesto":';
+    const res = parseGeminiActionWithReason(raw);
+    expect(res.action).toBeNull();
+    if (res.action === null) {
+      expect(res.error).toContain('la respuesta se cortó');
+    }
+  });
+});
+
+describe('parseGeminiActions — límites del escáner balanceado (#58c)', () => {
+  it('texto sin llave de apertura: devuelve array vacío', () => {
+    expect(parseGeminiActions('Lo siento, no puedo hacer eso.')).toEqual([]);
+  });
+
+  it('JSON sin cerrar: el escáner se detiene sin lanzar (primer balanceado = null)', () => {
+    expect(parseGeminiActions('{"tipo":"creacion",')).toEqual([]);
+  });
+
+  it('comillas escapadas dentro de strings no rompen el escaneo de balance', () => {
+    const raw = JSON.stringify({
+      tipo: 'creacion',
+      accion: 'Crear issue con titulo "entrecomillado"',
+      endpoint: '/repos/o/r/issues',
+      metodo: 'POST',
+      requiereConfirmacion: true,
+    });
+    const actions = parseGeminiActions(`texto previo ${raw} texto posterior`);
+    expect(actions).toHaveLength(1);
+    expect(actions[0].accion).toContain('entrecomillado');
+  });
+});
+
+describe('generateSpecificDoc — documento vacío tras limpiar fences', () => {
+  beforeEach(() => { vi.restoreAllMocks(); });
+
+  it('lanza error claro si tras limpiar fences no queda documentación', async () => {
+    // Contenido no vacío para callAI, pero que al quitar los fences queda vacío.
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: '```markdown\n```' } }] }),
+    }));
+
+    await expect(
+      generateSpecificDoc('readme.md', undefined, undefined, { provider: 'groq', apiKey: 'k', model: 'm' } as any, 'es'),
+    ).rejects.toThrow(/no devolvió documentación/);
   });
 });
 

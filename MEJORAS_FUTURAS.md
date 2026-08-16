@@ -2,7 +2,7 @@
 
 Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de GitHub**.
 
-**Actualizado a:** v4.0.33 — Agosto 2026
+**Actualizado a:** v4.0.34 — Agosto 2026
 
 > 📜 **Historial de Mejoras Implementadas:** Para consultar las 100+ características y correcciones resueltas desde la v1.0.0 a la v4.0.33, consulta el [Historial de Mejoras (`HISTORIAL_MEJORAS.md`)](HISTORIAL_MEJORAS.md).
 
@@ -24,16 +24,17 @@ Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de
 #### #26 — Mantener y expandir cobertura de tests con Codecov
 **Esfuerzo:** Continuo (2-4h por sprint) · **Estado:** 🔄 En progreso
 
-**Progreso realizado (v4.0.33):** ✅ Infraestructura completa, reglas permanentes documentadas y suites ampliadas
+**Progreso realizado (v4.0.34):** ✅ Infraestructura completa, reglas permanentes documentadas y suites ampliadas
 - ✅ Vitest + Codecov + CI con GitHub Actions (cliente + servidor)
 - ✅ Badge de Codecov en README
-- ✅ **1.182 tests en el cliente (75 suites) + 60 en el servidor (8 suites)** = **1.242 unitarios** + **13 tests E2E** con Playwright. Cobertura global del cliente ampliada al **>96% en líneas** y **100% de cobertura en parches Codecov**. Cobertura del 100% alcanzada en `ErrorBoundary`, `FileAttachButton`, `AIProviderContext`, `ConfirmModal`, `useModalDialog`, `ChatMessage` (líneas), `DocumentRepoButton`, `ChangelogButton`, `CodeHealthButton`, `ConversationIOButton`, `AIProviderBadge`, `LanguageSelector` y utilidades/hooks (`repoRef`, `docxReader`, `useDocTargetSelector`, `modelLabels`, `retry`).
+- ✅ **1.212 tests en el cliente (75 suites) + 60 en el servidor (8 suites)** = **1.272 unitarios** + **13 tests E2E** con Playwright. Cobertura global del cliente ampliada a **96,26% statements / 88,22% branches / 95,4% functions / 98,27% lines** (desde 95,22/86,67/94,63/97,47 en v4.0.33). `gemini.ts` alcanza el **100% en líneas** (antes 94,56%) y `github.ts`, `docPublisher.ts` y `threadSummary.ts` quedan al 100% en líneas y funciones. Ampliación realizada desde **ZCode con GLM-5.3** (+30 tests: `buildSecurityAuditContext` sin testear, rutas de `validateProviderKey`, errores HTTP de ambos transportes, streaming vacío, parser truncado, `priorityScore`, dedup de catálogos y subida de adjuntos).
+- ✅ Cobertura del 100% (v4.0.33) alcanzada en `ErrorBoundary`, `FileAttachButton`, `AIProviderContext`, `ConfirmModal`, `useModalDialog`, `ChatMessage` (líneas), `DocumentRepoButton`, `ChangelogButton`, `CodeHealthButton`, `ConversationIOButton`, `AIProviderBadge`, `LanguageSelector` y utilidades/hooks (`repoRef`, `docxReader`, `useDocTargetSelector`, `modelLabels`, `retry`).
 
 
 **Pendiente:**
-- Aumentar la cobertura global al 70%+ objetivo.
+- Cobertura de `DocumentFlowModal.tsx` (88,92% líneas) y `assistantActions.ts` (97% líneas): guards defensivos y flujos de botón restantes.
 - Cobertura de edge cases en nuevos servicios y proveedores.
-- Configurar umbral mínimo de cobertura en CI (fail si < 70%).
+- Cobertura de ramas defensivas inalcanzables (catch de `pdfReader.ts`, guard de `DiffViewer.tsx`): valorar exclusión o refactor antes que tests artificiales.
 
 ---
 
