@@ -267,7 +267,6 @@ Ver detalle en ./docs/TESTING_CALIDAD.md.
 | OpenCode Zen | Modelos gratis vía proxy (sin CORS upstream) |
 | Cloudflare Workers AI | Modelos serverless vía proxy (chat + catálogo dinámico, sin CORS upstream) |
 | Ollama Cloud | OpenAI-compatible vía proxy (sin CORS upstream) |
-
 | Kilo | Pasarela OpenAI-compatible con catálogo público y modelos free vía proxy (sin CORS upstream) |
 | BazaarLink | Pasarela OpenAI-compatible con catálogo público y modelos DeepSeek/Qwen vía proxy (sin CORS upstream) |
 | Recharts | Dashboard de salud del código |
