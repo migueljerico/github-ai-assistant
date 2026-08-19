@@ -9,16 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Feature & Docs: Extracción inteligente del resumen de repositorio para el About de GitHub y sincronización de documentación.**
 > - **Extracción de Resumen de Repositorio:** Sustituido el texto fijo genérico (`Documentación generada para ${repoName}`) en [`generateRepoDocs`](client/src/services/gemini.ts) por la nueva función pura [`extractRepoSummary`](client/src/services/gemini.ts), que analiza el README generado y extrae de forma limpia el tagline o la explicación concisa de la aplicación (cursivas en cabecera, blockquotes o primer párrafo de la sección Descripción), respetando el límite de 350 caracteres de GitHub al concatenar la firma de autoría (`resumen — firma`).
-> - **Ampliación de Pruebas Unitarias:** Nueva suite de tests para `extractRepoSummary` en `client/src/services/__tests__/gemini.test.ts` con cobertura exhaustiva de formatos de README, saneamiento de markdown, acotación de longitud por límite de frase/palabra y fallbacks contextuales, alcanzando **1.223 tests cliente (75 suites) + 60 servidor (8 suites) = 1.283 tests unitarios en verde** (100% diff patch coverage).
+> - **Ampliación de Pruebas Unitarias:** Nueva suite de tests para `extractRepoSummary` en `client/src/services/__tests__/gemini.test.ts` con cobertura exhaustiva de formatos de README, saneamiento de markdown, acotación de longitud por límite de frase/palabra y fallbacks contextuales, alcanzando **1.226 tests cliente (75 suites) + 60 servidor (8 suites) = 1.286 tests unitarios en verde** (100% diff patch coverage, `gemini.ts` al 100% de líneas).
 > - **Métricas & Calidad:** 0 errores de lint, build TS estricto limpio y sincronización documental completa.
 
 ### Added
 - `client/src/services/gemini.ts`: exportación de la función `extractRepoSummary(readme, repoName, primaryLanguage)` con utilidades internas de saneamiento de Markdown (`cleanMarkdownText`, `isOnlyBadgesOrLinks`, `formatSummaryLength`, `buildFallbackSummary`).
-- `client/src/services/__tests__/gemini.test.ts` (+11): tests unitarios para extracción de tagline (asteriscos, guiones bajos, blockquote), limpieza de markdown embebido (enlaces, HTML, negritas, código), extracción desde sección Descripción, truncado con puntos suspensivos en frases largas, fallbacks con lenguajes múltiples o ausentes, y verificación de asignación del resumen real en `generateRepoDocs`.
+- `client/src/services/__tests__/gemini.test.ts` (+14): tests unitarios para extracción de tagline (asteriscos, guiones bajos, blockquote), limpieza de markdown embebido (enlaces, HTML, negritas, viñetas, código), extracción desde sección Descripción y párrafos generales (Paso 3), truncado inteligente con respeto de primera frase completa o puntos suspensivos, fallbacks con lenguajes múltiples o ausentes, y verificación de asignación del resumen real en `generateRepoDocs`.
 
 ### Changed
 - `client/src/services/gemini.ts`: integración de `extractRepoSummary` en el retorno de `generateRepoDocs`.
-- `README.md`: badge `v4.0.35`, métricas de 1.283 tests unitarios y actualización de trazabilidad con Antigravity (Gemini 3.7 Flash).
+- `README.md`: badge `v4.0.35`, métricas de 1.286 tests unitarios y actualización de trazabilidad con Antigravity (Gemini 3.7 Flash).
 - `METODOLOGIA_IA.md`: fila de trazabilidad en §5 para Antigravity 2.0 (Gemini 3.7 Flash).
 - `MANUAL_TECNICO.md`, `MEJORAS_FUTURAS.md`, `CLAUDE.md`, `docs/DESARROLLO_IA.md`: bump de versión a `v4.0.35` y sincronización de métricas.
 

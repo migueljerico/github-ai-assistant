@@ -2233,10 +2233,46 @@ ${longText}`;
     expect(summary.endsWith('...')).toBe(true);
   });
 
-  it('extrae de parrafos generales si no hay cabecera de descripcion estandar', () => {
-    const readme = `# Generic App\n\n[![Build Status](https://img.shields.io/badge)]()\n\nEsta es una herramienta general para procesamiento de datos en streaming.`;
+  it('respeta la primera frase completa si mide entre 30 y 200 caracteres al acotar', () => {
+    const firstSentence = 'Herramienta de monitorización y auditoría en tiempo real de servidores de producción.';
+    const longTail = ' Esta es una frase secundaria excesivamente larga para forzar el truncamiento del texto total y verificar que se respeta la primera frase limpia.'.repeat(2);
+    const readme = `# App Monitor\n\n*${firstSentence}${longTail}*`;
     const summary = extractRepoSummary(readme);
-    expect(summary).toBe('Esta es una herramienta general para procesamiento de datos en streaming.');
+    expect(summary).toBe(firstSentence);
+  });
+
+  it('extrae de parrafos generales (Paso 3) si no hay cabecera ni seccion de descripcion', () => {
+    const readmeStep3 = `# Generic App
+## 🛠️ Instalación
+\`\`\`bash
+npm install
+\`\`\`
+
+[![Build Status](https://img.shields.io/badge)]()
+
+Plataforma integral para procesamiento y transformación de flujos de datos en tiempo real.`;
+    const summary = extractRepoSummary(readmeStep3);
+    expect(summary).toBe('Plataforma integral para procesamiento y transformación de flujos de datos en tiempo real.');
+  });
+
+  it('limpia viñetas de listas, numeraciones e imagenes inline', () => {
+    const readme = `# App
+## 📋 Descripción
+- ![logo](logo.png) 1. Plataforma con viñetas • para gestión financiera y presupuestos.`;
+    const summary = extractRepoSummary(readme);
+    expect(summary).toBe('Plataforma con viñetas • para gestión financiera y presupuestos.');
+  });
+
+  it('cae a fallback si el documento solo tiene secciones de codigo o divisores sin texto util', () => {
+    const emptyReadme = `# App
+## 🛠️ Instalación
+\`\`\`bash
+npm install
+\`\`\`
+---
+<div align="center"></div>
+`;
+    expect(extractRepoSummary(emptyReadme, 'owner/cool-tool', 'Rust')).toBe('Proyecto en Rust');
   });
 
   it('maneja lenguajes multiple o None en fallback', () => {
