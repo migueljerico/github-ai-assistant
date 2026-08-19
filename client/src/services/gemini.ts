@@ -894,6 +894,133 @@ export function injectImagePreviewBlock(readme: string, previewBlock: string): s
 }
 
 /**
+ * Limpia el formato Markdown/HTML de una cadena para convertirla en texto plano legible.
+ */
+function cleanMarkdownText(str: string): string {
+  return str
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/<[^>]*>/g, '')
+    .replace(/[*_]{1,3}([^*_\n]+)[*_]{1,3}/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/^>\s*/, '')
+    .replace(/^[-*•]\s+/, '')
+    .replace(/^\d+\.\s+/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Comprueba si una cadena contiene únicamente badges, enlaces o tags HTML.
+ */
+function isOnlyBadgesOrLinks(str: string): boolean {
+  const noLinks = str
+    .replace(/\[!\[[^\]]*\]\([^)]*\)\]\([^)]*\)/g, '')
+    .replace(/\[[^\]]*\]\([^)]*\)/g, '')
+    .replace(/<[^>]*>/g, '')
+    .trim();
+  return noLinks.length === 0;
+}
+
+/**
+ * Formatea y acota la longitud del resumen para que encaje de forma óptima
+ * en el campo "about" (descripción) de GitHub junto con la firma de autoría.
+ */
+function formatSummaryLength(text: string, maxLength = 200): string {
+  if (text.length <= maxLength) return text;
+  const firstSentenceMatch = text.match(/^(.+?[.!?])(?:\s|$)/);
+  if (firstSentenceMatch && firstSentenceMatch[1].length >= 30 && firstSentenceMatch[1].length <= maxLength) {
+    return firstSentenceMatch[1].trim();
+  }
+  const truncated = text.slice(0, maxLength - 3).replace(/\s+\S*$/, '');
+  return `${truncated}...`;
+}
+
+/**
+ * Genera un resumen fallback breve y seguro en caso de READMEs mínimos o vacíos.
+ */
+function buildFallbackSummary(repoName?: string, primaryLanguage?: string): string {
+  if (primaryLanguage && primaryLanguage !== 'Desconocido' && primaryLanguage !== 'None' && primaryLanguage !== 'múltiple') {
+    return `Proyecto en ${primaryLanguage}`;
+  }
+  if (repoName) {
+    const name = repoName.includes('/') ? repoName.split('/')[1] : repoName;
+    return name;
+  }
+  return 'Proyecto de software';
+}
+
+/**
+ * Extrae una breve explicación o tagline del repositorio a partir del README generado.
+ * Prioriza el tagline en cursiva/comillas/blockquote de la cabecera, o el primer párrafo
+ * de la sección de Descripción, limpiando markdown y acotando a un tamaño óptimo
+ * para el "about" de GitHub.
+ */
+export function extractRepoSummary(
+  readme: string,
+  repoName?: string,
+  primaryLanguage?: string,
+): string {
+  if (!readme || !readme.trim()) {
+    return buildFallbackSummary(repoName, primaryLanguage);
+  }
+
+  const lines = readme.trim().split('\n');
+
+  // 1. Buscar en la cabecera (antes del primer encabezado de segundo nivel ##)
+  const headerLines: string[] = [];
+  for (const line of lines) {
+    if (/^##\s+/m.test(line)) break;
+    headerLines.push(line);
+  }
+
+  for (const line of headerLines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    if (/^#\s+/.test(trimmed) || /^<!--/.test(trimmed) || /^---+/.test(trimmed) || /^===+/.test(trimmed)) continue;
+    if (/^\[!\[/.test(trimmed) || /^!\[/.test(trimmed) || /^<p/i.test(trimmed) || /^<\/p/i.test(trimmed) || /^<div/i.test(trimmed)) continue;
+
+    const isItalic = /^[*_]{1,3}(.+)[*_]{1,3}$/.test(trimmed);
+    const isQuote = /^>\s*(.+)$/.test(trimmed);
+    const cleaned = cleanMarkdownText(trimmed);
+
+    if ((isItalic || isQuote || cleaned.length >= 15) && cleaned.length >= 10 && !isOnlyBadgesOrLinks(trimmed)) {
+      return formatSummaryLength(cleaned);
+    }
+  }
+
+  // 2. Buscar en la sección de Descripción / Description / Overview / Resumen / About
+  const descMatch = readme.match(/##\s+(?:[^\n]*\b(?:descripci[oó]n|description|overview|about|resumen)\b[^\n]*)([\s\S]*?)(?=\n##\s+|$)/i);
+  if (descMatch && descMatch[1]) {
+    const descContent = descMatch[1];
+    const paragraphs = descContent
+      .split(/\n\s*\n/)
+      .map(p => p.trim())
+      .filter(p => p && !p.startsWith('#') && !p.startsWith('!') && !p.startsWith('<') && !p.startsWith('|') && !p.startsWith('```'));
+
+    for (const para of paragraphs) {
+      const cleaned = cleanMarkdownText(para);
+      if (cleaned.length >= 15 && !isOnlyBadgesOrLinks(para)) {
+        return formatSummaryLength(cleaned);
+      }
+    }
+  }
+
+  // 3. Buscar cualquier párrafo de texto plano en el documento
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('!') || trimmed.startsWith('<') || trimmed.startsWith('|') || trimmed.startsWith('```') || trimmed.startsWith('---')) continue;
+    if (/^\[!\[/.test(trimmed) || isOnlyBadgesOrLinks(trimmed)) continue;
+    const cleaned = cleanMarkdownText(trimmed);
+    if (cleaned.length >= 20) {
+      return formatSummaryLength(cleaned);
+    }
+  }
+
+  return buildFallbackSummary(repoName, primaryLanguage);
+}
+
+/**
  * Genera documentación para un repositorio completo (README.md + MANUAL_TECNICO.md).
  */
 export async function generateRepoDocs(
@@ -1076,7 +1203,7 @@ REPOSITORIO: ${repoName}
   return {
     readme,
     manualTecnico,
-    resumen: `Documentación generada para ${repoName}`,
+    resumen: extractRepoSummary(readmeStripped, repoName, primaryLanguage),
     metadatos: { lenguaje: primaryLanguage, filesCount: files.length },
   };
 }

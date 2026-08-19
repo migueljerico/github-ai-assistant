@@ -2,7 +2,7 @@
 
 Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de GitHub**.
 
-**Actualizado a:** v4.0.34 — Agosto 2026
+**Actualizado a:** v4.0.35 — Agosto 2026
 
 > 📜 **Historial de Mejoras Implementadas:** Para consultar las 100+ características y correcciones resueltas desde la v1.0.0 a la v4.0.33, consulta el [Historial de Mejoras (`HISTORIAL_MEJORAS.md`)](HISTORIAL_MEJORAS.md).
 
@@ -24,11 +24,11 @@ Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de
 #### #26 — Mantener y expandir cobertura de tests con Codecov
 **Esfuerzo:** Continuo (2-4h por sprint) · **Estado:** 🔄 En progreso
 
-**Progreso realizado (v4.0.34):** ✅ Infraestructura completa, reglas permanentes documentadas y suites ampliadas
+**Progreso realizado (v4.0.35):** ✅ Infraestructura completa, reglas permanentes documentadas y suites ampliadas
 - ✅ Vitest + Codecov + CI con GitHub Actions (cliente + servidor)
 - ✅ Badge de Codecov en README
-- ✅ **1.212 tests en el cliente (75 suites) + 60 en el servidor (8 suites)** = **1.272 unitarios** + **13 tests E2E** con Playwright. Cobertura global del cliente ampliada a **96,26% statements / 88,22% branches / 95,4% functions / 98,27% lines** (desde 95,22/86,67/94,63/97,47 en v4.0.33). `gemini.ts` alcanza el **100% en líneas** (antes 94,56%) y `github.ts`, `docPublisher.ts` y `threadSummary.ts` quedan al 100% en líneas y funciones. Ampliación realizada desde **ZCode con GLM-5.3** (+30 tests: `buildSecurityAuditContext` sin testear, rutas de `validateProviderKey`, errores HTTP de ambos transportes, streaming vacío, parser truncado, `priorityScore`, dedup de catálogos y subida de adjuntos).
-- ✅ Cobertura del 100% (v4.0.33) alcanzada en `ErrorBoundary`, `FileAttachButton`, `AIProviderContext`, `ConfirmModal`, `useModalDialog`, `ChatMessage` (líneas), `DocumentRepoButton`, `ChangelogButton`, `CodeHealthButton`, `ConversationIOButton`, `AIProviderBadge`, `LanguageSelector` y utilidades/hooks (`repoRef`, `docxReader`, `useDocTargetSelector`, `modelLabels`, `retry`).
+- ✅ **1.223 tests en el cliente (75 suites) + 60 en el servidor (8 suites)** = **1.283 unitarios** + **13 tests E2E** con Playwright. Cobertura del 100% de diff patch para Codecov y suites completadas para `extractRepoSummary` en `gemini.ts`.
+- ✅ Cobertura del 100% alcanzada en `gemini.ts` (líneas), `github.ts`, `docPublisher.ts`, `threadSummary.ts`, `ErrorBoundary`, `FileAttachButton`, `AIProviderContext`, `ConfirmModal`, `useModalDialog`, `ChatMessage` (líneas), `DocumentRepoButton`, `ChangelogButton`, `CodeHealthButton`, `ConversationIOButton`, `AIProviderBadge`, `LanguageSelector` y utilidades/hooks (`repoRef`, `docxReader`, `useDocTargetSelector`, `modelLabels`, `retry`).
 
 
 **Pendiente:**

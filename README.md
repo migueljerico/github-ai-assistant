@@ -2,7 +2,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge" alt="Estado" />
-  <a href="https://github.com/migueljerico/github-ai-assistant/releases"><img src="https://img.shields.io/badge/Versión-v4.0.34-blue?style=for-the-badge" alt="Versión" /></a>
+  <a href="https://github.com/migueljerico/github-ai-assistant/releases"><img src="https://img.shields.io/badge/Versión-v4.0.35-blue?style=for-the-badge" alt="Versión" /></a>
 
 
   <a href="./LICENSE"><img src="https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge" alt="License" /></a>
@@ -303,6 +303,7 @@ http://localhost:5173
 
 Este proyecto fue construido con un flujo humano ↔ IA basado en validación cruzada, revisión crítica y dogfooding.
 
+- **Antigravity 2.0 / Gemini 3.7 Flash:** modelo activo en **v4.0.35 (2026-08-19)** — extracción inteligente del resumen del repositorio para el "about" de GitHub a partir del README generado (`extractRepoSummary`), saneamiento de Markdown y acotación segura respetando el límite de 350 caracteres de GitHub. Ampliación de la suite a **1.283 tests unitarios en verde** (1.223 cliente + 60 servidor, 100% de cobertura en diff patch para Codecov) y sincronización documental integral.
 - **ZCode (builtin:zai-start-plan/GLM-5.3):** modelo activo en **v4.0.34 (2026-08-16)** — expansión de cobertura Codecov (#26) con **+30 tests unitarios** sobre servicios sin testear: `gemini.ts` al **100% de líneas** (`buildSecurityAuditContext` del Modo Auditoría, rutas de `validateProviderKey`, errores HTTP de ambos transportes, streaming vacío, diagnóstico de JSON truncado y límites del escáner balanceado), `priorityScore` y refetch 404 en `github.ts`, dedup de catálogos y detección free en `providers.ts`, y subida de adjuntos en `docPublisher.ts`. Cobertura global del cliente: 95,22→**96,26%** statements y 86,67→**88,22%** branches; suite total 1.272 unitarios en verde. Sincronización documental completa (CHANGELOG, METODOLOGIA_IA, MANUAL_TECNICO, MEJORAS_FUTURAS, CLAUDE.md).
 - **Antigravity 2.0 / Gemini 3.7 Flash:** entorno de desarrollo agéntico principal en el ciclo v3.68.0–v4.0.33 (2026-08-14): incorporación de Gemini 3.7 Flash (`gemini-3.7-flash`) al catálogo nativo con soporte i18n en 13 idiomas, sincronización y mantenimiento documental de todo el repositorio, optimización de timeouts y reintentos, y ampliación sistemática de la suite de pruebas unitarias hacia el 100% de cobertura en Codecov.
 - **Antigravity 2.0 / Gemini 3.6 Flash:** desarrollo agéntico previo, integración de proveedores Kilo y BazaarLink, solución de error 429 de rate limit, reintentos transitorios y mantenimiento de releases.
