@@ -19,6 +19,7 @@ import {
  injectImagePreviewBlock,
  validateProviderKey,
  buildSecurityAuditContext,
+ extractRepoSummary,
 } from '../gemini';
 
 describe('gemini.ts - Utilidades', () => {
@@ -2134,5 +2135,145 @@ describe('generateSpecificDoc — documento vacío tras limpiar fences', () => {
     ).rejects.toThrow(/no devolvió documentación/);
   });
 });
+
+describe('extractRepoSummary & generateRepoDocs resumen', () => {
+  it('extrae el tagline en cursiva con asteriscos de la cabecera', () => {
+    const readme = `# 🧹 dataflow-ai
+
+[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)]()
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110-teal.svg)]()
+
+*Aplicación en Python para la limpieza, validación y transformación automatizada de datasets.*
+
+## 📋 Descripción
+Dataflow-AI es una herramienta diseñada para limpiar y normalizar conjuntos de datos...`;
+
+    const summary = extractRepoSummary(readme, 'migueljerico/dataflow-ai', 'Python');
+    expect(summary).toBe('Aplicación en Python para la limpieza, validación y transformación automatizada de datasets.');
+  });
+
+  it('extrae el tagline en cursiva con guiones bajos de la cabecera', () => {
+    const readme = `# 📊 Power BI Gestión People
+_Dashboard interactivo para análisis de métricas de recursos humanos y rotación de personal._
+
+## 📋 Descripción
+Descripción detallada...`;
+
+    const summary = extractRepoSummary(readme, 'migueljerico/powerbi-people', 'PowerBI');
+    expect(summary).toBe('Dashboard interactivo para análisis de métricas de recursos humanos y rotación de personal.');
+  });
+
+  it('extrae el tagline en blockquote (>) de la cabecera', () => {
+    const readme = `# 🤖 GitHub AI Assistant
+> Asistente inteligente para la gestión, análisis y documentación de repositorios en GitHub.
+
+## 📋 Descripción
+...`;
+
+    const summary = extractRepoSummary(readme, 'migueljerico/github-ai-assistant', 'TypeScript');
+    expect(summary).toBe('Asistente inteligente para la gestión, análisis y documentación de repositorios en GitHub.');
+  });
+
+  it('limpia enlaces markdown, negritas, código y tags HTML dentro del tagline', () => {
+    const readme = `# MiApp
+*Plataforma en **Python** para procesar [datos](https://example.com) con \`pandas\` y <span>AI</span>.*
+
+## 📋 Descripción
+...`;
+
+    const summary = extractRepoSummary(readme);
+    expect(summary).toBe('Plataforma en Python para procesar datos con pandas y AI.');
+  });
+
+  it('extrae el primer párrafo de la sección Descripción cuando no hay tagline en la cabecera', () => {
+    const readme = `# Proyecto Sin Tagline
+
+[![Build](https://img.shields.io/badge/build-passing-brightgreen)]()
+
+## 📋 Descripción
+
+Herramienta diseñada para monitorizar servidores y generar alertas en tiempo real ante caídas de servicio.
+
+### 📌 Características
+- Característica 1`;
+
+    const summary = extractRepoSummary(readme, 'org/monitor', 'Go');
+    expect(summary).toBe('Herramienta diseñada para monitorizar servidores y generar alertas en tiempo real ante caídas de servicio.');
+  });
+
+  it('trunca descripciones excesivamente largas respetando frases completas o acotando con puntos suspensivos', () => {
+    const longText = 'Plataforma integral de gestión de recursos humanos y optimización de flujos de trabajo empresariales diseñada para automatizar tareas repetitivas en grandes corporaciones con soporte multisede y auditoría en tiempo real. Esta es una segunda frase que no debería entrar si se supera el límite de caracteres asignado.';
+    const readme = `# Big App
+
+## 📋 Descripción
+
+${longText}`;
+
+    const summary = extractRepoSummary(readme);
+    expect(summary.length).toBeLessThanOrEqual(200);
+    expect(summary).toContain('Plataforma integral');
+  });
+
+  it('devuelve fallback con el lenguaje si el README es mínimo o no tiene texto descriptivo', () => {
+    const summaryWithLang = extractRepoSummary('# README', 'owner/mi-repo', 'Python');
+    expect(summaryWithLang).toBe('Proyecto en Python');
+
+    const summaryWithoutLang = extractRepoSummary('', 'owner/mi-repo', 'Desconocido');
+    expect(summaryWithoutLang).toBe('mi-repo');
+
+    const summaryTotalFallback = extractRepoSummary('', '', 'Desconocido');
+    expect(summaryTotalFallback).toBe('Proyecto de software');
+  });
+
+  it('trunca descripciones largas sin signos de puntuacion con puntos suspensivos', () => {
+    const longWithoutPunctuation = 'Plataforma empresarial de gestion y administracion de flujos y procesos continuos '.repeat(4).trim();
+    const readme = `# Long App\n\n## 📋 Resumen\n\n${longWithoutPunctuation}`;
+    const summary = extractRepoSummary(readme);
+    expect(summary.length).toBeLessThanOrEqual(200);
+    expect(summary.endsWith('...')).toBe(true);
+  });
+
+  it('extrae de parrafos generales si no hay cabecera de descripcion estandar', () => {
+    const readme = `# Generic App\n\n[![Build Status](https://img.shields.io/badge)]()\n\nEsta es una herramienta general para procesamiento de datos en streaming.`;
+    const summary = extractRepoSummary(readme);
+    expect(summary).toBe('Esta es una herramienta general para procesamiento de datos en streaming.');
+  });
+
+  it('maneja lenguajes multiple o None en fallback', () => {
+    expect(extractRepoSummary('# Minimal', 'org/my-project', 'múltiple')).toBe('my-project');
+    expect(extractRepoSummary('# Minimal', 'org/my-project', 'None')).toBe('my-project');
+  });
+
+  it('generateRepoDocs asigna el resumen extraído del README en vez del texto genérico', async () => {
+    const readmeMock = `# 🧹 dataflow-ai
+*Aplicación en Python para limpiar datasets.*
+
+## 📋 Descripción
+Texto de descripción.`;
+
+    const manualMock = `# Manual técnico
+Detalles del manual.`;
+
+    let callCount = 0;
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => {
+      callCount++;
+      const content = callCount === 1 ? readmeMock : manualMock;
+      return {
+        ok: true,
+        json: async () => ({ choices: [{ message: { content } }], text: content }),
+      };
+    }));
+
+    const result = await generateRepoDocs(
+      'migueljerico/dataflow-ai',
+      [{ path: 'main.py', content: 'print("hello")' }],
+      { provider: 'groq', apiKey: 'k', model: 'llama-3.3-70b-versatile' },
+    );
+
+    expect(result.resumen).toBe('Aplicación en Python para limpiar datasets.');
+    expect(result.resumen).not.toContain('Documentación generada para');
+  });
+});
+
 
 
