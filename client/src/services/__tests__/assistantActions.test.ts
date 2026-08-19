@@ -2226,4 +2226,356 @@ describe('runPublishBulk - Cobertura completa', () => {
   });
 });
 
+describe('assistantActions — Cobertura completa de ramas auxiliares y flujos de publicación', () => {
+  it('runConfirmAction: en multi-repo ejecuta onProgress y registra cada repo en el historial', async () => {
+    vi.mocked(executeActionMultiRepo).mockImplementation(async (_token, _user, _action, _repos, options) => {
+      options?.onProgress?.('owner/repo1', 'completed', 'Listo repo 1');
+      options?.onProgress?.('owner/repo2', 'completed', 'Listo repo 2');
+      return [{ success: true, message: 'ok', repo: 'owner/repo1' }];
+    });
+
+    const deps = makeDeps();
+    const pendingAction: any = {
+      action: { tipo: 'escritura', accion: 'Crear issue', metodo: 'POST', repo: 'owner/repo1', requiereConfirmacion: true },
+      targetRepos: [{ name: 'repo1', full_name: 'owner/repo1', owner: { login: 'owner' } }, { name: 'repo2', full_name: 'owner/repo2', owner: { login: 'owner' } }],
+      commitMessage: 'fix: multi',
+    };
+
+    await runConfirmAction(deps, pendingAction);
+
+    expect(deps.addEntry).toHaveBeenCalledWith({ status: 'completed', description: 'Listo repo 1', repo: 'owner/repo1' });
+    expect(deps.addEntry).toHaveBeenCalledWith({ status: 'completed', description: 'Listo repo 2', repo: 'owner/repo2' });
+    expect(deps.addMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        role: 'assistant',
+        content: expect.stringContaining('Acción aplicada a 2 repositorios'),
+      }),
+    );
+  });
+
+  it('runConfirmAction: en mono-repo registra resultado exitoso con formatResultData', async () => {
+    vi.mocked(executeAction).mockResolvedValue({ success: true, message: 'Creado issue #10', data: { number: 10, title: 'Bug' } });
+    const deps = makeDeps();
+    const pendingAction: any = {
+      action: { tipo: 'escritura', accion: 'Crear issue', metodo: 'POST', repo: 'owner/repo1', requiereConfirmacion: true },
+      targetRepos: [{ name: 'repo1', full_name: 'owner/repo1', owner: { login: 'owner' } }],
+    };
+
+    await runConfirmAction(deps, pendingAction);
+
+    expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', { status: 'completed', description: 'Creado issue #10' });
+    expect(deps.addMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining('✅ Creado issue #10\n\nFORMATTED'),
+      }),
+    );
+  });
+
+  it('runConfirmAction: en mono-repo registra resultado fallido', async () => {
+    vi.mocked(executeAction).mockResolvedValue({ success: false, message: 'Permiso denegado' });
+    const deps = makeDeps();
+    const pendingAction: any = {
+      action: { tipo: 'escritura', accion: 'Crear issue', metodo: 'POST', repo: 'owner/repo1', requiereConfirmacion: true },
+      targetRepos: [],
+    };
+
+    await runConfirmAction(deps, pendingAction);
+
+    expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', { status: 'error', description: 'Permiso denegado' });
+    expect(deps.addMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining('❌ Permiso denegado'),
+      }),
+    );
+  });
+
+  it('runCancelAction: añade entrada de cancelación y mensaje en chat', () => {
+    const deps = makeDeps();
+    const pendingAction: any = {
+      action: { tipo: 'escritura', accion: 'Eliminar rama', metodo: 'DELETE', repo: 'owner/repo', requiereConfirmacion: true },
+      targetRepos: [],
+    };
+
+    runCancelAction(deps, pendingAction);
+
+    expect(deps.addEntry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'cancelled',
+        description: expect.stringContaining('Cancelado: Eliminar rama'),
+      }),
+    );
+    expect(deps.addMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        role: 'assistant',
+        content: expect.stringContaining('Acción cancelada'),
+      }),
+    );
+  });
+
+  it('runCreateRepoAndDocument: rechaza si se intenta crear en una cuenta ajena', async () => {
+    const deps = makeDeps();
+    const res = await runCreateRepoAndDocument(deps, CONFIG, 'otro-usuario/mi-repo');
+
+    expect(res).toBeNull();
+    expect(deps.addMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining('No encontré **otro-usuario/mi-repo**'),
+      }),
+    );
+  });
+
+  it('runCreateRepoAndDocument: tolera fallo en subida de archivos opcionales y sigue documentando', async () => {
+    vi.mocked(createRepo).mockResolvedValue(undefined as any);
+    vi.mocked(uploadFilesToRepo).mockRejectedValue(new Error('Fallo al subir archivos adjuntos'));
+    vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'README.md', content: '', size: 0 }], totalScanned: 1, truncated: false, allPaths: ['README.md'] });
+    vi.mocked(generateRepoDocs).mockResolvedValue({ readme: 'README', manualTecnico: 'MANUAL', resumen: 'resumen' });
+
+    const deps = makeDeps();
+    const mockExtraFile = new File(['data'], 'data.csv', { type: 'text/csv' });
+    const res = await runCreateRepoAndDocument(deps, CONFIG, 'me/mi-repo', [mockExtraFile]);
+
+    expect(res).not.toBeNull();
+    expect(deps.addMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining('⚠️ No pude subir los archivos a **me/mi-repo** (Fallo al subir archivos adjuntos)'),
+      }),
+    );
+  });
+
+  it('runCreateRepoAndDocument: si runCreateRepo falla devuelve null', async () => {
+    vi.mocked(createRepo).mockRejectedValue(new Error('Name already exists'));
+    const deps = makeDeps();
+    const res = await runCreateRepoAndDocument(deps, CONFIG, 'me/mi-repo');
+    expect(res).toBeNull();
+  });
+
+  it('fetchExistingFileDoc: devuelve contenido decodificado si existe y null si no', async () => {
+    vi.mocked(getFileContents).mockResolvedValueOnce({ content: 'SGVsbG8=' } as any);
+    const content = await fetchExistingFileDoc('tok', 'owner', 'repo', 'notas.txt');
+    expect(content).toBe('decoded(SGVsbG8=)');
+
+    vi.mocked(getFileContents).mockRejectedValueOnce(new Error('404 Not Found'));
+    const notFound = await fetchExistingFileDoc('tok', 'owner', 'repo', 'inexistente.txt');
+    expect(notFound).toBeNull();
+  });
+
+  it('runPublishFileDoc: maneja Draft PR, extras y errores con 404', async () => {
+    vi.mocked(publishFileDoc).mockResolvedValueOnce({ pr: { number: 12, html_url: 'http://pr/12' } as any } as any);
+    const deps = makeDeps();
+    const srcFile = new File(['orig'], 'notas.txt');
+    const extraFile = new File(['extra'], 'extra.png');
+
+    await runPublishFileDoc(deps, 'owner', 'repo', 'notas.txt', '# doc', {
+      draft: true,
+      sourceFile: srcFile,
+      extraFiles: [extraFile],
+    });
+
+    expect(deps.addMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining('Draft PR [#12](http://pr/12) con `docs/notas.md` + 2 archivo(s) adjunto(s)'),
+      }),
+    );
+
+    // Error 404
+    vi.mocked(publishFileDoc).mockRejectedValueOnce(new Error('Repository not found'));
+    await runPublishFileDoc(deps, 'owner', 'repo', 'notas.txt', '# doc', {});
+    expect(deps.addMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining('No encontré el repositorio **owner/repo**'),
+      }),
+    );
+  });
+
+  it('runStartPublish: cubre errores de red, repo ajeno inexistente, repo propio inexistente y publicación exitosa', async () => {
+    const deps = makeDeps();
+    const target = {
+      owner: 'owner',
+      repo: 'repo',
+      fileName: 'notas.txt',
+      doc: '# doc',
+      kind: 'commit' as const,
+    };
+
+    // 1. Error de red al comprobar existencia
+    vi.mocked(repoExists).mockRejectedValueOnce(new Error('Network error'));
+    const r1 = await runStartPublish(deps, target, false);
+    expect(r1).toBe('handled');
+    expect(deps.addMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining('No pude comprobar el repositorio'),
+      }),
+    );
+
+    // 2. Repo ajeno inexistente
+    vi.mocked(repoExists).mockResolvedValueOnce(false);
+    const r2 = await runStartPublish(deps, target, false);
+    expect(r2).toBe('handled');
+    expect(deps.addMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining('solo puedo crear repositorios en tu cuenta'),
+      }),
+    );
+
+    // 3. Repo propio inexistente
+    vi.mocked(repoExists).mockResolvedValueOnce(false);
+    const r3 = await runStartPublish(deps, target, true);
+    expect(r3).toBe('repo-missing');
+
+    // 4. Repo existente
+    vi.mocked(repoExists).mockResolvedValueOnce(true);
+    vi.mocked(publishFileDoc).mockResolvedValueOnce({ commitSha: '123456' } as any);
+    const r4 = await runStartPublish(deps, target, true);
+    expect(r4).toBe('published');
+  });
+
+  it('runPublishFileDocByKind: despacha release cuando kind es release', async () => {
+    vi.mocked(suggestNextVersion).mockResolvedValue('v1.0.0');
+    vi.mocked(createGitHubRelease).mockResolvedValue({ url: 'http://rel.url', id: 1 });
+    const deps = makeDeps();
+
+    await runPublishFileDocByKind(deps, {
+      owner: 'owner',
+      repo: 'repo',
+      fileName: 'doc.md',
+      doc: '# Doc',
+      kind: 'release',
+      version: 'v1.0.0',
+    });
+
+    expect(createGitHubRelease).toHaveBeenCalledWith('tok', 'owner', 'repo', expect.objectContaining({ version: 'v1.0.0' }));
+  });
+
+  it('runGenerateSpecificDoc: fetch de contenido existente y soporte de imágenes extra', async () => {
+    vi.mocked(getFileContents).mockResolvedValueOnce({ content: 'ZXhpc3Rpbmc=' } as any);
+    vi.mocked(generateSpecificDoc).mockResolvedValueOnce('# Doc Generada');
+
+    const deps = makeDeps();
+    const imgFile = new File(['img'], 'screenshot.png', { type: 'image/png' });
+
+    const res = await runGenerateSpecificDoc(deps, CONFIG, 'owner/repo', 'docs/manual.md', undefined, 'usuario dijo hola', [imgFile]);
+
+    expect(res).toEqual({ doc: '# Doc Generada', currentContent: 'decoded(ZXhpc3Rpbmc=)' });
+    expect(generateSpecificDoc).toHaveBeenCalledWith('docs/manual.md', 'decoded(ZXhpc3Rpbmc=)', expect.any(String), CONFIG, 'es', ['screenshot.png']);
+  });
+
+  it('runGenerateSpecificDoc: captura error al fallar generateSpecificDoc', async () => {
+    vi.mocked(getFileContents).mockRejectedValueOnce(new Error('404'));
+    vi.mocked(generateSpecificDoc).mockRejectedValueOnce(new Error('AI error'));
+
+    const deps = makeDeps();
+    const res = await runGenerateSpecificDoc(deps, CONFIG, 'owner/repo', 'docs/manual.md');
+
+    expect(res).toBeNull();
+    expect(deps.updateMessage).toHaveBeenCalledWith(
+      'msg-1',
+      expect.objectContaining({
+        content: expect.stringContaining('❌ Error al generar docs/manual.md: AI error'),
+      }),
+    );
+    expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', { status: 'error', description: 'Error generando docs/manual.md' });
+  });
+
+  it('runPublishSpecificDoc: soporta release, draft PR, commit y captura de errores', async () => {
+    const deps = makeDeps();
+
+    // Release
+    vi.mocked(suggestNextVersion).mockResolvedValue('v2.0.0');
+    vi.mocked(createGitHubRelease).mockResolvedValue({ url: 'http://rel/2', id: 2 });
+    await runPublishSpecificDoc(deps, 'owner', 'repo', 'docs/a.md', '# doc', 'release');
+    expect(deps.addMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining('Release [v2.0.0](http://rel/2) creado en **owner/repo**'),
+      }),
+    );
+
+    // Draft PR
+    vi.mocked(publishFileDoc).mockResolvedValueOnce({ pr: { number: 5, html_url: 'http://pr/5' } as any } as any);
+    await runPublishSpecificDoc(deps, 'owner', 'repo', 'docs/a.md', '# doc', 'draftpr');
+    expect(deps.addMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining('Draft PR [#5](http://pr/5) con `docs/a.md`'),
+      }),
+    );
+
+    // Commit
+    vi.mocked(publishFileDoc).mockResolvedValueOnce({ commitSha: 'abcdef' } as any);
+    await runPublishSpecificDoc(deps, 'owner', 'repo', 'docs/a.md', '# doc', 'commit');
+    expect(deps.addMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining('`docs/a.md` commiteado en **owner/repo**'),
+      }),
+    );
+
+    // Error
+    vi.mocked(publishFileDoc).mockRejectedValueOnce(new Error('Failed write'));
+    await runPublishSpecificDoc(deps, 'owner', 'repo', 'docs/a.md', '# doc', 'commit');
+    expect(deps.addMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining('❌ Error al publicar docs/a.md: Failed write'),
+      }),
+    );
+  });
+
+  it('runSend en modo chat: si el modelo devuelve acción con endpoint muestra formato de análisis', async () => {
+    vi.mocked(resolveMode).mockReturnValue('chat');
+    const actionMock = {
+      tipo: 'lectura' as const,
+      accion: 'Listar issues',
+      metodo: 'GET' as const,
+      endpoint: '/repos/owner/repo/issues',
+      repo: 'owner/repo',
+    };
+    vi.mocked(parseGeminiAction).mockReturnValue(actionMock as any);
+    vi.mocked(callAI).mockResolvedValue(JSON.stringify(actionMock));
+
+    const deps = makeDeps();
+    await runSend(deps, CONFIG, SEND_PARAMS);
+
+    expect(deps.updateMessage).toHaveBeenCalledWith(
+      'msg-2',
+      expect.objectContaining({
+        content: expect.stringContaining('💡 **Análisis detectado**: Listar issues'),
+      }),
+    );
+  });
+
+  it('runSend en modo chat: si el modelo devuelve acción sin endpoint y accion corta conserva rawResponse', async () => {
+    vi.mocked(resolveMode).mockReturnValue('chat');
+    const actionMock = {
+      tipo: 'lectura' as const,
+      accion: 'Corta',
+    };
+    vi.mocked(parseGeminiAction).mockReturnValue(actionMock as any);
+    vi.mocked(callAI).mockResolvedValue(JSON.stringify(actionMock));
+
+    const deps = makeDeps();
+    await runSend(deps, CONFIG, SEND_PARAMS);
+
+    expect(deps.updateMessage).toHaveBeenCalledWith(
+      'msg-2',
+      expect.objectContaining({
+        content: JSON.stringify(actionMock),
+      }),
+    );
+  });
+
+  it('runSend: cuando callAI falla con contextTooLarge sin repoContext muestra mensaje accionable', async () => {
+    vi.mocked(resolveMode).mockReturnValue('chat');
+    vi.mocked(callAI).mockRejectedValue(new Error('context length exceeded 4096 tokens'));
+
+    const deps = makeDeps();
+    await runSend(deps, CONFIG, { ...SEND_PARAMS, repoContext: null });
+
+    expect(deps.updateMessage).toHaveBeenCalledWith(
+      'msg-2',
+      expect.objectContaining({
+        content: expect.stringContaining('⚠️ El contexto del repositorio sigue siendo demasiado grande'),
+      }),
+    );
+  });
+});
+
+
 

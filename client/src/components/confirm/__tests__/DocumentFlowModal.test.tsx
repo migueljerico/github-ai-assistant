@@ -771,3 +771,347 @@ describe('DocumentFlowModal — Paso 4 acciones de publicación avanzadas', () =
   });
 });
 
+describe('DocumentFlowModal — Cobertura completa de ramas y callbacks', () => {
+  // ── Paso 4: Flujo Repo (Draft PR, Release y Extras) ──
+  it('Paso 4 repo: Draft PR invoca onDraftPrRepo y cierra el modal', async () => {
+    const props = setup();
+    fireEvent.click(screen.getByRole('button', { name: /Repositorio entero/ }));
+    fireEvent.change(screen.getByPlaceholderText(/nombre-del-repo o owner\/repo/), { target: { value: 'owner/repo' } });
+    fireEvent.click(screen.getByRole('button', { name: /Generar documentación/ }));
+
+    await screen.findByText('README CONTENT');
+    fireEvent.click(screen.getByRole('button', { name: /Continuar/ }));
+
+    fireEvent.click(screen.getByRole('button', { name: /Crear Draft PR/ }));
+    await waitFor(() => expect(props.onDraftPrRepo).toHaveBeenCalledWith(analysis));
+    expect(props.onCancel).toHaveBeenCalled();
+  });
+
+  it('Paso 4 repo: Release invoca onReleaseRepo con versión indicada', async () => {
+    const props = setup();
+    fireEvent.click(screen.getByRole('button', { name: /Repositorio entero/ }));
+    fireEvent.change(screen.getByPlaceholderText(/nombre-del-repo o owner\/repo/), { target: { value: 'owner/repo' } });
+    fireEvent.click(screen.getByRole('button', { name: /Generar documentación/ }));
+
+    await screen.findByText('README CONTENT');
+    fireEvent.click(screen.getByRole('button', { name: /Continuar/ }));
+
+    fireEvent.change(screen.getByPlaceholderText(/versión release/), { target: { value: 'v1.5.0' } });
+    fireEvent.click(screen.getByRole('button', { name: /Crear Release/ }));
+
+    await waitFor(() => expect(props.onReleaseRepo).toHaveBeenCalledWith(analysis, 'v1.5.0'));
+    expect(props.onCancel).toHaveBeenCalled();
+  });
+
+  it('Paso 4 repo: pasa archivos adjuntos extras a onCommitRepo', async () => {
+    const extraFile = mockFile('diagram.png');
+    const files: FileContext[] = [
+      { name: 'diagram.png', contextText: '', file: extraFile },
+    ];
+    const props = setup({ allAttachedFiles: files });
+    fireEvent.click(screen.getByRole('button', { name: /Repositorio entero/ }));
+    fireEvent.change(screen.getByPlaceholderText(/nombre-del-repo o owner\/repo/), { target: { value: 'owner/repo' } });
+    fireEvent.click(screen.getByRole('button', { name: /Generar documentación/ }));
+
+    await screen.findByText('README CONTENT');
+    fireEvent.click(screen.getByRole('button', { name: /Continuar/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Commit directo/ }));
+
+    await waitFor(() => expect(props.onCommitRepo).toHaveBeenCalledWith(analysis, [extraFile]));
+  });
+
+  // ── Paso 4: Flujo Archivo (uploadSource, addExtras, destFor, Draft PR, Cancel Create) ──
+  it('Paso 4 archivo: toggle uploadSource modifica el payload de target', async () => {
+    const attFile = mockFile('notas.txt');
+    const props = setup({
+      hasAttachedFile: true,
+      attachedFileName: 'notas.txt',
+      attachedFile: attFile,
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Archivo adjunto/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Generar documentación/ }));
+    await screen.findByText('# doc');
+    fireEvent.click(screen.getByRole('button', { name: /Continuar/ }));
+
+    fireEvent.change(screen.getByPlaceholderText(/owner\/repo o repo/), { target: { value: 'owner/repo' } });
+
+    // Desmarcar uploadSource
+    const checkbox = screen.getByRole('checkbox', { name: /Subir también el archivo original/ });
+    expect(checkbox).toBeChecked();
+    fireEvent.click(checkbox);
+    expect(checkbox).not.toBeChecked();
+
+    fireEvent.click(screen.getByRole('button', { name: /Commit directo/ }));
+    await waitFor(() => expect(props.onPublishFile).toHaveBeenCalled());
+    const target = (props.onPublishFile as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(target.sourceFile).toBeUndefined();
+  });
+
+  it('Paso 4 archivo: añade extras manualmente vía file input y permite eliminarlos', async () => {
+    setup({
+      hasAttachedFile: true,
+      attachedFileName: 'notas.txt',
+      attachedFile: mockFile('notas.txt'),
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Archivo adjunto/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Generar documentación/ }));
+    await screen.findByText('# doc');
+    fireEvent.click(screen.getByRole('button', { name: /Continuar/ }));
+
+    const fileInput = document.querySelector('#flow-add-extras input[type="file"]') as HTMLInputElement;
+    const imgFile = mockFile('captura.png');
+    const dataFile = mockFile('datos.csv');
+    const otherFile = mockFile('leeme.txt');
+
+    fireEvent.change(fileInput, { target: { files: [imgFile, dataFile, otherFile] } });
+
+    // Verificar destFor para imágenes (screenshots/), datos (data/) y raíz
+    expect(screen.getByText('captura.png')).toBeInTheDocument();
+    expect(screen.getByText('screenshots/')).toBeInTheDocument();
+    expect(screen.getByText('datos.csv')).toBeInTheDocument();
+    expect(screen.getByText('data/')).toBeInTheDocument();
+    expect(screen.getByText('leeme.txt')).toBeInTheDocument();
+
+    // Eliminar el primer extra con botón ✕
+    const removeBtns = screen.getAllByLabelText(/Quitar/);
+    fireEvent.click(removeBtns[0]);
+    expect(screen.queryByText('captura.png')).not.toBeInTheDocument();
+  });
+
+  it('Paso 4 archivo: Draft PR llama a onPublishFile con kind draftpr', async () => {
+    const props = setup({
+      hasAttachedFile: true,
+      attachedFileName: 'notas.txt',
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Archivo adjunto/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Generar documentación/ }));
+    await screen.findByText('# doc');
+    fireEvent.click(screen.getByRole('button', { name: /Continuar/ }));
+
+    fireEvent.change(screen.getByPlaceholderText(/owner\/repo o repo/), { target: { value: 'owner/repo' } });
+    fireEvent.click(screen.getByRole('button', { name: /Crear Draft PR/ }));
+
+    await waitFor(() => expect(props.onPublishFile).toHaveBeenCalled());
+    const target = (props.onPublishFile as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(target.kind).toBe('draftpr');
+  });
+
+  it('Paso 4 archivo: cancelCreate oculta el banner de repo missing', async () => {
+    setup({
+      hasAttachedFile: true,
+      attachedFileName: 'notas.txt',
+      onPublishFile: vi.fn().mockResolvedValue('repo-missing' as const),
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Archivo adjunto/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Generar documentación/ }));
+    await screen.findByText('# doc');
+    fireEvent.click(screen.getByRole('button', { name: /Continuar/ }));
+
+    fireEvent.change(screen.getByPlaceholderText(/owner\/repo o repo/), { target: { value: 'nuevo/repo' } });
+    fireEvent.click(screen.getByRole('button', { name: /Commit directo/ }));
+
+    await waitFor(() => expect(screen.getByText(/no existe en tu cuenta/)).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /Cambiar destino/ }));
+    expect(screen.queryByText(/no existe en tu cuenta/)).not.toBeInTheDocument();
+  });
+
+  // ── Paso 2: Flujo Repo Inexistente (crear + adjuntar extras + documentar) ──
+  it('Paso 2 repo: gestiona repoMissing, añade/elimina extras y cancela creación', async () => {
+    setup({
+      onGenerateRepo: vi.fn().mockResolvedValue('repo-missing' as any),
+      onCreateRepoAndGenerate: vi.fn().mockResolvedValue(analysis),
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Repositorio entero/ }));
+    fireEvent.change(screen.getByPlaceholderText(/nombre-del-repo o owner\/repo/), { target: { value: 'nuevo-repo' } });
+    fireEvent.click(screen.getByRole('button', { name: /Generar documentación/ }));
+
+    await waitFor(() => expect(screen.getByText(/no existe en tu cuenta/)).toBeInTheDocument());
+
+    // Añadir extras al repo a crear
+    const addExtrasInput = document.querySelector('#flow-create-add-extras input[type="file"]') as HTMLInputElement;
+    const extraDoc = mockFile('extra.md');
+    fireEvent.change(addExtrasInput, { target: { files: [extraDoc] } });
+    expect(screen.getByText('extra.md')).toBeInTheDocument();
+
+    // Eliminar extra
+    const removeBtn = screen.getByLabelText(/Quitar extra\.md/);
+    fireEvent.click(removeBtn);
+    expect(screen.queryByText('extra.md')).not.toBeInTheDocument();
+
+    // Cancelar creación con Cambiar destino
+    fireEvent.click(screen.getByRole('button', { name: /Cambiar destino/ }));
+    expect(screen.queryByText(/no existe en tu cuenta/)).not.toBeInTheDocument();
+  });
+
+  // ── Paso 2 y 3: Specific (Dropdown de rutas e instrucciones extra) ──
+  it('Paso 2 specific: selección por dropdown y textarea de instrucciones adicionales', async () => {
+    const onExtraInstructionsChange = vi.fn();
+    setup({
+      repoFileTree: [{ path: 'src/components/Modal.tsx' }, { path: 'src/index.ts' }],
+      onExtraInstructionsChange,
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Documento específico del repo/ }));
+
+    // Dropdown de path select
+    const select = document.getElementById('flow-specific-path-select') as HTMLSelectElement;
+    expect(select).toBeInTheDocument();
+    fireEvent.change(select, { target: { value: 'src/components/Modal.tsx' } });
+
+    const pathInput = document.getElementById('flow-specific-path-input') as HTMLInputElement;
+    expect(pathInput.value).toBe('src/components/Modal.tsx');
+
+    // Textarea de instrucciones
+    const textarea = document.getElementById('flow-extra-instructions') as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: 'Enfócate en props y accesibilidad' } });
+    expect(onExtraInstructionsChange).toHaveBeenCalledWith('Enfócate en props y accesibilidad');
+  });
+
+  it('Paso 2 specific: onGenerateSpecific devolviendo null no avanza de paso', async () => {
+    setup({
+      onGenerateSpecific: vi.fn().mockResolvedValue(null),
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Documento específico del repo/ }));
+    fireEvent.change(document.getElementById('flow-specific-repo-input') as HTMLInputElement, { target: { value: 'owner/repo' } });
+    fireEvent.change(document.getElementById('flow-specific-path-input') as HTMLInputElement, { target: { value: 'src/a.ts' } });
+    fireEvent.click(screen.getByRole('button', { name: /Generar doc de este archivo/ }));
+
+    await new Promise(r => setTimeout(r, 10));
+    expect(screen.queryByRole('button', { name: /Continuar/ })).not.toBeInTheDocument();
+  });
+
+  // ── Paso 2, 3 y 4: Bulk (toggle paths, binarios y botón atrás) ──
+  it('Paso 2 bulk: toggle deselecciona paths y textarea de instrucciones', async () => {
+    const onExtraInstructionsChange = vi.fn();
+    setup({
+      repoFileTree: [{ path: 'src/a.ts' }],
+      onExtraInstructionsChange,
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Varios archivos a la vez/ }));
+
+    const cb = screen.getByRole('checkbox');
+    fireEvent.click(cb);
+    expect(cb).toBeChecked();
+    // Toggle off
+    fireEvent.click(cb);
+    expect(cb).not.toBeChecked();
+
+    const textarea = document.getElementById('flow-bulk-extra-instructions') as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: 'Genera docs concisas' } });
+    expect(onExtraInstructionsChange).toHaveBeenCalledWith('Genera docs concisas');
+  });
+
+  it('Paso 2 bulk: tolera adjuntos binarios cuyo text() falla', async () => {
+    const corruptFile = {
+      name: 'corrupt.bin',
+      file: {
+        name: 'corrupt.bin',
+        text: () => Promise.reject(new Error('binary')),
+      } as unknown as File,
+      contextText: '',
+    };
+    const validFile: FileContext = {
+      name: 'doc.txt',
+      file: mockFile('doc.txt', 'VALID CONTENT'),
+      contextText: '',
+    };
+    setup({
+      allAttachedFiles: [corruptFile, validFile],
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Varios archivos a la vez/ }));
+    fireEvent.change(document.getElementById('flow-bulk-repo-input') as HTMLInputElement, { target: { value: 'owner/repo' } });
+
+    fireEvent.click(document.getElementById('flow-generate-bulk-btn') as HTMLElement);
+
+    // Avanza a paso 3 con el archivo válido
+    await waitFor(() => expect(screen.getByText('doc.txt')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /Continuar/ }));
+
+    // Paso 4 bulk: botón Atrás vuelve al paso 3
+    fireEvent.click(screen.getByRole('button', { name: /Atrás/ }));
+    expect(screen.getByText('doc.txt')).toBeInTheDocument();
+  });
+
+  // ── Paso 3: Banners de truncado, alreadyDocumented y botón Atrás ──
+  it('Paso 3 repo: muestra banner de truncado y alreadyDocumented, y botón Atrás vuelve a paso 2', async () => {
+    setup({
+      onGenerateRepo: vi.fn().mockResolvedValue({
+        ...analysis,
+        truncated: true,
+        alreadyDocumented: true,
+      }),
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Repositorio entero/ }));
+    fireEvent.change(screen.getByPlaceholderText(/nombre-del-repo o owner\/repo/), { target: { value: 'owner/repo' } });
+    fireEvent.click(screen.getByRole('button', { name: /Generar documentación/ }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Repo muy grande/)).toBeInTheDocument();
+      expect(screen.getByText(/Este repositorio ya tiene documentación/)).toBeInTheDocument();
+    });
+
+    // Botón Atrás vuelve a paso 2
+    fireEvent.click(screen.getByRole('button', { name: /Atrás/ }));
+    expect(screen.getByPlaceholderText(/nombre-del-repo o owner\/repo/)).toBeInTheDocument();
+  });
+
+  it('Paso 3 repo: alternar entre tabs MANUAL y README cubre setActiveTab', async () => {
+    setup();
+    fireEvent.click(screen.getByRole('button', { name: /Repositorio entero/ }));
+    fireEvent.change(screen.getByPlaceholderText(/nombre-del-repo o owner\/repo/), { target: { value: 'owner/repo' } });
+    fireEvent.click(screen.getByRole('button', { name: /Generar documentación/ }));
+
+    await screen.findByText('README CONTENT');
+    // Ir a MANUAL
+    fireEvent.click(screen.getByRole('button', { name: /MANUAL_TECNICO/ }));
+    expect(screen.getByText('MANUAL CONTENT')).toBeInTheDocument();
+    // Volver a README
+    fireEvent.click(screen.getByRole('button', { name: /README/ }));
+    expect(screen.getByText('README CONTENT')).toBeInTheDocument();
+  });
+
+  it('Paso 4 bulk: input de destino permite editar destRepo', async () => {
+    setup({
+      repoFileTree: [{ path: 'src/file.ts' }],
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Varios archivos a la vez/ }));
+    fireEvent.change(document.getElementById('flow-bulk-repo-input') as HTMLInputElement, { target: { value: 'owner/bulk' } });
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(document.getElementById('flow-generate-bulk-btn') as HTMLElement);
+
+    await waitFor(() => expect(screen.getByRole('button', { name: /Continuar/ })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /Continuar/ }));
+
+    const destInput = document.getElementById('flow-bulk-dest-input') as HTMLInputElement;
+    expect(destInput).toBeInTheDocument();
+    fireEvent.change(destInput, { target: { value: 'owner/custom-bulk-dest' } });
+    expect(destInput.value).toBe('owner/custom-bulk-dest');
+  });
+
+  it('Al montar con estado persistido en localStorage para scope specific, hidrata campos e instrucciones', () => {
+    localStorage.setItem('doc_target_selector', JSON.stringify({
+      scope: 'specific',
+      specificRepoInput: 'persisted-owner/persisted-repo',
+      specificPath: 'src/persisted.ts',
+      extraInstructions: 'Instrucciones guardadas',
+      bulkPaths: [],
+      updatedAt: Date.now(),
+    }));
+
+    const onExtraInstructionsChange = vi.fn();
+    setup({ onExtraInstructionsChange });
+
+    expect(onExtraInstructionsChange).toHaveBeenCalledWith('Instrucciones guardadas');
+
+    // Avanzar a paso 2 clickando en scope specific
+    fireEvent.click(screen.getByRole('button', { name: /Documento específico/ }));
+
+    const repoInput = document.getElementById('flow-specific-repo-input') as HTMLInputElement;
+    const pathInput = document.getElementById('flow-specific-path-input') as HTMLInputElement;
+    expect(repoInput.value).toBe('persisted-owner/persisted-repo');
+    expect(pathInput.value).toBe('src/persisted.ts');
+
+    localStorage.removeItem('doc_target_selector');
+  });
+});
+
+

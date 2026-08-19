@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.36] — 2026-08-19
+
+> **Tests & Cobertura Codecov (#26): Expansión de cobertura de pruebas unitarias (+33 tests) alcanzando el 100% de funciones y líneas en `DocumentFlowModal.tsx` y 98,16% de líneas en `assistantActions.ts`.**
+> - **Cobertura `DocumentFlowModal.tsx`:** El modal unificado de 4 pasos para documentación alcanza el **100% de funciones** (antes 67,46%) y el **100% de líneas** (antes 88,92%), con 94,75% de sentencias y 89,77% de branches. Se cubrieron todos los flujos de publicación (Draft PR y Release con versión para scope repo/archivo/bulk, toggle de `uploadSource`, input manual de adjuntos con deducción de subcarpeta `destFor`, eliminación de extras con botón ✕, selector dropdown de rutas del árbol `repoFileTree`, manejo de `repoMissing`, tolerancia a adjuntos binarios/corruptos, alternancia de tabs README/MANUAL y rehidratación de estado guardado en `localStorage`).
+> - **Cobertura `assistantActions.ts`:** El orquestador desacoplado de acciones del asistente alcanza el **98,16% de líneas** y **97,24% de sentencias** (96,15% funciones, 84,74% branches). Se cubrieron flujos multi-repo con callback `onProgress` en historial, cancelaciones, validación de cuenta de destino en `runCreateRepoAndDocument`, tolerancia a fallos en subida de adjuntos, fetch y decodificación base64 de documentación previa, publicaciones Draft PR/Release/Commit directo, y manejo de errores accionables en `runSend` (`contextTooLargeError` sin contexto).
+> - **Métricas & Calidad:** Total de la suite: **1.259 tests cliente (75 suites) + 60 servidor (8 suites) = 1.319 tests unitarios totales en verde** (0 fallos, 0 errores), build TypeScript estricto limpio (`tsc -b && vite build`) y 100% de cobertura en diff patch para Codecov.
+> - **Sincronización Documental:** Actualización integral de `README.md`, `METODOLOGIA_IA.md`, `MANUAL_TECNICO.md`, `MEJORAS_FUTURAS.md`, `CLAUDE.md` y `docs/DESARROLLO_IA.md`.
+
+### Tests
+- `client/src/components/confirm/__tests__/DocumentFlowModal.test.tsx` (+16): tests exhaustivos para flujos de Draft PR y Release de repositorios y archivos individuales, toggle de checkbox `uploadSource`, selector manual de extras con cálculo de rutas de destino, botón de eliminación de adjuntos, cancelación de creación, selector dropdown de archivos del repositorio, textarea de instrucciones adicionales, tolerancia a excepciones en `file.text()` con adjuntos binarios, alternancia entre pestañas README y MANUAL_TECNICO, y restauración del estado del modal desde `localStorage` (`useDocTargetSelector`).
+- `client/src/services/__tests__/assistantActions.test.ts` (+17): tests unitarios para `runConfirmAction` en lotes multi-repo con callback `onProgress`, `runCancelAction` con entradas de historial y mensaje de chat, validación de pertenencia de cuenta en creación de repositorios, tolerancia a errores en subida de archivos opcionales, decodificación base64 y manejo 404 en `fetchExistingFileDoc`, publicación de Draft PR con conteo de adjuntos, enrutamiento por tipo de publicación (`runPublishFileDocByKind`), inclusión de contexto e imágenes en `runGenerateSpecificDoc`, y captura de excepciones de contexto grande en `runSend`.
+
+### Changed
+- `README.md`: badge `v4.0.36`, métricas de 1.319 tests unitarios en verde y registro de avances en trazabilidad.
+- `METODOLOGIA_IA.md`: entrada de trazabilidad en §5 para Antigravity 2.0 (Gemini 3.7 Flash) v4.0.36.
+- `MANUAL_TECNICO.md`, `MEJORAS_FUTURAS.md`, `CLAUDE.md`, `docs/DESARROLLO_IA.md`: bump de versión a `v4.0.36` y actualización de métricas de cobertura del backlog #26.
+
+Cambio de código por Antigravity (Gemini 3.7 Flash).
+
 ## [4.0.35] — 2026-08-19
 
 > **Feature & Docs: Extracción inteligente del resumen de repositorio para el About de GitHub y sincronización de documentación.**
