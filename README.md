@@ -2,12 +2,12 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge" alt="Estado" />
-  <a href="https://github.com/migueljerico/github-ai-assistant/releases"><img src="https://img.shields.io/badge/Versión-v4.0.36-blue?style=for-the-badge" alt="Versión" /></a>
+  <a href="https://github.com/migueljerico/github-ai-assistant/releases"><img src="https://img.shields.io/badge/Versión-v4.0.37-blue?style=for-the-badge" alt="Versión" /></a>
 
 
   <a href="./LICENSE"><img src="https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge" alt="License" /></a>
   <a href="https://github.com/migueljerico/github-ai-assistant/actions/workflows/ci.yml"><img src="https://github.com/migueljerico/github-ai-assistant/actions/workflows/ci.yml/badge.svg?style=for-the-badge" alt="CI & Coverage" /></a>
-  <a href="https://github.com/migueljerico/github-ai-assistant/actions/workflows/e2e.yml"><img src="https://img.shields.io/github/actions/workflow/status/migueljerico/github-ai-assistant/e2e.yml?style=for-the-badge&label=E2E%20Tests&logo=playwright&logoColor=white" alt="E2E Tests" /></a>
+  <a href="https://github.com/migueljerico/github-ai-assistant/actions/workflows/e2e.yml"><img src="https://github.com/migueljerico/github-ai-assistant/actions/workflows/status/migueljerico/github-ai-assistant/e2e.yml?style=for-the-badge&label=E2E%20Tests&logo=playwright&logoColor=white" alt="E2E Tests" /></a>
   <a href="https://codecov.io/gh/migueljerico/github-ai-assistant"><img src="https://codecov.io/gh/migueljerico/github-ai-assistant/graph/badge.svg?token=B1VDL0Y04G" alt="codecov" /></a>
   <a href="./e2e"><img src="https://img.shields.io/badge/Tested_with-Playwright-2EAD33?style=for-the-badge&logo=playwright&logoColor=white" alt="Tested with Playwright" /></a>
 </p>
@@ -85,7 +85,7 @@ Todo bajo el principio:
 | ⏱️ Tiempo de desarrollo | 2 meses de desarrollo continuo |
 | ⚡ Latencia observada | ~400ms Groq / ~1.2s Gemini, variable según modelo y contexto |
 | 🛡️ Seguridad | Zero-Storage: credenciales solo en memoria React |
-| 🧪 Tests | 1.272 tests unitarios (1.212 cliente + 60 servidor) + 13 E2E (Playwright) |
+| 🧪 Tests | 1.321 tests unitarios (1.261 cliente + 60 servidor) + 13 E2E (Playwright) |
 | 🌐 i18n | 13 idiomas globales (ES, EN, ZH, HI, FR, AR, BN, PT, ID, UR, RU, DE, JA) con soporte RTL |
 | 🌍 Deploy | Google Cloud Run |
 | 📦 Stack | React + TypeScript + Express + Vite |
@@ -240,7 +240,7 @@ Ver detalle en ./docs/SEGURIDAD.md.
 
 El proyecto usa **Vitest**, **React Testing Library**, **Playwright**, **GitHub Actions** y **Codecov**.
 
-- **1.272 tests unitarios (1.212 cliente + 60 servidor)** + **13 tests E2E** con Playwright (5 specs)
+- **1.321 tests unitarios (1.261 cliente + 60 servidor)** + **13 tests E2E** con Playwright (5 specs)
 - Tests unitarios, integración y componentes
 - Tests del servidor
 - Tests E2E del flujo crítico en navegador real (auth → chat → acción confirmada), del toggle de tema, de i18n, de persistencia y de accesibilidad (foco visible `:focus-visible` + `prefers-reduced-motion`, WCAG 2.4.7/2.3.3)
@@ -303,6 +303,7 @@ http://localhost:5173
 
 Este proyecto fue construido con un flujo humano ↔ IA basado en validación cruzada, revisión crítica y dogfooding.
 
+- **Antigravity 2.0 / Gemini 3.7 Flash:** modelo activo en **v4.0.37 (2026-08-24)** — corrección de vulnerabilidad de sanitización incompleta multi-carácter (CWE-116 / CodeQL alerts #7 y #8) implementando sanitización iterativa de punto fijo `stripHtmlTags` en utilidades Markdown de `gemini.ts`. Ampliación de la suite a **1.321 tests unitarios en verde** (1.261 cliente + 60 servidor, 100% patch Codecov) y sincronización documental integral.
 - **Antigravity 2.0 / Gemini 3.7 Flash:** modelo activo en **v4.0.36 (2026-08-19)** — expansión sistemática de pruebas unitarias (#26) alcanzando el **100% de funciones y 100% de líneas** en `DocumentFlowModal.tsx` (94,75% statements, 89,77% branches) y **98,16% de líneas** en `assistantActions.ts` (97,24% statements, 96,15% functions). Cobertura total de la suite: **1.319 tests unitarios en verde** (1.259 cliente + 60 servidor, 100% patch Codecov) y sincronización documental integral.
 - **Antigravity 2.0 / Gemini 3.7 Flash:** modelo activo en **v4.0.35 (2026-08-19)** — extracción inteligente del resumen del repositorio para el "about" de GitHub a partir del README generado (`extractRepoSummary`), saneamiento de Markdown y acotación segura respetando el límite de 350 caracteres de GitHub. Ampliación de la suite a 1.286 tests unitarios en verde (1.226 cliente + 60 servidor).
 - **ZCode (builtin:zai-start-plan/GLM-5.3):** modelo activo en **v4.0.34 (2026-08-16)** — expansión de cobertura Codecov (#26) con **+30 tests unitarios** sobre servicios sin testear: `gemini.ts` al **100% de líneas** (`buildSecurityAuditContext` del Modo Auditoría, rutas de `validateProviderKey`, errores HTTP de ambos transportes, streaming vacío, diagnóstico de JSON truncado y límites del escáner balanceado), `priorityScore` y refetch 404 en `github.ts`, dedup de catálogos y detección free en `providers.ts`, y subida de adjuntos en `docPublisher.ts`. Cobertura global del cliente: 95,22→**96,26%** statements y 86,67→**88,22%** branches; suite total 1.272 unitarios en verde. Sincronización documental completa (CHANGELOG, METODOLOGIA_IA, MANUAL_TECNICO, MEJORAS_FUTURAS, CLAUDE.md).

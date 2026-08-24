@@ -894,13 +894,27 @@ export function injectImagePreviewBlock(readme: string, previewBlock: string): s
 }
 
 /**
+ * Elimina todas las etiquetas HTML de forma iterativa hasta alcanzar un punto fijo,
+ * evitando vulnerabilidades de sanitización incompleta multi-carácter (CWE-116 / CodeQL).
+ */
+function stripHtmlTags(input: string): string {
+  let previous: string;
+  let result = input;
+  do {
+    previous = result;
+    result = result.replace(/<[^<>]*>/g, '');
+  } while (result !== previous);
+  return result.replace(/[<>]/g, '');
+}
+
+/**
  * Limpia el formato Markdown/HTML de una cadena para convertirla en texto plano legible.
  */
 function cleanMarkdownText(str: string): string {
-  return str
+  const noHtml = stripHtmlTags(str);
+  return noHtml
     .replace(/!\[([^\]]*)\]\([^)]*\)/g, '')
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
-    .replace(/<[^>]*>/g, '')
     .replace(/[*_]{1,3}([^*_\n]+)[*_]{1,3}/g, '$1')
     .replace(/`([^`]+)`/g, '$1')
     .replace(/^>\s*/, '')
@@ -914,10 +928,10 @@ function cleanMarkdownText(str: string): string {
  * Comprueba si una cadena contiene únicamente badges, enlaces o tags HTML.
  */
 function isOnlyBadgesOrLinks(str: string): boolean {
-  const noLinks = str
+  const noHtml = stripHtmlTags(str);
+  const noLinks = noHtml
     .replace(/\[!\[[^\]]*\]\([^)]*\)\]\([^)]*\)/g, '')
     .replace(/\[[^\]]*\]\([^)]*\)/g, '')
-    .replace(/<[^>]*>/g, '')
     .trim();
   return noLinks.length === 0;
 }

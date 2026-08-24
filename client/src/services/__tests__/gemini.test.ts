@@ -2280,6 +2280,28 @@ npm install
     expect(extractRepoSummary('# Minimal', 'org/my-project', 'None')).toBe('my-project');
   });
 
+  it('sanea de forma exhaustiva etiquetas HTML anidadas o malformadas (CWE-116)', () => {
+    const readme = `# Security Tool
+*Plataforma de análisis segura <scrip<script>alert(1)</script>t> con <div align="center"><span>detección avanzada</span></div> de amenazas.*
+
+## 📋 Descripción
+Herramienta de monitorización.`;
+    const summary = extractRepoSummary(readme);
+    expect(summary).toBe('Plataforma de análisis segura con detección avanzada de amenazas.');
+    expect(summary).not.toContain('<');
+    expect(summary).not.toContain('>');
+  });
+
+  it('detecta correctamente líneas con etiquetas HTML anidadas como badges sin considerarlas texto descriptivo', () => {
+    const readme = `# My Lib
+<div align="center"><span><a href="https://example.com"><img src="badge.svg" /></a></span></div>
+
+## 📋 Descripción
+Biblioteca ligera para manejo de colecciones y datos estructurados.`;
+    const summary = extractRepoSummary(readme);
+    expect(summary).toBe('Biblioteca ligera para manejo de colecciones y datos estructurados.');
+  });
+
   it('generateRepoDocs asigna el resumen extraído del README en vez del texto genérico', async () => {
     const readmeMock = `# 🧹 dataflow-ai
 *Aplicación en Python para limpiar datasets.*

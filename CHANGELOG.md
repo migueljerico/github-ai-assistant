@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.37] — 2026-08-24
+
+> **Seguridad & CodeQL: Corrección de alertas de sanitización incompleta multi-carácter (CWE-116 / CodeQL alerts #7 y #8) en utilidades de extracción y saneamiento Markdown.**
+> - **Sanitización Robusta de HTML:** Sustituido el reemplazo de una sola pasada `replace(/<[^>]*>/g, '')` en `cleanMarkdownText` e `isOnlyBadgesOrLinks` ([`gemini.ts`](client/src/services/gemini.ts)) por una función dedicada `stripHtmlTags` con bucle iterativo de punto fijo (`do...while`) y expresión regular `/<[^<>]*>/g` combinada con eliminación de corchetes angulares residuales. Esto neutraliza por completo vectores de inyección con etiquetas HTML anidadas, malformadas o fragmentadas (como `<scrip<script>...</script>t>` o `<<script>p>`), resolviendo las alertas CodeQL `js/incomplete-multi-character-sanitization` #7 y #8.
+> - **Ampliación de Pruebas Unitarias:** Nueva cobertura en `client/src/services/__tests__/gemini.test.ts` con tests específicos para vectores anidados y maliciosos de HTML en `extractRepoSummary` y detección de líneas con badges anidados, alcanzando **1.261 tests cliente (75 suites) + 60 servidor (8 suites) = 1.321 tests unitarios totales en verde** (0 fallos, 0 errores) con `gemini.ts` al 100% de líneas y 100% diff patch en Codecov.
+> - **Sincronización Documental:** Actualizados `README.md`, `METODOLOGIA_IA.md`, `MANUAL_TECNICO.md`, `MEJORAS_FUTURAS.md`, `CLAUDE.md` y `docs/DESARROLLO_IA.md`.
+
+### Security
+- `client/src/services/gemini.ts`: implementación de `stripHtmlTags` iterativo de punto fijo contra sanitizaciones multi-carácter incompletas (CWE-116) y actualización de `cleanMarkdownText` e `isOnlyBadgesOrLinks`.
+
+### Tests
+- `client/src/services/__tests__/gemini.test.ts` (+2): tests unitarios para sanitización exhaustiva de etiquetas HTML anidadas/malformadas en `extractRepoSummary` y detección de badges anidados con enlaces.
+
+### Changed
+- `README.md`: badge `v4.0.37`, métricas actualizadas a 1.321 tests unitarios en verde y registro de avances en trazabilidad.
+- `METODOLOGIA_IA.md`: entrada de trazabilidad en §5 para Antigravity 2.0 (Gemini 3.7 Flash) v4.0.37.
+- `MANUAL_TECNICO.md`, `MEJORAS_FUTURAS.md`, `CLAUDE.md`, `docs/DESARROLLO_IA.md`: bump de versión a `v4.0.37` y actualización de métricas y seguridad.
+
+Cambio de código por Antigravity (Gemini 3.7 Flash).
+
 ## [4.0.36] — 2026-08-19
 
 > **Tests & Cobertura Codecov (#26): Expansión de cobertura de pruebas unitarias (+33 tests) alcanzando el 100% de funciones y líneas en `DocumentFlowModal.tsx` y 98,16% de líneas en `assistantActions.ts`.**
