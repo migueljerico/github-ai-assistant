@@ -2,7 +2,7 @@
 
 Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de GitHub**.
 
-**Actualizado a:** v4.0.37 — Agosto 2026
+**Actualizado a:** v4.0.38 — Agosto 2026
 
 > 📜 **Historial de Mejoras Implementadas:** Para consultar las 100+ características y correcciones resueltas desde la v1.0.0 a la v4.0.33, consulta el [Historial de Mejoras (`HISTORIAL_MEJORAS.md`)](HISTORIAL_MEJORAS.md).
 

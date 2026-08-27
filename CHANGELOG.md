@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.38] — 2026-08-27
+
+> **Docs: Reorganización de la sección de modelos de IA del README — revisión completa del repositorio.**
+> - **Reorganización del README (`README.md § 🧠 Desarrollo asistido por IA`):** la sección acumulaba 18 viñetas cronológicas planas que mezclaban entornos que escribieron código, contribuciones cerradas como issue y modelos usados solo para validación/dogfooding. Tras revisar el repositorio completo (`README.md`, `docs/DESARROLLO_IA.md`, `METODOLOGIA_IA.md`, `MANUAL_TECNICO.md`, `CLAUDE.md`, `CHANGELOG.md` y `client/src/services/providers.ts`), la información se ha reagrupado en **tres bloques tabulados por rol** — 1) línea principal de desarrollo (Antigravity 2.0 + Gemini 3.7/3.6, ZCode/GLM-5.3 y GLM-5.2, Claude), 2) contribuciones puntuales cerradas como issue (Tencent HY3 #57, GLM-5.2 #50/#51), 3) validación cruzada y dogfooding (Microsoft Copilot GPT-5, Nemotron 3 Super 120B, Qwen 3.8 Max #76, ling-3.0-flash #75 y fix v3.67.0) — ordenados cronológicamente dentro de cada grupo. Se añadió criterio rector, flujo de dogfooding y separación README vs `docs/` como bloques propios. Corrección menor: eliminada fila duplicada `i18n` en la tabla de funcionalidades.
+> - **Trazabilidad:** cierre del bloque con constancia explícita de la reorganización realizada por **Muse Spark 1.2 Contributor (2026-08-27)**.
+> - **Sincronización documental:** bump de versión a `v4.0.38` en `package.json` ×2, `README.md`, `CLAUDE.md`, `MANUAL_TECNICO.md` y `MEJORAS_FUTURAS.md` con regeneración de lockfiles.
+
+### Changed
+- `README.md`: sección `## 🧠 Desarrollo asistido por IA` reestructurada en tres subsecciones tabuladas por rol; eliminado duplicado en tabla de funcionalidades; badge `v4.0.38`.
+- `package.json` / `client/package.json`: bump `4.0.37` → `4.0.38`.
+- `CLAUDE.md`, `MANUAL_TECNICO.md`, `MEJORAS_FUTURAS.md`: bump de versión a `v4.0.38`.
+- `METODOLOGIA_IA.md`: fila de trazabilidad en §5 para Muse Spark 1.2 Contributor (v4.0.38).
+
+Cambio de código por Muse Spark (Muse Spark 1.2 Contributor).
+
 ## [4.0.37] — 2026-08-24
 
 > **Seguridad & CodeQL: Corrección de alertas de sanitización incompleta multi-carácter (CWE-116 / CodeQL alerts #7 y #8) en utilidades de extracción y saneamiento Markdown.**
