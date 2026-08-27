@@ -2,7 +2,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge" alt="Estado" />
-  <a href="https://github.com/migueljerico/github-ai-assistant/releases"><img src="https://img.shields.io/badge/Versión-v4.0.37-blue?style=for-the-badge" alt="Versión" /></a>
+  <a href="https://github.com/migueljerico/github-ai-assistant/releases"><img src="https://img.shields.io/badge/Versión-v4.0.38-blue?style=for-the-badge" alt="Versión" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge" alt="License" /></a>
   <a href="./e2e"><img src="https://img.shields.io/badge/Tested_with-Playwright-2EAD33?style=for-the-badge&logo=playwright&logoColor=white" alt="Tested with Playwright" /></a>
   <a href="https://github.com/migueljerico/github-ai-assistant/actions/workflows/ci.yml"><img src="https://github.com/migueljerico/github-ai-assistant/actions/workflows/ci.yml/badge.svg?style=for-the-badge" alt="CI & Coverage" /></a>
@@ -104,7 +104,6 @@ Todo bajo el principio:
 | 📋 Changelog | Generar changelog desde commits recientes o desde el último release |
 | 📊 Salud del código | Dashboard con lenguajes, commits y deuda técnica |
 | 🛡️ Auditoría de seguridad | Revisión orientativa (LLM) de secrets, dependencias y validación de inputs |
-| 🌐 i18n | Interfaz bilingüe ES/EN |
 
 
 Más detalle en ./docs/FUNCIONALIDADES.md.
@@ -298,42 +297,50 @@ http://localhost:5173
 
 ## 🧠 Desarrollo asistido por IA
 
-Este proyecto fue construido con un flujo humano ↔ IA basado en validación cruzada, revisión crítica y dogfooding.
+Este proyecto fue construido con un flujo **humano ↔ IA** basado en validación cruzada, revisión crítica y **dogfooding** (la propia app se usó para analizar el repositorio `github-ai-assistant`, revisar su arquitectura y proponer mejoras del roadmap).
 
-- **Antigravity 2.0 / Gemini 3.7 Flash:** modelo activo en **v4.0.37 (2026-08-24)** — corrección de vulnerabilidad de sanitización incompleta multi-carácter (CWE-116 / CodeQL alerts #7 y #8) implementando sanitización iterativa de punto fijo `stripHtmlTags` en utilidades Markdown de `gemini.ts`. Ampliación de la suite a **1.321 tests unitarios en verde** (1.261 cliente + 60 servidor, 100% patch Codecov) y sincronización documental integral.
-- **Antigravity 2.0 / Gemini 3.7 Flash:** modelo activo en **v4.0.36 (2026-08-19)** — expansión sistemática de pruebas unitarias (#26) alcanzando el **100% de funciones y 100% de líneas** en `DocumentFlowModal.tsx` (94,75% statements, 89,77% branches) y **98,16% de líneas** en `assistantActions.ts` (97,24% statements, 96,15% functions). Cobertura total de la suite: **1.319 tests unitarios en verde** (1.259 cliente + 60 servidor, 100% patch Codecov) y sincronización documental integral.
-- **Antigravity 2.0 / Gemini 3.7 Flash:** modelo activo en **v4.0.35 (2026-08-19)** — extracción inteligente del resumen del repositorio para el "about" de GitHub a partir del README generado (`extractRepoSummary`), saneamiento de Markdown y acotación segura respetando el límite de 350 caracteres de GitHub. Ampliación de la suite a 1.286 tests unitarios en verde (1.226 cliente + 60 servidor).
-- **ZCode (builtin:zai-start-plan/GLM-5.3):** modelo activo en **v4.0.34 (2026-08-16)** — expansión de cobertura Codecov (#26) con **+30 tests unitarios** sobre servicios sin testear: `gemini.ts` al **100% de líneas** (`buildSecurityAuditContext` del Modo Auditoría, rutas de `validateProviderKey`, errores HTTP de ambos transportes, streaming vacío, diagnóstico de JSON truncado y límites del escáner balanceado), `priorityScore` y refetch 404 en `github.ts`, dedup de catálogos y detección free en `providers.ts`, y subida de adjuntos en `docPublisher.ts`. Cobertura global del cliente: 95,22→**96,26%** statements y 86,67→**88,22%** branches; suite total 1.272 unitarios en verde. Sincronización documental completa (CHANGELOG, METODOLOGIA_IA, MANUAL_TECNICO, MEJORAS_FUTURAS, CLAUDE.md).
-- **Antigravity 2.0 / Gemini 3.7 Flash:** entorno de desarrollo agéntico principal en el ciclo v3.68.0–v4.0.33 (2026-08-14): incorporación de Gemini 3.7 Flash (`gemini-3.7-flash`) al catálogo nativo con soporte i18n en 13 idiomas, sincronización y mantenimiento documental de todo el repositorio, optimización de timeouts y reintentos, y ampliación sistemática de la suite de pruebas unitarias hacia el 100% de cobertura en Codecov.
-- **Antigravity 2.0 / Gemini 3.6 Flash:** desarrollo agéntico previo, integración de proveedores Kilo y BazaarLink, solución de error 429 de rate limit, reintentos transitorios y mantenimiento de releases.
-- **Claude / Claude Code:** arquitectura, revisión crítica, implementación asistida y documentación.
-- **Antigravity 2.0:** construcción inicial agéntica de la versión full-stack.
-- **ZCode / step-3.7-flash-free (GLM-5.2):** cierre de versiones, build, sincronización de documentación y release desde v3.25.0.
-- **GLM-5.2 (web, Zhipu):** i18n Fase 1 (v3.20.0) y tareas puntuales previas.
-- **Gemini, Gemma, DeepSeek, Qwen y otros modelos:** revisión de arquitectura, propuestas de mejora y contraste técnico.
-- **Nemotron 3 Super 120B (NVIDIA, vía OpenRouter):** validación cruzada en Z.ai — sugirió incluir el deploy automático de Cloud Run en la rutina de cierre y corregir la regla de oro (commit → push → tag → release → deploy) en `CLAUDE.md`.
-- **Tencent HY3 (OpenRouter):** retomó el proyecto y cerró **#57 (v3.27.0)**: unificó la UI de documentación en un único flujo stepper (4 pasos: alcance → generar → revisar → destino + método), fusionando los botones divergentes "Documentar repo" y "Documentar y publicar" y eliminando `DocModal`/`FilePublishModal`. Previamente, por dogfooding (06/07), había aportado la poda de #33 (revisores) y #35 (auto-labels); validado por el autor y confirmado.
-- **GLM-5.2 (builtin:zai-coding-plan/GLM-5.2):** cerró **#50 y #51 (v3.28.0)** — presupuesto de contexto adaptativo por proveedor (Groq free con TPM bajo: 6 archivos/60 líneas frente a 12/80), reintento automático con menos contexto ante error de TPM/context-length, fix del mensaje de error duplicado y bloque plegable "Archivos consultados para esta respuesta" que hace transparente el `contextRanker`.
-- **Microsoft 365 Copilot — GPT-5 Razonamiento:** revisión editorial del README, propuesta de modularización documental y reestructuración de la documentación en archivos separados.
-- **ling-3.0-flash:free** (Zhipu, vía Kilo): dogfooding 2026-07-28 — revisó el roadmap (`MEJORAS_FUTURAS.md`) y aportó **#75 (tests E2E)** como la única mejora concreta, medible y alineada con la cultura de testing del proyecto. Descartó sugerencias genéricas ya cubiertas (accesibilidad, priorización) y las inviables (monitoring operativo, auditoría de deps). Refinó la propuesta para que sea verificable.
-- **ling-3.0-flash:free** (Zhipu, vía Kilo): sesión v3.67.0 (2026-08-02) — diagnóstico y fix de un bug real reportado por el usuario: el flujo "Documentar → Documento específico del repo" ignoraba la instrucción del chat y solo aplicaba cambios triviales al README existente. Se refactorizó el system prompt de `generateSpecificDoc` (precedencia de instrucción de usuario sobre contenido previo) y se cableó el `conversationHistory` desde `App.tsx` para que el modelo aplique las peticiones de reescritura hechas en el chat.
-- **QwenCloud · Qwen 3.8 Max** (Alibaba Cloud): dogfooding 2026-08-06 — primera sesión real de la app con el repo cargado como contexto. Analizó 218 archivos, ejecutó acciones de lectura y propuso de forma autónoma la mejora **#76 `ChatToolsMenu`** (revelado progresivo de herramientas avanzadas del chat), detectando que los 9 botones de la barra son excesivos para usuarios sin experiencia técnica. Propuesta evaluada por el autor e incorporada al roadmap.
+> **Criterio rector:** ninguna salida de IA se tomó como verdad absoluta. Cada propuesta se revisó contra los principios del proyecto — Zero-Storage, confirmación previa, mantenibilidad, testing, coherencia arquitectónica, claridad para usuarios no técnicos y valor real como portfolio.
 
-Además, el proyecto se desarrolló aplicando **dogfooding**: la propia app se usó para cargar y analizar el repositorio `github-ai-assistant`, revisar su arquitectura, detectar límites reales de contexto, contrastar propuestas entre modelos y generar nuevas mejoras del roadmap.
+### 1 · Línea principal de desarrollo — entornos que escribieron código
 
-Ver detalle en ./docs/DESARROLLO_IA.md.
+Entornos agénticos que ejecutaron cambios directos en el repositorio (código, tests, docs y releases). Orden cronológico inverso.
 
-Ninguna salida de IA se tomó como verdad absoluta. Cada propuesta se revisó contra los principios del proyecto:
+| Entorno / Modelo base | Periodo | Aportación principal |
+|---|---|---|
+| **Antigravity 2.0 · Gemini 3.7 Flash** | v4.0.33 → v4.0.37 (2026-08-14 → 2026-08-24) | Entorno agéntico principal del ciclo. Incorporó `gemini-3.7-flash` al catálogo con i18n en 13 idiomas, optimizó timeouts/reintentos y sostuvo la expansión de cobertura. **v4.0.37:** fix de sanitización multi-carácter (CWE-116) con `stripHtmlTags` iterativo en `gemini.ts`. **v4.0.36:** 100% funciones y líneas en `DocumentFlowModal.tsx` y 98,16% líneas en `assistantActions.ts`. **v4.0.35:** `extractRepoSummary` para el "about" de GitHub (límite 350 caracteres). Suite final del ciclo: 1.321 tests unitarios en verde, 100% patch Codecov. |
+| **ZCode · GLM-5.3** (`builtin:zai-start-plan`) | v4.0.34 (2026-08-16) | Expansión Codecov **+30 tests**: `gemini.ts` al 100% de líneas (`buildSecurityAuditContext`, `validateProviderKey`, errores HTTP, streaming vacío, JSON truncado), `priorityScore` y refetch 404 en `github.ts`, dedup de catálogos y detección free en `providers.ts`, y `extraFiles`/`uploadFilesToRepo` en `docPublisher.ts`. Cobertura global 95,22→96,26% statements. |
+| **Antigravity 2.0 · Gemini 3.6 Flash** | v3.68.0 → v4.0.32 (2026-08) | Desarrollo agéntico previo: integración de proveedores **Kilo** y **BazaarLink**, manejo de error 429 y reintentos transitorios, y mantenimiento de releases. |
+| **ZCode · GLM-5.2** (`step-3.7-flash-free` / `builtin:zai-coding-plan`) | desde v3.25.0 (2026-07) | Cierre sistemático de versiones — bump, `CHANGELOG.md`, sincronización documental y release. Destacan **v3.27.0 (#57)** con Tencent HY3 (ver §2), **v3.28.0 (#50 y #51)**: presupuesto de contexto adaptativo por proveedor (Groq free 6/60 vs 12/80), reintento por TPM y bloque "Archivos consultados", y **v3.30–v3.31**: fix del truncado de 4096 tokens en documentación. |
+| **GLM-5.2 (web, Zhipu)** | v3.20.0 | i18n Fase 1 y tareas puntuales previas. |
+| **Antigravity 2.0** (base) | Fase inicial | Construcción inicial agéntica de la versión full-stack (React + Express + OAuth). |
+| **Claude / Claude Code** (Anthropic) | Fase de arquitectura | Diseño de arquitectura, revisión crítica y documentación fundacional. |
 
-- Zero-Storage.
-- Confirmación previa.
-- Mantenibilidad.
-- Testing.
-- Coherencia arquitectónica.
-- Claridad para usuarios no técnicos.
-- Valor real como portfolio profesional.
+### 2 · Contribuciones puntuales cerradas como issue
 
-La reorganización documental del proyecto separa el README principal —más breve y orientado a impacto— de la documentación extendida:
+Trabajos que nacieron como propuesta y se cerraron con PR y versión etiquetada.
+
+| Modelo / Vía | Issue | Qué resolvió |
+|---|---|---|
+| **Tencent HY3** (OpenRouter, `tencent/hy3:free`) | **#57 — v3.27.0** | Unificó la UI de documentación en un único **stepper de 4 pasos** (alcance → generar → revisar → destino+método), fusionando "Documentar repo" y "Documentar y publicar" y eliminando `DocModal`/`FilePublishModal`. Previamente (dogfooding 06/07) propuso la poda de **#33** (revisores) y **#35** (auto-labels). |
+| **GLM-5.2** (`builtin:zai-coding-plan`) | **#50 y #51 — v3.28.0** | Presupuesto de contexto adaptativo por proveedor, reintento con menos contexto ante error de TPM/context-length, fix del mensaje duplicado y bloque plegable "Archivos consultados para esta respuesta" (`contextRanker`). |
+
+### 3 · Validación cruzada, revisión y dogfooding
+
+Modelos usados para contrastar arquitectura, revisar roadmap o probar la app con el repo cargado como contexto. Propusieron mejoras; el autor decidió qué incorporar.
+
+| Modelo / Vía | Rol | Aportación |
+|---|---|---|
+| **Microsoft 365 Copilot — GPT-5 Razonamiento** | Revisión editorial | Reorganización del README y propuesta de modularización en `docs/` (`FUNCIONALIDADES.md`, `ARQUITECTURA.md`, etc.). |
+| **Nemotron 3 Super 120B** (NVIDIA, vía OpenRouter) | Validación cruzada | Sugirió incluir el deploy automático de Cloud Run en la rutina de cierre (`commit → push → tag → release → deploy`) y corregir `CLAUDE.md`. |
+| **QwenCloud · Qwen 3.8 Max** (Alibaba Cloud) | Dogfooding 2026-08-06 | Con 218 archivos cargados propuso **#76 `ChatToolsMenu`** — revelado progresivo de herramientas avanzadas (9 botones → menú "Más herramientas"). Incorporada al roadmap. |
+| **ling-3.0-flash:free** (Zhipu, vía Kilo) | Dogfooding 2026-07-28 y fix v3.67.0 | **#75 (tests E2E)** — única propuesta concreta y verificable del roadmap; descartó genéricas ya cubiertas. **v3.67.0:** diagnosticó el bug "Documentar → Documento específico" que ignoraba la instrucción del chat; fix en `generateSpecificDoc` (precedencia de instrucción de usuario + `conversationHistory` desde `App.tsx`). |
+| **Gemini, Gemma, DeepSeek, Qwen y otros** | Contraste técnico | Revisión de arquitectura, propuestas de mejora y contraste de decisiones. |
+
+### Dogfooding y separación documental
+
+El dogfooding siguió el flujo: cargar el repo como contexto → pedir revisión crítica con distintos proveedores → comparar respuestas → filtrar elogios genéricos → reformular lo accionable según los principios del proyecto → añadir al roadmap o implementar.
+
+La reorganización documental separa el README —breve y orientado a impacto— de la documentación extendida:
 
 ```text
 docs/
@@ -346,7 +353,9 @@ docs/
 └── DESARROLLO_IA.md
 ```
 
-Ver proceso completo en ./docs/DESARROLLO_IA.md y ./METODOLOGIA_IA.md.
+Ver proceso completo en [`docs/DESARROLLO_IA.md`](./docs/DESARROLLO_IA.md) y [`METODOLOGIA_IA.md`](./METODOLOGIA_IA.md).
+
+> ℹ️ **Reorganización de esta sección realizada por Muse Spark 1.2 Contributor (2026-08-27):** la información ya existía pero estaba dispersa en una lista cronológica plana; se ha reagrupado por rol (línea principal de desarrollo, contribuciones cerradas y validación/dogfooding), ordenada cronológicamente dentro de cada grupo y tabulada para facilitar la lectura como portfolio. El contenido factual no se ha alterado.
 
 
 ---
