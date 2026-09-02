@@ -20,6 +20,7 @@ import {
  validateProviderKey,
  buildSecurityAuditContext,
  extractRepoSummary,
+ isGroqEndpoint,
 } from '../gemini';
 
 describe('gemini.ts - Utilidades', () => {
@@ -879,6 +880,27 @@ describe('generateFileDoc - documentar archivo adjunto (#28 Fase 2)', () => {
     // Contenido no vacío para callAI, pero que al quitar los fences queda vacío.
     mockContent('```markdown\n```');
     await expect(generateFileDoc('a.md', 'x', config)).rejects.toThrow(/no devolvió documentación/);
+  });
+});
+
+describe('isGroqEndpoint (fix CodeQL #9)', () => {
+  it('detecta hosts de Groq por hostname (dominio y subdominios)', () => {
+    expect(isGroqEndpoint('https://api.groq.com/openai/v1/chat/completions')).toBe(true);
+    expect(isGroqEndpoint('https://groq.com/v1')).toBe(true);
+  });
+
+  it('no da por Groq un host que solo CONTIENE el substring groq.com', () => {
+    expect(isGroqEndpoint('https://evilgroq.com/v1')).toBe(false);
+    expect(isGroqEndpoint('https://api.openai.com/v1/chat/completions')).toBe(false);
+    expect(isGroqEndpoint('https://example.com/path?x=groq.com')).toBe(false);
+  });
+
+  it('resuelve endpoints relativos contra el origen actual y no es Groq', () => {
+    expect(isGroqEndpoint('/api/gemini')).toBe(false);
+  });
+
+  it('devuelve false ante URLs no parseables (ramas de defensa)', () => {
+    expect(isGroqEndpoint('http://')).toBe(false);
   });
 });
 

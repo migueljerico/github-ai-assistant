@@ -27,7 +27,7 @@ Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de
 **Progreso realizado (v4.0.41):** ✅ Infraestructura completa, reglas permanentes documentadas y suites ampliadas
 - ✅ Vitest + Codecov + CI con GitHub Actions (cliente + servidor)
 - ✅ Badge de Codecov en README
-- ✅ **1.281 tests en el cliente (75 suites) + 60 en el servidor (8 suites)** = **1.341 unitarios** + **13 tests E2E** con Playwright. Cobertura del 100% de diff patch para Codecov, `gemini.ts` al 100% de statements, `DocumentFlowModal.tsx` al 100% de funciones y 100% de statements, y `assistantActions.ts` al 98,18% de statements.
+- ✅ **1.285 tests en el cliente (75 suites) + 60 en el servidor (8 suites)** = **1.345 unitarios** + **13 tests E2E** con Playwright. Cobertura del 100% de diff patch para Codecov, `gemini.ts` al 100% de statements, `DocumentFlowModal.tsx` al 100% de funciones y 100% de statements, y `assistantActions.ts` al 98,18% de statements.
 - ✅ Cobertura del 100% alcanzada en `gemini.ts` (statements), `github.ts`, `docPublisher.ts`, `threadSummary.ts`, `DocumentFlowModal.tsx` (funciones y statements), `ErrorBoundary`, `FileAttachButton`, `AIProviderContext`, `ConfirmModal`, `useModalDialog`, `ChatMessage` (líneas), `DocumentRepoButton`, `ChangelogButton`, `CodeHealthButton`, `ConversationIOButton`, `AIProviderBadge`, `LanguageSelector` y utilidades/hooks (`repoRef`, `docxReader`, `useDocTargetSelector`, `modelLabels`, `retry`).
 
 

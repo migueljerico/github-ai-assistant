@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > - **Acceso directo de documentación ligera:** nuevo botón `⚡ Doc. ligera` (`#flow-generate-light-direct-btn`) junto al botón principal de generación, que lanza el análisis de archivos esenciales sin necesidad de un fallo previo.
 > - **Seguridad (CodeQL #9):** la detección de Groq en `gemini.ts` ya no usa `endpoint.includes('groq.com')` (un substring puede aparecer en un host distinto, p. ej. `evilgroq.com`); nuevo helper `isGroqEndpoint` que parsea la URL y compara el **hostname** exacto (`groq.com` o subdominio `.groq.com`), con resolución de endpoints relativos contra el origen actual.
 > - **i18n:** 6 claves nuevas (`modal.flow.timeoutTitle/Desc/Hint`, `modal.flow.overloadedTitle/Desc/Hint`, `modal.flow.generateLightDirect(+Title)`, `chat.docTimeout`, `chat.docOverloaded`, `history.errorDocumentingTimeout/Overloaded`) en los 13 diccionarios lingüísticos.
-> - **Pruebas unitarias y cobertura Codecov (#26):** +9 tests unitarios (+3 en `retry.test.ts`, +2 en `assistantActions.test.ts`, +4 en `DocumentFlowModal.test.tsx`), alcanzando **1.341 tests unitarios totales en verde** (1.281 cliente + 60 servidor, 0 fallos), lint 0 errores y build limpia.
+> - **Pruebas unitarias y cobertura Codecov (#26):** +13 tests unitarios (+4 en `retry.test.ts`, +2 en `assistantActions.test.ts`, +4 en `DocumentFlowModal.test.tsx`, +4 en `gemini.test.ts` con suite dedicada a `isGroqEndpoint`), alcanzando **1.345 tests unitarios totales en verde** (1.285 cliente + 60 servidor, 0 fallos), 100% de líneas en `gemini.ts`, `retry.ts` y `DocumentFlowModal.tsx`, 100% diff patch en Codecov, lint 0 errores y build limpia.
 
 ### Added
 - `client/src/utils/retry.ts`: `isProviderOverloadedError` (503 / patrones de sobrecarga) y no-reintento de `TimeoutError`.
@@ -26,7 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bump de versión a `v4.0.41` en `package.json`, `client/package.json` y lockfiles.
 
 ### Tests
-- `client/src/utils/__tests__/retry.test.ts`: detección de 503/patrones de sobrecarga y propagación sin reintento de `TimeoutError`.
+- `client/src/utils/__tests__/retry.test.ts`: detección de 503/patrones de sobrecarga (incluida la rama sin `message`) y propagación sin reintento de `TimeoutError`.
+- `client/src/services/__tests__/gemini.test.ts`: suite de `isGroqEndpoint` (hostname exacto, subdominios, falsos positivos por substring, endpoints relativos y URLs no parseables).
 - `client/src/services/__tests__/assistantActions.test.ts`: `runDocumentRepo` devuelve `'timeout'` y `'overloaded'` con mensajes pedagógicos en chat e historial.
 - `client/src/components/confirm/__tests__/DocumentFlowModal.test.tsx`: banners de timeout y sobrecarga, y botón directo de documentación ligera con avance al paso 3.
 

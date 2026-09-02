@@ -60,6 +60,7 @@ describe('retry (#40 / #50)', () => {
     it('devuelve false para errores que no son de sobrecarga', () => {
       expect(isProviderOverloadedError(new Error('Invalid API key'))).toBe(false);
       expect(isProviderOverloadedError({ status: 400, message: '' })).toBe(false);
+      expect(isProviderOverloadedError({})).toBe(false);
       expect(isProviderOverloadedError({ status: 413, message: '' })).toBe(false);
     });
   });
