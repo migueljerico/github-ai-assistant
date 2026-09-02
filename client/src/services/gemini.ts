@@ -327,6 +327,12 @@ async function callOpenAICompatible(
         : ' — Error de autenticación o permisos en QwenCloud (403/401). Verifica tu API key en qwencloud.com / DashScope.';
       throw Object.assign(new Error((msg || base) + hint), { status: res.status });
     }
+    // Groq / OpenAI-compatible: modelo bloqueado a nivel de proyecto u organización en ajustes/límites
+    const isProjectBlocked = typeof msg === 'string' && /blocked at the project level|model_permission_blocked_project|blocked at the organization level/i.test(msg);
+    if (isProjectBlocked || ((res.status === 403 || res.status === 400) && typeof msg === 'string' && msg.includes('console.groq.com/settings/project/limits'))) {
+      const hint = ' — Este modelo está bloqueado en los límites de tu proyecto en Groq Console. Habilítalo en https://console.groq.com/settings/project/limits o selecciona un modelo de producción activo (p. ej. GPT-OSS 20B).';
+      throw Object.assign(new Error(base + hint), { status: res.status });
+    }
     // Genérico 429 para cualquier otro proveedor (ej. Zenmux, Groq, OpenRouter)
     if (res.status === 429) {
       const hint = ' — Demasiadas peticiones o límite de cuota alcanzado (429). Los modelos gratuitos tienen límites estrictos de peticiones por minuto. Espera un momento o cambia de proveedor.';
@@ -343,7 +349,10 @@ async function callOpenAICompatible(
     if (res.status === 401) {
       throw Object.assign(new Error(base), { status: 401 });
     }
-    const hint = ' — el modelo no está disponible ahora mismo (saturación del tier gratuito). Prueba otro modelo (p. ej. Gemma) o cambia a Gemini/Groq.';
+    const isGroq = endpoint.includes('groq.com');
+    const hint = isGroq
+      ? ' — el modelo no está disponible ahora mismo en Groq. Prueba otro modelo (p. ej. GPT-OSS 20B) o cambia a Gemini/OpenRouter.'
+      : ' — el modelo no está disponible ahora mismo (saturación del tier gratuito). Prueba otro modelo (p. ej. Gemma) o cambia a Gemini/Groq.';
     throw Object.assign(new Error(base + hint), { status: res.status });
   }
 

@@ -1,6 +1,6 @@
 # 📖 Manual Técnico — GitHub AI Assistant
 
-**Versión:** v4.0.38 — Agosto 2026
+**Versión:** v4.0.39 — Septiembre 2026
 
 
 ---
@@ -210,9 +210,9 @@ se leen del `AIProviderContext` (memoria React) en cada llamada y nunca pasan po
 servidor (excepto la de Gemini, que viaja en el body HTTPS hacia el proxy).
 
 Al cargar el catálogo dinámico, `pickDefaultModel` (en `providers.ts`) elige como
-modelo por defecto uno gratuito **fiable** (preferencia: Gemma → modelos Llama vigentes →
-DeepSeek) en vez de un `:free` arbitrario, ya que muchos endpoints gratuitos de
-OpenRouter están a menudo saturados. Si el usuario ya cambió el selector, se respeta
+modelo por defecto uno gratuito o de producción **fiable** (preferencia: GPT-OSS 20B → Gemma → modelos Llama vigentes →
+DeepSeek → Qwen) en vez de un `:free` arbitrario o modelo bloqueado en límites de proyecto, ya que muchos endpoints gratuitos de
+OpenRouter están a menudo saturados y en Groq los modelos preview (como Qwen 3.8) requieren habilitación manual. Si el usuario ya cambió el selector, se respeta
 su elección.
 
 ### Reintento ante errores transitorios (v2.7.3)

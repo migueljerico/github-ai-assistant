@@ -650,9 +650,9 @@ export function modelLabel(provider: AIProviderType, model: string): string {
 // se carga, preferimos uno de esos modelos fiables como default en vez de un :free
 // arbitrario (el primero alfabético), para que la primera petición tenga más
 // probabilidad de funcionar. Comparación por substring sobre el `value` del modelo.
-// Nota: `llama` (genérico) en vez de `llama-3.3-70b` para ser robusto a las
-// deprecaciones de Groq (Llama 3.3 70B se retira en agosto; el catálogo es dinámico).
-const RELIABLE_MODEL_PREFS = ['gemma', 'llama', 'deepseek', 'qwen'];
+// Nota: `gpt-oss` primero para que en Groq (y OpenRouter) se priorice GPT-OSS 20B
+// sobre modelos de preview o bloqueados a nivel de proyecto (p. ej. Qwen 3.8 en Groq).
+const RELIABLE_MODEL_PREFS = ['gpt-oss', 'gemma', 'llama', 'deepseek', 'qwen'];
 
 /**
  * Escoge un modelo por defecto de un catálogo: prioriza modelos gratuitos fiables

@@ -2,7 +2,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge" alt="Estado" />
-  <a href="https://github.com/migueljerico/github-ai-assistant/releases"><img src="https://img.shields.io/badge/Versión-v4.0.38-blue?style=for-the-badge" alt="Versión" /></a>
+  <a href="https://github.com/migueljerico/github-ai-assistant/releases"><img src="https://img.shields.io/badge/Versión-v4.0.39-blue?style=for-the-badge" alt="Versión" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge" alt="License" /></a>
   <a href="./e2e"><img src="https://img.shields.io/badge/Tested_with-Playwright-2EAD33?style=for-the-badge&logo=playwright&logoColor=white" alt="Tested with Playwright" /></a>
   <a href="https://github.com/migueljerico/github-ai-assistant/actions/workflows/ci.yml"><img src="https://github.com/migueljerico/github-ai-assistant/actions/workflows/ci.yml/badge.svg?style=for-the-badge" alt="CI & Coverage" /></a>
@@ -82,7 +82,7 @@ Todo bajo el principio:
 | ⏱️ Tiempo de desarrollo | 2 meses de desarrollo continuo |
 | ⚡ Latencia observada | ~400ms Groq / ~1.2s Gemini, variable según modelo y contexto |
 | 🛡️ Seguridad | Zero-Storage: credenciales solo en memoria React |
-| 🧪 Tests | 1.321 tests unitarios (1.261 cliente + 60 servidor) + 13 E2E (Playwright) |
+| 🧪 Tests | 1.324 tests unitarios (1.264 cliente + 60 servidor) + 13 E2E (Playwright) |
 | 🌐 i18n | 13 idiomas globales (ES, EN, ZH, HI, FR, AR, BN, PT, ID, UR, RU, DE, JA) con soporte RTL |
 | 🌍 Deploy | Google Cloud Run |
 | 📦 Stack | React + TypeScript + Express + Vite |
@@ -236,7 +236,7 @@ Ver detalle en ./docs/SEGURIDAD.md.
 
 El proyecto usa **Vitest**, **React Testing Library**, **Playwright**, **GitHub Actions** y **Codecov**.
 
-- **1.321 tests unitarios (1.261 cliente + 60 servidor)** + **13 tests E2E** con Playwright (5 specs)
+- **1.324 tests unitarios (1.264 cliente + 60 servidor)** + **13 tests E2E** con Playwright (5 specs)
 - Tests unitarios, integración y componentes
 - Tests del servidor
 - Tests E2E del flujo crítico en navegador real (auth → chat → acción confirmada), del toggle de tema, de i18n, de persistencia y de accesibilidad (foco visible `:focus-visible` + `prefers-reduced-motion`, WCAG 2.4.7/2.3.3)
@@ -307,7 +307,7 @@ Entornos agénticos que ejecutaron cambios directos en el repositorio (código, 
 
 | Entorno / Modelo base | Periodo | Aportación principal |
 |---|---|---|
-| **Antigravity 2.0 · Gemini 3.7 Flash** | v4.0.33 → v4.0.37 (2026-08-14 → 2026-08-24) | Entorno agéntico principal del ciclo. Incorporó `gemini-3.7-flash` al catálogo con i18n en 13 idiomas, optimizó timeouts/reintentos y sostuvo la expansión de cobertura. **v4.0.37:** fix de sanitización multi-carácter (CWE-116) con `stripHtmlTags` iterativo en `gemini.ts`. **v4.0.36:** 100% funciones y líneas en `DocumentFlowModal.tsx` y 98,16% líneas en `assistantActions.ts`. **v4.0.35:** `extractRepoSummary` para el "about" de GitHub (límite 350 caracteres). Suite final del ciclo: 1.321 tests unitarios en verde, 100% patch Codecov. |
+| **Antigravity 2.0 · Gemini 3.7 Flash** | v4.0.33 → v4.0.39 (2026-08-14 → 2026-09-02) | Entorno agéntico principal del ciclo. Incorporó `gemini-3.7-flash` al catálogo con i18n en 13 idiomas, optimizó timeouts/reintentos y sostuvo la expansión de cobertura. **v4.0.39:** corrección de selección automática en Groq (priorización de `openai/gpt-oss-20b` sobre `qwen3.8-27b`), manejo de error de modelos bloqueados por límites de proyecto en consola Groq (`model_permission_blocked_project`) y etiquetas amigables. **v4.0.37:** fix de sanitización multi-carácter (CWE-116) con `stripHtmlTags` iterativo en `gemini.ts`. **v4.0.36:** 100% funciones y líneas en `DocumentFlowModal.tsx` y 98,16% líneas en `assistantActions.ts`. **v4.0.35:** `extractRepoSummary` para el "about" de GitHub (límite 350 caracteres). Suite final del ciclo: 1.324 tests unitarios en verde, 100% patch Codecov. |
 | **ZCode · GLM-5.3** (`builtin:zai-start-plan`) | v4.0.34 (2026-08-16) | Expansión Codecov **+30 tests**: `gemini.ts` al 100% de líneas (`buildSecurityAuditContext`, `validateProviderKey`, errores HTTP, streaming vacío, JSON truncado), `priorityScore` y refetch 404 en `github.ts`, dedup de catálogos y detección free en `providers.ts`, y `extraFiles`/`uploadFilesToRepo` en `docPublisher.ts`. Cobertura global 95,22→96,26% statements. |
 | **Antigravity 2.0 · Gemini 3.6 Flash** | v3.68.0 → v4.0.32 (2026-08) | Desarrollo agéntico previo: integración de proveedores **Kilo** y **BazaarLink**, manejo de error 429 y reintentos transitorios, y mantenimiento de releases. |
 | **ZCode · GLM-5.2** (`step-3.7-flash-free` / `builtin:zai-coding-plan`) | desde v3.25.0 (2026-07) | Cierre sistemático de versiones — bump, `CHANGELOG.md`, sincronización documental y release. Destacan **v3.27.0 (#57)** con Tencent HY3 (ver §2), **v3.28.0 (#50 y #51)**: presupuesto de contexto adaptativo por proveedor (Groq free 6/60 vs 12/80), reintento por TPM y bloque "Archivos consultados", y **v3.30–v3.31**: fix del truncado de 4096 tokens en documentación. |

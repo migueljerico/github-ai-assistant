@@ -159,6 +159,12 @@ describe('providers — pickDefaultModel', () => {
     expect(pickDefaultModel(list)).toBe('llama-3.1-8b-instant');
   });
 
+  it('prefiere GPT-OSS sobre Qwen cuando ambos están disponibles (Groq)', () => {
+    // GPT-OSS 20B (producción activo) debe tener prioridad sobre modelos bloqueados a nivel de proyecto (Qwen)
+    const list = [paid('qwen/qwen3.8-27b'), paid('openai/gpt-oss-20b')];
+    expect(pickDefaultModel(list)).toBe('openai/gpt-oss-20b');
+  });
+
   it('lista vacía devuelve el fallback', () => {
     expect(pickDefaultModel([], 'fallback/model')).toBe('fallback/model');
     expect(pickDefaultModel([])).toBe('');

@@ -2014,6 +2014,36 @@ describe('callOpenAICompatible — extracción de errores HTTP', () => {
       validateProviderKey('zenmux', 'key', 'model'),
     ).resolves.toEqual({ valid: true });
   });
+
+  it('Groq 403 / blocked at the project level: mensaje accionable para límites de proyecto en consola Groq', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 403,
+      json: async () => ({
+        error: {
+          message: "The model 'qwen/qwen3.8-27b' is blocked at the project level. Please have a project admin enable this model in the project settings at https://console.groq.com/settings/project/limits",
+          type: 'invalid_request_error',
+          code: 'model_permission_blocked_project',
+        },
+      }),
+    }));
+
+    await expect(
+      callAI([{ role: 'user', content: 'x' }], 'sys', 'groq', 'k', 'qwen/qwen3.8-27b'),
+    ).rejects.toThrow(/bloqueado en los límites de tu proyecto en Groq Console/);
+  });
+
+  it('Groq error genérico: hint adaptado para Groq sin sugerir cambiar a Groq', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({ error: 'internal server error' }),
+    }));
+
+    await expect(
+      callAI([{ role: 'user', content: 'x' }], 'sys', 'groq', 'k', 'openai/gpt-oss-20b'),
+    ).rejects.toThrow(/no está disponible ahora mismo en Groq/);
+  });
 });
 
 describe('callGeminiDirect — errores del proxy de Gemini', () => {

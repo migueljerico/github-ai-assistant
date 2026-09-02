@@ -19,6 +19,8 @@ describe('modelLabels', () => {
 
   it('devuelve la etiqueta descriptiva para modelos de Groq, NIM, Zenmux, Cloudflare y BazaarLink', () => {
     expect(modelLabel('openai/gpt-oss-20b')).toBe('GPT-OSS 20B (fast)');
+    expect(modelLabel('qwen/qwen3.8-27b')).toBe('Qwen 3.8 27B');
+    expect(modelLabel('qwen/qwen3.6-27b')).toBe('Qwen 3.6 27B');
     expect(modelLabel('nvidia/nemotron-3-ultra-550b-a55b')).toBe('Nemotron 3 Ultra');
     expect(modelLabel('deepseek/deepseek-v4-flash-free')).toBe('DeepSeek V4 Flash');
     expect(modelLabel('@cf/qwen/qwen3-30b-a3b-fp8')).toBe('Qwen3 30B A3B');
