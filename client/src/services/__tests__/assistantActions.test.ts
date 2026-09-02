@@ -380,6 +380,48 @@ describe('runDocumentRepo', () => {
     }));
   });
 
+  it('detecta timeout del signal y devuelve "timeout" con mensaje pedagógico en el chat', async () => {
+    vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'a' }], totalScanned: 1, truncated: false, allPaths: ['a'] } as any);
+    vi.mocked(generateRepoDocs).mockRejectedValue(Object.assign(new Error('signal timed out'), { name: 'TimeoutError' }));
+    const deps = makeDeps();
+
+    const result = await runDocumentRepo(deps, CONFIG, 'owner/repo');
+
+    expect(result).toBe('timeout');
+    const expectedNotice = deps.t('chat.docTimeout', {
+      provider: 'Groq Cloud',
+      model: 'm',
+      repo: 'owner/repo',
+    });
+    expect(deps.updateMessage).toHaveBeenLastCalledWith('msg-1', expect.objectContaining({ content: expectedNotice, isLoading: false }));
+    expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({
+      status: 'error',
+      description: deps.t('history.errorDocumentingTimeout', { repo: 'owner/repo' }),
+    }));
+  });
+
+  it('detecta sobrecarga del proveedor (503) y devuelve "overloaded" con mensaje pedagógico en el chat', async () => {
+    vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'a' }], totalScanned: 1, truncated: false, allPaths: ['a'] } as any);
+    vi.mocked(generateRepoDocs).mockRejectedValue(Object.assign(new Error('The model is overloaded'), { status: 503 }));
+    const deps = makeDeps();
+
+    const result = await runDocumentRepo(deps, CONFIG, 'owner/repo');
+
+    expect(result).toBe('overloaded');
+    const expectedNotice = deps.t('chat.docOverloaded', {
+      provider: 'Groq Cloud',
+      model: 'm',
+      repo: 'owner/repo',
+    });
+    expect(deps.updateMessage).toHaveBeenLastCalledWith('msg-1', expect.objectContaining({ content: expectedNotice, isLoading: false }));
+    expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({
+      status: 'error',
+      description: deps.t('history.errorDocumentingOverloaded', { repo: 'owner/repo' }),
+    }));
+  });
+
   it('propaga options.lightMode a generateRepoDocs y actualiza mensaje de carga con "(modo ligero)"', async () => {
     vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
     vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'a' }], totalScanned: 1, truncated: false, allPaths: ['a'] } as any);

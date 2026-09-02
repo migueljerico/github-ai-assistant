@@ -10,14 +10,13 @@
  */
 
 import { generateRepoDocs, generateFileDoc, generateSpecificDoc, buildRepoContextSummary, buildSecurityAuditContext, callAI, parseGeminiAction, parseGeminiActions, parseGeminiActionWithReason, isAbortError, CHAT_PROMPT, ACTION_PROMPT, SECURITY_PROMPT, chatPromptWithContext, withLangDirective } from './gemini';
-import { isTimeoutAbortError } from '../utils/retry';
+import { isTimeoutAbortError, isContextTooLargeError, isProviderOverloadedError } from '../utils/retry';
 import type { Language } from '../context/LanguageContext';
 import type { AIProviderConfig } from './gemini';
 import { getProvider, modelLabel, type AIProviderType } from './providers';
 import { fetchRepoTreeRecursive, getFileContents, decodeBase64, createRepo, repoExists, getRepo, updateRepo, listCommitDates, listRecentCommits, getCommit, GitHubAPIError } from './github';
 import type { RepoTreeFile } from './github';
 import { rankFilesByQuery } from '../utils/contextRanker';
-import { isContextTooLargeError } from '../utils/retry';
 import { languageDistribution, countTechnicalDebt, commitsByWeek, type LanguageSlice, type TechnicalDebt, type CommitWeek } from '../utils/codeHealth';
 import { writeDocFiles, createDocsDraftPr, publishFileDoc, uploadFilesToRepo, README_PATH, MANUAL_PATH, publishBulkCommit, publishBulkDraftPr, isImageFile, uploadPathFor } from './docPublisher';
 import type { DocTarget } from './docPublisher';
@@ -180,7 +179,7 @@ export interface DocumentRepoOptions {
   lightMode?: boolean;
 }
 
-export type DocumentRepoResult = RepoAnalysis | null | 'repo-missing' | 'context-too-large';
+export type DocumentRepoResult = RepoAnalysis | null | 'repo-missing' | 'context-too-large' | 'timeout' | 'overloaded';
 
 export async function runDocumentRepo(
   deps: ChatDeps,
@@ -285,6 +284,26 @@ export async function runDocumentRepo(
       });
       updateEntry(histId, { status: 'error', description: deps.t('history.errorDocumentingContextTooLarge', { repo: `${owner}/${repoName}` }) });
       return 'context-too-large';
+    }
+    if (isTimeoutAbortError(err) || /timed out|timeout|504/i.test((err as Error).message)) {
+      const pName = getProvider(config.provider).name;
+      const mLabel = config.model ? modelLabel(config.provider, config.model) : 'IA';
+      updateMessage(loadingId, {
+        content: deps.t('chat.docTimeout', { provider: pName, model: mLabel, repo: `${owner}/${repoName}` }),
+        isLoading: false,
+      });
+      updateEntry(histId, { status: 'error', description: deps.t('history.errorDocumentingTimeout', { repo: `${owner}/${repoName}` }) });
+      return 'timeout';
+    }
+    if (isProviderOverloadedError(err)) {
+      const pName = getProvider(config.provider).name;
+      const mLabel = config.model ? modelLabel(config.provider, config.model) : 'IA';
+      updateMessage(loadingId, {
+        content: deps.t('chat.docOverloaded', { provider: pName, model: mLabel, repo: `${owner}/${repoName}` }),
+        isLoading: false,
+      });
+      updateEntry(histId, { status: 'error', description: deps.t('history.errorDocumentingOverloaded', { repo: `${owner}/${repoName}` }) });
+      return 'overloaded';
     }
     updateMessage(loadingId, { content: `❌ Error al documentar: ${(err as Error).message}`, isLoading: false });
     updateEntry(histId, { status: 'error', description: deps.t('history.errorDocumenting', { repo: `${owner}/${repoName}` }) });
@@ -1398,10 +1417,11 @@ export async function runCreateRepoAndDocument(
     }
   }
   // 3. Reintentar la documentación ahora que el repo existe. Tras crearlo no cabe
-  // un 'repo-missing' (ya existe), pero el tipo de runDocumentRepo lo permite → se
-  // filtra para devolver solo RepoAnalysis | null.
+  // un 'repo-missing' (ya existe), y los estados de fallo pedagógico
+  // ('context-too-large'/'timeout'/'overloaded') ya se mostraron en el chat → se
+  // filtran para devolver solo RepoAnalysis | null.
   const analysis = await runDocumentRepo(deps, config, repoInput);
-  return (analysis === 'repo-missing' || analysis === 'context-too-large') ? null : analysis;
+  return typeof analysis === 'string' ? null : analysis;
 }
 
 /** Deriva `docs/{base}.md` a partir del nombre del archivo adjunto. */

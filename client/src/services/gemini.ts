@@ -235,7 +235,26 @@ async function readSSEStream(res: Response, onChunk: (json: string) => void): Pr
 // ── OpenAI-compatible implementation (Groq, OpenRouter, …) ────────────────────
 /**
  * Cliente para cualquier API compatible con OpenAI Chat Completions (Groq,
- * OpenRouter, etc.). Mismo cuerpo y misma forma de respuesta para todos; solo
+/**
+ * Indica si el endpoint apunta al host de Groq. Se compara el **hostname** de la
+ * URL parseada (no un substring): `'groq.com'` podría aparecer en un host distinto
+ * (`evilgroq.com`, o en la ruta de otro dominio), por lo que la comparación por
+ * substring es insuficiente (CodeQL js/incomplete-url-substring-sanitization).
+ * Los endpoints relativos (`/api/gemini`) se resuelven contra el origen actual.
+ */
+export function isGroqEndpoint(endpoint: string): boolean {
+  try {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://localhost';
+    const host = new URL(endpoint, origin).hostname;
+    return host === 'groq.com' || host.endsWith('.groq.com');
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Transporte OpenAI-compatible compartido por Groq y otros agregadores
+ * (OpenRouter, etc.). Mismo cuerpo y misma forma de respuesta para todos; solo
  * cambian el `endpoint` y, opcionalmente, headers extra (p.ej. el `X-Title` de
  * OpenRouter).
  *
@@ -349,7 +368,7 @@ async function callOpenAICompatible(
     if (res.status === 401) {
       throw Object.assign(new Error(base), { status: 401 });
     }
-    const isGroq = endpoint.includes('groq.com');
+    const isGroq = isGroqEndpoint(endpoint);
     const hint = isGroq
       ? ' — el modelo no está disponible ahora mismo en Groq. Prueba otro modelo (p. ej. GPT-OSS 20B) o cambia a Gemini/OpenRouter.'
       : ' — el modelo no está disponible ahora mismo (saturación del tier gratuito). Prueba otro modelo (p. ej. Gemma) o cambia a Gemini/Groq.';
@@ -1187,7 +1206,11 @@ REPOSITORIO: ${repoName}
   const apiKey = config?.apiKey ?? 'test-key';
   const model = config?.model ?? 'test-model';
   const accountId = config?.accountId;
-  const timeoutMs = config?.timeoutMs;
+  // Timeout adaptativo para documentación de repositorio:
+  // Si el usuario no especificó un timeout personalizado, se asignan 300s (5 min,
+  // matching Cloud Run) para el modo completo (generar 8.192 tokens con 120 archivos
+  // requiere >3 min) y 120s para el modo ligero (2.500 tokens / 6 archivos).
+  const effectiveRepoTimeoutMs = config?.timeoutMs ?? (isLight ? 120_000 : 300_000);
 
   const lightModeDirective = isLight
     ? `\n\n═══════════════════════════════════════════════════════\nMODO DOCUMENTACIÓN ESENCIAL:\nEl análisis se basa en los archivos clave del proyecto para respetar los límites de tokens/cuota del proveedor. Genera una documentación concisa, clara y rigurosa sin omitir secciones obligatorias pero sintetizando para no exceder el presupuesto.\n═══════════════════════════════════════════════════════`
@@ -1201,7 +1224,7 @@ REPOSITORIO: ${repoName}
     withLangDirective(readmeSystemPrompt + lightModeDirective, lang),
     provider, apiKey, model,
     undefined, undefined, undefined,
-    maxTokensOutput, accountId, timeoutMs,
+    maxTokensOutput, accountId, effectiveRepoTimeoutMs,
   );
   let readmeStripped = cleanDocFooter(stripFences(readmeRaw));
   if (!readmeStripped) {
@@ -1229,7 +1252,7 @@ REPOSITORIO: ${repoName}
     withLangDirective(manualSystemPrompt + lightModeDirective, lang),
     provider, apiKey, model,
     undefined, undefined, undefined,
-    maxTokensOutput, accountId, timeoutMs,
+    maxTokensOutput, accountId, effectiveRepoTimeoutMs,
   );
   const manualStripped = cleanDocFooter(stripFences(manualRaw));
   if (!manualStripped) {

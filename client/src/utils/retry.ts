@@ -42,10 +42,20 @@ export function isContextTooLargeError(err: unknown): boolean {
   return CONTEXT_TOO_LARGE_PATTERN.test(e?.message ?? '');
 }
 
+const OVERLOADED_PATTERN =
+  /overloaded|high demand|currently experiencing|service unavailable|temporarily unavailable/i;
+
+/** ¿El error indica sobrecarga transitoria del modelo o servidor (503 / overloaded)? */
+export function isProviderOverloadedError(err: unknown): boolean {
+  const e = err as { status?: number; message?: string };
+  if (e?.status === 503) return true;
+  return OVERLOADED_PATTERN.test(e?.message ?? '');
+}
+
 /**
  * Ejecuta `fn` reintentando ante errores transitorios con backoff exponencial.
  * Por defecto: hasta 2 reintentos (800ms, 1600ms). Los errores no transitorios y
- * las cancelaciones (AbortError) se propagan de inmediato.
+ * las cancelaciones (AbortError / TimeoutError) se propagan de inmediato.
  */
 export async function withTransientRetry<T>(
   fn: () => Promise<T>,
@@ -56,8 +66,9 @@ export async function withTransientRetry<T>(
     try {
       return await fn();
     } catch (err) {
-      // Una cancelación (AbortController) NUNCA se reintenta: se propaga al instante.
-      if (isAbortError(err)) throw err;
+      // Una cancelación (AbortController) o timeout (AbortSignal.timeout) NUNCA se reintenta:
+      // el signal ya está abortado permanentemente y reintentar fallaría al instante.
+      if (isAbortError(err) || isTimeoutAbortError(err)) throw err;
       // En el último intento, o si el error no es transitorio, se propaga.
       if (attempt >= retries || !isTransientError(err)) throw err;
       await new Promise(r => setTimeout(r, baseDelayMs * 2 ** attempt));

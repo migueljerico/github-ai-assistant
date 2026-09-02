@@ -1179,6 +1179,61 @@ describe('DocumentFlowModal — Cobertura completa de ramas y callbacks', () => 
       fireEvent.change(input, { target: { value: 'owner/otro-repo' } });
       expect(document.getElementById('flow-context-too-large-banner')).toBeNull();
     });
+
+    it('muestra el banner de timeout cuando onGenerateRepo devuelve "timeout"', async () => {
+      const onGenerateRepo = vi.fn().mockResolvedValue('timeout');
+      setup({ onGenerateRepo });
+
+      fireEvent.click(screen.getByRole('button', { name: /Repositorio entero/ }));
+      const input = screen.getByPlaceholderText(/nombre-del-repo o owner\/repo/);
+      fireEvent.change(input, { target: { value: 'owner/repo-grande' } });
+      fireEvent.click(screen.getByRole('button', { name: /Generar documentación/ }));
+
+      await waitFor(() => {
+        expect(document.getElementById('flow-context-too-large-banner')).toBeInTheDocument();
+      });
+      expect(screen.getByText(/Tiempo de espera agotado/)).toBeInTheDocument();
+      expect(document.getElementById('flow-generate-light-btn')).toBeInTheDocument();
+    });
+
+    it('muestra el banner de sobrecarga cuando onGenerateRepo devuelve "overloaded"', async () => {
+      const onGenerateRepo = vi.fn().mockResolvedValue('overloaded');
+      setup({ onGenerateRepo });
+
+      fireEvent.click(screen.getByRole('button', { name: /Repositorio entero/ }));
+      const input = screen.getByPlaceholderText(/nombre-del-repo o owner\/repo/);
+      fireEvent.change(input, { target: { value: 'owner/repo-grande' } });
+      fireEvent.click(screen.getByRole('button', { name: /Generar documentación/ }));
+
+      await waitFor(() => {
+        expect(document.getElementById('flow-context-too-large-banner')).toBeInTheDocument();
+      });
+      expect(screen.getByText(/sobrecargado/)).toBeInTheDocument();
+    });
+
+    it('el botón directo de doc. ligera llama a onGenerateRepo con lightMode sin pasar por el banner', async () => {
+      const onGenerateRepo = vi.fn().mockResolvedValue({
+        readme: '# README',
+        manualTecnico: '# Manual',
+        filesAnalyzed: 6,
+        totalFiles: 40,
+        truncated: false,
+        repoName: 'owner/repo-grande',
+        alreadyDocumented: false,
+        resumen: 'Resumen',
+      });
+      setup({ onGenerateRepo });
+
+      fireEvent.click(screen.getByRole('button', { name: /Repositorio entero/ }));
+      const input = screen.getByPlaceholderText(/nombre-del-repo o owner\/repo/);
+      fireEvent.change(input, { target: { value: 'owner/repo-grande' } });
+      fireEvent.click(document.getElementById('flow-generate-light-direct-btn')!);
+
+      await waitFor(() => {
+        expect(onGenerateRepo).toHaveBeenLastCalledWith('owner/repo-grande', { lightMode: true });
+        expect(screen.getByText(/Paso 3 de 4/)).toBeInTheDocument();
+      });
+    });
   });
 });
 

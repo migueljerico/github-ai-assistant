@@ -31,8 +31,9 @@ interface DocumentFlowModalProps {
 
   /** Genera la documentación de un repositorio entero. Devuelve el análisis,
    *  `null` si falló, `'repo-missing'` si el repo no existe y es del usuario,
-   *  o `'context-too-large'` si supera el límite de TPM/tokens del modelo. */
-  onGenerateRepo: (repoInput: string, options?: { lightMode?: boolean }) => Promise<RepoAnalysis | null | 'repo-missing' | 'context-too-large'>;
+   *  `'context-too-large'` si supera el límite de TPM/tokens, `'timeout'` si se agota el tiempo
+   *  o `'overloaded'` si el proveedor está sobrecargado (503). */
+  onGenerateRepo: (repoInput: string, options?: { lightMode?: boolean }) => Promise<RepoAnalysis | null | 'repo-missing' | 'context-too-large' | 'timeout' | 'overloaded'>;
   /** Crea un repo inexistente, sube (opcionalmente) archivos y lo documenta. */
   onCreateRepoAndGenerate: (repoInput: string, files?: File[]) => Promise<RepoAnalysis | null>;
   /** Genera la documentación del archivo adjunto. Devuelve el Markdown o null. */
@@ -137,7 +138,8 @@ export default function DocumentFlowModal({
   // Paso 2 (repo)
   const [repoInput, setRepoInput] = useState(safeInitialRepo);
   const [analysis, setAnalysis] = useState<RepoAnalysis | null>(null);
-  const [contextTooLarge, setContextTooLarge] = useState(false);
+  const [flowError, setFlowError] = useState<'context-too-large' | 'timeout' | 'overloaded' | null>(null);
+  const contextTooLarge = !!flowError;
 
 // Paso 2 (archivo)
 const [fileDoc, setFileDoc] = useState<string | null>(null);
@@ -295,7 +297,7 @@ const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number }
     if (!repoInput.trim()) return;
     setBusy(true);
     if (!opts?.lightMode) {
-      setContextTooLarge(false);
+      setFlowError(null);
     }
     try {
       const a = await onGenerateRepo(repoInput.trim(), opts);
@@ -303,10 +305,10 @@ const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number }
         // El repo no existe y es del usuario → ofrecer crearlo + adjuntar archivos.
         const ref = resolveRepoRef(repoInput.trim(), currentUserLogin);
         setRepoMissing({ owner: ref.owner, repo: ref.repo });
-      } else if (a === 'context-too-large') {
-        setContextTooLarge(true);
+      } else if (a === 'context-too-large' || a === 'timeout' || a === 'overloaded') {
+        setFlowError(a);
       } else if (a) {
-        setContextTooLarge(false);
+        setFlowError(null);
         setAnalysis(a);
         setDestRepo(a.repoName); // el destino fijo es el repo analizado
         setStep(3);
@@ -835,7 +837,7 @@ return (
 {step === 2 && !isFile && !isSpecific && !isBulk && (
             <>
               <p>{t('modal.flow.scopeRepo')}</p>
-              <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
+              <div style={{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
                 <input
                   id="flow-repo-input"
                   autoFocus
@@ -845,7 +847,7 @@ return (
                   value={repoInput}
                   onChange={e => {
                     setRepoInput(e.target.value);
-                    if (contextTooLarge) setContextTooLarge(false);
+                    if (flowError) setFlowError(null);
                   }}
                   style={{ flex: '1 1 220px', fontSize: '0.85rem', padding: '8px 10px' }}
                 />
@@ -858,9 +860,20 @@ return (
                 >
                   {busy ? t('modal.flow.generating') : t('modal.flow.generate')}
                 </button>
+                <button
+                  id="flow-generate-light-direct-btn"
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={!repoInput.trim() || busy}
+                  onClick={() => handleGenerateRepo({ lightMode: true })}
+                  title={t('modal.flow.generateLightDirectTitle')}
+                  style={{ fontSize: '0.82rem', padding: '6px 10px' }}
+                >
+                  ⚡ {t('modal.flow.generateLightDirect')}
+                </button>
               </div>
 
-              {/* Aviso de límite de tokens / TPM excedido con opción de documentación ligera */}
+              {/* Aviso de límite de tokens / timeout / sobrecarga con opción de documentación ligera */}
               {contextTooLarge && (
                 <div
                   id="flow-context-too-large-banner"
@@ -874,10 +887,18 @@ return (
                   }}
                 >
                   <div style={{ fontWeight: 600, color: 'var(--color-danger, #ef4444)', marginBottom: '4px' }}>
-                    ⚠️ {t('modal.flow.contextTooLargeTitle')}
+                    ⚠️ {flowError === 'timeout'
+                      ? t('modal.flow.timeoutTitle')
+                      : flowError === 'overloaded'
+                        ? t('modal.flow.overloadedTitle')
+                        : t('modal.flow.contextTooLargeTitle')}
                   </div>
                   <div style={{ marginBottom: '10px', lineHeight: 1.45 }}>
-                    {t('modal.flow.contextTooLargeDesc')}
+                    {flowError === 'timeout'
+                      ? t('modal.flow.timeoutDesc')
+                      : flowError === 'overloaded'
+                        ? t('modal.flow.overloadedDesc')
+                        : t('modal.flow.contextTooLargeDesc')}
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
                     <button
@@ -891,7 +912,11 @@ return (
                       {busy ? t('modal.flow.generating') : t('modal.flow.generateLightBtn')}
                     </button>
                     <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted, #888)' }}>
-                      {t('modal.flow.contextTooLargeOrGemini')}
+                      {flowError === 'timeout'
+                        ? t('modal.flow.timeoutHint')
+                        : flowError === 'overloaded'
+                          ? t('modal.flow.overloadedHint')
+                          : t('modal.flow.contextTooLargeOrGemini')}
                     </span>
                   </div>
                 </div>

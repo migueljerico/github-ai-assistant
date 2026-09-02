@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.41] — 2026-09-02
+
+> **Fix & Resiliencia: Timeout adaptativo y manejo pedagógico de timeouts/sobrecarga (503) en la documentación de repositorios; corrección de la alerta de seguridad CodeQL #9 (`js/incomplete-url-substring-sanitization`).**
+> - **Causa raíz del "signal timed out" al documentar:** `generateRepoDocs` no especificaba timeout propio, por lo que las generaciones de documentación completa (8.192 tokens de salida sobre repositorios grandes) usaban el timeout por defecto de 180s y se abortaban con `signal timed out` antes de terminar. Ahora `generateRepoDocs` aplica un **timeout adaptativo**: 300s (5 min, coincidente con el tope de Cloud Run) para el modo completo y 120s para el modo ligero. El valor se propaga por cabecera `X-Timeout-Ms` al proxy backend (que admite hasta 600s).
+> - **Timeout pedagógico en chat y modal:** `runDocumentRepo` intercepta los errores de timeout (`TimeoutError` / `signal timed out` / 504) y devuelve el nuevo estado `'timeout'`; `DocumentFlowModal` muestra el banner `#flow-context-too-large-banner` con el título y descripción específicos de tiempo agotado, el botón ⚡ de documentación ligera y la pista de cómo ampliar el timeout en ⚙️.
+> - **Sobrecarga del proveedor (503) pedagógica:** nuevo helper `isProviderOverloadedError` en `utils/retry.ts` (status 503 o patrones *overloaded / high demand / service unavailable*). `runDocumentRepo` devuelve `'overloaded'` y el modal muestra el banner con mensaje de alta demanda, sugiriendo la documentación ligera o reintentar más tarde. `withTransientRetry` no reintenta cancelaciones por timeout (el signal ya está abortado permanentemente).
+> - **Acceso directo de documentación ligera:** nuevo botón `⚡ Doc. ligera` (`#flow-generate-light-direct-btn`) junto al botón principal de generación, que lanza el análisis de archivos esenciales sin necesidad de un fallo previo.
+> - **Seguridad (CodeQL #9):** la detección de Groq en `gemini.ts` ya no usa `endpoint.includes('groq.com')` (un substring puede aparecer en un host distinto, p. ej. `evilgroq.com`); nuevo helper `isGroqEndpoint` que parsea la URL y compara el **hostname** exacto (`groq.com` o subdominio `.groq.com`), con resolución de endpoints relativos contra el origen actual.
+> - **i18n:** 6 claves nuevas (`modal.flow.timeoutTitle/Desc/Hint`, `modal.flow.overloadedTitle/Desc/Hint`, `modal.flow.generateLightDirect(+Title)`, `chat.docTimeout`, `chat.docOverloaded`, `history.errorDocumentingTimeout/Overloaded`) en los 13 diccionarios lingüísticos.
+> - **Pruebas unitarias y cobertura Codecov (#26):** +9 tests unitarios (+3 en `retry.test.ts`, +2 en `assistantActions.test.ts`, +4 en `DocumentFlowModal.test.tsx`), alcanzando **1.341 tests unitarios totales en verde** (1.281 cliente + 60 servidor, 0 fallos), lint 0 errores y build limpia.
+
+### Added
+- `client/src/utils/retry.ts`: `isProviderOverloadedError` (503 / patrones de sobrecarga) y no-reintento de `TimeoutError`.
+- `client/src/services/gemini.ts`: helper exportado `isGroqEndpoint` (comparación de hostname de URL) y timeout adaptativo en `generateRepoDocs` (300s completo / 120s ligero).
+- `client/src/components/confirm/DocumentFlowModal.tsx`: estado unificado `flowError` (`'context-too-large' | 'timeout' | 'overloaded'`), variantes del banner y botón directo `#flow-generate-light-direct-btn`.
+
+### Changed
+- `client/src/services/assistantActions.ts`: `DocumentRepoResult` ampliado con `'timeout'` y `'overloaded'`; interceptación pedagógica de ambos errores en `runDocumentRepo`; `runCreateRepoAndDocument` filtra cualquier estado de fallo basado en string.
+- Bump de versión a `v4.0.41` en `package.json`, `client/package.json` y lockfiles.
+
+### Tests
+- `client/src/utils/__tests__/retry.test.ts`: detección de 503/patrones de sobrecarga y propagación sin reintento de `TimeoutError`.
+- `client/src/services/__tests__/assistantActions.test.ts`: `runDocumentRepo` devuelve `'timeout'` y `'overloaded'` con mensajes pedagógicos en chat e historial.
+- `client/src/components/confirm/__tests__/DocumentFlowModal.test.tsx`: banners de timeout y sobrecarga, y botón directo de documentación ligera con avance al paso 3.
+
+Cambio de código por GLM-5.3-Flash a través de ZCode.
+
 ## [4.0.40] — 2026-09-02
 
 > **Feature & UX: Manejo proactivo de límites de tokens/TPM en documentación de repositorios, orientación pedagógica al usuario y Modo de Documentación Ligera interactivo.**

@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { isContextTooLargeError, isTransientError, isAbortError, withTransientRetry, combineSignals, isTimeoutAbortError, DEFAULT_AI_TIMEOUT_MS } from '../retry';
+import { isContextTooLargeError, isProviderOverloadedError, isTransientError, isAbortError, withTransientRetry, combineSignals, isTimeoutAbortError, DEFAULT_AI_TIMEOUT_MS } from '../retry';
 
 describe('retry (#40 / #50)', () => {
   describe('isAbortError', () => {
@@ -49,6 +49,21 @@ describe('retry (#40 / #50)', () => {
     });
   });
 
+  describe('isProviderOverloadedError', () => {
+    it('detecta status 503 y patrones de sobrecarga de servidor', () => {
+      expect(isProviderOverloadedError({ status: 503, message: '' })).toBe(true);
+      expect(isProviderOverloadedError(new Error('The model is overloaded'))).toBe(true);
+      expect(isProviderOverloadedError(new Error('currently experiencing high demand'))).toBe(true);
+      expect(isProviderOverloadedError(new Error('service unavailable'))).toBe(true);
+    });
+
+    it('devuelve false para errores que no son de sobrecarga', () => {
+      expect(isProviderOverloadedError(new Error('Invalid API key'))).toBe(false);
+      expect(isProviderOverloadedError({ status: 400, message: '' })).toBe(false);
+      expect(isProviderOverloadedError({ status: 413, message: '' })).toBe(false);
+    });
+  });
+
   describe('withTransientRetry', () => {
     it('reintenta ante error transitorio y tiene éxito', async () => {
       let calls = 0;
@@ -78,6 +93,16 @@ describe('retry (#40 / #50)', () => {
         throw Object.assign(new Error('aborted'), { name: 'AbortError' });
       };
       await expect(withTransientRetry(fn, 2, 1)).rejects.toThrow('aborted');
+      expect(calls).toBe(1);
+    });
+
+    it('propaga cancelaciones por timeout (TimeoutError) sin reintentar', async () => {
+      let calls = 0;
+      const fn = async () => {
+        calls++;
+        throw Object.assign(new Error('signal timed out'), { name: 'TimeoutError' });
+      };
+      await expect(withTransientRetry(fn, 2, 1)).rejects.toThrow('signal timed out');
       expect(calls).toBe(1);
     });
   });
