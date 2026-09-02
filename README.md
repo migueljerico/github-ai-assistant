@@ -82,7 +82,7 @@ Todo bajo el principio:
 | ⏱️ Tiempo de desarrollo | 2 meses de desarrollo continuo |
 | ⚡ Latencia observada | ~400ms Groq / ~1.2s Gemini, variable según modelo y contexto |
 | 🛡️ Seguridad | Zero-Storage: credenciales solo en memoria React |
-| 🧪 Tests | 1.324 tests unitarios (1.264 cliente + 60 servidor) + 13 E2E (Playwright) |
+| 🧪 Tests | 1.333 tests unitarios (1.273 cliente + 60 servidor) + 13 E2E (Playwright) |
 | 🌐 i18n | 13 idiomas globales (ES, EN, ZH, HI, FR, AR, BN, PT, ID, UR, RU, DE, JA) con soporte RTL |
 | 🌍 Deploy | Google Cloud Run |
 | 📦 Stack | React + TypeScript + Express + Vite |
@@ -97,7 +97,7 @@ Todo bajo el principio:
 | 🌍 Internacionalización | 13 idiomas globales con banderas vectoriales SVG y dirección de texto RTL |
 | ✅ Confirmación segura | Toda escritura requiere revisión y aprobación |
 | 🗂️ Multi-repo | Aplicar acciones a varios repositorios |
-| 🤖 Documentación automática | Generar README + MANUAL_TECNICO |
+| 🤖 Documentación automática | Generar README + MANUAL_TECNICO (completa o modo ligero para límites estrictos de tokens/TPM) |
 | 📤 Publicación | Commit directo, Draft PR o GitHub Release |
 | 📎 Archivos locales | Analizar PDF, DOCX, Excel/CSV, Power BI y texto/código |
 | 📝 Issues/PRs | Resumir hilos con TL;DR, decisiones y pendientes |

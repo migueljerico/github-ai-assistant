@@ -30,9 +30,9 @@ interface DocumentFlowModalProps {
   initialRepo?: string;
 
   /** Genera la documentación de un repositorio entero. Devuelve el análisis,
-   *  `null` si falló, o `'repo-missing'` si el repo no existe y es del usuario
-   *  (→ se ofrece crearlo + adjuntar archivos + documentar). */
-  onGenerateRepo: (repoInput: string) => Promise<RepoAnalysis | null | 'repo-missing'>;
+   *  `null` si falló, `'repo-missing'` si el repo no existe y es del usuario,
+   *  o `'context-too-large'` si supera el límite de TPM/tokens del modelo. */
+  onGenerateRepo: (repoInput: string, options?: { lightMode?: boolean }) => Promise<RepoAnalysis | null | 'repo-missing' | 'context-too-large'>;
   /** Crea un repo inexistente, sube (opcionalmente) archivos y lo documenta. */
   onCreateRepoAndGenerate: (repoInput: string, files?: File[]) => Promise<RepoAnalysis | null>;
   /** Genera la documentación del archivo adjunto. Devuelve el Markdown o null. */
@@ -137,6 +137,7 @@ export default function DocumentFlowModal({
   // Paso 2 (repo)
   const [repoInput, setRepoInput] = useState(safeInitialRepo);
   const [analysis, setAnalysis] = useState<RepoAnalysis | null>(null);
+  const [contextTooLarge, setContextTooLarge] = useState(false);
 
 // Paso 2 (archivo)
 const [fileDoc, setFileDoc] = useState<string | null>(null);
@@ -290,16 +291,22 @@ const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number }
 
 
   // ── Paso 2: generación ─────────────────────────────────────────────────────────
-  const handleGenerateRepo = async () => {
+  const handleGenerateRepo = async (opts?: { lightMode?: boolean }) => {
     if (!repoInput.trim()) return;
     setBusy(true);
+    if (!opts?.lightMode) {
+      setContextTooLarge(false);
+    }
     try {
-      const a = await onGenerateRepo(repoInput.trim());
+      const a = await onGenerateRepo(repoInput.trim(), opts);
       if (a === 'repo-missing') {
         // El repo no existe y es del usuario → ofrecer crearlo + adjuntar archivos.
         const ref = resolveRepoRef(repoInput.trim(), currentUserLogin);
         setRepoMissing({ owner: ref.owner, repo: ref.repo });
+      } else if (a === 'context-too-large') {
+        setContextTooLarge(true);
       } else if (a) {
+        setContextTooLarge(false);
         setAnalysis(a);
         setDestRepo(a.repoName); // el destino fijo es el repo analizado
         setStep(3);
@@ -836,7 +843,10 @@ return (
                   className="input"
                   placeholder={t('chat.repoInputPlaceholder')}
                   value={repoInput}
-                  onChange={e => setRepoInput(e.target.value)}
+                  onChange={e => {
+                    setRepoInput(e.target.value);
+                    if (contextTooLarge) setContextTooLarge(false);
+                  }}
                   style={{ flex: '1 1 220px', fontSize: '0.85rem', padding: '8px 10px' }}
                 />
                 <button
@@ -844,11 +854,48 @@ return (
                   type="button"
                   className="btn btn-success"
                   disabled={!repoInput.trim() || busy}
-                  onClick={handleGenerateRepo}
+                  onClick={() => handleGenerateRepo()}
                 >
                   {busy ? t('modal.flow.generating') : t('modal.flow.generate')}
                 </button>
               </div>
+
+              {/* Aviso de límite de tokens / TPM excedido con opción de documentación ligera */}
+              {contextTooLarge && (
+                <div
+                  id="flow-context-too-large-banner"
+                  style={{
+                    marginTop: '12px',
+                    padding: '12px 14px',
+                    borderRadius: '8px',
+                    fontSize: '0.85rem',
+                    background: 'rgba(239, 68, 68, 0.08)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                  }}
+                >
+                  <div style={{ fontWeight: 600, color: 'var(--color-danger, #ef4444)', marginBottom: '4px' }}>
+                    ⚠️ {t('modal.flow.contextTooLargeTitle')}
+                  </div>
+                  <div style={{ marginBottom: '10px', lineHeight: 1.45 }}>
+                    {t('modal.flow.contextTooLargeDesc')}
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                    <button
+                      id="flow-generate-light-btn"
+                      type="button"
+                      className="btn btn-primary"
+                      disabled={busy}
+                      onClick={() => handleGenerateRepo({ lightMode: true })}
+                      style={{ fontSize: '0.82rem', padding: '6px 12px' }}
+                    >
+                      {busy ? t('modal.flow.generating') : t('modal.flow.generateLightBtn')}
+                    </button>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted, #888)' }}>
+                      {t('modal.flow.contextTooLargeOrGemini')}
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {/* #57 Tanda B: el repo no existe y es del usuario → crear + adjuntar + documentar */}
               {repoMissing && (

@@ -176,12 +176,19 @@ export interface SendParams {
  * (señal distinguible) para que App ofrezca crearlo + adjuntar archivos y
  * documentarlo — equiparando el flujo de repo al de archivo (#57 Tanda B).
  */
+export interface DocumentRepoOptions {
+  lightMode?: boolean;
+}
+
+export type DocumentRepoResult = RepoAnalysis | null | 'repo-missing' | 'context-too-large';
+
 export async function runDocumentRepo(
   deps: ChatDeps,
   config: AIProviderConfig,
   repoInput: string,
   extraFiles?: File[],
-): Promise<RepoAnalysis | null | 'repo-missing'> {
+  options?: DocumentRepoOptions,
+): Promise<DocumentRepoResult> {
   const { token, user, providerName, addMessage, updateMessage, addEntry, updateEntry, setIsChatLoading } = deps;
   const { owner, repo: repoName } = resolveRepoRef(repoInput, user.login);
 
@@ -199,8 +206,11 @@ export async function runDocumentRepo(
     // Patrón tomado de runCodeHealth (#44), que ya resolvía esto correctamente.
     const meta = await getRepo(token, owner, repoName);
     const { files, totalScanned, truncated, allPaths } = await fetchRepoTreeRecursive(token, owner, repoName, meta.default_branch);
+    const isLight = !!options?.lightMode;
     updateMessage(loadingId, {
-      content: `📄 Analizando ${files.length} archivos de **${owner}/${repoName}**${truncated ? ` (de ${totalScanned} totales)` : ''}... Generando documentación con ${providerName}...`,
+      content: isLight
+        ? `📄 Analizando archivos esenciales de **${owner}/${repoName}** (modo ligero)... Generando documentación con ${providerName}...`
+        : `📄 Analizando ${files.length} archivos de **${owner}/${repoName}**${truncated ? ` (de ${totalScanned} totales)` : ''}... Generando documentación con ${providerName}...`,
       isLoading: true,
     });
 
@@ -208,9 +218,13 @@ export async function runDocumentRepo(
       ?.filter(f => /\.(png|jpe?g|gif|webp|svg)$/i.test(f.name))
       .map(f => uploadPathFor(f.name).replace(/^screenshots\//, ''));
 
-    const { readme, manualTecnico, resumen } = extraImageNames && extraImageNames.length > 0
-      ? await generateRepoDocs(`${owner}/${repoName}`, files, config, deps.lang, extraImageNames)
-      : await generateRepoDocs(`${owner}/${repoName}`, files, config, deps.lang);
+    const { readme, manualTecnico, resumen, metadatos } = extraImageNames && extraImageNames.length > 0
+      ? (options
+          ? await generateRepoDocs(`${owner}/${repoName}`, files, config, deps.lang, extraImageNames, options)
+          : await generateRepoDocs(`${owner}/${repoName}`, files, config, deps.lang, extraImageNames))
+      : (options
+          ? await generateRepoDocs(`${owner}/${repoName}`, files, config, deps.lang, undefined, options)
+          : await generateRepoDocs(`${owner}/${repoName}`, files, config, deps.lang));
 
     // #57 Tanda B: detectar si el repo ya está documentado (README.md o
     // MANUAL_TECNICO.md en la raíz) para avisar al usuario de que se actualizará.
@@ -243,7 +257,7 @@ export async function runDocumentRepo(
     });
     updateEntry(histId, { status: 'pending', description: deps.t('history.docReady') });
 
-    return { readme, manualTecnico, filesAnalyzed: files.length, totalFiles: totalScanned, truncated, repoName: `${owner}/${repoName}`, alreadyDocumented, resumen, readmeActual, manualActual };
+    return { readme, manualTecnico, filesAnalyzed: (metadatos?.filesCount as number) ?? files.length, totalFiles: totalScanned, truncated, repoName: `${owner}/${repoName}`, alreadyDocumented, resumen, readmeActual, manualActual };
   } catch (err) {
     // v3.22.3: distinguir "repo no encontrado / sin acceso" (404) de otros errores.
     const status = err instanceof GitHubAPIError ? err.status : undefined;
@@ -261,6 +275,16 @@ export async function runDocumentRepo(
       });
       updateEntry(histId, { status: 'error', description: deps.t('history.errorDocumenting', { repo: `${owner}/${repoName}` }) });
       return isOwnAccount ? 'repo-missing' : null;
+    }
+    if (isContextTooLargeError(err)) {
+      const pName = getProvider(config.provider).name;
+      const mLabel = config.model ? modelLabel(config.provider, config.model) : 'IA';
+      updateMessage(loadingId, {
+        content: deps.t('chat.docContextTooLarge', { provider: pName, model: mLabel, repo: `${owner}/${repoName}` }),
+        isLoading: false,
+      });
+      updateEntry(histId, { status: 'error', description: deps.t('history.errorDocumentingContextTooLarge', { repo: `${owner}/${repoName}` }) });
+      return 'context-too-large';
     }
     updateMessage(loadingId, { content: `❌ Error al documentar: ${(err as Error).message}`, isLoading: false });
     updateEntry(histId, { status: 'error', description: deps.t('history.errorDocumenting', { repo: `${owner}/${repoName}` }) });
@@ -1377,7 +1401,7 @@ export async function runCreateRepoAndDocument(
   // un 'repo-missing' (ya existe), pero el tipo de runDocumentRepo lo permite → se
   // filtra para devolver solo RepoAnalysis | null.
   const analysis = await runDocumentRepo(deps, config, repoInput);
-  return analysis === 'repo-missing' ? null : analysis;
+  return (analysis === 'repo-missing' || analysis === 'context-too-large') ? null : analysis;
 }
 
 /** Deriva `docs/{base}.md` a partir del nombre del archivo adjunto. */

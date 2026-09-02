@@ -1112,6 +1112,74 @@ describe('DocumentFlowModal — Cobertura completa de ramas y callbacks', () => 
 
     localStorage.removeItem('doc_target_selector');
   });
+
+  describe('DocumentFlowModal — Manejo de context-too-large y modo ligero', () => {
+    it('muestra banner de límite de tokens cuando onGenerateRepo devuelve "context-too-large"', async () => {
+      const onGenerateRepo = vi.fn().mockResolvedValue('context-too-large');
+      setup({ onGenerateRepo });
+
+      fireEvent.click(screen.getByRole('button', { name: /Repositorio entero/ }));
+      const input = screen.getByPlaceholderText(/nombre-del-repo o owner\/repo/);
+      fireEvent.change(input, { target: { value: 'owner/repo-grande' } });
+      fireEvent.click(screen.getByRole('button', { name: /Generar documentación/ }));
+
+      await waitFor(() => {
+        expect(document.getElementById('flow-context-too-large-banner')).toBeInTheDocument();
+      });
+      expect(document.getElementById('flow-generate-light-btn')).toBeInTheDocument();
+      expect(screen.getByText(/supera el límite de tokens/)).toBeInTheDocument();
+    });
+
+    it('permite reintentar con modo ligero y al tener éxito avanza al paso 3', async () => {
+      const onGenerateRepo = vi.fn()
+        .mockResolvedValueOnce('context-too-large')
+        .mockResolvedValueOnce({
+          readme: '# README Ligero',
+          manualTecnico: '# Manual Ligero',
+          filesAnalyzed: 6,
+          totalFiles: 40,
+          truncated: false,
+          repoName: 'owner/repo-grande',
+          alreadyDocumented: false,
+          resumen: 'Resumen ligero',
+        });
+
+      setup({ onGenerateRepo });
+
+      fireEvent.click(screen.getByRole('button', { name: /Repositorio entero/ }));
+      const input = screen.getByPlaceholderText(/nombre-del-repo o owner\/repo/);
+      fireEvent.change(input, { target: { value: 'owner/repo-grande' } });
+      fireEvent.click(screen.getByRole('button', { name: /Generar documentación/ }));
+
+      await waitFor(() => {
+        expect(document.getElementById('flow-generate-light-btn')).toBeInTheDocument();
+      });
+
+      fireEvent.click(document.getElementById('flow-generate-light-btn')!);
+
+      await waitFor(() => {
+        expect(onGenerateRepo).toHaveBeenLastCalledWith('owner/repo-grande', { lightMode: true });
+        expect(screen.getByText(/Paso 3 de 4/)).toBeInTheDocument();
+      });
+    });
+
+    it('oculta el banner de contextTooLarge si el usuario modifica el texto del repoInput', async () => {
+      const onGenerateRepo = vi.fn().mockResolvedValue('context-too-large');
+      setup({ onGenerateRepo });
+
+      fireEvent.click(screen.getByRole('button', { name: /Repositorio entero/ }));
+      const input = screen.getByPlaceholderText(/nombre-del-repo o owner\/repo/);
+      fireEvent.change(input, { target: { value: 'owner/repo-grande' } });
+      fireEvent.click(screen.getByRole('button', { name: /Generar documentación/ }));
+
+      await waitFor(() => {
+        expect(document.getElementById('flow-context-too-large-banner')).toBeInTheDocument();
+      });
+
+      fireEvent.change(input, { target: { value: 'owner/otro-repo' } });
+      expect(document.getElementById('flow-context-too-large-banner')).toBeNull();
+    });
+  });
 });
 
 

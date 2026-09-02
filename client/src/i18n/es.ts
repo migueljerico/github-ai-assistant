@@ -261,6 +261,10 @@ export const es = {
   'modal.flow.createAndDocument': '➕ Crear repo y documentar',
   'modal.flow.alreadyDocumented': '✅ Este repositorio ya tiene documentación. Al continuar se **actualizará** con la nueva versión (no se duplicará).',
   'modal.flow.addExtrasCreate': '➕ Añadir archivos para subir al repo nuevo (imágenes, datos, código…)',
+  'modal.flow.contextTooLargeTitle': 'El repositorio supera el límite de tokens de tu modelo actual',
+  'modal.flow.contextTooLargeDesc': 'Este modelo tiene un límite de tokens por minuto (TPM) reducido y no puede procesar todos los archivos a la vez en una sola petición. Puedes generar una versión ligera con los archivos esenciales o cambiar a un modelo con mayor ventana.',
+  'modal.flow.generateLightBtn': '⚡ Generar documentación ligera (archivos esenciales)',
+  'modal.flow.contextTooLargeOrGemini': 'o cambia a Gemini 2.5 Flash en ⚙️ para documentar el repositorio completo.',
   // #58 Fase 2: scope "documento específico del repo"
   'modal.flow.scopeSpecific': 'Documento específico del repo',
   'modal.flow.scopeSpecificDesc': 'Genera documentación para un archivo concreto del repositorio (no todo el repo).',
@@ -327,6 +331,7 @@ export const es = {
   'chat.docRepoNotFound': '❌ No encontré el repositorio **{repo}**. ¿Existe y tu token de GitHub tiene acceso a él?',
   'chat.docRepoMissingCreate': '⚠️ El repositorio **{repo}** no existe. ¿Quieres que lo cree y lo documente? Puedes adjuntar archivos para subirlos al repo recién creado.',
   'chat.docRepoMissingOther': '❌ No encontré **{repo}** y solo puedo crear repositorios en tu cuenta. Créalo en GitHub o elige otro destino.',
+  'chat.docContextTooLarge': '⚠️ **Límite de tokens superado en {provider} ({model})** al analizar **{repo}**.\n\nEl repositorio contiene más contexto del que este modelo permite procesar en una sola petición por sus límites de tokens por minuto (TPM).\n\n💡 **Opciones disponibles:**\n1. ⚡ **Documentación ligera:** En la ventana de documentación, pulsa **"Generar documentación ligera"** para analizar solo los archivos esenciales del proyecto.\n2. ⚙️ **Cambiar de proveedor (Recomendado):** Selecciona **Google Gemini (Gemini 2.5 Flash)** en ⚙️ *Proveedor de IA*, que admite repositorios completos de hasta 1 millón de tokens de forma gratuita.',
   'chat.updateDocs': '🔄 Actualizar documentación',
   // v3.66.0 (Frente D2): atajo chat → wizard cuando hay imágenes adjuntas.
   'chat.docWithScreenshots': '🖼️ Documentar con capturas',
@@ -364,6 +369,7 @@ export const es = {
   'history.documenting': 'Documentando {repo}',
   'history.docReady': 'Documentación lista — esperando confirmación',
   'history.errorDocumenting': 'Error al documentar {repo}',
+  'history.errorDocumentingContextTooLarge': 'Límite de tokens superado al documentar {repo}',
   'history.summarizingThread': 'Resumiendo hilo {ref}',
   'history.threadSummarized': 'Hilo {ref} resumido',
   'history.errorSummarizing': 'Error al resumir {ref}',

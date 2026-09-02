@@ -1035,6 +1035,77 @@ describe('generateRepoDocs - no inventar autor/año (#28 4a)', () => {
       generateRepoDocs('owner/repo', [{ path: 'src/a.ts', content: 'x' }], { provider: 'gemini', apiKey: 'k', model: 'gemini-2.5-flash' }),
     ).rejects.toThrow(/no devolvió el MANUAL_TECNICO/);
   });
+
+  describe('generateRepoDocs - options.lightMode', () => {
+    it('ejecuta en modo ligero con archivos esenciales (máx 6), truncado a 40 líneas y maxTokens 2500', async () => {
+      const fetchMock = vi.fn().mockImplementation(async (_url, init) => {
+        const body = JSON.parse(init.body);
+        expect(body.max_tokens).toBe(2500);
+        const userMessage = body.messages.find((m: any) => m.role === 'user')?.content || '';
+        expect(userMessage).toContain('(de 8 totales — modo ligero/esencial)');
+        expect(userMessage).toContain('### file-0.ts');
+        expect(userMessage).toContain('### file-5.ts');
+        expect(userMessage).not.toContain('### file-6.ts');
+        expect(userMessage).not.toContain('### file-7.ts');
+        const sysMessage = body.messages.find((m: any) => m.role === 'system')?.content || '';
+        expect(sysMessage).toContain('MODO DOCUMENTACIÓN ESENCIAL');
+        return {
+          ok: true,
+          json: async () => ({ choices: [{ message: { content: '# Documentación Ligera' } }] }),
+        };
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const manyFiles = Array.from({ length: 8 }, (_, i) => ({
+        path: `file-${i}.ts`,
+        content: Array.from({ length: 60 }, (_, j) => `line ${j}`).join('\n'),
+      }));
+
+      const result = await generateRepoDocs(
+        'owner/repo',
+        manyFiles,
+        { provider: 'groq', apiKey: 'k', model: 'qwen/qwen3.8-27b' },
+        'es',
+        undefined,
+        { lightMode: true },
+      );
+
+      expect(result.readme).toContain('# Documentación Ligera');
+      expect(result.manualTecnico).toContain('# Documentación Ligera');
+      expect(result.metadatos).toEqual({
+        lenguaje: 'TypeScript',
+        filesCount: 6,
+        lightMode: true,
+      });
+    });
+
+    it('ejecuta en modo normal cuando lightMode es false o se omite (máxTokens 8192 y archivos completos)', async () => {
+      const fetchMock = vi.fn().mockImplementation(async (_url, init) => {
+        const body = JSON.parse(init.body);
+        expect(body.max_tokens).toBe(8192);
+        const userMessage = body.messages.find((m: any) => m.role === 'user')?.content || '';
+        expect(userMessage).not.toContain('modo ligero/esencial');
+        return {
+          ok: true,
+          json: async () => ({ choices: [{ message: { content: '# Doc Completa' } }] }),
+        };
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const files = [{ path: 'src/main.ts', content: 'console.log(1);' }];
+      const result = await generateRepoDocs(
+        'owner/repo',
+        files,
+        { provider: 'groq', apiKey: 'k', model: 'llama' },
+        'es',
+        undefined,
+        { lightMode: false },
+      );
+
+      expect(result.metadatos?.lightMode).toBe(false);
+      expect(result.metadatos?.filesCount).toBe(1);
+    });
+  });
 });
 
 describe('truncateByLines (#20)', () => {

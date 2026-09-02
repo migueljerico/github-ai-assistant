@@ -11,7 +11,7 @@ import {
 runPublishSpecificDoc, runStartPublish, runPublishFileDocByKind, formatConversation,
 fetchExistingFileDoc, runPublishBulk,
 } from './services/assistantActions';
-import type { RepoContext, FileContext, PublishTarget, StartPublishResult, CodeHealth, GenerateSpecificResult } from './services/assistantActions';
+import type { RepoContext, FileContext, PublishTarget, StartPublishResult, CodeHealth, GenerateSpecificResult, DocumentRepoResult } from './services/assistantActions';
 import type { DocTarget } from './services/docPublisher';
 import { serializeConversation, parseConversation, conversationFilename } from './utils/conversationIO';
 import { resolveRepoRef } from './utils/repoRef';
@@ -187,7 +187,11 @@ runCancelAction(
     setDocumentFlowInitialRepo(undefined);
   }, []);
 
-  const flowGenerateRepo = useCallback(async (repoInput: string, extraFiles?: File[]): Promise<RepoAnalysis | null | 'repo-missing'> => {
+  const flowGenerateRepo = useCallback(async (
+    repoInput: string,
+    options?: { lightMode?: boolean },
+    extraFiles?: File[],
+  ): Promise<DocumentRepoResult> => {
     // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto
     if (!token || !user || !provider || !apiKey || !model) return null;
     const attachedImageFiles = extraFiles ?? fileContext.map(f => f.file).filter((f): f is File => !!f);
@@ -196,6 +200,7 @@ runCancelAction(
       { provider, apiKey, model, accountId, timeoutMs },
       repoInput,
       attachedImageFiles.length > 0 ? attachedImageFiles : undefined,
+      options,
     );
   }, [token, user, provider, apiKey, model, providerName, t, lang, addMessage, updateMessage, addEntry, updateEntry, accountId, timeoutMs, fileContext]);
 

@@ -354,6 +354,90 @@ describe('runDocumentRepo', () => {
     const notice = deps.t('chat.docRepoMissingCreate', { repo: 'me/nuevo-repo' });
     expect(deps.updateMessage).toHaveBeenLastCalledWith('msg-1', expect.objectContaining({ content: notice, isLoading: false }));
   });
+
+  it('detecta error de contexto excesivo (TPM) y devuelve "context-too-large" con mensaje pedagógico en el chat', async () => {
+    vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'a' }], totalScanned: 1, truncated: false, allPaths: ['a'] } as any);
+    const err = Object.assign(new Error('Request too large for model qwen3.8-27b on tokens per minute (TPM): Limit 8000, Requested 65348'), {
+      status: 413,
+      contextTooLarge: true,
+    });
+    vi.mocked(generateRepoDocs).mockRejectedValue(err);
+    const deps = makeDeps();
+
+    const result = await runDocumentRepo(deps, CONFIG, 'owner/repo');
+
+    expect(result).toBe('context-too-large');
+    const expectedNotice = deps.t('chat.docContextTooLarge', {
+      provider: 'Groq Cloud',
+      model: 'm',
+      repo: 'owner/repo',
+    });
+    expect(deps.updateMessage).toHaveBeenLastCalledWith('msg-1', expect.objectContaining({ content: expectedNotice, isLoading: false }));
+    expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({
+      status: 'error',
+      description: deps.t('history.errorDocumentingContextTooLarge', { repo: 'owner/repo' }),
+    }));
+  });
+
+  it('propaga options.lightMode a generateRepoDocs y actualiza mensaje de carga con "(modo ligero)"', async () => {
+    vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'a' }], totalScanned: 1, truncated: false, allPaths: ['a'] } as any);
+    vi.mocked(generateRepoDocs).mockResolvedValue({
+      readme: 'R',
+      manualTecnico: 'M',
+      resumen: 'res',
+      metadatos: { filesCount: 1, lightMode: true },
+    } as any);
+    const deps = makeDeps();
+
+    const result = await runDocumentRepo(deps, CONFIG, 'owner/repo', undefined, { lightMode: true });
+
+    expect(result).toEqual(expect.objectContaining({
+      readme: 'R',
+      manualTecnico: 'M',
+      filesAnalyzed: 1,
+    }));
+    expect(deps.updateMessage).toHaveBeenCalledWith(
+      'msg-1',
+      expect.objectContaining({
+        content: expect.stringContaining('(modo ligero)'),
+        isLoading: true,
+      }),
+    );
+    expect(generateRepoDocs).toHaveBeenCalledWith(
+      'owner/repo',
+      expect.any(Array),
+      CONFIG,
+      'es',
+      undefined,
+      { lightMode: true },
+    );
+  });
+
+  it('propaga options.lightMode con imágenes adjuntas a generateRepoDocs', async () => {
+    vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'a' }], totalScanned: 1, truncated: false, allPaths: ['a'] } as any);
+    vi.mocked(generateRepoDocs).mockResolvedValue({
+      readme: 'R',
+      manualTecnico: 'M',
+      resumen: 'res',
+      metadatos: { filesCount: 1, lightMode: true },
+    } as any);
+    const deps = makeDeps();
+    const imageFile = new File(['img'], 'captura.png', { type: 'image/png' });
+
+    await runDocumentRepo(deps, CONFIG, 'owner/repo', [imageFile], { lightMode: true });
+
+    expect(generateRepoDocs).toHaveBeenCalledWith(
+      'owner/repo',
+      expect.any(Array),
+      CONFIG,
+      'es',
+      ['captura.png'],
+      { lightMode: true },
+    );
+  });
 });
 
 describe('runLoadRepoContext', () => {
@@ -2345,6 +2429,16 @@ describe('assistantActions — Cobertura completa de ramas auxiliares y flujos d
 
   it('runCreateRepoAndDocument: si runCreateRepo falla devuelve null', async () => {
     vi.mocked(createRepo).mockRejectedValue(new Error('Name already exists'));
+    const deps = makeDeps();
+    const res = await runCreateRepoAndDocument(deps, CONFIG, 'me/mi-repo');
+    expect(res).toBeNull();
+  });
+
+  it('runCreateRepoAndDocument: si runDocumentRepo devuelve context-too-large devuelve null', async () => {
+    vi.mocked(createRepo).mockResolvedValue({ name: 'mi-repo' } as any);
+    vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'a' }], totalScanned: 1, truncated: false, allPaths: ['a'] } as any);
+    vi.mocked(generateRepoDocs).mockRejectedValue(Object.assign(new Error('tokens per minute limit exceeded'), { contextTooLarge: true }));
     const deps = makeDeps();
     const res = await runCreateRepoAndDocument(deps, CONFIG, 'me/mi-repo');
     expect(res).toBeNull();

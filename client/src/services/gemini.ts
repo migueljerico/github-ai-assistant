@@ -1043,6 +1043,10 @@ export function extractRepoSummary(
   return buildFallbackSummary(repoName, primaryLanguage);
 }
 
+export interface GenerateRepoDocsOptions {
+  lightMode?: boolean;
+}
+
 /**
  * Genera documentación para un repositorio completo (README.md + MANUAL_TECNICO.md).
  */
@@ -1052,10 +1056,16 @@ export async function generateRepoDocs(
   config?: AIProviderConfig,
   lang: Language = 'es',
   extraImageFiles?: string[],
+  options?: GenerateRepoDocsOptions,
 ): Promise<GeneratedDocs> {
   if (!files || files.length === 0) {
     throw new Error('No hay archivos para analizar en el repositorio.');
   }
+
+  const isLight = !!options?.lightMode;
+  const maxLines = isLight ? 40 : 80;
+  const maxTokensOutput = isLight ? 2500 : 8192;
+  const analyzedFiles = isLight ? files.slice(0, 6) : files;
 
   const primaryLanguage = detectPrimaryLanguage(files);
   const docOwner = repoName.includes('/') ? repoName.split('/')[0] : repoName;
@@ -1084,14 +1094,14 @@ export async function generateRepoDocs(
   const existingManual = rawExistingManual ? cleanDocFooter(rawExistingManual) : undefined;
 
   const treeOverview = files.map(f => f.path).join('\n');
-  const fileContents = files
+  const fileContents = analyzedFiles
     .filter(f => f.content)
-    .map(f => `### ${f.path}\n${truncateByLines(f.content || '', 80)}`)
+    .map(f => `### ${f.path}\n${truncateByLines(f.content || '', maxLines)}`)
     .join('\n\n---\n\n');
   const sharedUserContext =
     `Repositorio: ${repoName}\n` +
     `Lenguaje principal detectado: ${primaryLanguage}\n` +
-    `Archivos analizados: ${files.length}\n\n` +
+    `Archivos analizados: ${analyzedFiles.length}${isLight ? ` (de ${files.length} totales — modo ligero/esencial)` : ''}\n\n` +
     `ESTRUCTURA DEL PROYECTO:\n\`\`\`\n${treeOverview}\n\`\`\`\n\n` +
     `CONTENIDO DE ARCHIVOS CLAVE:\n\n${fileContents}`;
 
@@ -1179,15 +1189,19 @@ REPOSITORIO: ${repoName}
   const accountId = config?.accountId;
   const timeoutMs = config?.timeoutMs;
 
+  const lightModeDirective = isLight
+    ? `\n\n═══════════════════════════════════════════════════════\nMODO DOCUMENTACIÓN ESENCIAL:\nEl análisis se basa en los archivos clave del proyecto para respetar los límites de tokens/cuota del proveedor. Genera una documentación concisa, clara y rigurosa sin omitir secciones obligatorias pero sintetizando para no exceder el presupuesto.\n═══════════════════════════════════════════════════════`
+    : '';
+
   const stripFences = (raw: string): string =>
     raw.replace(/^```(?:markdown)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
 
   const readmeRaw = await callAI(
     [{ role: 'user', content: sharedUserContext }],
-    withLangDirective(readmeSystemPrompt, lang),
+    withLangDirective(readmeSystemPrompt + lightModeDirective, lang),
     provider, apiKey, model,
     undefined, undefined, undefined,
-    8192, accountId, timeoutMs,
+    maxTokensOutput, accountId, timeoutMs,
   );
   let readmeStripped = cleanDocFooter(stripFences(readmeRaw));
   if (!readmeStripped) {
@@ -1212,10 +1226,10 @@ REPOSITORIO: ${repoName}
 
   const manualRaw = await callAI(
     [{ role: 'user', content: sharedUserContext }],
-    withLangDirective(manualSystemPrompt, lang),
+    withLangDirective(manualSystemPrompt + lightModeDirective, lang),
     provider, apiKey, model,
     undefined, undefined, undefined,
-    8192, accountId, timeoutMs,
+    maxTokensOutput, accountId, timeoutMs,
   );
   const manualStripped = cleanDocFooter(stripFences(manualRaw));
   if (!manualStripped) {
@@ -1227,7 +1241,7 @@ REPOSITORIO: ${repoName}
     readme,
     manualTecnico,
     resumen: extractRepoSummary(readmeStripped, repoName, primaryLanguage),
-    metadatos: { lenguaje: primaryLanguage, filesCount: files.length },
+    metadatos: { lenguaje: primaryLanguage, filesCount: analyzedFiles.length, lightMode: isLight },
   };
 }
 

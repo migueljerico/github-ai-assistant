@@ -259,6 +259,10 @@ export const en = {
   'modal.flow.createAndDocument': '➕ Create repo and document',
   'modal.flow.alreadyDocumented': '✅ This repo already has documentation. Continuing will **update** it with the new version (not duplicate).',
   'modal.flow.addExtrasCreate': '➕ Add files to upload to the new repo (images, data, code…)',
+  'modal.flow.contextTooLargeTitle': 'The repository exceeds your current model\'s token limit',
+  'modal.flow.contextTooLargeDesc': 'This model has a low tokens-per-minute (TPM) limit and cannot process all files at once in a single request. You can generate a lightweight version with essential files or switch to a model with a larger context window.',
+  'modal.flow.generateLightBtn': '⚡ Generate lightweight docs (essential files)',
+  'modal.flow.contextTooLargeOrGemini': 'or switch to Gemini 2.5 Flash in ⚙️ to document the full repository.',
   // #58 Phase 2: "specific file" scope
   'modal.flow.scopeSpecific': 'Specific file in the repo',
   'modal.flow.scopeSpecificDesc': 'Generate documentation for a single file in the repo (not the whole repo).',
@@ -325,6 +329,7 @@ export const en = {
   'chat.docRepoNotFound': '❌ Repository **{repo}** not found. Does it exist and does your GitHub token have access to it?',
   'chat.docRepoMissingCreate': '⚠️ Repository **{repo}** does not exist. Want me to create and document it? You can attach files to upload to the new repo.',
   'chat.docRepoMissingOther': '❌ Repository **{repo}** not found and I can only create repos in your account. Create it on GitHub or pick another target.',
+  'chat.docContextTooLarge': '⚠️ **Token limit exceeded in {provider} ({model})** while analyzing **{repo}**.\n\nThe repository contains more context than this model allows in a single request due to tokens per minute (TPM) limits.\n\n💡 **Available options:**\n1. ⚡ **Lightweight documentation:** In the documentation window, click **"Generate lightweight docs"** to analyze only the project\'s essential files.\n2. ⚙️ **Switch provider (Recommended):** Select **Google Gemini (Gemini 2.5 Flash)** in ⚙️ *AI Provider*, which handles full repositories of up to 1 million tokens for free.',
   'chat.updateDocs': '🔄 Update docs',
   // v3.66.0 (Frente D2): chat → wizard shortcut when images are attached.
   'chat.docWithScreenshots': '🖼️ Document with screenshots',
@@ -362,6 +367,7 @@ export const en = {
   'history.documenting': 'Documenting {repo}',
   'history.docReady': 'Documentation ready — awaiting confirmation',
   'history.errorDocumenting': 'Error documenting {repo}',
+  'history.errorDocumentingContextTooLarge': 'Token limit exceeded documenting {repo}',
   'history.summarizingThread': 'Summarizing thread {ref}',
   'history.threadSummarized': 'Thread {ref} summarized',
   'history.errorSummarizing': 'Error summarizing {ref}',

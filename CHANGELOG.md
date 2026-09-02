@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.40] — 2026-09-02
+
+> **Feature & UX: Manejo proactivo de límites de tokens/TPM en documentación de repositorios, orientación pedagógica al usuario y Modo de Documentación Ligera interactivo.**
+> - **Detección inteligente de límites de TPM (`isContextTooLargeError`):** Interceptación de errores de tamaño de contexto y tokens por minuto devueltos por LLMs (especialmente modelos con cuotas reducidas de TPM como Qwen 3.8 27B en Groq Cloud on-demand con 8.000 TPM). Se sustituye el mensaje crudo de error por una respuesta amigable, clara y pedagógica en el chat que orienta al usuario sobre por qué ocurre y qué alternativas tiene.
+> - **Modo de Documentación Ligera interactivo en `DocumentFlowModal`:** Cuando un repositorio excede los límites de tokens del modelo actual, el modal de documentación presenta un banner destacado de advertencia con un botón directo `⚡ Generar documentación ligera (archivos esenciales)`. Al pulsarlo, reintenta automáticamente la generación sin requerir reescribir el nombre del repositorio.
+> - **Generación adaptativa de documentación esencial (`generateRepoDocs`):** Se añadió el parámetro `options?: GenerateRepoDocsOptions` con `lightMode?: boolean`. En modo ligero, el análisis se concentra en los 6 archivos principales del repositorio, limita el muestreo a 40 líneas por archivo, ajusta el presupuesto de tokens de salida a 2.500 y añade una directiva técnica de síntesis para garantizar un README y MANUAL_TECNICO completos sin sobrepasar la cuota del proveedor.
+> - **Orientación multicanal hacia APIs con mayor cuota:** Se indica claramente al usuario en el chat y en el modal la recomendación de alternar a modelos como Gemini 2.5 Flash (1M tokens de contexto y alta cuota en el tier gratuito) para proyectos voluminosos o con decenas de archivos.
+> - **Sincronización internacional i18n completa:** Agregadas 6 nuevas claves en los 13 idiomas soportados (`es`, `en`, `ar`, `bn`, `de`, `fr`, `hi`, `id`, `ja`, `pt`, `ru`, `ur`, `zh`).
+> - **Pruebas unitarias y cobertura Codecov (#26):** +9 tests unitarios (+2 en `gemini.test.ts`, +4 en `assistantActions.test.ts`, +3 en `DocumentFlowModal.test.tsx`), alcanzando **1.273 tests cliente + 60 servidor = 1.333 tests unitarios totales en verde** (0 fallos, 0 errores), 100% diff patch en Codecov.
+
+### Added
+- `client/src/services/gemini.ts`: interfaz `GenerateRepoDocsOptions` y soporte de `options.lightMode` en `generateRepoDocs` (selección de top 6 archivos, recorte a 40 líneas, maxTokens de 2.500 y directiva de síntesis técnica).
+- `client/src/services/assistantActions.ts`: interfaz `DocumentRepoOptions`, tipo `DocumentRepoResult` incluyendo `'context-too-large'`, captura de `isContextTooLargeError` con respuesta pedagógica guiada en chat y registro en historial.
+- `client/src/components/confirm/DocumentFlowModal.tsx`: estado `contextTooLarge`, banner `#flow-context-too-large-banner` y botón `#flow-generate-light-btn` para disparar generación ligera con un clic.
+- `client/src/i18n/`: 6 nuevas claves para modal, chat e historial en los 13 diccionarios lingüísticos.
+
+### Tests
+- `client/src/services/__tests__/gemini.test.ts`: tests unitarios para `generateRepoDocs` con `lightMode: true` y `lightMode: false`.
+- `client/src/services/__tests__/assistantActions.test.ts`: tests para `runDocumentRepo` ante errores de TPM/contextTooLarge, modo ligero con/sin imágenes y `runCreateRepoAndDocument`.
+- `client/src/components/confirm/__tests__/DocumentFlowModal.test.tsx`: suite para renderizado del banner `contextTooLarge`, reintento ligero con avance a paso 3 y reseteo al editar el input.
+
+### Changed
+- `client/src/App.tsx`: propagación de `options` y tipado `DocumentRepoResult` en `flowGenerateRepo`.
+- Bump de versión a `v4.0.40` en `package.json`, `client/package.json` y lockfiles.
+
+Cambio de código por Antigravity (Gemini 3.7 Flash).
+
 ## [4.0.39] — 2026-09-02
 
 > **Fix: Corrección de selección automática en Groq (priorización de GPT-OSS 20B sobre Qwen 3.8), manejo específico de modelos bloqueados en límites de proyecto de Groq Console y etiquetas amigables.**
