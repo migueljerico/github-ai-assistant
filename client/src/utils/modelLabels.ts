@@ -33,6 +33,8 @@ export const MODEL_LABELS: Record<string, string> = {
   'openai/gpt-oss-120b': 'GPT-OSS 120B',
   'groq/compound': 'Compound (agéntico)',
   'groq/compound-mini': 'Compound Mini (agéntico)',
+  'qwen/qwen3.8-27b': 'Qwen 3.8 27B',
+  'qwen/qwen3.6-27b': 'Qwen 3.6 27B',
   // ── NVIDIA NIM ──
   'nvidia/nemotron-3-ultra-550b-a55b': 'Nemotron 3 Ultra',
   'z-ai/glm-5.2': 'GLM 5.2',

@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.39] — 2026-09-02
+
+> **Fix: Corrección de selección automática en Groq (priorización de GPT-OSS 20B sobre Qwen 3.8), manejo específico de modelos bloqueados en límites de proyecto de Groq Console y etiquetas amigables.**
+> - **Selección fiable de modelo en Groq (`RELIABLE_MODEL_PREFS`):** Se añadió `'gpt-oss'` como primera prioridad en `RELIABLE_MODEL_PREFS` (`client/src/services/providers.ts`). Esto corrige el problema por el cual `pickDefaultModel`, al no encontrar Llama (retirado en agosto 2026), seleccionaba automáticamente `qwen/qwen3.8-27b` sobre `openai/gpt-oss-20b` en el catálogo dinámico de Groq. Ahora se prioriza `openai/gpt-oss-20b` (modelo insignia de producción, 131K contexto y sin restricciones).
+> - **Manejo de modelos bloqueados por límites de proyecto en Groq (`gemini.ts`):** Detección específica de errores HTTP 403 con `model_permission_blocked_project` o `blocked at the project level` devueltos por Groq cuando un modelo (como Qwen 3.8) está bloqueado en los límites del proyecto. Se reemplazó la coletilla confusa de "saturación del tier gratuito... o cambia a Groq" por un mensaje claro y accionable indicando cómo habilitar el modelo en `https://console.groq.com/settings/project/limits` o sugiriendo un modelo de producción activo como `GPT-OSS 20B`.
+> - **Etiquetas amigables de modelos (`modelLabels.ts`):** Incorporadas etiquetas amigables para `qwen/qwen3.8-27b` ("Qwen 3.8 27B") y `qwen/qwen3.6-27b` ("Qwen 3.6 27B").
+> - **Pruebas unitarias y cobertura Codecov (#26):** +3 tests unitarios (+1 en `providers.test.ts`, +2 en `gemini.test.ts`, +2 aserciones en `modelLabels.test.ts`), alcanzando **1.264 tests cliente + 60 servidor = 1.324 tests unitarios totales en verde** (0 fallos, 0 errores), 100% de líneas en `gemini.ts` y 100% diff patch en Codecov.
+
+### Fixed
+- `client/src/services/providers.ts`: inclusión de `'gpt-oss'` en `RELIABLE_MODEL_PREFS` para evitar la selección automática de modelos bloqueados a nivel de proyecto (Qwen 3.8) en Groq y asegurar la elección de `openai/gpt-oss-20b`.
+- `client/src/services/gemini.ts`: detección e interceptación de errores de modelos bloqueados por límites de proyecto (`model_permission_blocked_project` / `blocked at the project level`) con enlace a la consola de Groq y ajuste del hint genérico para peticiones hacia Groq.
+
+### Added
+- `client/src/utils/modelLabels.ts`: etiquetas para `qwen/qwen3.8-27b` y `qwen/qwen3.6-27b`.
+
+### Tests
+- `client/src/services/__tests__/providers.test.ts`: test de preferencia de `gpt-oss` sobre `qwen` en catálogos sin flag free.
+- `client/src/services/__tests__/gemini.test.ts`: tests para error 403 de modelo bloqueado en límites de proyecto y hint adaptado para Groq.
+- `client/src/utils/__tests__/modelLabels.test.ts`: aserciones para etiquetas de Qwen 3.8 y Qwen 3.6.
+
+### Changed
+- Sincronización documental integral a `v4.0.39`: `package.json` ×2, `README.md`, `CLAUDE.md`, `MANUAL_TECNICO.md`, `MEJORAS_FUTURAS.md`, `METODOLOGIA_IA.md` y `docs/DESARROLLO_IA.md`.
+
+Cambio de código por Antigravity (Gemini 3.7 Flash).
+
 ## [4.0.38] — 2026-08-27
 
 > **Docs: Reorganización de la sección de modelos de IA del README — revisión completa del repositorio.**
