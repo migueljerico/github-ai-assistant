@@ -149,6 +149,8 @@ export const bn = {
   'provider.gemini.model.flash36Desc': 'Gemini 3.6 Flash · Cutting-edge speed and capability · Latest generation',
   'provider.gemini.model.flash37': 'Gemini 3.7 Flash',
   'provider.gemini.model.flash37Desc': 'Gemini 3.7 Flash · হাইব্রিড রিজনিং এবং অত্যাধুনিক গতি · সর্বশেষ প্রজন্ম',
+  'provider.gemini.model.flash38': 'Gemini 3.8 Flash',
+  'provider.gemini.model.flash38Desc': 'Gemini 3.8 Flash · অপ্টিমাইজড পারফরম্যান্স এবং চরম গতি · সর্বশেষ প্রজন্ম',
   'provider.groq.cardDesc': 'Ultra-fast · Very generous free tier',
   'provider.groq.signupLabel': 'Get free API key at console.groq.com →',
   'provider.openrouter.cardDesc': 'Gateway to 300+ models · free and paid (OpenAI, Claude, Llama…)',

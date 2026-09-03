@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.42] — 2026-09-03
+
+> **Fix & Feature & Mobile: Corrección de CORS `x-timeout-ms` en llamadas directas (OpenRouter/Groq), incorporación de Gemini 3.8 Flash e infraestructura PWA standalone con áreas seguras móviles.**
+> - **Causa raíz del fallo CORS al documentar:** `callOpenAICompatible` enviaba indiscriminadamente `X-Timeout-Ms` y `X-Account-Id` a todos los endpoints. Al hacer peticiones directas desde el navegador a proveedores como OpenRouter (`https://openrouter.ai/...`), el preflight OPTIONS era rechazado (`Request header field x-timeout-ms is not allowed by Access-Control-Allow-Headers`). Solución: nuevo helper exportado `isProxyEndpoint` en `gemini.ts`; solo las llamadas dirigidas al proxy Express (`/api/...`) envían `X-Timeout-Ms` y `X-Account-Id`. Las llamadas directas usan control local de timeout vía AbortSignal (`combineSignals`) sin inyectar cabeceras no estándar en CORS.
+> - **Incorporación de Gemini 3.8 Flash:** añadido `gemini-3.8-flash` al catálogo de 20 modelos operativos de Gemini en `providers.ts`, registrado en `modelLabels.ts` y localizado con `provider.gemini.model.flash38` y `provider.gemini.model.flash38Desc` en los 13 diccionarios de i18n (`es`, `en`, `ar`, `bn`, `de`, `fr`, `hi`, `id`, `ja`, `pt`, `ru`, `ur`, `zh`).
+> - **Layout y botones en app móvil instalada (PWA):** solución integral para dispositivos móviles en modo *standalone*: `viewport-fit=cover` en `index.html`, manifiesto oficial `manifest.json` en `client/public/`, variables CSS de área segura (`--safe-area-*`), soporte para notch y barra de estado en `.header`, padding inferior seguro `max(14px, calc(14px + var(--safe-area-bottom)))` en `.chat-input-area`, protección contra colapso flexbox (`flex-shrink: 0` en el área de entrada, `min-height: 0` en contenedores de mensajes), ajustes táctiles en `@media (max-width: 600px)` y reglas dedicadas para `@media all and (display-mode: standalone)`.
+> - **Pruebas unitarias y verificación:** +5 tests unitarios (+3 en `gemini.test.ts` con suite `isProxyEndpoint` y comprobación de ausencia de cabeceras en llamadas directas, +1 en `providers.test.ts` y +1 en `modelLabels.test.ts`), y tests de `AIProviderPanel.test.tsx` actualizados a 20 modelos. Suite total en verde: **1.350 tests** (1.290 cliente + 60 servidor), lint 0 errores y build limpia generando `dist/manifest.json`.
+
+### Added
+- `client/public/manifest.json`: manifiesto web app para PWA móvil en modo standalone.
+- `client/src/services/gemini.ts`: helper exportado `isProxyEndpoint(endpoint: string): boolean`.
+- `client/src/services/providers.ts`: modelo `gemini-3.8-flash` en catálogo de Gemini.
+- `client/src/i18n/*`: claves `flash38` y `flash38Desc` en los 13 idiomas soportados.
+
+### Changed
+- `client/src/services/gemini.ts`: `callOpenAICompatible` condiciona `X-Timeout-Ms` y `X-Account-Id` a `isProxyEndpoint(endpoint)`.
+- `client/index.html`: `viewport-fit=cover`, meta-tags PWA y enlace a `manifest.json`.
+- `client/src/index.css`: variables safe-area, layout flexbox robusto (`min-height: 0`, `flex-shrink: 0`) y soporte standalone.
+- Bump de versión a `v4.0.42` en `package.json` y `client/package.json`.
+
+### Tests
+- `client/src/services/__tests__/gemini.test.ts`: suite `isProxyEndpoint` y aserciones de cabeceras en OpenRouter, Groq, Gemini y Nvidia.
+- `client/src/services/__tests__/providers.test.ts`: comprobación de `gemini-3.8-flash` en catálogo de 20 modelos.
+- `client/src/utils/__tests__/modelLabels.test.ts`: etiqueta amigable para `gemini-3.8-flash`.
+- `client/src/components/ai-provider/__tests__/AIProviderPanel.test.tsx`: validación del selector de 20 modelos y selección de `gemini-3.8-flash`.
+
+Cambio de código por Antigravity 2.0 (Gemini 3.8 Flash).
+
 ## [4.0.41] — 2026-09-02
 
 > **Fix & Resiliencia: Timeout adaptativo y manejo pedagógico de timeouts/sobrecarga (503) en la documentación de repositorios; corrección de la alerta de seguridad CodeQL #9 (`js/incomplete-url-substring-sanitization`).**

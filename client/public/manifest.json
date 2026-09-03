@@ -1,0 +1,19 @@
+{
+  "name": "Asistente de IA de GitHub",
+  "short_name": "GitHub AI",
+  "description": "Gestiona tus repositorios de GitHub mediante lenguaje natural con inteligencia artificial",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

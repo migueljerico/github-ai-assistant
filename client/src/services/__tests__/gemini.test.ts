@@ -21,6 +21,7 @@ import {
  buildSecurityAuditContext,
  extractRepoSummary,
  isGroqEndpoint,
+ isProxyEndpoint,
 } from '../gemini';
 
 describe('gemini.ts - Utilidades', () => {
@@ -901,6 +902,26 @@ describe('isGroqEndpoint (fix CodeQL #9)', () => {
 
   it('devuelve false ante URLs no parseables (ramas de defensa)', () => {
     expect(isGroqEndpoint('http://')).toBe(false);
+  });
+});
+
+describe('isProxyEndpoint', () => {
+  it('identifica rutas relativas como proxy interno', () => {
+    expect(isProxyEndpoint('/api/gemini')).toBe(true);
+    expect(isProxyEndpoint('/api/nim')).toBe(true);
+    expect(isProxyEndpoint('/api/openzen')).toBe(true);
+    expect(isProxyEndpoint('/api/cloudflare')).toBe(true);
+  });
+
+  it('identifica endpoints externos de terceros como no-proxy', () => {
+    expect(isProxyEndpoint('https://openrouter.ai/api/v1/chat/completions')).toBe(false);
+    expect(isProxyEndpoint('https://api.groq.com/openai/v1/chat/completions')).toBe(false);
+    expect(isProxyEndpoint('https://api.openai.com/v1/chat/completions')).toBe(false);
+  });
+
+  it('gestiona URLs no parseables o vacías sin lanzar excepción', () => {
+    expect(isProxyEndpoint('')).toBe(false);
+    expect(isProxyEndpoint('http://')).toBe(false);
   });
 });
 
@@ -1934,6 +1955,38 @@ Detalles internos de razonamiento...
       expect(fetchMock).toHaveBeenCalled();
       const headers = fetchMock.mock.calls[0][1].headers;
       expect(headers['X-Timeout-Ms']).toBe('300000');
+    });
+
+    it('no envía X-Timeout-Ms ni X-Account-Id a OpenRouter (evita fallo de CORS preflight)', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ choices: [{ message: { content: 'Respuesta OpenRouter OK' } }] }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      await callAI([{ role: 'user', content: 'hola' }], 'sys', 'openrouter', 'sk-or-key', 'openai/gpt-oss-20b:free', undefined, undefined, undefined, 4096, 'acc-id', 300000);
+
+      expect(fetchMock).toHaveBeenCalled();
+      const headers = fetchMock.mock.calls[0][1].headers;
+      expect(headers['X-Timeout-Ms']).toBeUndefined();
+      expect(headers['X-Account-Id']).toBeUndefined();
+      expect(headers['Authorization']).toBe('Bearer sk-or-key');
+      expect(headers['X-Title']).toBe('GitHub AI Assistant');
+    });
+
+    it('no envía X-Timeout-Ms a Groq (evita fallo de CORS preflight)', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ choices: [{ message: { content: 'Respuesta Groq OK' } }] }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      await callAI([{ role: 'user', content: 'hola' }], 'sys', 'groq', 'gsk-key', 'llama-3.3-70b-versatile', undefined, undefined, undefined, 4096, undefined, 120000);
+
+      expect(fetchMock).toHaveBeenCalled();
+      const headers = fetchMock.mock.calls[0][1].headers;
+      expect(headers['X-Timeout-Ms']).toBeUndefined();
+      expect(headers['Authorization']).toBe('Bearer gsk-key');
     });
   });
 

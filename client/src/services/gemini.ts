@@ -253,6 +253,24 @@ export function isGroqEndpoint(endpoint: string): boolean {
 }
 
 /**
+ * Indica si el endpoint apunta a una ruta del proxy interno del servidor (/api/...)
+ * frente a APIs de terceros llamadas directamente desde el navegador (OpenRouter, Groq).
+ * Cabeceras internas como X-Timeout-Ms o X-Account-Id solo deben enviarse al proxy propio
+ * para evitar fallos de CORS en el preflight OPTIONS de proveedores externos.
+ */
+export function isProxyEndpoint(endpoint: string): boolean {
+  if (!endpoint) return false;
+  if (endpoint.startsWith('/api/') || endpoint.startsWith('/')) return true;
+  try {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://localhost';
+    const parsed = new URL(endpoint, origin);
+    return parsed.origin === origin && parsed.pathname.startsWith('/api');
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Transporte OpenAI-compatible compartido por Groq y otros agregadores
  * (OpenRouter, etc.). Mismo cuerpo y misma forma de respuesta para todos; solo
  * cambian el `endpoint` y, opcionalmente, headers extra (p.ej. el `X-Title` de
@@ -295,14 +313,16 @@ async function callOpenAICompatible(
     ...(stream ? { stream: true } : {}),
   };
 
+  const isProxy = isProxyEndpoint(endpoint);
+
   const res = await fetch(endpoint, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
       ...extraHeaders,
-      ...(accountId ? { 'X-Account-Id': accountId } : {}),
-      ...(timeoutMs ? { 'X-Timeout-Ms': String(timeoutMs) } : {}),
+      ...(isProxy && accountId ? { 'X-Account-Id': accountId } : {}),
+      ...(isProxy && timeoutMs ? { 'X-Timeout-Ms': String(timeoutMs) } : {}),
     },
     body: JSON.stringify(body),
     signal,

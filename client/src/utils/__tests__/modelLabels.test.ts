@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { modelLabel } from '../modelLabels';
 
 describe('modelLabels', () => {
-  it('devuelve la etiqueta descriptiva amigable para los modelos de Gemini (incluido 3.7 Flash)', () => {
+  it('devuelve la etiqueta descriptiva amigable para los modelos de Gemini (incluidos 3.7 y 3.8 Flash)', () => {
+    expect(modelLabel('gemini-3.8-flash')).toBe('Gemini 3.8 Flash');
     expect(modelLabel('gemini-3.7-flash')).toBe('Gemini 3.7 Flash');
     expect(modelLabel('gemini-2.5-flash')).toBe('Gemini 2.5 Flash');
     expect(modelLabel('gemini-3.6-flash')).toBe('Gemini 3.6 Flash');
