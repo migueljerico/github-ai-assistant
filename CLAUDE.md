@@ -394,6 +394,7 @@ Ejecutar **un solo test**: `cd client && npm run test:run -- src/services/github
   String contains non ISO-8859-1 code point`. Solución: en los proxies backend,
   **sanea los headers del upstream antes de reenviarlos** al cliente. Filtra valores
   que no sean ASCII puro (`/^[\x00-\x7F]*$/`). Aplicado en `/api/cloudflare` v3.33.7.
+- **⚠️ Gitleaks / Detección de secretos en tests y .gitleaks.toml (trampa recurrente en repos como github-ai-assistant y dataflow_ai).** En Gitleaks v8 (usado en CI con `gitleaks/gitleaks-action@v3`), la tabla global de exclusiones en `.gitleaks.toml` **debe ser `[allowlist]` (singular)**, NUNCA `[[allowlists]]` (array plural, que es ignorado silenciosamente por el parser TOML de Gitleaks). Además, en tests unitarios que mockean llamadas a IA o servicios, pasar argumentos dummy con nombres terminados en `-key` (p. ej. `'gsk-key'`) seguidos inmediatamente de un string largo (>16 caracteres, como el nombre de un modelo `'llama-3.3-70b-versatile'`) dispara la heurística `generic-api-key`. **Regla:** 1) Usar siempre `[allowlist]` singular con `paths = ['''client/src/.*__tests__/.*''', ...]`; 2) Nombrar tokens mock con sufijos neutros como `mock-groq-auth` o `mock-token` en vez de `*-key`; 3) Añadir siempre el comentario en línea `// gitleaks:allow` en la línea de la llamada mock como defensa en profundidad.
 
 ---
 

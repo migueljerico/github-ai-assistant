@@ -7,15 +7,12 @@ title = "github-ai-assistant gitleaks config"
 # Extender la configuración por defecto de gitleaks
 useDefault = true
 
-[[allowlists]]
-description = "i18n translation files — words like 'clé' (French for key), 'clave', 'Schlüssel', etc. are translation strings, NOT secrets"
+[allowlist]
+description = "Global allowlist for i18n translation files, unit tests, and E2E suites"
 paths = [
-  '''client/src/i18n/.*\.ts$'''
-]
-
-[[allowlists]]
-description = "Test and fixture files may contain example keys"
-paths = [
-  '''client/src/.*__tests__.*\.ts(x)?$''',
+  '''client/src/i18n/.*\.ts$''',
+  '''client/src/.*__tests__/.*''',
+  '''client/src/.*\.test\.(ts|tsx)$''',
+  '''server/__tests__/.*''',
   '''e2e/.*\.ts$'''
 ]

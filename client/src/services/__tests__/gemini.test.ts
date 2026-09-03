@@ -1964,13 +1964,14 @@ Detalles internos de razonamiento...
       });
       vi.stubGlobal('fetch', fetchMock);
 
-      await callAI([{ role: 'user', content: 'hola' }], 'sys', 'openrouter', 'sk-or-key', 'openai/gpt-oss-20b:free', undefined, undefined, undefined, 4096, 'acc-id', 300000);
+      // gitleaks:allow
+      await callAI([{ role: 'user', content: 'hola' }], 'sys', 'openrouter', 'mock-or-auth', 'openai/gpt-oss-20b:free', undefined, undefined, undefined, 4096, 'acc-id', 300000);
 
       expect(fetchMock).toHaveBeenCalled();
       const headers = fetchMock.mock.calls[0][1].headers;
       expect(headers['X-Timeout-Ms']).toBeUndefined();
       expect(headers['X-Account-Id']).toBeUndefined();
-      expect(headers['Authorization']).toBe('Bearer sk-or-key');
+      expect(headers['Authorization']).toBe('Bearer mock-or-auth');
       expect(headers['X-Title']).toBe('GitHub AI Assistant');
     });
 
@@ -1981,12 +1982,13 @@ Detalles internos de razonamiento...
       });
       vi.stubGlobal('fetch', fetchMock);
 
-      await callAI([{ role: 'user', content: 'hola' }], 'sys', 'groq', 'gsk-key', 'llama-3.3-70b-versatile', undefined, undefined, undefined, 4096, undefined, 120000);
+      // gitleaks:allow
+      await callAI([{ role: 'user', content: 'hola' }], 'sys', 'groq', 'mock-groq-auth', 'llama-3.3-70b-versatile', undefined, undefined, undefined, 4096, undefined, 120000);
 
       expect(fetchMock).toHaveBeenCalled();
       const headers = fetchMock.mock.calls[0][1].headers;
       expect(headers['X-Timeout-Ms']).toBeUndefined();
-      expect(headers['Authorization']).toBe('Bearer gsk-key');
+      expect(headers['Authorization']).toBe('Bearer mock-groq-auth');
     });
   });
 
