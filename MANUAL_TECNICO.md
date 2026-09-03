@@ -1,6 +1,6 @@
 # 📖 Manual Técnico — GitHub AI Assistant
 
-**Versión:** v4.0.43 — Septiembre 2026
+**Versión:** v4.0.44 — Septiembre 2026
 
 
 ---
@@ -498,8 +498,18 @@ por `main`):
 gcloud run deploy github-ai-assistant \
   --source . \
   --region us-central1 \
+  --timeout 600 \
   --allow-unauthenticated
 ```
+
+> **⚠️ Request timeout de Cloud Run (v4.0.44):** `--timeout 600` es necesario
+> porque la documentación completa de repositorios permite llamadas IA de hasta
+> 600 s (`generateRepoDocs` en `gemini.ts`); con el default de la plataforma
+> (300 s) Cloud Run corta la petición con un 504 antes de que los modelos de
+> razonamiento terminen. El trigger de CD no especifica el flag, por lo que el
+> valor configurado **persiste** entre deploys automáticos. Para aplicarlo al
+> servicio vivo una única vez:
+> `gcloud run services update github-ai-assistant --region=us-central1 --timeout=600`.
 
 **`deploy.sh` (deploy manual validado, v3.41.0 — #25-parte3).** Alternativa al
 comando anterior: valida que las **3 variables críticas**

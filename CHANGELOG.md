@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.44] — 2026-09-03
+
+> **Fix: documentar repos muy grandes ya no choca contra el muro de los 300 s — el timeout del modo completo sube a 600 s y todas las capas quedan alineadas (cliente, proxy y Cloud Run).**
+> - **Causa raíz (caso real: `estudio-360-smart-learn-netlify` + Qwen 3.8 Max 0902 vía QwenCloud):** la documentación completa hace dos llamadas no-streaming secuenciales (README + MANUAL_TECNICO, hasta 8.192 tokens de salida cada una) con un contexto de hasta 120 archivos × 80 líneas. Los modelos de razonamiento pasan varios minutos "pensando" antes de emitir; en repos enormes una sola llamada supera los 5 minutos. El timeout por defecto del modo completo en `generateRepoDocs` era de 300 s → el cliente abortaba → "⚠️ Tiempo de espera agotado al generar la documentación completa".
+> - **Doble techo (por qué subir el timeout en ⚙️ tampoco funcionaba):** el servicio Cloud Run tenía el timeout de petición por defecto de la plataforma (300 s). Aunque el usuario subiera ⚙️ a 600 s (el proxy lo acepta), Cloud Run cortaba la petición a los ~300 s con un 504 que el cliente clasificaba como el mismo timeout. Callejón sin salida real para cualquier generación >5 min.
+> - **Fix cliente:** el default del modo completo en `gemini.ts` pasa de 300 s → **600 s** (el modo ligero se mantiene en 120 s). Las tres capas quedan alineadas: cliente (600 s) = tope del proxy `getUpstreamTimeout` (600 s) = máximo de ⚙️ (600 s). El `timeoutMs` manual de ⚙️ sigue teniendo prioridad sobre el default.
+> - **Fix infraestructura:** `deploy.sh` añade `--timeout 600` al `gcloud run deploy`, y `MANUAL_TECNICO.md` documenta el `gcloud run services update --timeout 600` único para el servicio vivo (persiste entre deploys del CD porque el trigger no especifica el flag).
+> - **Pruebas:** +3 tests unitarios en `gemini.test.ts` (cabecera `X-Timeout-Ms` hacia el proxy QwenCloud: default 600 s en modo completo, 120 s en ligero y prioridad del `timeoutMs` manual en las dos llamadas README+MANUAL). Suite: **1.363 tests** (1.303 cliente + 60 servidor), lint 0 errores, build limpio.
+
+### Changed
+- `client/src/services/gemini.ts`: `effectiveRepoTimeoutMs` default del modo completo 300_000 → 600_000 (ligero sin cambios, 120_000).
+- `deploy.sh`: `gcloud run deploy` con `--timeout 600` (la documentación completa permite llamadas IA de hasta 600 s).
+- `MANUAL_TECNICO.md`: comando de deploy manual actualizado y nota sobre el request timeout de Cloud Run.
+- Bump de versión a `v4.0.44` en `package.json`, `client/package.json` y lockfiles.
+
+### Added
+- `MEJORAS_FUTURAS.md`: **#77** — streaming con timeout por inactividad en la generación de docs y reducción adaptativa de contexto para modelos de razonamiento (arreglo sostenible a largo plazo).
+
+### Tests
+- `client/src/services/__tests__/gemini.test.ts`: describe `generateRepoDocs - timeout por defecto según modo (v4.0.44)` con 3 tests (600 s completo / 120 s ligero / prioridad manual).
+
+Cambio de código por ZCode (Qwen 3.8 Max 0902).
+
 ## [4.0.43] — 2026-09-03
 
 > **Fix & Resiliencia UX: Fallback automático y resiliente ante error 503 (sobrecarga de servidor) al documentar repositorios con Gemini, selector rápido de modelos en DocumentFlowModal y corrección de congelamiento de estado en reintentos.**

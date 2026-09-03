@@ -2,7 +2,7 @@
 
 Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de GitHub**.
 
-**Actualizado a:** v4.0.43 — Septiembre 2026
+**Actualizado a:** v4.0.44 — Septiembre 2026
 
 > 📜 **Historial de Mejoras Implementadas:** Para consultar las 100+ características y correcciones resueltas desde la v1.0.0 a la v4.0.33, consulta el [Historial de Mejoras (`HISTORIAL_MEJORAS.md`)](HISTORIAL_MEJORAS.md).
 
@@ -24,10 +24,10 @@ Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de
 #### #26 — Mantener y expandir cobertura de tests con Codecov
 **Esfuerzo:** Continuo (2-4h por sprint) · **Estado:** 🔄 En progreso
 
-**Progreso realizado (v4.0.43):** ✅ Infraestructura completa, reglas permanentes documentadas y suites ampliadas
+**Progreso realizado (v4.0.44):** ✅ Infraestructura completa, reglas permanentes documentadas y suites ampliadas
 - ✅ Vitest + Codecov + CI con GitHub Actions (cliente + servidor)
 - ✅ Badge de Codecov en README
-- ✅ **1.300 tests en el cliente (75 suites) + 60 en el servidor (8 suites)** = **1.360 unitarios** + **13 tests E2E** con Playwright. Cobertura del 100% de diff patch para Codecov, `gemini.ts` al 100% de statements, `DocumentFlowModal.tsx` al 100% de funciones y 100% de statements, y `assistantActions.ts` al 98,22% de statements.
+- ✅ **1.303 tests en el cliente (75 suites) + 60 en el servidor (8 suites)** = **1.363 unitarios** + **13 tests E2E** con Playwright. Cobertura del 100% de diff patch para Codecov, `gemini.ts` al 100% de statements, `DocumentFlowModal.tsx` al 100% de funciones y 100% de statements, y `assistantActions.ts` al 98,22% de statements.
 - ✅ Cobertura del 100% alcanzada en `gemini.ts` (statements), `github.ts`, `docPublisher.ts`, `threadSummary.ts`, `DocumentFlowModal.tsx` (funciones y statements), `ErrorBoundary`, `FileAttachButton`, `AIProviderContext`, `ConfirmModal`, `useModalDialog`, `ChatMessage` (líneas), `DocumentRepoButton`, `ChangelogButton`, `CodeHealthButton`, `ConversationIOButton`, `AIProviderBadge`, `LanguageSelector` y utilidades/hooks (`repoRef`, `docxReader`, `useDocTargetSelector`, `modelLabels`, `retry`).
 
 
@@ -39,7 +39,15 @@ Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de
 
 ### 🟡 Media Prioridad
 
-*(Sin tareas de prioridad media en este momento)*
+#### #77 — Streaming en la generación de documentación con timeout por inactividad
+**Esfuerzo:** ~6-8h · **Estado:** ⏳ Pendiente
+
+**Contexto (v4.0.44):** la documentación completa hace dos llamadas no-streaming secuenciales (README + MANUAL_TECNICO) con timeout absoluto de 600 s por llamada. Los modelos de razonamiento pesados (p. ej. Qwen 3.8 Max vía QwenCloud) en repos muy grandes pueden acercarse o superar ese techo, y subir timeouts indefinidamente no es sostenible: el usuario espera a ciegas sin progreso visible.
+
+**Propuesta:**
+1. Generar las docs con **streaming SSE** (la infraestructura ya existe: `pipeUpstream` en el proxy y `onToken` en `callAI`) y sustituir el timeout absoluto por un **timeout por inactividad** (abortar solo si pasan N segundos sin recibir ningún chunk).
+2. **Reducción adaptativa de contexto** para modelos de razonamiento (menos archivos/líneas por llamada cuando el modelo es lento o el repo enorme), en el espíritu del presupuesto adaptativo de chat (#50).
+3. Progreso visible en `DocumentFlowModal` (documento que se está generando, tokens/chunks recibidos).
 
 ---
 
@@ -73,7 +81,7 @@ Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de
 | Categoría | Cantidad | Referencia |
 |---|---|---|
 | ✅ **Mejoras Implementadas** | 80 ítems | [HISTORIAL_MEJORAS.md](HISTORIAL_MEJORAS.md) |
-| ⏳ **Pendientes Activos** | 3 ítems (#26, #66, #74) | Secciones superiores |
+| ⏳ **Pendientes Activos** | 4 ítems (#26, #66, #74, #77) | Secciones superiores |
 | 🗑️ **Descartados / Inviables** | 3 ítems (#33, #35, #36) | [HISTORIAL_MEJORAS.md](HISTORIAL_MEJORAS.md) |
 
 ---

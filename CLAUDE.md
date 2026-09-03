@@ -31,7 +31,7 @@ reemplazan. Saltarse este paso es la causa nº1 de trabajar en bucle.
 
 ## 1. Visión general
 
-**GitHub AI Assistant** (v4.0.43) es una app web que permite operar la **GitHub
+**GitHub AI Assistant** (v4.0.44) es una app web que permite operar la **GitHub
 REST API en lenguaje natural** a través de un proveedor de IA (Google Gemini,
 Groq Cloud, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI,
 la IA propone una acción, y
@@ -380,6 +380,17 @@ Ejecutar **un solo test**: `cd client && npm run test:run -- src/services/github
   by the PORT=8080 environment variable"). Caso real: v3.33.4 y v3.33.5 se rompieron
   por esto. El servidor Express ya lee `process.env.PORT` correctamente; **no lo
   sobrescribas en el Dockerfile**. Eliminada línea `ENV PORT=8080`.
+- **⚠️ Request timeout de Cloud Run: 300s por defecto (trampa v4.0.44).** Las
+  llamadas IA largas (documentación completa: hasta 600s por llamada en
+  `generateRepoDocs`) las corta la plataforma a los 300s con un 504, aunque
+  cliente y proxy esperen más — y el cliente clasifica ese 504 como `'timeout'`
+  (banner "Tiempo de espera agotado"; subir ⚙️ no lo arreglaba porque el techo
+  real era la plataforma). El servicio necesita `--timeout 600`: `deploy.sh` ya
+  lo incluye; al servicio vivo se aplica una vez con `gcloud run services update
+  github-ai-assistant --region=us-central1 --timeout=600` y persiste entre
+  deploys del CD (el trigger no especifica el flag). Al subir cualquier timeout
+  de la app, verifica la cadena completa: cliente → proxy (`getUpstreamTimeout`,
+  tope 600s) → Cloud Run.
 - **⚠️ No usar sintaxis TypeScript en archivos JavaScript puros (trampa recurrente).**
   `server/index.js` es JS puro (no se transpila con TypeScript). Usar type assertions
   como `as string | undefined` causa `SyntaxError: Unexpected identifier 'as'` al

@@ -2,7 +2,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge" alt="Estado" />
-  <a href="https://github.com/migueljerico/github-ai-assistant/releases"><img src="https://img.shields.io/badge/Versión-v4.0.43-blue?style=for-the-badge" alt="Versión" /></a>
+  <a href="https://github.com/migueljerico/github-ai-assistant/releases"><img src="https://img.shields.io/badge/Versión-v4.0.44-blue?style=for-the-badge" alt="Versión" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge" alt="License" /></a>
   <a href="./e2e"><img src="https://img.shields.io/badge/Tested_with-Playwright-2EAD33?style=for-the-badge&logo=playwright&logoColor=white" alt="Tested with Playwright" /></a>
   <a href="https://github.com/migueljerico/github-ai-assistant/actions/workflows/ci.yml"><img src="https://github.com/migueljerico/github-ai-assistant/actions/workflows/ci.yml/badge.svg?style=for-the-badge" alt="CI & Coverage" /></a>
@@ -82,7 +82,7 @@ Todo bajo el principio:
 | ⏱️ Tiempo de desarrollo | 2 meses de desarrollo continuo |
 | ⚡ Latencia observada | ~400ms Groq / ~1.2s Gemini, variable según modelo y contexto |
 | 🛡️ Seguridad | Zero-Storage: credenciales solo en memoria React |
-| 🧪 Tests | 1.333 tests unitarios (1.273 cliente + 60 servidor) + 13 E2E (Playwright) |
+| 🧪 Tests | 1.363 tests unitarios (1.303 cliente + 60 servidor) + 13 E2E (Playwright) |
 | 🌐 i18n | 13 idiomas globales (ES, EN, ZH, HI, FR, AR, BN, PT, ID, UR, RU, DE, JA) con soporte RTL |
 | 🌍 Deploy | Google Cloud Run |
 | 📦 Stack | React + TypeScript + Express + Vite |
@@ -236,7 +236,7 @@ Ver detalle en ./docs/SEGURIDAD.md.
 
 El proyecto usa **Vitest**, **React Testing Library**, **Playwright**, **GitHub Actions** y **Codecov**.
 
-- **1.324 tests unitarios (1.264 cliente + 60 servidor)** + **13 tests E2E** con Playwright (5 specs)
+- **1.363 tests unitarios (1.303 cliente + 60 servidor)** + **13 tests E2E** con Playwright (5 specs)
 - Tests unitarios, integración y componentes
 - Tests del servidor
 - Tests E2E del flujo crítico en navegador real (auth → chat → acción confirmada), del toggle de tema, de i18n, de persistencia y de accesibilidad (foco visible `:focus-visible` + `prefers-reduced-motion`, WCAG 2.4.7/2.3.3)
@@ -307,6 +307,7 @@ Entornos agénticos que ejecutaron cambios directos en el repositorio (código, 
 
 | Entorno / Modelo base | Periodo | Aportación principal |
 |---|---|---|
+| **ZCode · Qwen 3.8 Max 0902** | v4.0.44 (2026-09-03) | **v4.0.44:** diagnóstico y fix del doble techo de 300s (default del cliente en `generateRepoDocs` + request timeout de Cloud Run) que impedía documentar repos muy grandes con modelos de razonamiento (caso real: `estudio-360-smart-learn-netlify` vía QwenCloud) — default del modo completo a 600s alineado con el tope del proxy y de ⚙️, `deploy.sh` con `--timeout 600`, hoja de ruta #77 (streaming con timeout por inactividad) y +3 tests. Suite: 1.363 tests en verde (1.303 cliente + 60 servidor), lint y build limpias. |
 | **Antigravity 2.0 · Gemini 3.8 Flash** | v4.0.41 → v4.0.43 (2026-09-03) | **v4.0.43:** fallback automático y resiliente ante error 503 (sobrecarga del modelo/proveedor) en generación de documentación con Gemini hacia `gemini-2.5-flash`, exposición de `setModel` en `AIProviderContext`, indicador de modelo activo, botón de cambio directo y selector de modelo en banner de sobrecarga en `DocumentFlowModal`, y reseteo incondicional de error al reintentar. **v4.0.42:** corrección de CORS en llamadas directas a proveedores externos (`X-Timeout-Ms` condicionado a proxy interno vía `isProxyEndpoint`), incorporación de Gemini 3.8 Flash al catálogo de modelos con i18n en 13 idiomas, y layout PWA standalone móvil con áreas seguras. Suite: 1.360 tests en verde (1.300 cliente + 60 servidor), lint y build limpias. |
 | **ZCode · GLM-5.3-Flash** (`builtin:zai-start-plan`) | v4.0.40 → v4.0.41 (2026-09-02) | **v4.0.41:** diagnóstico y fix del "signal timed out" / 503 al documentar repositorios grandes — timeout adaptativo en `generateRepoDocs` (300s completo / 120s ligero vía `X-Timeout-Ms`), interceptación pedagógica de timeouts y sobrecarga en chat y modal, botón directo ⚡ Doc. ligera y fix CodeQL #9 (`isGroqEndpoint` por hostname). **v4.0.40:** límites de TPM en documentación con Modo de Documentación Ligera interactivo y banner pedagógico. Suite: 1.345 tests en verde (1.285 cliente + 60 servidor), 100% diff patch en Codecov. |
 | **Antigravity 2.0 · Gemini 3.7 Flash** | v4.0.33 → v4.0.39 (2026-08-14 → 2026-09-02) | Entorno agéntico principal del ciclo. Incorporó `gemini-3.7-flash` al catálogo con i18n en 13 idiomas, optimizó timeouts/reintentos y sostuvo la expansión de cobertura. **v4.0.39:** corrección de selección automática en Groq (priorización de `openai/gpt-oss-20b` sobre `qwen3.8-27b`), manejo de error de modelos bloqueados por límites de proyecto en consola Groq (`model_permission_blocked_project`) y etiquetas amigables. **v4.0.37:** fix de sanitización multi-carácter (CWE-116) con `stripHtmlTags` iterativo en `gemini.ts`. **v4.0.36:** 100% funciones y líneas en `DocumentFlowModal.tsx` y 98,16% líneas en `assistantActions.ts`. **v4.0.35:** `extractRepoSummary` para el "about" de GitHub (límite 350 caracteres). Suite final del ciclo: 1.324 tests unitarios en verde, 100% patch Codecov. |

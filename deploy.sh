@@ -59,12 +59,16 @@ if [[ ! "$reply" =~ ^[sS]$ ]]; then
   exit 0
 fi
 
-# ── Deploy (mismo comando documentado en MANUAL_TECNICO.md:487-490) ───────────
+# ── Deploy (mismo comando documentado en MANUAL_TECNICO.md) ───────────────────
+# --timeout 600: la documentación completa de repos permite llamadas IA de hasta
+# 600s (gemini.ts); con el default de Cloud Run (300s) la plataforma corta la
+# petición con 504 antes de que los modelos lentos terminen.
 echo ""
 echo "▶ Desplegando a Cloud Run..."
 gcloud run deploy "$SERVICE" \
   --source . \
   --region "$REGION" \
+  --timeout 600 \
   --allow-unauthenticated
 
 echo ""

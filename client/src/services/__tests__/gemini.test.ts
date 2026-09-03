@@ -1834,6 +1834,55 @@ Detalles internos de razonamiento...
     });
   });
 
+  // v4.0.44: el default del modo completo era 300s y los modelos de razonamiento
+  // (p. ej. Qwen 3.8 Max) no terminaban repos grandes → se subió a 600s (tope del
+  // proxy y máximo de ⚙️). Se usa qwencloud (proxy) porque callOpenAICompatible
+  // solo envía X-Timeout-Ms a endpoints internos, lo que permite assertar el valor.
+  describe('generateRepoDocs - timeout por defecto según modo (v4.0.44)', () => {
+    beforeEach(() => { vi.restoreAllMocks(); });
+
+    const qwenConfig = { provider: 'qwencloud' as const, apiKey: 'sk-mock-qwen', model: 'qwen3.8-max-0902' };
+    const mockFetchOk = () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ choices: [{ message: { content: '# README\n\nContenido' } }] }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+      return fetchMock;
+    };
+
+    it('modo completo sin timeoutMs usa 600s por defecto (X-Timeout-Ms=600000)', async () => {
+      const fetchMock = mockFetchOk();
+
+      await generateRepoDocs('owner/repo', [{ path: 'src/a.ts', content: 'x' }], qwenConfig);
+
+      expect(fetchMock).toHaveBeenCalled();
+      const headers = fetchMock.mock.calls[0][1].headers;
+      expect(headers['X-Timeout-Ms']).toBe('600000');
+    });
+
+    it('modo ligero sin timeoutMs mantiene 120s por defecto (X-Timeout-Ms=120000)', async () => {
+      const fetchMock = mockFetchOk();
+
+      await generateRepoDocs('owner/repo', [{ path: 'src/a.ts', content: 'x' }], qwenConfig, 'es', undefined, { lightMode: true });
+
+      expect(fetchMock).toHaveBeenCalled();
+      const headers = fetchMock.mock.calls[0][1].headers;
+      expect(headers['X-Timeout-Ms']).toBe('120000');
+    });
+
+    it('timeoutMs manual del config tiene prioridad sobre el default en las dos llamadas (README y MANUAL)', async () => {
+      const fetchMock = mockFetchOk();
+
+      await generateRepoDocs('owner/repo', [{ path: 'src/a.ts', content: 'x' }], { ...qwenConfig, timeoutMs: 45_000 });
+
+      expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(2);
+      for (const call of fetchMock.mock.calls) {
+        expect(call[1].headers['X-Timeout-Ms']).toBe('45000');
+      }
+    });
+  });
+
   describe('callAI / callOpenAICompatible - Extracción de errores y contextTooLarge', () => {
     beforeEach(() => { vi.restoreAllMocks(); });
 
