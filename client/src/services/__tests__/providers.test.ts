@@ -157,6 +157,13 @@ describe('providers — registro', () => {
     // Sin responsesEndpoint configurado: nunca enruta (p. ej. Groq)
     expect(isResponsesModel(PROVIDERS.groq, 'gpt-oss-20b')).toBe(false);
   });
+
+  it('openzen: reasoningEffort minimal para no agotar el presupuesto con el think interno (v4.0.46)', () => {
+    expect(PROVIDERS.openzen.reasoningEffort).toBe('minimal');
+    // El resto de proveedores no define effort (no se envía el campo)
+    expect(PROVIDERS.groq.reasoningEffort).toBeUndefined();
+    expect(PROVIDERS.gemini.reasoningEffort).toBeUndefined();
+  });
 });
 
 describe('providers — pickDefaultModel', () => {

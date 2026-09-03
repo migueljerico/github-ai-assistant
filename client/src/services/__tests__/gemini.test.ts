@@ -2873,3 +2873,54 @@ describe('OpenCode Zen responses — shaping de errores HTTP (v4.0.45)', () => {
     await expect(callSpark(fetchMock)).rejects.toThrow(/saturación del tier gratuito/i);
   });
 });
+// ── OpenCode Zen Responses — reasoning effort (v4.0.46) ─────────────────────
+// muse-spark gasta ~1100 tokens de razonamiento interno antes de escribir; con
+// presupuestos ajustados (docs ligera: 2500) el corte por max_output_tokens
+// llega con el texto vacío → "no devolvió contenido" (caso real: documentar
+// estudio-360 en modo ligero Y completo con spark 1.3). `reasoning: minimal`
+// lo baja a ~50-80 tokens sin degradar el documento (verificado en vivo).
+describe('OpenCode Zen responses — reasoning effort minimal (v4.0.46)', () => {
+  beforeEach(() => { vi.restoreAllMocks(); });
+
+  it('toResponsesBody incluye reasoning.effort cuando se pasa', () => {
+    const body = toResponsesBody('m', [{ role: 'user', content: 'hi' }], 'sys', 0.1, 2500, false, 'minimal');
+    expect(body.reasoning).toEqual({ effort: 'minimal' });
+  });
+
+  it('toResponsesBody omite reasoning cuando no se pasa (retrocompatible)', () => {
+    const body = toResponsesBody('m', [{ role: 'user', content: 'hi' }], 'sys', 0.1, 2500, false);
+    expect('reasoning' in body).toBe(false);
+  });
+
+  it('callAI con openzen/muse-spark envía reasoning minimal del registro', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ output: [{ type: 'message', content: [{ type: 'output_text', text: 'ok' }] }] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await callAI(
+      [{ role: 'user', content: 'Hola' }], 'sys', 'openzen', 'key',
+      'muse-spark-1.3-contributor-free', 'chat',
+    );
+
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(body.reasoning).toEqual({ effort: 'minimal' });
+  });
+
+  it('callAI con deepseek-free (chat clásico) NO envía reasoning', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: 'ok' } }] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await callAI(
+      [{ role: 'user', content: 'Hola' }], 'sys', 'openzen', 'key',
+      'deepseek-v4-flash-free', 'chat',
+    );
+
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect('reasoning' in body).toBe(false);
+  });
+});

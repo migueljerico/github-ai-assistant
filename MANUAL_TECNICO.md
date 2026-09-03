@@ -1,6 +1,6 @@
 # 📖 Manual Técnico — GitHub AI Assistant
 
-**Versión:** v4.0.45 — Septiembre 2026
+**Versión:** v4.0.46 — Septiembre 2026
 
 
 ---
@@ -234,7 +234,7 @@ directamente, por lo que no se ve afectada por este reintento.
 | OpenRouter | OpenAI-compatible | No (fetch directo) | Sin bloqueo CORS ni geográfico |
 | Zenmux | OpenAI-compatible | No (fetch directo) | Sin bloqueo CORS ni geográfico |
 | NVIDIA NIM | OpenAI-compatible | Sí (`/api/nim`) | Sin CORS → el navegador bloquea "Failed to fetch" |
-| OpenCode Zen | OpenAI-compatible + Responses | Sí (`/api/openzen`, `/api/openzen/responses` para muse-spark/gpt/grok) | Sin CORS → el navegador bloquea "Failed to fetch"; además muse-spark/gpt/grok solo aceptan `/responses` (500 en chat) |
+| OpenCode Zen | OpenAI-compatible + Responses | Sí (`/api/openzen`, `/api/openzen/responses` para muse-spark/gpt/grok con `reasoning: minimal`) | Sin CORS → el navegador bloquea "Failed to fetch"; además muse-spark/gpt/grok solo aceptan `/responses` (500 en chat) y su think interno agota el budget sin effort minimal |
 | Cloudflare Workers AI | OpenAI-compatible | Sí (`/api/cloudflare`) | Sin CORS → el navegador bloquea "Failed to fetch" |
 | Ollama Cloud | OpenAI-compatible | Sí (`/api/ollama`) | Sin CORS → el navegador bloquea "Failed to fetch" |
 | Google Gemini | `gemini-proxy` (SDK) | Sí (`/api/gemini`) | Bloqueo geográfico en EEA |

@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.46] — 2026-09-03
+
+> **Fix: documentar con Muse Spark ya devuelve contenido — el razonamiento interno (~1100 tokens) agotaba el presupuesto de salida antes de escribir.**
+> - **Causa raíz (caso real: botón documentar repo sobre `estudio-360-smart-learn-netlify`, 100 archivos, con spark 1.3 — fallaba en modo ligero Y completo):** muse-spark es un modelo de razonamiento: "piensa" (~1100-1300 tokens internos) antes de emitir texto, y esos tokens consumen el mismo `max_output_tokens`. Con presupuestos ajustados (ligera: 2500) el corte llegaba con el texto aún vacío (`status: incomplete`, `reason: max_output_tokens`, cero `output_text`) → "El modelo no devolvió contenido". Reproducido con el prompt exacto del botón: en ligera fallaba, y con 8192 completaba. `reasoning.effort: 'low'` se ignora; `'none'` lo rechaza el modelo; `'minimal'` sí funciona.
+> - **Fix (`providers.ts`, `gemini.ts`):** nuevo campo `reasoningEffort` en el registro (OpenCode Zen: `'minimal'`) que `toResponsesBody` envía como `reasoning: { effort }` en el transporte `/responses` (chat y validación de key). Verificado en vivo con tu repo: ligera con 2500 pasa de vacía a documento completo (~6K chars, 8 secciones, tablas y badges), y la completa gasta solo 82 tokens razonando (frente a 1309) con calidad intacta. El resto de proveedores no define effort (campo omitido, sin cambios).
+> - **Pruebas:** +5 tests unitarios (4 en `gemini.test.ts` para `toResponsesBody` con/sin effort y enrutado en `callAI`, 1 en `providers.test.ts` para el registro). Suite: **1.392 tests** (1.324 cliente + 68 servidor), lint 0 errores, build limpio.
+
+### Fixed
+- `client/src/services/providers.ts`: campo `reasoningEffort` en `ProviderDef`; OpenCode Zen con `'minimal'`.
+- `client/src/services/gemini.ts`: `toResponsesBody` y `callResponsesCompatible` aceptan y envían el effort; `callAI` y `validateProviderKey` lo toman del registro.
+- `README.md`, `CLAUDE.md`, `MANUAL_TECNICO.md`, `MEJORAS_FUTURAS.md`: versión y documentación del campo.
+- Bump de versión a `v4.0.46` en `package.json`, `client/package.json` y lockfiles.
+
+### Tests
+- `client/src/services/__tests__/gemini.test.ts`: describe de reasoning effort (4 tests).
+- `client/src/services/__tests__/providers.test.ts`: test del registro `reasoningEffort`.
+
+Cambio de código por ZCode (Muse Spark 1.3).
+
 ## [4.0.45] — 2026-09-03
 
 > **Fix: Muse Spark (y familias GPT/Grok de OpenCode Zen) ya conectan — iban a `/chat/completions`, que les devuelve 500, en vez de a la Responses API.**

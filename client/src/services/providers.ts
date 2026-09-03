@@ -40,6 +40,13 @@ export interface ProviderDef {
   // Se compara por startsWith sobre el id en minúsculas: cubre variantes con
   // sufijos (-free, -contributor-free, versiones 1.2/1.3...) sin enumerarlas.
   responsesModels?: string[];
+  // v4.0.46: esfuerzo de razonamiento para el transporte /responses. Los modelos
+  // de razonamiento (p. ej. muse-spark) gastan ~1100 tokens "pensando" antes de
+  // escribir; con presupuestos de salida ajustados (docs ligera: 2500) el corte
+  // por max_output_tokens llega con el texto aún vacío → "no devolvió contenido".
+  // 'minimal' lo baja a ~50-80 tokens sin degradar la calidad del documento.
+  // Si se omite, no se envía el campo (comportamiento previo).
+  reasoningEffort?: 'minimal' | 'low' | 'medium' | 'high';
   modelsEndpoint?: string;   // solo openai-compatible (catálogo dinámico)
   modelsNeedKey?: boolean;   // ¿el endpoint de modelos requiere Authorization?
   staticModels: ModelOption[];
@@ -500,6 +507,10 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     chatEndpoint: '/api/openzen',
     responsesEndpoint: '/api/openzen/responses',
     responsesModels: ['muse-spark', 'gpt', 'grok'],
+    // v4.0.46: 'minimal' verificado en vivo contra muse-spark-1.3 (docs ligera y
+    // completa de estudio-360): ~56-82 tokens de razonamiento frente a ~1100-1300
+    // sin el campo, y documento completo y de calidad intacta (8 secciones).
+    reasoningEffort: 'minimal',
     modelsEndpoint: '/api/openzen/models',
     modelsNeedKey: true, // /zen/v1/models requiere Authorization: Bearer <key>
     staticModels: OPENZEN_FALLBACK,

@@ -31,7 +31,7 @@ reemplazan. Saltarse este paso es la causa nº1 de trabajar en bucle.
 
 ## 1. Visión general
 
-**GitHub AI Assistant** (v4.0.45) es una app web que permite operar la **GitHub
+**GitHub AI Assistant** (v4.0.46) es una app web que permite operar la **GitHub
 REST API en lenguaje natural** a través de un proveedor de IA (Google Gemini,
 Groq Cloud, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI,
 la IA propone una acción, y
@@ -351,7 +351,8 @@ Ejecutar **un solo test**: `cd client && npm run test:run -- src/services/github
     desde navegador, sí envían CORS): **Groq Cloud, OpenRouter, Zenmux**.
   - `transport: 'openai-compatible'` con `chatEndpoint` relativo (proxy backend,
     no envían CORS): NVIDIA NIM (`/api/nim`), OpenCode Zen (`/api/openzen` más
-    `/api/openzen/responses` para muse-spark/gpt/grok vía `isResponsesModel`),
+    `/api/openzen/responses` para muse-spark/gpt/grok vía `isResponsesModel`, con
+    `reasoningEffort: 'minimal'` para que el think interno no agote el budget),
     Cloudflare Workers AI (`/api/cloudflare`), Ollama Cloud (`/api/ollama`),
 
     QwenCloud (`/api/qwencloud`).

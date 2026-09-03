@@ -466,6 +466,7 @@ export function toResponsesBody(
   temperature: number,
   maxTokens: number,
   stream: boolean,
+  reasoningEffort?: 'minimal' | 'low' | 'medium' | 'high',
 ): Record<string, unknown> {
   return {
     model,
@@ -477,6 +478,8 @@ export function toResponsesBody(
     temperature,
     max_output_tokens: maxTokens,
     ...(stream ? { stream: true } : {}),
+    // v4.0.46: acota el razonamiento interno (ver `reasoningEffort` en providers).
+    ...(reasoningEffort ? { reasoning: { effort: reasoningEffort } } : {}),
   };
 }
 
@@ -499,10 +502,11 @@ async function callResponsesCompatible(
   maxTokens?: number,
   accountId?: string | null,
   timeoutMs?: number | null,
+  reasoningEffort?: 'minimal' | 'low' | 'medium' | 'high',
 ): Promise<string> {
   const temperature = mode === 'chat' ? 0.7 : 0.1;
   const stream = Boolean(onToken);
-  const body = toResponsesBody(model, messages, systemPrompt, temperature, maxTokens ?? 4096, stream);
+  const body = toResponsesBody(model, messages, systemPrompt, temperature, maxTokens ?? 4096, stream, reasoningEffort);
 
   const isProxy = isProxyEndpoint(endpoint);
 
@@ -688,7 +692,7 @@ export async function callAI(
     def.transport === 'gemini-proxy'
       ? callGeminiDirect(apiKey, model, messages, systemPrompt, mode, onToken, combinedSignal, effectiveMaxTokens, effectiveTimeout)
       : useResponses
-        ? callResponsesCompatible(activeEndpoint, apiKey, model, messages, systemPrompt, mode, def.extraHeaders, onToken, combinedSignal, effectiveMaxTokens, accountId, effectiveTimeout)
+        ? callResponsesCompatible(activeEndpoint, apiKey, model, messages, systemPrompt, mode, def.extraHeaders, onToken, combinedSignal, effectiveMaxTokens, accountId, effectiveTimeout, def.reasoningEffort)
         : callOpenAICompatible(chatEndpoint, apiKey, model, messages, systemPrompt, mode, def.extraHeaders, onToken, combinedSignal, effectiveMaxTokens, accountId, effectiveTimeout),
   );
 }
@@ -724,6 +728,8 @@ export async function validateProviderKey(
         undefined,
         undefined,
         accountId,
+        undefined,
+        def.reasoningEffort,
       );
     } else {
       const chatEndpoint = resolveEndpoint(def.chatEndpoint!, accountId);
