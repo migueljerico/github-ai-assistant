@@ -2,7 +2,7 @@
 
 Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de GitHub**.
 
-**Actualizado a:** v4.0.44 — Septiembre 2026
+**Actualizado a:** v4.0.45 — Septiembre 2026
 
 > 📜 **Historial de Mejoras Implementadas:** Para consultar las 100+ características y correcciones resueltas desde la v1.0.0 a la v4.0.33, consulta el [Historial de Mejoras (`HISTORIAL_MEJORAS.md`)](HISTORIAL_MEJORAS.md).
 
@@ -24,10 +24,10 @@ Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de
 #### #26 — Mantener y expandir cobertura de tests con Codecov
 **Esfuerzo:** Continuo (2-4h por sprint) · **Estado:** 🔄 En progreso
 
-**Progreso realizado (v4.0.44):** ✅ Infraestructura completa, reglas permanentes documentadas y suites ampliadas
+**Progreso realizado (v4.0.45):** ✅ Infraestructura completa, reglas permanentes documentadas y suites ampliadas
 - ✅ Vitest + Codecov + CI con GitHub Actions (cliente + servidor)
 - ✅ Badge de Codecov en README
-- ✅ **1.303 tests en el cliente (75 suites) + 60 en el servidor (8 suites)** = **1.363 unitarios** + **13 tests E2E** con Playwright. Cobertura del 100% de diff patch para Codecov, `gemini.ts` al 100% de statements, `DocumentFlowModal.tsx` al 100% de funciones y 100% de statements, y `assistantActions.ts` al 98,22% de statements.
+- ✅ **1.319 tests en el cliente (75 suites) + 68 en el servidor (9 suites)** = **1.387 unitarios** + **13 tests E2E** con Playwright. Cobertura del 100% de diff patch para Codecov, `gemini.ts` al 100% de statements, `DocumentFlowModal.tsx` al 100% de funciones y 100% de statements, y `assistantActions.ts` al 98,22% de statements.
 - ✅ Cobertura del 100% alcanzada en `gemini.ts` (statements), `github.ts`, `docPublisher.ts`, `threadSummary.ts`, `DocumentFlowModal.tsx` (funciones y statements), `ErrorBoundary`, `FileAttachButton`, `AIProviderContext`, `ConfirmModal`, `useModalDialog`, `ChatMessage` (líneas), `DocumentRepoButton`, `ChangelogButton`, `CodeHealthButton`, `ConversationIOButton`, `AIProviderBadge`, `LanguageSelector` y utilidades/hooks (`repoRef`, `docxReader`, `useDocTargetSelector`, `modelLabels`, `retry`).
 
 

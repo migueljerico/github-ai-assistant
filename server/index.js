@@ -557,6 +557,55 @@ app.post('/api/openzen', openzenLimiter, validateChatBody, async (req, res) => {
   }
 });
 
+// ─── OpenCode Zen Responses Proxy (v4.0.45) ──────────────────────────────────
+// Las familias muse-spark/gpt/grok de Zen SOLO aceptan la Responses API
+// (https://opencode.ai/zen/v1/responses): en /chat/completions devuelven 500
+// "Internal server error" (muse-spark) o 401 opaco. El cliente (gemini.ts,
+// isResponsesModel) enruta esos modelos aquí. El body YA viene en formato
+// /responses ({ model, instructions, input, ... }) y se reenvía tal cual; el
+// único requisito es validar que trae `input` (string o array no vacío) en vez
+// de `messages`. Comparte limiter con /api/openzen (misma cuota de proveedor).
+app.post('/api/openzen/responses', openzenLimiter, async (req, res) => {
+  const auth = req.headers.authorization || '';
+  if (!auth.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Falta la API key (header Authorization: Bearer ...)' });
+  }
+  const ct = req.headers['content-type'] || '';
+  if (!ct.toLowerCase().includes('application/json')) {
+    return res.status(415).json({ error: 'Content-Type debe ser application/json.' });
+  }
+  const input = req.body?.input;
+  const inputOk = typeof input === 'string'
+    ? input.length > 0
+    : Array.isArray(input) && input.length > 0;
+  if (!inputOk) {
+    return res.status(400).json({ error: 'El cuerpo de la petición debe incluir "input" (string o array no vacío).' });
+  }
+  try {
+    const upstream = await fetch('https://opencode.ai/zen/v1/responses', {
+      method: 'POST',
+      headers: {
+        'Authorization': auth,
+        'Content-Type': 'application/json',
+        ...(req.headers['accept'] ? { 'Accept': req.headers['accept'] } : {}),
+      },
+      body: JSON.stringify(req.body),
+      signal: upstreamSignal(getUpstreamTimeout(req)), // #73: timeout configurable (defensa en profundidad)
+    });
+    log.info('upstream', { provider: 'openzen', flow: 'responses', status: upstream.status, ct: upstream.headers.get('content-type') || '-', requestId: req.id });
+    res.status(upstream.status);
+    const ctUp = upstream.headers.get('content-type');
+    if (ctUp) res.setHeader('Content-Type', ctUp);
+    await pipeUpstream(upstream, res);
+  } catch (err) {
+    log.error('proxy_error', { provider: 'openzen', flow: 'responses', requestId: req.id, error: err?.message || String(err) });
+    const status = isUpstreamTimeout(err) ? 504 : 502;
+    const error = isUpstreamTimeout(err) ? 'OpenCode Zen tardó demasiado (timeout). Reintenta o sube el timeout en ⚙️.' : 'Error al contactar con OpenCode Zen';
+    if (!res.headersSent) res.status(status).json({ error, detail: err?.message || String(err) });
+    else { try { res.end(); } catch { /* noop */ } }
+  }
+});
+
 // GET /api/openzen/models — catálogo dinámico de OpenCode Zen (v4.0.28)
 // opencode.ai NO envía CORS → el navegador bloquea las llamadas directas.
 // Este proxy reenvía a https://opencode.ai/zen/v1/models con la key del usuario.
@@ -1253,7 +1302,7 @@ app.listen(PORT, () => {
       '/health', '/auth/github', '/auth/callback',
       'POST /api/gemini', 'GET /api/gemini/models',
       'POST /api/nim', 'GET /api/nim/models',
-      'POST /api/openzen', 'POST /api/cloudflare', 'GET /api/cloudflare/models',
+      'POST /api/openzen', 'POST /api/openzen/responses', 'POST /api/cloudflare', 'GET /api/cloudflare/models',
       'POST /api/ollama', 'GET /api/ollama/models',
 
       'POST /api/kilo', 'GET /api/kilo/models',

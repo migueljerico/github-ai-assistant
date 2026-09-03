@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.45] — 2026-09-03
+
+> **Fix: Muse Spark (y familias GPT/Grok de OpenCode Zen) ya conectan — iban a `/chat/completions`, que les devuelve 500, en vez de a la Responses API.**
+> - **Causa raíz (caso real: Muse Spark 1.2 y 1.3-contributor-free desde ZCode):** el proveedor OpenCode Zen enviaba TODOS sus modelos a `POST /api/openzen` → `https://opencode.ai/zen/v1/chat/completions`. Pero las familias `muse-spark`, `gpt` y `grok` solo aceptan la Responses API (`/zen/v1/responses`, verificado en la doc oficial de Zen y con pruebas reales: `chat/completions` devuelve `500 {"message":"Internal server error"}` para muse-spark, mientras `/responses` responde `200` con el texto en `output[].content[].text`). El cliente además lo enmascaraba con el hint genérico de "saturación del tier gratuito", cuando no era saturación sino endpoint equivocado.
+> - **Fix cliente (`gemini.ts`, `providers.ts`):** nuevo transporte `callResponsesCompatible` (body `{ instructions, input }`, extracción de `output[].content[].text`, streaming de deltas `response.output_text.delta`, mismo shaping de errores accionables) y enrutado por prefijo con el helper puro `isResponsesModel(def, model)` (`muse-spark`/`gpt`/`grok`, insensible a mayúsculas; cubre `-free` y versiones sin enumerarlas). Los modelos clásicos (deepseek, big-pickle, mimo, ling, nemotron, kimi...) siguen en `/chat/completions`. `validateProviderKey` también valida por la ruta real que usará el chat.
+> - **Fix servidor (`server/index.js`):** nuevo proxy `POST /api/openzen/responses` → `https://opencode.ai/zen/v1/responses` (mismo limiter que `/api/openzen`, valida `input` no vacío en vez de `messages`, timeout configurable y shaping 504/502, streaming SSE por `pipeUpstream`). Ruta añadida al banner de arranque.
+> - **Catálogo verificado en vivo (GET `/zen/v1/models`, 66 modelos):** el fallback `OPENZEN_FALLBACK` pasa de 8 a 9 modelos — entran `muse-spark-1.3-contributor-free`, `muse-spark-1.2-contributor-free` y `ling-3.0-flash-fin-free`; salen `hy3-free` y `ling-3.0-tiny-free` (la API ya no los sirve).
+> - **Pruebas:** +24 tests unitarios (8 cliente en `gemini.test.ts` para enrutado/body/extracción/streaming/validación + 7 de shaping de errores + 1 en `providers.test.ts` para `isResponsesModel` y fallback actualizado + 8 servidor en `openzenResponsesProxy.test.js` para el proxy). Suite: **1.387 tests** (1.319 cliente + 68 servidor), lint 0 errores, build limpio.
+
+### Fixed
+- `client/src/services/providers.ts`: campos `responsesEndpoint`/`responsesModels` en `ProviderDef`, helper `isResponsesModel`, entrada `openzen` con `/api/openzen/responses` y fallback actualizado al catálogo en vivo (9 modelos).
+- `client/src/services/gemini.ts`: transporte `callResponsesCompatible` + helpers exportados `toResponsesBody`/`extractResponsesText`; `callAI` y `validateProviderKey` enrutan muse-spark/gpt/grok a `/responses`.
+- `server/index.js`: proxy `POST /api/openzen/responses` + ruta en el banner de arranque.
+- `README.md`, `CLAUDE.md`, `MANUAL_TECNICO.md`, `MEJORAS_FUTURAS.md`: versión y documentación del nuevo endpoint.
+- Bump de versión a `v4.0.45` en `package.json`, `client/package.json` y lockfiles.
+
+### Tests
+- `client/src/services/__tests__/gemini.test.ts`: describes de enrutado `/responses` (8 tests) y shaping de errores (7 tests).
+- `client/src/services/__tests__/providers.test.ts`: test de `isResponsesModel` + fallback verificado en vivo; filtro dinámico actualizado.
+- `server/__tests__/openzenResponsesProxy.test.js`: nuevo (8 tests del proxy `/api/openzen/responses`).
+
+Cambio de código por ZCode (Muse Spark 1.3).
+
 ## [4.0.44] — 2026-09-03
 
 > **Fix: documentar repos muy grandes ya no choca contra el muro de los 300 s — el timeout del modo completo sube a 600 s y todas las capas quedan alineadas (cliente, proxy y Cloud Run).**

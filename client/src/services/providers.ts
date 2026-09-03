@@ -31,6 +31,15 @@ export interface ProviderDef {
   cardDesc: string;    // clave de traducción
   transport: ProviderTransport;
   chatEndpoint?: string;     // solo openai-compatible
+  // v4.0.45: endpoint alternativo estilo Responses (p. ej. OpenCode Zen usa
+  // /api/openzen/responses para las familias muse-spark/gpt/grok, que devuelven
+  // 500 en /chat/completions). Si se define, callAI enruta a él los modelos que
+  // cumplen el predicado `responsesModels` en vez de al chatEndpoint.
+  responsesEndpoint?: string;
+  // Prefijos (minúsculas) de los ids de modelo que deben ir por responsesEndpoint.
+  // Se compara por startsWith sobre el id en minúsculas: cubre variantes con
+  // sufijos (-free, -contributor-free, versiones 1.2/1.3...) sin enumerarlas.
+  responsesModels?: string[];
   modelsEndpoint?: string;   // solo openai-compatible (catálogo dinámico)
   modelsNeedKey?: boolean;   // ¿el endpoint de modelos requiere Authorization?
   staticModels: ModelOption[];
@@ -262,19 +271,19 @@ const ZENMUX_FALLBACK: ModelOption[] = [
 ];
 
 // Fallback de OpenCode Zen mientras carga el catálogo dinámico o si la API falla.
-// Los 8 modelos FREE confirmados hoy en la fuente oficial
-// (https://opencode.ai/docs/es/zen/#pricing, 2026-08-12). El catálogo real es PÚBLICO y se
-// filtra a los gratuitos (sufijo "-free"); este fallback es red de seguridad.
-// `big-pickle` es la excepción sin sufijo. Token keyless `public`.
-// Cambios respecto a 2026-08-05: longcat-2.0-free y north-mini-code-free retirados;
-// nuevos: hy3-free, ling-3.0-tiny-free, nemotron-3.5-lightning-free.
+// Verificado contra el catálogo en vivo (GET /zen/v1/models, 2026-09-03): 66
+// modelos, de los cuales solo 8 llevan el sufijo "-free" más la excepción sin
+// sufijo `big-pickle`. Retirados: hy3-free, ling-3.0-tiny-free y
+// north-mini-code-free (ya no los sirve la API); nuevo: ling-3.0-flash-fin-free.
+// Token keyless `public`.
 const OPENZEN_FALLBACK: ModelOption[] = [
   { value: 'big-pickle', label: 'Big Pickle (free)', free: true, recommended: true },
   { value: 'deepseek-v4-flash-free', label: 'DeepSeek V4 Flash (free)', free: true },
   { value: 'mimo-v2.5-free', label: 'MiMo-V2.5 (free)', free: true },
-  { value: 'hy3-free', label: 'Hy3 (free)', free: true },
+  { value: 'muse-spark-1.3-contributor-free', label: 'Muse Spark 1.3 (free)', free: true },
+  { value: 'muse-spark-1.2-contributor-free', label: 'Muse Spark 1.2 (free)', free: true },
   { value: 'laguna-s-2.1-free', label: 'Laguna S 2.1 (free)', free: true },
-  { value: 'ling-3.0-tiny-free', label: 'Ling 3.0 Tiny (free)', free: true },
+  { value: 'ling-3.0-flash-fin-free', label: 'Ling 3.0 Flash Fin (free)', free: true },
   { value: 'nemotron-3-ultra-free', label: 'Nemotron 3 Ultra (free)', free: true },
   { value: 'nemotron-3.5-lightning-free', label: 'Nemotron 3.5 Lightning (free)', free: true },
 ];
@@ -485,7 +494,12 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     // retransmite a https://opencode.ai/zen/v1/models). La rama `openzen` de
     // fetchModels filtra solo los que terminan en '-free' o son 'big-pickle'.
     // OPENZEN_FALLBACK es red de seguridad mientras carga o si la API falla.
+    // v4.0.45: las familias muse-spark/gpt/grok NO aceptan /chat/completions
+    // (devuelven 500 "Internal server error" en muse-spark; la doc oficial de Zen
+    // las lista bajo /responses). callAI las enruta a /api/openzen/responses.
     chatEndpoint: '/api/openzen',
+    responsesEndpoint: '/api/openzen/responses',
+    responsesModels: ['muse-spark', 'gpt', 'grok'],
     modelsEndpoint: '/api/openzen/models',
     modelsNeedKey: true, // /zen/v1/models requiere Authorization: Bearer <key>
     staticModels: OPENZEN_FALLBACK,
@@ -618,6 +632,20 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
 
 export function getProvider(id: AIProviderType): ProviderDef {
   return PROVIDERS[id];
+}
+
+/**
+ * Indica si un modelo debe llamarse por el endpoint estilo Responses en vez del
+ * chat clásico (v4.0.45, OpenCode Zen). Las familias muse-spark/gpt/grok solo
+ * aceptan `/responses` (la doc oficial de Zen las lista bajo esa base y sus ids
+ * ni siquiera usan el formato `opencode/<id>` en chat). La comparación es por
+ * prefijo en minúsculas para cubrir sufijos y versiones sin enumerarlas
+ * (`-free`, `-contributor-free`, `1.2`/`1.3`…). Función pura (testeable).
+ */
+export function isResponsesModel(def: ProviderDef, model: string): boolean {
+  if (!def.responsesEndpoint || !def.responsesModels?.length || !model) return false;
+  const low = model.toLowerCase();
+  return def.responsesModels.some(p => low.startsWith(p.toLowerCase()));
 }
 
 /**

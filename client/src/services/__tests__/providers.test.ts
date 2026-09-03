@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { PROVIDERS, getProvider, fetchModels, pickDefaultModel, modelLabel, resolveEndpoint, NIM_EXCLUDED, GROQ_FALLBACK, GROQ_DEPRECATED, type ModelOption } from '../providers';
+import { PROVIDERS, getProvider, fetchModels, isResponsesModel, pickDefaultModel, modelLabel, resolveEndpoint, NIM_EXCLUDED, GROQ_FALLBACK, GROQ_DEPRECATED, type ModelOption } from '../providers';
 
 describe('providers — registro', () => {
   it('los proveedores tienen su defaultModel dentro de staticModels', () => {
@@ -93,22 +93,23 @@ describe('providers — registro', () => {
     expect(def.staticModels.length).toBe(3);
   });
 
-  it('openzen: fallback actualizado 2026-08-12 — hy3-free, ling-3.0-tiny-free y nemotron-3.5-lightning-free; retirados longcat-2.0-free y north-mini-code-free', () => {
+  it('openzen: fallback verificado en vivo 2026-09-03 — muse-spark 1.2/1.3 y ling-3.0-flash-fin-free; retirados hy3-free y ling-3.0-tiny-free (v4.0.45)', () => {
     const def = PROVIDERS.openzen;
     // big-pickle es la excepción sin sufijo -free
     expect(def.staticModels.some(m => m.value === 'big-pickle')).toBe(true);
-    // Nuevos modelos (2026-08-12)
-    expect(def.staticModels.some(m => m.value === 'hy3-free')).toBe(true);
-    expect(def.staticModels.find(m => m.value === 'hy3-free')?.free).toBe(true);
-    expect(def.staticModels.some(m => m.value === 'ling-3.0-tiny-free')).toBe(true);
-    expect(def.staticModels.find(m => m.value === 'ling-3.0-tiny-free')?.free).toBe(true);
-    expect(def.staticModels.some(m => m.value === 'nemotron-3.5-lightning-free')).toBe(true);
-    expect(def.staticModels.find(m => m.value === 'nemotron-3.5-lightning-free')?.free).toBe(true);
-    // Retirados: ya no deben aparecer
-    expect(def.staticModels.some(m => m.value === 'longcat-2.0-free')).toBe(false);
-    expect(def.staticModels.some(m => m.value === 'north-mini-code-free')).toBe(false);
-    // Total: 8 modelos en el fallback
-    expect(def.staticModels.length).toBe(8);
+    // Muse Spark (familia /responses): antes ni siquiera aparecían en el fallback
+    expect(def.staticModels.some(m => m.value === 'muse-spark-1.3-contributor-free')).toBe(true);
+    expect(def.staticModels.find(m => m.value === 'muse-spark-1.3-contributor-free')?.free).toBe(true);
+    expect(def.staticModels.some(m => m.value === 'muse-spark-1.2-contributor-free')).toBe(true);
+    expect(def.staticModels.find(m => m.value === 'muse-spark-1.2-contributor-free')?.free).toBe(true);
+    // Nuevo en el catálogo en vivo (GET /zen/v1/models, 66 modelos)
+    expect(def.staticModels.some(m => m.value === 'ling-3.0-flash-fin-free')).toBe(true);
+    expect(def.staticModels.find(m => m.value === 'ling-3.0-flash-fin-free')?.free).toBe(true);
+    // Retirados: la API ya no los sirve
+    expect(def.staticModels.some(m => m.value === 'hy3-free')).toBe(false);
+    expect(def.staticModels.some(m => m.value === 'ling-3.0-tiny-free')).toBe(false);
+    // Total: 9 modelos en el fallback
+    expect(def.staticModels.length).toBe(9);
     // Todos marcados como free
     expect(def.staticModels.every(m => m.free === true)).toBe(true);
   });
@@ -134,6 +135,27 @@ describe('providers — registro', () => {
     expect(def.modelsNeedKey).toBe(true);
     // chatEndpoint sigue siendo el proxy (CORS)
     expect(def.chatEndpoint).toBe('/api/nim');
+  });
+
+  it('openzen: enrutado a /responses para muse-spark/gpt/grok; chat clásico para el resto (v4.0.45)', () => {
+    const def = PROVIDERS.openzen;
+    expect(def.responsesEndpoint).toBe('/api/openzen/responses');
+    // Familias Responses (prefijo, insensible a mayúsculas; cubre -free y versiones)
+    expect(isResponsesModel(def, 'muse-spark-1.3-contributor-free')).toBe(true);
+    expect(isResponsesModel(def, 'muse-spark-1.2-contributor-free')).toBe(true);
+    expect(isResponsesModel(def, 'MUSE-SPARK-1.2')).toBe(true);
+    expect(isResponsesModel(def, 'gpt-5.4-mini')).toBe(true);
+    expect(isResponsesModel(def, 'gpt-5.5')).toBe(true);
+    expect(isResponsesModel(def, 'grok-4.5')).toBe(true);
+    expect(isResponsesModel(def, 'grok-build-0.1')).toBe(true);
+    // Chat clásico: resto de familias
+    expect(isResponsesModel(def, 'deepseek-v4-flash-free')).toBe(false);
+    expect(isResponsesModel(def, 'big-pickle')).toBe(false);
+    expect(isResponsesModel(def, 'mimo-v2.5-free')).toBe(false);
+    expect(isResponsesModel(def, 'nemotron-3-ultra-free')).toBe(false);
+    expect(isResponsesModel(def, '')).toBe(false);
+    // Sin responsesEndpoint configurado: nunca enruta (p. ej. Groq)
+    expect(isResponsesModel(PROVIDERS.groq, 'gpt-oss-20b')).toBe(false);
   });
 });
 
@@ -377,9 +399,10 @@ describe('providers — fetchModels', () => {
         data: [
           { id: 'big-pickle', object: 'model' },
           { id: 'mimo-v2.5-free', object: 'model' },
-          { id: 'hy3-free', object: 'model' },
+          { id: 'muse-spark-1.3-contributor-free', object: 'model' },
+          { id: 'muse-spark-1.2-contributor-free', object: 'model' },
           { id: 'laguna-s-2.1-free', object: 'model' },
-          { id: 'ling-3.0-tiny-free', object: 'model' },
+          { id: 'ling-3.0-flash-fin-free', object: 'model' },
           { id: 'nemotron-3-ultra-free', object: 'model' },
           { id: 'nemotron-3.5-lightning-free', object: 'model' },
           { id: 'deepseek-v4-flash-free', object: 'model' },
@@ -396,8 +419,9 @@ describe('providers — fetchModels', () => {
     const ids = list!.map(m => m.value);
     // Solo modelos -free o big-pickle
     expect(ids).toContain('big-pickle');
-    expect(ids).toContain('hy3-free');
-    expect(ids).toContain('ling-3.0-tiny-free');
+    expect(ids).toContain('muse-spark-1.3-contributor-free');
+    expect(ids).toContain('muse-spark-1.2-contributor-free');
+    expect(ids).toContain('ling-3.0-flash-fin-free');
     expect(ids).toContain('nemotron-3.5-lightning-free');
     expect(ids).toContain('deepseek-v4-flash-free');
     // Modelos de pago excluidos
@@ -406,8 +430,8 @@ describe('providers — fetchModels', () => {
     expect(ids).not.toContain('kimi-k3');
     // Todos marcados como free
     expect(list!.every(m => m.free)).toBe(true);
-    // OPENZEN_FALLBACK es la red de seguridad (8 modelos)
-    expect(PROVIDERS.openzen.staticModels.length).toBe(8);
+    // OPENZEN_FALLBACK es la red de seguridad (9 modelos)
+    expect(PROVIDERS.openzen.staticModels.length).toBe(9);
     expect(PROVIDERS.openzen.staticModels.every(m => m.free)).toBe(true);
     // Sin key: devuelve null (modelsNeedKey: true)
     expect(await fetchModels(PROVIDERS.openzen, '')).toBeNull();
