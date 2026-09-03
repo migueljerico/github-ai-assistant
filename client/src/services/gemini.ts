@@ -1230,10 +1230,14 @@ REPOSITORIO: ${repoName}
   const initialModel = options?.modelOverride ?? config?.model ?? 'test-model';
   const accountId = config?.accountId;
   // Timeout adaptativo para documentación de repositorio:
-  // Si el usuario no especificó un timeout personalizado, se asignan 300s (5 min,
-  // matching Cloud Run) para el modo completo (generar 8.192 tokens con 120 archivos
-  // requiere >3 min) y 120s para el modo ligero (2.500 tokens / 6 archivos).
-  const effectiveRepoTimeoutMs = config?.timeoutMs ?? (isLight ? 120_000 : 300_000);
+  // Si el usuario no especificó un timeout personalizado, se asignan 600s (10 min,
+  // tope del proxy y máximo admitido en ⚙️) para el modo completo — los modelos de
+  // razonamiento (p. ej. Qwen 3.8 Max) con repos grandes superan los 5 min por
+  // llamada — y 120s para el modo ligero (2.500 tokens / 6 archivos).
+  // REQUISITO DE INFRAESTRUCTURA: el servicio Cloud Run debe tener --timeout 600
+  // (o superior); con el default de la plataforma (300s) la petición se corta
+  // antes de que el modelo termine (504). Ver deploy.sh y MANUAL_TECNICO.md.
+  const effectiveRepoTimeoutMs = config?.timeoutMs ?? (isLight ? 120_000 : 600_000);
 
   const lightModeDirective = isLight
     ? `\n\n═══════════════════════════════════════════════════════\nMODO DOCUMENTACIÓN ESENCIAL:\nEl análisis se basa en los archivos clave del proyecto para respetar los límites de tokens/cuota del proveedor. Genera una documentación concisa, clara y rigurosa sin omitir secciones obligatorias pero sintetizando para no exceder el presupuesto.\n═══════════════════════════════════════════════════════`
