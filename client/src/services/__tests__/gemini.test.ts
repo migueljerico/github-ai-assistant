@@ -22,6 +22,8 @@ import {
  extractRepoSummary,
  isGroqEndpoint,
  isProxyEndpoint,
+ toResponsesBody,
+ extractResponsesText,
 } from '../gemini';
 
 describe('gemini.ts - Utilidades', () => {
@@ -2617,3 +2619,257 @@ Detalles del manual.`;
 
 
 
+// ── OpenCode Zen Responses API (v4.0.45) ─────────────────────────────────────
+// Las familias muse-spark/gpt/grok de Zen SOLO aceptan /responses: en
+// /chat/completions devuelven 500 "Internal server error" (caso real:
+// muse-spark-1.2 y 1.3-contributor-free desde ZCode). callAI las enruta al
+// proxy /api/openzen/responses con body { instructions, input } y extrae el
+// texto de output[].content[] (deltas `response.output_text.delta` en stream).
+describe('OpenCode Zen — enrutado a /responses (v4.0.45)', () => {
+  beforeEach(() => { vi.restoreAllMocks(); });
+
+  const RESPONSES_OK = {
+    output: [{
+      type: 'message',
+      content: [{ type: 'output_text', text: 'respuesta spark' }],
+    }],
+  };
+
+  /** Construye una Response-like con un cuerpo SSE a partir de líneas. */
+  function sseResponses(chunks: string[]) {
+    const encoder = new TextEncoder();
+    return {
+      ok: true,
+      body: new ReadableStream({
+        start(controller) {
+          for (const c of chunks) controller.enqueue(encoder.encode(c));
+          controller.close();
+        },
+      }),
+    };
+  }
+
+  it('muse-spark va a /api/openzen/responses con body { instructions, input } (no /chat/completions)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => RESPONSES_OK,
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const out = await callAI(
+      [{ role: 'user', content: 'Hola' }],
+      'Eres un asistente.',
+      'openzen',
+      'key',
+      'muse-spark-1.3-contributor-free',
+      'chat',
+    );
+
+    expect(out).toBe('respuesta spark');
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('/api/openzen/responses');
+    const body = JSON.parse((init as RequestInit).body as string);
+    expect(body.model).toBe('muse-spark-1.3-contributor-free');
+    expect(body.instructions).toBe('Eres un asistente.');
+    expect(body.input).toEqual([{ role: 'user', content: 'Hola' }]);
+    expect(body.messages).toBeUndefined();
+    expect(body.temperature).toBe(0.7);
+    expect(body.max_output_tokens).toBe(4096);
+  });
+
+  it('modelos chat clásicos de Zen (deepseek-free) siguen yendo a /api/openzen', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: 'ok clásico' } }] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const out = await callAI(
+      [{ role: 'user', content: 'Hola' }],
+      'sys',
+      'openzen',
+      'key',
+      'deepseek-v4-flash-free',
+      'chat',
+    );
+
+    expect(out).toBe('ok clásico');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/openzen');
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(Array.isArray(body.messages)).toBe(true);
+  });
+
+  it('toResponsesBody: el system va en instructions y los turnos assistant se conservan', () => {
+    const body = toResponsesBody(
+      'muse-spark-1.2-contributor-free',
+      [
+        { role: 'user', content: 'Hola' },
+        { role: 'assistant', content: '¡Hola!' },
+        { role: 'user', content: 'Sigue' },
+      ],
+      'Responde con una palabra.',
+      0.1,
+      4096,
+      false,
+    );
+    expect(body.instructions).toBe('Responde con una palabra.');
+    expect(body.input).toEqual([
+      { role: 'user', content: 'Hola' },
+      { role: 'assistant', content: '¡Hola!' },
+      { role: 'user', content: 'Sigue' },
+    ]);
+    expect(body.stream).toBeUndefined();
+  });
+
+  it('extractResponsesText: concatena los output_text e ignora el reasoning cifrado', () => {
+    const text = extractResponsesText({
+      output: [
+        { type: 'reasoning' },
+        {
+          type: 'message',
+          content: [
+            { type: 'output_text', text: 'Hola' },
+            { type: 'output_text', text: ' mundo' },
+          ],
+        },
+      ],
+    });
+    expect(text).toBe('Hola mundo');
+    expect(extractResponsesText({ output: [] })).toBe('');
+    expect(extractResponsesText({})).toBe('');
+  });
+
+  it('streaming responses: acumula los deltas response.output_text.delta', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(sseResponses([
+      'data: {"type":"response.output_text.delta","delta":"Hola"}\n\n',
+      'data: {"type":"response.output_text.delta","delta":" mundo"}\n\n',
+    ]));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const tokens: string[] = [];
+    const out = await callAI(
+      [{ role: 'user', content: 'hi' }], 'sys', 'openzen', 'key',
+      'muse-spark-1.3-contributor-free', 'chat', (t) => tokens.push(t),
+    );
+
+    expect(out).toBe('Hola mundo');
+    expect(tokens).toEqual(['Hola', 'Hola mundo']);
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(body.stream).toBe(true);
+  });
+
+  it('responses sin contenido → error accionable (no burbuja vacía)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ output: [] }),
+    }));
+    await expect(
+      callAI([{ role: 'user', content: 'hola' }], 'sys', 'openzen', 'k', 'muse-spark-1.2', 'chat'),
+    ).rejects.toThrow(/no devolvió contenido/i);
+  });
+
+  it('validateProviderKey con muse-spark valida contra /api/openzen/responses', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => RESPONSES_OK,
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = await validateProviderKey('openzen', 'key', 'muse-spark-1.3-contributor-free');
+    expect(res).toEqual({ valid: true });
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/openzen/responses');
+  });
+
+  it('validateProviderKey con deepseek-free sigue validando contra /api/openzen', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: 'Hi' } }] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = await validateProviderKey('openzen', 'key', 'deepseek-v4-flash-free');
+    expect(res).toEqual({ valid: true });
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/openzen');
+  });
+});
+// ── OpenCode Zen Responses — errores HTTP accionables (v4.0.45) ─────────────
+// Cubre el 100% del bloque de errores de callResponsesCompatible (réplica del
+// shaping de callOpenAICompatible): contextTooLarge/413, 429, 402, 504 y 401
+// exacto. Sin estos tests el codecov/patch del diff fallaría.
+describe('OpenCode Zen responses — shaping de errores HTTP (v4.0.45)', () => {
+  beforeEach(() => { vi.restoreAllMocks(); });
+
+  const callSpark = (fetchMock: ReturnType<typeof vi.fn>) => {
+    vi.stubGlobal('fetch', fetchMock);
+    return callAI(
+      [{ role: 'user', content: 'hola' }], 'sys', 'openzen', 'k',
+      'muse-spark-1.3-contributor-free', 'chat',
+    );
+  };
+
+  it('contexto excesivo (mensaje TPM) → error con flag contextTooLarge', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => ({ error: { message: 'This model maximum context length is exceeded' } }),
+    });
+    const err = await callSpark(fetchMock).catch((e) => e);
+    expect(err.contextTooLarge).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('413 → contextTooLarge aunque el mensaje no mencione tokens', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 413,
+      json: async () => ({ error: 'payload too big' }),
+    });
+    const err = await callSpark(fetchMock).catch((e) => e);
+    expect(err.contextTooLarge).toBe(true);
+  });
+
+  it('429 → hint de cuota del tier gratuito', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+      json: async () => ({ error: { message: 'Rate limit exceeded' } }),
+    });
+    await expect(callSpark(fetchMock)).rejects.toThrow(/cuota alcanzado.*429/i);
+  });
+
+  it('402 → hint de créditos agotados', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 402,
+      json: async () => ({ error: 'Payment Required' }),
+    });
+    await expect(callSpark(fetchMock)).rejects.toThrow(/Créditos agotados/i);
+  });
+
+  it('504 sin mensaje → hint de timeout accionable', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 504,
+      json: async () => ({}),
+    });
+    await expect(callSpark(fetchMock)).rejects.toThrow(/tardó demasiado.*504|Gateway Timeout/i);
+  });
+
+  it('401 → error exacto sin hint de saturación', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ error: { message: 'Invalid or disabled API key.' } }),
+    });
+    await expect(callSpark(fetchMock)).rejects.toThrow('Invalid or disabled API key.');
+  });
+
+  it('500 genérico → hint de saturación del tier gratuito', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({ error: { message: 'Internal server error' } }),
+    });
+    await expect(callSpark(fetchMock)).rejects.toThrow(/saturación del tier gratuito/i);
+  });
+});

@@ -27,7 +27,7 @@
 
 import type { GeminiAction } from '../types';
 import type { Language } from '../context/LanguageContext';
-import { getProvider, modelLabel, resolveEndpoint, type AIProviderType } from './providers';
+import { getProvider, isResponsesModel, modelLabel, resolveEndpoint, type AIProviderType } from './providers';
 import { withTransientRetry, isAbortError, isTransientError, isProviderOverloadedError, combineSignals, DEFAULT_AI_TIMEOUT_MS } from '../utils/retry';
 // #23: los system prompts viven en archivos `.md` (mantenibilidad + base para i18n).
 // Se cargan como texto crudo con el import `?raw` de Vite. `.trimEnd()` evita que un
@@ -423,6 +423,160 @@ async function callOpenAICompatible(
   return content;
 }
 
+// ── Responses API (estilo OpenAI /responses) — p. ej. OpenCode Zen ─────────
+// v4.0.45: las familias muse-spark/gpt/grok de Zen solo aceptan /responses
+// (en /chat/completions devuelven 500/401 con mensajes opacos). El body es
+// distinto al chat clásico: `instructions` (system) + `input` (turnos).
+// La respuesta trae el texto en output[].content[].text (no en choices[]), y el
+// stream emite eventos `response.output_text.delta` con campo `delta` (no
+// `choices[].delta.content`). Todo lo demás (temperatura, timeout, reintento,
+// errores accionables) se comparte con el transporte clásico.
+
+/** Respuesta mínima de la Responses API que necesitamos para extraer el texto. */
+interface ResponsesOutputPart {
+  type?: string;
+  text?: string;
+}
+interface ResponsesOutputItem {
+  type?: string;
+  content?: ResponsesOutputPart[];
+}
+
+/** Extrae el texto de una respuesta /responses no-streaming. Vacío si no hay. */
+export function extractResponsesText(data: { output?: ResponsesOutputItem[] }): string {
+  let acc = '';
+  for (const item of data.output ?? []) {
+    if (item.type !== 'message') continue;
+    for (const part of item.content ?? []) {
+      if (part.type === 'output_text' && part.text) acc += part.text;
+    }
+  }
+  return acc;
+}
+
+/**
+ * Convierte el historial clásico {system, messages[]} al body de /responses:
+ * `instructions` = system prompt, `input` = turnos (role user/assistant tal cual;
+ * el 'system' de messages no se duplica porque ya va en instructions).
+ */
+export function toResponsesBody(
+  model: string,
+  messages: Message[],
+  systemPrompt: string,
+  temperature: number,
+  maxTokens: number,
+  stream: boolean,
+): Record<string, unknown> {
+  return {
+    model,
+    instructions: systemPrompt,
+    input: messages.map(m => ({
+      role: m.role === 'assistant' ? 'assistant' : 'user',
+      content: m.content,
+    })),
+    temperature,
+    max_output_tokens: maxTokens,
+    ...(stream ? { stream: true } : {}),
+  };
+}
+
+/**
+ * Transporte estilo Responses compartido por los modelos que no aceptan
+ * /chat/completions (hoy: familias muse-spark/gpt/grok de OpenCode Zen vía el
+ * proxy /api/openzen/responses). Misma firma que callOpenAICompatible para que
+ * callAI pueda enrutar sin cambiar el resto del flujo.
+ */
+async function callResponsesCompatible(
+  endpoint: string,
+  apiKey: string,
+  model: string,
+  messages: Message[],
+  systemPrompt: string,
+  mode?: 'chat' | 'action',
+  extraHeaders?: Record<string, string>,
+  onToken?: (textSoFar: string) => void,
+  signal?: AbortSignal,
+  maxTokens?: number,
+  accountId?: string | null,
+  timeoutMs?: number | null,
+): Promise<string> {
+  const temperature = mode === 'chat' ? 0.7 : 0.1;
+  const stream = Boolean(onToken);
+  const body = toResponsesBody(model, messages, systemPrompt, temperature, maxTokens ?? 4096, stream);
+
+  const isProxy = isProxyEndpoint(endpoint);
+
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      ...extraHeaders,
+      ...(isProxy && accountId ? { 'X-Account-Id': accountId } : {}),
+      ...(isProxy && timeoutMs ? { 'X-Timeout-Ms': String(timeoutMs) } : {}),
+    },
+    body: JSON.stringify(body),
+    signal,
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as Record<string, unknown>;
+    const rawError = err?.error;
+    const msg = typeof rawError === 'string'
+      ? rawError
+      : (rawError as Record<string, unknown>)?.message as string | undefined
+        || (err?.message as string | undefined)
+        || (err?.detail as string | undefined);
+    const base = msg || `AI provider error ${res.status}`;
+    const isTooLarge = typeof msg === 'string' && /too large|reduce the length|tokens per minute|context length|context window|maximum.{0,12}tokens|payload too|input length|exceeds max|exceeds the max|too long|out of range|token limit|max_output_tokens/i.test(msg);
+    if (isTooLarge || res.status === 413) {
+      throw Object.assign(new Error(base), { status: res.status, contextTooLarge: true });
+    }
+    if (res.status === 429) {
+      const hint = ' — Demasiadas peticiones o límite de cuota alcanzado (429). Los modelos gratuitos tienen límites estrictos de peticiones por minuto. Espera un momento o cambia de proveedor.';
+      throw Object.assign(new Error(base + hint), { status: res.status });
+    }
+    if (res.status === 402) {
+      const hint = ' — Créditos agotados o cuenta sin saldo suficiente en el proveedor (402 Payment Required). Revisa tus créditos o añade saldo/cambia de proveedor en ⚙️.';
+      throw Object.assign(new Error((msg || base) + hint), { status: 402 });
+    }
+    if (res.status === 504) {
+      const hint = msg ? '' : ' — La petición tardó demasiado en responder (504 Gateway Timeout). Prueba a aumentar el timeout en ⚙️ o a elegir un modelo más rápido.';
+      throw Object.assign(new Error((msg || base) + hint), { status: 504 });
+    }
+    if (res.status === 401) {
+      throw Object.assign(new Error(base), { status: 401 });
+    }
+    const hint = ' — el modelo no está disponible ahora mismo (saturación del tier gratuito). Prueba otro modelo (p. ej. Gemma) o cambia a Gemini/Groq.';
+    throw Object.assign(new Error(base + hint), { status: res.status });
+  }
+
+  const emptyError = 'El modelo no devolvió contenido. Prueba con otro modelo del desplegable ' +
+    '(p.ej. Gemma o Llama 3.3 70B free) o con un repositorio más pequeño.';
+
+  if (stream && res.body) {
+    let acc = '';
+    await readSSEStream(res, (json) => {
+      try {
+        const parsed = JSON.parse(json) as { type?: string; delta?: string };
+        if (parsed.type === 'response.output_text.delta' && parsed.delta) {
+          acc += parsed.delta;
+          onToken!(acc);
+        }
+      } catch { /* línea no-JSON (keep-alive): se ignora */ }
+    });
+    if (!acc.trim()) throw new Error(emptyError);
+    return acc;
+  }
+
+  const data = await res.json() as { output?: ResponsesOutputItem[] };
+  const content = extractResponsesText(data);
+  if (!content || !content.trim()) {
+    throw new Error(emptyError);
+  }
+  return content;
+}
+
 // ── Gemini implementation (proxied through server) ────────────────────────────
 // 🔥 OPCIÓN D: Ahora acepta 'mode' opcional y lo envía al backend
 async function callGeminiDirect(
@@ -524,10 +678,18 @@ export async function callAI(
   // Con streaming, `onToken` recibe el texto ACUMULADO (semántica "set"): si hay
   // reintento, el stream reinicia y sobrescribe la burbuja sin duplicar.
   const chatEndpoint = resolveEndpoint(def.chatEndpoint!, accountId);
+  // v4.0.45: los modelos de la familia Responses (muse-spark/gpt/grok en Zen)
+  // van al responsesEndpoint con el transporte /responses; el resto sigue igual.
+  const useResponses = isResponsesModel(def, model) && Boolean(def.responsesEndpoint);
+  const activeEndpoint = useResponses
+    ? resolveEndpoint(def.responsesEndpoint!, accountId)
+    : chatEndpoint;
   return withTransientRetry(() =>
     def.transport === 'gemini-proxy'
       ? callGeminiDirect(apiKey, model, messages, systemPrompt, mode, onToken, combinedSignal, effectiveMaxTokens, effectiveTimeout)
-      : callOpenAICompatible(chatEndpoint, apiKey, model, messages, systemPrompt, mode, def.extraHeaders, onToken, combinedSignal, effectiveMaxTokens, accountId, effectiveTimeout),
+      : useResponses
+        ? callResponsesCompatible(activeEndpoint, apiKey, model, messages, systemPrompt, mode, def.extraHeaders, onToken, combinedSignal, effectiveMaxTokens, accountId, effectiveTimeout)
+        : callOpenAICompatible(chatEndpoint, apiKey, model, messages, systemPrompt, mode, def.extraHeaders, onToken, combinedSignal, effectiveMaxTokens, accountId, effectiveTimeout),
   );
 }
 
@@ -545,6 +707,24 @@ export async function validateProviderKey(
   try {
     if (def.transport === 'gemini-proxy') {
       await callGeminiDirect(apiKey, model, [{ role: 'user', content: 'Hi' }], 'Reply with one word.');
+    } else if (isResponsesModel(def, model) && def.responsesEndpoint) {
+      // v4.0.45: valida por la misma ruta real que usará el chat (responses),
+      // no por /chat/completions (que en muse-spark devuelve 500 y daría un
+      // falso "clave inválida" o un 500 confuso al conectar).
+      const responsesEndpoint = resolveEndpoint(def.responsesEndpoint, accountId);
+      await callResponsesCompatible(
+        responsesEndpoint,
+        apiKey,
+        model,
+        [{ role: 'user', content: 'Hi' }],
+        'Reply with one word.',
+        undefined,
+        def.extraHeaders,
+        undefined,
+        undefined,
+        undefined,
+        accountId,
+      );
     } else {
       const chatEndpoint = resolveEndpoint(def.chatEndpoint!, accountId);
       await callOpenAICompatible(

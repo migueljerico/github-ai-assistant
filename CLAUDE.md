@@ -31,7 +31,7 @@ reemplazan. Saltarse este paso es la causa nº1 de trabajar en bucle.
 
 ## 1. Visión general
 
-**GitHub AI Assistant** (v4.0.44) es una app web que permite operar la **GitHub
+**GitHub AI Assistant** (v4.0.45) es una app web que permite operar la **GitHub
 REST API en lenguaje natural** a través de un proveedor de IA (Google Gemini,
 Groq Cloud, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI,
 la IA propone una acción, y
@@ -253,7 +253,10 @@ Ejecutar **un solo test**: `cd client && npm run test:run -- src/services/github
   caso de **Groq, OpenRouter y Zenmux** (estos tres sí envían cabeceras CORS).
   El resto de OpenAI-compatible **no envían CORS** y el navegador bloquea la
   llamada con "Failed to fetch", por lo que requieren **proxy backend**:
-  `/api/nim` (NVIDIA NIM), `/api/openzen` (OpenCode Zen), `/api/cloudflare`
+  `/api/nim` (NVIDIA NIM), `/api/openzen` y `/api/openzen/responses` (OpenCode
+  Zen — el segundo solo para las familias muse-spark/gpt/grok, que únicamente
+  aceptan la Responses API; en `/chat/completions` devuelven 500),
+  `/api/cloudflare`
 
   La única excepción verdaderamente "por bloqueo geográfico" sigue siendo
   `POST /api/gemini` (Gemini bloquea EEA desde el navegador).
@@ -347,12 +350,14 @@ Ejecutar **un solo test**: `cd client && npm run test:run -- src/services/github
   - `transport: 'openai-compatible'` con `chatEndpoint` absoluto (fetch **directo**
     desde navegador, sí envían CORS): **Groq Cloud, OpenRouter, Zenmux**.
   - `transport: 'openai-compatible'` con `chatEndpoint` relativo (proxy backend,
-    no envían CORS): NVIDIA NIM (`/api/nim`), OpenCode Zen (`/api/openzen`),
+    no envían CORS): NVIDIA NIM (`/api/nim`), OpenCode Zen (`/api/openzen` más
+    `/api/openzen/responses` para muse-spark/gpt/grok vía `isResponsesModel`),
     Cloudflare Workers AI (`/api/cloudflare`), Ollama Cloud (`/api/ollama`),
 
     QwenCloud (`/api/qwencloud`).
   - `transport: 'gemini-proxy'` (proxy backend, bloqueo EEA): Google Gemini (`/api/gemini`).
   Ver `server/index.js` para los endpoints proxy: `/api/gemini`, `/api/nim`,
+  `/api/openzen` (+ `/api/openzen/responses`),
 
 - **⚠️ No crear archivos de handoff / notas de sesión en el repo.** El handoff se entrega
   como mensaje en el chat (formato `METODOLOGIA_IA.md §2.7`). No se crean ni se dejan
