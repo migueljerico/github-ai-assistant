@@ -49,6 +49,7 @@ describe('SessionWarningBanner', () => {
       connect: vi.fn(),
       disconnect: vi.fn(),
       setTimeoutMs: vi.fn(),
+      setModel: vi.fn(),
     });
 
     render(<SessionWarningBanner />);
@@ -81,6 +82,7 @@ describe('SessionWarningBanner', () => {
       connect: vi.fn(),
       disconnect: vi.fn(),
       setTimeoutMs: vi.fn(),
+      setModel: vi.fn(),
     });
 
     render(<SessionWarningBanner />);
@@ -115,6 +117,7 @@ describe('SessionWarningBanner', () => {
       connect: vi.fn(),
       disconnect: vi.fn(),
       setTimeoutMs: vi.fn(),
+      setModel: vi.fn(),
     });
 
     render(<SessionWarningBanner />);
@@ -148,6 +151,7 @@ describe('SessionWarningBanner', () => {
       connect: vi.fn(),
       disconnect: vi.fn(),
       setTimeoutMs: vi.fn(),
+      setModel: vi.fn(),
     });
 
     render(<SessionWarningBanner />);
@@ -183,6 +187,7 @@ describe('SessionWarningBanner', () => {
       connect: vi.fn(),
       disconnect: vi.fn(),
       setTimeoutMs: vi.fn(),
+      setModel: vi.fn(),
     });
 
     render(<SessionWarningBanner />);
@@ -217,6 +222,7 @@ describe('SessionWarningBanner', () => {
       connect: vi.fn(),
       disconnect: vi.fn(),
       setTimeoutMs: vi.fn(),
+      setModel: vi.fn(),
     });
 
     const { rerender } = render(<SessionWarningBanner />);
@@ -249,6 +255,7 @@ describe('SessionWarningBanner', () => {
       connect: vi.fn(),
       disconnect: vi.fn(),
       setTimeoutMs: vi.fn(),
+      setModel: vi.fn(),
     });
 
     render(<SessionWarningBanner />);

@@ -1,6 +1,8 @@
+import React, { useEffect } from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import DocumentFlowModal from '../DocumentFlowModal';
+import { AIProviderContextProvider, useAIProvider } from '../../../context/AIProviderContext';
 import type { RepoAnalysis } from '../../../types';
 import type { FileContext } from '../../../services/assistantActions';
 
@@ -1231,6 +1233,125 @@ describe('DocumentFlowModal — Cobertura completa de ramas y callbacks', () => 
 
       await waitFor(() => {
         expect(onGenerateRepo).toHaveBeenLastCalledWith('owner/repo-grande', { lightMode: true });
+        expect(screen.getByText(/Paso 3 de 4/)).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Resiliencia ante sobrecarga 503 e integración de proveedor IA', () => {
+    function ConnectedWrapper({ children, model = 'gemini-3.8-flash' }: { children: React.ReactNode; model?: string }) {
+      return (
+        <AIProviderContextProvider>
+          <ConnectTrigger model={model} />
+          {children}
+        </AIProviderContextProvider>
+      );
+    }
+
+    function ConnectTrigger({ model }: { model: string }) {
+      const { connect } = useAIProvider();
+      const connectedRef = React.useRef(false);
+      useEffect(() => {
+        if (!connectedRef.current) {
+          connectedRef.current = true;
+          connect('gemini', 'test-key', model);
+        }
+      }, [connect, model]);
+      return null;
+    }
+
+    it('muestra el badge del modelo activo en paso 2 y el banner de sobrecarga con botón a Gemini 2.5 Flash', async () => {
+      const onGenerateRepo = vi.fn().mockResolvedValue('overloaded');
+
+      render(
+        <ConnectedWrapper model="gemini-3.8-flash">
+          <DocumentFlowModal {...baseProps({ onGenerateRepo })} />
+        </ConnectedWrapper>
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /Repositorio entero/ }));
+
+      await waitFor(() => {
+        expect(screen.getByText(/Modelo activo/)).toBeInTheDocument();
+        expect(screen.getByText(/gemini-3.8-flash/)).toBeInTheDocument();
+      });
+
+      const input = screen.getByPlaceholderText(/nombre-del-repo o owner\/repo/);
+      fireEvent.change(input, { target: { value: 'owner/repo' } });
+      fireEvent.click(document.getElementById('flow-generate-btn')!);
+
+      await waitFor(() => {
+        expect(screen.getByText(/El modelo está temporalmente sobrecargado/)).toBeInTheDocument();
+        expect(document.getElementById('flow-switch-gemini-25-btn')).toBeInTheDocument();
+        expect(document.getElementById('flow-model-select')).toBeInTheDocument();
+      });
+
+      // Al pulsar el botón de cambiar a Gemini 2.5 Flash
+      fireEvent.click(document.getElementById('flow-switch-gemini-25-btn')!);
+      expect(onGenerateRepo).toHaveBeenCalledWith('owner/repo', { modelOverride: 'gemini-2.5-flash' });
+    });
+
+    it('permite cambiar a otro modelo desde el selector desplegable ante sobrecarga', async () => {
+      const onGenerateRepo = vi.fn().mockResolvedValue('overloaded');
+
+      render(
+        <ConnectedWrapper model="gemini-3.8-flash">
+          <DocumentFlowModal {...baseProps({ onGenerateRepo })} />
+        </ConnectedWrapper>
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /Repositorio entero/ }));
+      const input = screen.getByPlaceholderText(/nombre-del-repo o owner\/repo/);
+      fireEvent.change(input, { target: { value: 'owner/repo' } });
+      fireEvent.click(document.getElementById('flow-generate-btn')!);
+
+      await waitFor(() => {
+        expect(document.getElementById('flow-model-select')).toBeInTheDocument();
+      });
+
+      fireEvent.change(document.getElementById('flow-model-select')!, { target: { value: 'gemini-2.5-pro' } });
+      expect(onGenerateRepo).toHaveBeenCalledWith('owner/repo', { modelOverride: 'gemini-2.5-pro' });
+    });
+
+    it('limpia flowError al reintentar con el botón de doc ligera', async () => {
+      let resolveFirst: (val: any) => void = () => {};
+      const onGenerateRepo = vi.fn()
+        .mockResolvedValueOnce('overloaded')
+        .mockImplementationOnce(() => new Promise(res => { resolveFirst = res; }));
+
+      render(
+        <ConnectedWrapper model="gemini-2.5-flash">
+          <DocumentFlowModal {...baseProps({ onGenerateRepo })} />
+        </ConnectedWrapper>
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /Repositorio entero/ }));
+      const input = screen.getByPlaceholderText(/nombre-del-repo o owner\/repo/);
+      fireEvent.change(input, { target: { value: 'owner/repo' } });
+      fireEvent.click(document.getElementById('flow-generate-btn')!);
+
+      await waitFor(() => {
+        expect(document.getElementById('flow-generate-light-btn')).toBeInTheDocument();
+      });
+
+      // Al pulsar "Generar documentación ligera"
+      fireEvent.click(document.getElementById('flow-generate-light-btn')!);
+
+      // Mientras está busy, flowError se ha limpiado
+      expect(document.getElementById('flow-context-too-large-banner')).toBeNull();
+
+      resolveFirst({
+        readme: 'README',
+        manualTecnico: 'MANUAL',
+        filesAnalyzed: 2,
+        totalFiles: 2,
+        truncated: false,
+        repoName: 'owner/repo',
+        alreadyDocumented: false,
+        resumen: 'Resumen',
+      });
+
+      await waitFor(() => {
         expect(screen.getByText(/Paso 3 de 4/)).toBeInTheDocument();
       });
     });

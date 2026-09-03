@@ -1079,6 +1079,61 @@ describe('generateRepoDocs - no inventar autor/año (#28 4a)', () => {
     ).rejects.toThrow(/no devolvió el MANUAL_TECNICO/);
   });
 
+  it('aplica fallback resiliente automático a gemini-2.5-flash si gemini-3.8-flash devuelve 503 por sobrecarga', async () => {
+    const fetchMock = vi.fn().mockImplementation(async (_url, init) => {
+      const body = JSON.parse(init.body);
+      if (body.model === 'gemini-3.8-flash') {
+        return {
+          ok: false,
+          status: 503,
+          json: async () => ({ error: 'The model is overloaded. Please try again later.' }),
+        };
+      }
+      expect(body.model).toBe('gemini-2.5-flash');
+      return {
+        ok: true,
+        json: async () => ({ text: '# Doc generada con fallback 2.5 flash' }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await generateRepoDocs(
+      'owner/repo',
+      [{ path: 'src/index.ts', content: 'console.log(1);' }],
+      { provider: 'gemini', apiKey: 'k', model: 'gemini-3.8-flash' },
+    );
+
+    expect(result.metadatos).toMatchObject({
+      fallbackModel: 'gemini-2.5-flash',
+      originalModel: 'gemini-3.8-flash',
+    });
+    expect(result.readme).toContain('Google Gemini (gemini-2.5-flash)');
+    expect(result.manualTecnico).toContain('Google Gemini (gemini-2.5-flash)');
+  });
+
+  it('soporta options.modelOverride para forzar un modelo específico', async () => {
+    const fetchMock = vi.fn().mockImplementation(async (_url, init) => {
+      const body = JSON.parse(init.body);
+      expect(body.model).toBe('gemini-2.5-flash');
+      return {
+        ok: true,
+        json: async () => ({ text: '# Doc generada con override' }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await generateRepoDocs(
+      'owner/repo',
+      [{ path: 'src/index.ts', content: 'console.log(1);' }],
+      { provider: 'gemini', apiKey: 'k', model: 'gemini-3.8-flash' },
+      'es',
+      undefined,
+      { modelOverride: 'gemini-2.5-flash' },
+    );
+
+    expect(result.readme).toContain('Google Gemini (gemini-2.5-flash)');
+  });
+
   describe('generateRepoDocs - options.lightMode', () => {
     it('ejecuta en modo ligero con archivos esenciales (máx 6), truncado a 40 líneas y maxTokens 2500', async () => {
       const fetchMock = vi.fn().mockImplementation(async (_url, init) => {

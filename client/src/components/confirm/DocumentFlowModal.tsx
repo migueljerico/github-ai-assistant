@@ -10,6 +10,8 @@ import PublishActions from './PublishActions';
 import DiffViewer from './DiffViewer';
 import { useModalDialog } from '../../hooks/useModalDialog';
 import { useLanguage } from '../../context/LanguageContext';
+import { useOptionalAIProvider } from '../../context/AIProviderContext';
+import { getProvider, modelLabel } from '../../services/providers';
 
 // ── Props ────────────────────────────────────────────────────────────────────────
 interface DocumentFlowModalProps {
@@ -33,7 +35,7 @@ interface DocumentFlowModalProps {
    *  `null` si falló, `'repo-missing'` si el repo no existe y es del usuario,
    *  `'context-too-large'` si supera el límite de TPM/tokens, `'timeout'` si se agota el tiempo
    *  o `'overloaded'` si el proveedor está sobrecargado (503). */
-  onGenerateRepo: (repoInput: string, options?: { lightMode?: boolean }) => Promise<RepoAnalysis | null | 'repo-missing' | 'context-too-large' | 'timeout' | 'overloaded'>;
+  onGenerateRepo: (repoInput: string, options?: { lightMode?: boolean; modelOverride?: string }) => Promise<RepoAnalysis | null | 'repo-missing' | 'context-too-large' | 'timeout' | 'overloaded'>;
   /** Crea un repo inexistente, sube (opcionalmente) archivos y lo documenta. */
   onCreateRepoAndGenerate: (repoInput: string, files?: File[]) => Promise<RepoAnalysis | null>;
   /** Genera la documentación del archivo adjunto. Devuelve el Markdown o null. */
@@ -124,6 +126,7 @@ export default function DocumentFlowModal({
   onCancel,
 }: DocumentFlowModalProps) {
   const { t } = useLanguage();
+  const aiContext = useOptionalAIProvider();
   const modalRef = useModalDialog<HTMLDivElement>(onCancel);
 
   // #57 Tanda B: si llega `initialRepo` (botón "Actualizar documentación"), abre
@@ -293,12 +296,10 @@ const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number }
 
 
   // ── Paso 2: generación ─────────────────────────────────────────────────────────
-  const handleGenerateRepo = async (opts?: { lightMode?: boolean }) => {
+  const handleGenerateRepo = async (opts?: { lightMode?: boolean; modelOverride?: string }) => {
     if (!repoInput.trim()) return;
     setBusy(true);
-    if (!opts?.lightMode) {
-      setFlowError(null);
-    }
+    setFlowError(null);
     try {
       const a = await onGenerateRepo(repoInput.trim(), opts);
       if (a === 'repo-missing') {
@@ -837,6 +838,24 @@ return (
 {step === 2 && !isFile && !isSpecific && !isBulk && (
             <>
               <p>{t('modal.flow.scopeRepo')}</p>
+              {aiContext?.provider && aiContext.model && (
+                <div
+                  id="flow-active-model-badge"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '0.78rem',
+                    color: 'var(--color-text-muted, #888)',
+                    marginTop: '4px',
+                    marginBottom: '6px',
+                  }}
+                >
+                  <span>
+                    {t('modal.flow.activeModel')}: <strong>{modelLabel(aiContext.provider, aiContext.model)}</strong> ({getProvider(aiContext.provider)?.name})
+                  </span>
+                </div>
+              )}
               <div style={{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
                 <input
                   id="flow-repo-input"
@@ -901,10 +920,25 @@ return (
                         : t('modal.flow.contextTooLargeDesc')}
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                    {flowError === 'overloaded' && aiContext?.provider === 'gemini' && aiContext.model !== 'gemini-2.5-flash' && (
+                      <button
+                        id="flow-switch-gemini-25-btn"
+                        type="button"
+                        className="btn btn-primary"
+                        disabled={busy}
+                        onClick={() => {
+                          aiContext.setModel('gemini-2.5-flash');
+                          handleGenerateRepo({ modelOverride: 'gemini-2.5-flash' });
+                        }}
+                        style={{ fontSize: '0.82rem', padding: '6px 12px' }}
+                      >
+                        🔄 {t('modal.flow.switchToGemini25')}
+                      </button>
+                    )}
                     <button
                       id="flow-generate-light-btn"
                       type="button"
-                      className="btn btn-primary"
+                      className={flowError === 'overloaded' && aiContext?.provider === 'gemini' && aiContext.model !== 'gemini-2.5-flash' ? 'btn btn-secondary' : 'btn btn-primary'}
                       disabled={busy}
                       onClick={() => handleGenerateRepo({ lightMode: true })}
                       style={{ fontSize: '0.82rem', padding: '6px 12px' }}
@@ -919,6 +953,43 @@ return (
                           : t('modal.flow.contextTooLargeOrGemini')}
                     </span>
                   </div>
+
+                  {/* Selector rápido de modelo para cambiar sin salir del modal */}
+                  {aiContext?.provider && (getProvider(aiContext.provider)?.staticModels?.length ?? 0) > 1 && (
+                    <div
+                      id="flow-model-selector-row"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        marginTop: '10px',
+                        paddingTop: '8px',
+                        borderTop: '1px solid rgba(239, 68, 68, 0.2)',
+                      }}
+                    >
+                      <label htmlFor="flow-model-select" style={{ fontSize: '0.8rem', color: 'var(--color-text-muted, #888)' }}>
+                        {t('modal.flow.changeModel')}:
+                      </label>
+                      <select
+                        id="flow-model-select"
+                        className="input"
+                        disabled={busy}
+                        value={aiContext.model || ''}
+                        onChange={(e) => {
+                          const newModel = e.target.value;
+                          aiContext.setModel(newModel);
+                          handleGenerateRepo({ modelOverride: newModel });
+                        }}
+                        style={{ fontSize: '0.8rem', padding: '3px 8px', height: 'auto', width: 'auto' }}
+                      >
+                        {getProvider(aiContext.provider)?.staticModels.map(m => (
+                          <option key={m.value} value={m.value}>
+                            {m.label.startsWith('provider.') ? t(m.label) : m.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
               )}
 

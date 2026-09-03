@@ -269,6 +269,44 @@ describe('runDocumentRepo', () => {
     expect(generateRepoDocs).toHaveBeenCalledWith('owner/repo', expect.any(Array), CONFIG, 'es', ['Captura_Infografia_Notebook.png']);
   });
 
+  it('notifica en el chat cuando se empleó fallbackModel por sobrecarga', async () => {
+    vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'a' }], totalScanned: 1, truncated: false, allPaths: ['a'] } as any);
+    vi.mocked(generateRepoDocs).mockResolvedValue({
+      readme: 'R',
+      manualTecnico: 'M',
+      metadatos: { fallbackModel: 'gemini-2.5-flash', originalModel: 'gemini-3.8-flash' },
+    } as any);
+    const deps = makeDeps();
+
+    await runDocumentRepo(deps, { provider: 'gemini', apiKey: 'k', model: 'gemini-3.8-flash' }, 'owner/repo');
+
+    expect(deps.updateMessage).toHaveBeenCalledWith(
+      'msg-1',
+      expect.objectContaining({
+        content: expect.stringContaining('usando gemini-2.5-flash por sobrecarga temporal de gemini-3.8-flash'),
+      }),
+    );
+  });
+
+  it('propaga options.modelOverride a generateRepoDocs con effectiveConfig', async () => {
+    vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'a' }], totalScanned: 1, truncated: false, allPaths: ['a'] } as any);
+    vi.mocked(generateRepoDocs).mockResolvedValue({ readme: 'R', manualTecnico: 'M' } as any);
+    const deps = makeDeps();
+
+    await runDocumentRepo(deps, { provider: 'gemini', apiKey: 'k', model: 'gemini-3.8-flash' }, 'owner/repo', undefined, { modelOverride: 'gemini-2.5-flash' });
+
+    expect(generateRepoDocs).toHaveBeenCalledWith(
+      'owner/repo',
+      expect.any(Array),
+      expect.objectContaining({ model: 'gemini-2.5-flash' }),
+      'es',
+      undefined,
+      { modelOverride: 'gemini-2.5-flash' },
+    );
+  });
+
   it('#58 (b): cuando alreadyDocumented=true, trae el README/MANUAL actual y lo propaga', async () => {
     vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
     vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'README.md' }, { path: 'MANUAL_TECNICO.md' }], totalScanned: 2, truncated: false, allPaths: ['README.md', 'MANUAL_TECNICO.md'] } as any);

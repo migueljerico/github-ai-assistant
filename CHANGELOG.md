@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.43] — 2026-09-03
+
+> **Fix & Resiliencia UX: Fallback automático y resiliente ante error 503 (sobrecarga de servidor) al documentar repositorios con Gemini, selector rápido de modelos en DocumentFlowModal y corrección de congelamiento de estado en reintentos.**
+> - **Causa raíz del error 503 con Gemini 3.8 Flash:** Tras el lanzamiento mundial de Gemini 3.8 Flash el 2 de septiembre de 2026, los servidores de Google AI Studio reciben picos masivos de demanda, respondiendo intermitentemente con `HTTP 503 Service Unavailable (The model is overloaded. Please try again later)`.
+> - **Por qué fallaba también la versión ligera:** El banner previo sugería "Generar documentación ligera". Sin embargo, el modo ligero simplemente enviaba menos tokens al mismo endpoint saturado de `gemini-3.8-flash`, reproduciendo de nuevo el error 503. Además, en `DocumentFlowModal.tsx`, `handleGenerateRepo` solo reseteaba `flowError` si no era modo ligero (`if (!opts?.lightMode) setFlowError(null)`), lo que dejaba el error rojo permanentemente montado en pantalla con el botón congelado en *"Generando documentación..."*.
+> - **Fallback automático resiliente en `generateRepoDocs`:** cuando el proveedor es `gemini` y el modelo inicial (ej. `gemini-3.8-flash`) falla con sobrecarga 503 (`isProviderOverloadedError`), `generateRepoDocs` reintenta automáticamente con el modelo de alta capacidad probada `gemini-2.5-flash` (compartiendo la misma API key). Si se activa, devuelve `fallbackModel: 'gemini-2.5-flash'` en metadatos, actualiza la firma del documento (`Google Gemini (gemini-2.5-flash)`) y notifica al usuario en el chat (`✅ Documentación generada para owner/repo (usando Gemini 2.5 Flash por sobrecarga temporal de Gemini 3.8 Flash)...`), evitando que la operación fracase.
+> - **Selector rápido de modelo en `DocumentFlowModal`:**
+>   - Exposición de `setModel` en `AIProviderContext` para permitir el cambio dinámico del modelo activo sin requerir reconexión ni perder la sesión.
+>   - Hook seguro `useOptionalAIProvider` para consumo sin romper contextos de test no envueltos en el Provider.
+>   - Indicador de modelo activo en el paso 2 del flujo de documentación.
+>   - En el banner de error 503: botón directo de alta prominencia `🔄 Usar Gemini 2.5 Flash (más estable)` y selector desplegable para conmutar a cualquier modelo disponible del proveedor sin cerrar el modal.
+>   - Reseteo incondicional de `flowError` al iniciar cualquier intento (completo o ligero).
+> - **Sincronización i18n:** Nuevas claves `modal.flow.switchToGemini25`, `modal.flow.changeModel`, `modal.flow.activeModel` y actualización explicativa de `modal.flow.overloadedDesc` en los 13 diccionarios lingüísticos (`es`, `en`, `ar`, `bn`, `de`, `fr`, `hi`, `id`, `ja`, `pt`, `ru`, `ur`, `zh`).
+> - **Pruebas unitarias y verificación:** +10 tests unitarios (+2 en `gemini.test.ts` para fallback y modelOverride, +3 en `AIProviderContext.test.tsx` para setModel y useOptionalAIProvider, +2 en `assistantActions.test.ts` para notificación en chat y propagación de modelOverride, +3 en `DocumentFlowModal.test.tsx` para badge, botón directo y dropdown). Suite completa: **1.360 tests** (1.300 cliente + 60 servidor), lint 0 errores, compilación `tsc -b && vite build` limpia.
+
+### Added
+- `client/src/context/AIProviderContext.tsx`: helper exportado `useOptionalAIProvider()` y método `setModel(model: string)` en `AIProviderState`.
+- `client/src/services/gemini.ts`: soporte para `options.modelOverride` y fallback resiliente automático a `gemini-2.5-flash` ante error 503 en `generateRepoDocs`.
+- `client/src/services/assistantActions.ts`: aviso informativo en chat cuando se utiliza `fallbackModel` por sobrecarga y soporte para `modelOverride` en `DocumentRepoOptions`.
+- `client/src/components/confirm/DocumentFlowModal.tsx`: badge de modelo activo, botón de cambio directo a Gemini 2.5 Flash y selector desplegable en banner de sobrecarga.
+- `client/src/i18n/*`: nuevas claves de internacionalización en los 13 idiomas soportados.
+
+### Changed
+- `client/src/components/confirm/DocumentFlowModal.tsx`: reseteo incondicional de `flowError` en `handleGenerateRepo`.
+- Bump de versión a `v4.0.43` en `package.json`, `client/package.json` y lockfiles.
+
+### Tests
+- `client/src/context/__tests__/AIProviderContext.test.tsx`: tests para `setModel` y `useOptionalAIProvider`.
+- `client/src/services/__tests__/gemini.test.ts`: tests de fallback resiliente a `gemini-2.5-flash` y `modelOverride`.
+- `client/src/services/__tests__/assistantActions.test.ts`: tests de notificación de fallback en chat y propagación de opciones.
+- `client/src/components/confirm/__tests__/DocumentFlowModal.test.tsx`: tests de integración con `AIProviderContext`, botón de fallback y selector desplegable.
+
+Cambio de código por Antigravity 2.0 (Gemini 3.8 Flash).
+
 ## [4.0.42] — 2026-09-03
 
 > **Fix & Feature & Mobile: Corrección de CORS `x-timeout-ms` en llamadas directas (OpenRouter/Groq), incorporación de Gemini 3.8 Flash e infraestructura PWA standalone con áreas seguras móviles.**

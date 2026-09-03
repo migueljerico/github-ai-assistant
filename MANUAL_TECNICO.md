@@ -1,6 +1,6 @@
 # 📖 Manual Técnico — GitHub AI Assistant
 
-**Versión:** v4.0.39 — Septiembre 2026
+**Versión:** v4.0.43 — Septiembre 2026
 
 
 ---

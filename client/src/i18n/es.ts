@@ -271,8 +271,11 @@ export const es = {
   'modal.flow.timeoutDesc': 'El repositorio contiene muchos archivos y la generación en profundidad tardó más del tiempo límite. Puedes generar una versión ligera con los archivos esenciales (mucho más rápida y ligera) o aumentar el timeout en ⚙️.',
   'modal.flow.timeoutHint': 'o amplía el tiempo de espera en ⚙️ para permitir generaciones más extensas.',
   'modal.flow.overloadedTitle': 'El modelo está temporalmente sobrecargado',
-  'modal.flow.overloadedDesc': 'El proveedor está experimentando alta demanda y no ha podido completar una solicitud tan grande en este momento. Te recomendamos generar la versión ligera o intentarlo de nuevo en unos minutos.',
+  'modal.flow.overloadedDesc': 'El proveedor o modelo seleccionado está experimentando alta demanda o saturación temporal (HTTP 503). Te recomendamos cambiar a Gemini 2.5 Flash (estable), generar la versión ligera o intentarlo en unos minutos.',
   'modal.flow.overloadedHint': 'o reintenta en unos instantes cuando baje la demanda del proveedor.',
+  'modal.flow.switchToGemini25': 'Usar Gemini 2.5 Flash (más estable)',
+  'modal.flow.changeModel': 'Cambiar modelo',
+  'modal.flow.activeModel': 'Modelo activo',
   'modal.flow.generateLightDirect': 'Doc. ligera',
   'modal.flow.generateLightDirectTitle': 'Generar directamente documentación ligera analizando solo los archivos esenciales',
   // #58 Fase 2: scope "documento específico del repo"

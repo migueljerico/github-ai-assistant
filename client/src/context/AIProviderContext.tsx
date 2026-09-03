@@ -18,6 +18,8 @@ export interface AIProviderState {
   disconnect: () => void;
   /** #73: actualiza el timeout sin reconectar. */
   setTimeoutMs: (ms: number | null) => void;
+  /** Actualiza el modelo activo sin reconectar y persiste la preferencia. */
+  setModel: (model: string) => void;
 }
 
 const AIProviderContext = createContext<AIProviderState | undefined>(undefined);
@@ -34,7 +36,7 @@ const AIProviderContext = createContext<AIProviderState | undefined>(undefined);
 export function AIProviderContextProvider({ children }: { children: ReactNode }) {
   const [provider, setProvider] = useState<AIProviderType | null>(null);
   const [apiKey, setApiKey] = useState<string | null>(null);
-  const [model, setModel] = useState<string | null>(null);
+  const [model, setModelState] = useState<string | null>(null);
   const [accountId, setAccountId] = useState<string | null>(null);
   const [connectedAt, setConnectedAt] = useState<number | null>(null);
   // #73: timeout configurable. null = default (180s). Se hidrata del sessionStorage
@@ -45,7 +47,7 @@ export function AIProviderContextProvider({ children }: { children: ReactNode })
     // ZERO-STORAGE: API key lives ONLY in React state, never in browser storage
     setProvider(p);
     setApiKey(k);
-    setModel(m);
+    setModelState(m);
     setAccountId(acc ?? null);
     setConnectedAt(Date.now());
     // #73: hidrata el timeout guardado (si existe) al conectar.
@@ -59,7 +61,7 @@ export function AIProviderContextProvider({ children }: { children: ReactNode })
     // ZERO-STORAGE: Simply reset React state. No browser storage to clear.
     setProvider(null);
     setApiKey(null);
-    setModel(null);
+    setModelState(null);
     setAccountId(null);
     setConnectedAt(null);
     setTimeoutMsState(null);
@@ -70,6 +72,11 @@ export function AIProviderContextProvider({ children }: { children: ReactNode })
   const setTimeoutMs = (ms: number | null) => {
     setTimeoutMsState(ms);
     if (provider && model) saveProviderPref(provider, model, ms ?? undefined);
+  };
+
+  const setModel = (newModel: string) => {
+    setModelState(newModel);
+    if (provider) saveProviderPref(provider, newModel, timeoutMs ?? undefined);
   };
 
   return (
@@ -84,6 +91,7 @@ export function AIProviderContextProvider({ children }: { children: ReactNode })
       connect,
       disconnect,
       setTimeoutMs,
+      setModel,
     }}>
       {children}
     </AIProviderContext.Provider>
@@ -99,4 +107,9 @@ export function useAIProvider(): AIProviderState {
   const ctx = useContext(AIProviderContext);
   if (!ctx) throw new Error('useAIProvider must be used within AIProviderContextProvider');
   return ctx;
+}
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function useOptionalAIProvider(): AIProviderState | undefined {
+  return useContext(AIProviderContext);
 }

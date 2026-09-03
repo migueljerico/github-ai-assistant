@@ -1,6 +1,6 @@
 import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, beforeEach } from 'vitest';
-import { AIProviderContextProvider, useAIProvider } from '../AIProviderContext';
+import { AIProviderContextProvider, useAIProvider, useOptionalAIProvider } from '../AIProviderContext';
 
 describe('AIProviderContext', () => {
   beforeEach(() => {
@@ -162,5 +162,38 @@ describe('AIProviderContext', () => {
       result.current.setTimeoutMs(null);
     });
     expect(result.current.timeoutMs).toBeNull();
+  });
+
+  it('setModel actualiza el modelo activo y persiste la preferencia', () => {
+    const { result } = renderHook(() => useAIProvider(), {
+      wrapper: AIProviderContextProvider,
+    });
+
+    act(() => {
+      result.current.connect('gemini', 'key', 'gemini-3.8-flash');
+    });
+
+    expect(result.current.model).toBe('gemini-3.8-flash');
+
+    act(() => {
+      result.current.setModel('gemini-2.5-flash');
+    });
+
+    expect(result.current.model).toBe('gemini-2.5-flash');
+    const raw = sessionStorage.getItem('ai_provider_pref') || '';
+    expect(JSON.parse(raw)).toMatchObject({ provider: 'gemini', model: 'gemini-2.5-flash' });
+  });
+
+  it('useOptionalAIProvider devuelve undefined si se invoca fuera del Provider', () => {
+    const { result } = renderHook(() => useOptionalAIProvider());
+    expect(result.current).toBeUndefined();
+  });
+
+  it('useOptionalAIProvider devuelve el contexto si se invoca dentro del Provider', () => {
+    const { result } = renderHook(() => useOptionalAIProvider(), {
+      wrapper: AIProviderContextProvider,
+    });
+    expect(result.current).toBeDefined();
+    expect(result.current?.isConnected).toBe(false);
   });
 });

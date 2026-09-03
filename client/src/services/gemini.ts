@@ -28,7 +28,7 @@
 import type { GeminiAction } from '../types';
 import type { Language } from '../context/LanguageContext';
 import { getProvider, modelLabel, resolveEndpoint, type AIProviderType } from './providers';
-import { withTransientRetry, isAbortError, isTransientError, combineSignals, DEFAULT_AI_TIMEOUT_MS } from '../utils/retry';
+import { withTransientRetry, isAbortError, isTransientError, isProviderOverloadedError, combineSignals, DEFAULT_AI_TIMEOUT_MS } from '../utils/retry';
 // #23: los system prompts viven en archivos `.md` (mantenibilidad + base para i18n).
 // Se cargan como texto crudo con el import `?raw` de Vite. `.trimEnd()` evita que un
 // salto de línea final del archivo cambie el prompt respecto al literal original.
@@ -1084,6 +1084,7 @@ export function extractRepoSummary(
 
 export interface GenerateRepoDocsOptions {
   lightMode?: boolean;
+  modelOverride?: string;
 }
 
 /**
@@ -1114,10 +1115,12 @@ export async function generateRepoDocs(
   const currentIsoDate = now.toISOString().split('T')[0];
 
   const providerLabel = config ? getProvider(config.provider).name : 'IA';
-  const modelLabelVal = config ? modelLabel(config.provider, config.model) : 'IA';
-  const docFooter = lang === 'en'
-    ? `<p align="center">Created by <a href="https://github.com/${docOwner}">@${docOwner}</a> and documented by ${providerLabel} (${modelLabelVal}) from the AI Assistant App · ${docYear}</p>`
-    : `<p align="center">Creado por <a href="https://github.com/${docOwner}">@${docOwner}</a> y documentado por ${providerLabel} (${modelLabelVal}) desde la App Asistente de IA · ${docYear}</p>`;
+  const buildDocFooter = (mVal: string) => {
+    const mLabel = config ? modelLabel(config.provider, mVal) : 'IA';
+    return lang === 'en'
+      ? `<p align="center">Created by <a href="https://github.com/${docOwner}">@${docOwner}</a> and documented by ${providerLabel} (${mLabel}) from the AI Assistant App · ${docYear}</p>`
+      : `<p align="center">Creado por <a href="https://github.com/${docOwner}">@${docOwner}</a> y documentado por ${providerLabel} (${mLabel}) desde la App Asistente de IA · ${docYear}</p>`;
+  };
 
   const dateDirective = `\n\n═══════════════════════════════════════════════════════\nFECHA Y AÑO ACTUAL EN CURSO (OBLIGATORIO):\n- Año actual: ${docYear}\n- Fecha actual: ${currentDateStr} (${currentIsoDate})\n\nREGLA ESTRICTA DE FECHA/AÑO: Si incluyes alguna fecha, versión o año en el documento (encabezados, badges, notas o pie de página), DEBES usar obligatoriamente la fecha u año actual indicado arriba (${docYear}). NUNCA alucines ni incluyas años o fechas pasadas (como 2025 o anteriores) para la versión o actualización actual. Si el contenido existente contenía "2025" o fechas pasadas en la cabecera/versión/fecha, ACTUALÍZALO obligatoriamente a ${docYear}.\n═══════════════════════════════════════════════════════`;
 
@@ -1224,7 +1227,7 @@ REPOSITORIO: ${repoName}
 
   const provider = config?.provider ?? 'groq';
   const apiKey = config?.apiKey ?? 'test-key';
-  const model = config?.model ?? 'test-model';
+  const initialModel = options?.modelOverride ?? config?.model ?? 'test-model';
   const accountId = config?.accountId;
   // Timeout adaptativo para documentación de repositorio:
   // Si el usuario no especificó un timeout personalizado, se asignan 300s (5 min,
@@ -1236,16 +1239,41 @@ REPOSITORIO: ${repoName}
     ? `\n\n═══════════════════════════════════════════════════════\nMODO DOCUMENTACIÓN ESENCIAL:\nEl análisis se basa en los archivos clave del proyecto para respetar los límites de tokens/cuota del proveedor. Genera una documentación concisa, clara y rigurosa sin omitir secciones obligatorias pero sintetizando para no exceder el presupuesto.\n═══════════════════════════════════════════════════════`
     : '';
 
+  let activeModel = initialModel;
+  let fallbackModelUsed: string | undefined = undefined;
+
+  const callDocAI = async (sysPrompt: string): Promise<string> => {
+    try {
+      return await callAI(
+        [{ role: 'user', content: sharedUserContext }],
+        withLangDirective(sysPrompt + lightModeDirective, lang),
+        provider, apiKey, activeModel,
+        undefined, undefined, undefined,
+        maxTokensOutput, accountId, effectiveRepoTimeoutMs,
+      );
+    } catch (err) {
+      // Fallback resiliente automático: si el modelo de Gemini devuelve error 503
+      // (sobrecarga / capacity limit en periodo de lanzamiento, ej: gemini-3.8-flash),
+      // reintentamos automáticamente con el modelo recomendado y de alta capacidad 'gemini-2.5-flash'.
+      if (provider === 'gemini' && activeModel !== 'gemini-2.5-flash' && isProviderOverloadedError(err)) {
+        activeModel = 'gemini-2.5-flash';
+        fallbackModelUsed = 'gemini-2.5-flash';
+        return await callAI(
+          [{ role: 'user', content: sharedUserContext }],
+          withLangDirective(sysPrompt + lightModeDirective, lang),
+          provider, apiKey, activeModel,
+          undefined, undefined, undefined,
+          maxTokensOutput, accountId, effectiveRepoTimeoutMs,
+        );
+      }
+      throw err;
+    }
+  };
+
   const stripFences = (raw: string): string =>
     raw.replace(/^```(?:markdown)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
 
-  const readmeRaw = await callAI(
-    [{ role: 'user', content: sharedUserContext }],
-    withLangDirective(readmeSystemPrompt + lightModeDirective, lang),
-    provider, apiKey, model,
-    undefined, undefined, undefined,
-    maxTokensOutput, accountId, effectiveRepoTimeoutMs,
-  );
+  const readmeRaw = await callDocAI(readmeSystemPrompt);
   let readmeStripped = cleanDocFooter(stripFences(readmeRaw));
   if (!readmeStripped) {
     throw new Error('La IA no devolvió el README. Prueba con otro modelo o vuelve a intentarlo.');
@@ -1265,15 +1293,10 @@ REPOSITORIO: ${repoName}
     }
   }
 
+  const docFooter = buildDocFooter(fallbackModelUsed || initialModel);
   const readme = readmeStripped + '\n\n' + docFooter;
 
-  const manualRaw = await callAI(
-    [{ role: 'user', content: sharedUserContext }],
-    withLangDirective(manualSystemPrompt + lightModeDirective, lang),
-    provider, apiKey, model,
-    undefined, undefined, undefined,
-    maxTokensOutput, accountId, effectiveRepoTimeoutMs,
-  );
+  const manualRaw = await callDocAI(manualSystemPrompt);
   const manualStripped = cleanDocFooter(stripFences(manualRaw));
   if (!manualStripped) {
     throw new Error('La IA no devolvió el MANUAL_TECNICO. Prueba con otro modelo o vuelve a intentarlo.');
@@ -1284,7 +1307,12 @@ REPOSITORIO: ${repoName}
     readme,
     manualTecnico,
     resumen: extractRepoSummary(readmeStripped, repoName, primaryLanguage),
-    metadatos: { lenguaje: primaryLanguage, filesCount: analyzedFiles.length, lightMode: isLight },
+    metadatos: {
+      lenguaje: primaryLanguage,
+      filesCount: analyzedFiles.length,
+      lightMode: isLight,
+      ...(fallbackModelUsed ? { fallbackModel: fallbackModelUsed, originalModel: initialModel } : {}),
+    },
   };
 }
 

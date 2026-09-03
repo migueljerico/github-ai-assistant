@@ -177,6 +177,7 @@ export interface SendParams {
  */
 export interface DocumentRepoOptions {
   lightMode?: boolean;
+  modelOverride?: string;
 }
 
 export type DocumentRepoResult = RepoAnalysis | null | 'repo-missing' | 'context-too-large' | 'timeout' | 'overloaded';
@@ -217,13 +218,15 @@ export async function runDocumentRepo(
       ?.filter(f => /\.(png|jpe?g|gif|webp|svg)$/i.test(f.name))
       .map(f => uploadPathFor(f.name).replace(/^screenshots\//, ''));
 
+    const effectiveConfig = options?.modelOverride ? { ...config, model: options.modelOverride } : config;
+
     const { readme, manualTecnico, resumen, metadatos } = extraImageNames && extraImageNames.length > 0
       ? (options
-          ? await generateRepoDocs(`${owner}/${repoName}`, files, config, deps.lang, extraImageNames, options)
-          : await generateRepoDocs(`${owner}/${repoName}`, files, config, deps.lang, extraImageNames))
+          ? await generateRepoDocs(`${owner}/${repoName}`, files, effectiveConfig, deps.lang, extraImageNames, options)
+          : await generateRepoDocs(`${owner}/${repoName}`, files, effectiveConfig, deps.lang, extraImageNames))
       : (options
-          ? await generateRepoDocs(`${owner}/${repoName}`, files, config, deps.lang, undefined, options)
-          : await generateRepoDocs(`${owner}/${repoName}`, files, config, deps.lang));
+          ? await generateRepoDocs(`${owner}/${repoName}`, files, effectiveConfig, deps.lang, undefined, options)
+          : await generateRepoDocs(`${owner}/${repoName}`, files, effectiveConfig, deps.lang));
 
     // #57 Tanda B: detectar si el repo ya está documentado (README.md o
     // MANUAL_TECNICO.md en la raíz) para avisar al usuario de que se actualizará.
@@ -250,8 +253,11 @@ export async function runDocumentRepo(
       alreadyDocumented ? fetchActual(MANUAL_PATH) : Promise.resolve(undefined),
     ]);
 
+    const fallbackNotice = metadatos?.fallbackModel
+      ? ` (usando ${modelLabel(config.provider, metadatos.fallbackModel as string)} por sobrecarga temporal de ${modelLabel(config.provider, (metadatos.originalModel as string) || config.model)})`
+      : '';
     updateMessage(loadingId, {
-      content: `✅ Documentación generada para **${owner}/${repoName}**. Revisa el contenido antes de hacer commit.`,
+      content: `✅ Documentación generada para **${owner}/${repoName}**${fallbackNotice}. Revisa el contenido antes de hacer commit.`,
       isLoading: false,
     });
     updateEntry(histId, { status: 'pending', description: deps.t('history.docReady') });
