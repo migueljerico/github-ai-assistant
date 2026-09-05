@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.47] — 2026-09-05
+
+> **Auditoría integral de los 11 proveedores de IA (metodología del fix de OpenCode): verificación en vivo de endpoints, catálogos y fallbacks — 4 proveedores tenían el modelo por defecto muerto y 7 fallbacks desactualizados.**
+> - **Verificación en vivo (2026-09-05):** los 11 endpoints de chat/modelos responden (401/403 sin key = vivos; NIM responde 401 con id real) y los 9 proxies de `server/index.js` apuntan a upstreams correctos. El enrutado `/responses` de OpenCode Zen es correcto: todos los `gpt-*`/`grok-*` del catálogo de Zen son de las familias Responses (sin falsos positivos).
+> - **Problema real encontrado (el mismo patrón "el proveedor no responde" que se corrigió en OpenCode):** los fallbacks estáticos —la primera llamada antes de cargar el catálogo dinámico y la red de seguridad si el catálogo falla— contenían **modelos retirados de las APIs**: OpenRouter (`openai/gpt-oss-20b:free`, que ERA el defaultModel, e `inclusionai/ling-3.0-flash:free`), Zenmux (`deepseek/deepseek-v4-flash-free`, ERA el defaultModel; `sapiens-ai/agnes-2.0-flash`), Kilo (`inclusionai/ling-3.0-flash:free`, ERA el defaultModel; `nex-agi/nex-n2-pro:free`), BazaarLink (`deepseek/deepseek-v4-flash:free`, ERA el defaultModel), OpenZen (`laguna-s-2.1-free`), Ollama (`minimax-m2.5`, `kimi-k2.5`; DeepSeek V4 pasó a sufijo de fecha) y NIM (9 ids muertos, entre ellos `z-ai/glm-5.2` y `openai/gpt-oss-120b`).
+> - **Fix (`providers.ts`, `modelLabels.ts`):** fallbacks reconstruidos con ids verificados contra las APIs oficiales hoy. Nuevos defaultModel: OpenRouter → `google/gemma-4-26b-a4b-it:free` (el mismo que elige `pickDefaultModel` sobre el catálogo dinámico: ya no queda ningún gpt-oss free en OpenRouter), Zenmux → `sapiens-ai/agnes-2.5-flash`, Kilo → `inclusionai/ling-3.0-flash-fin:free`, BazaarLink → `qwen/qwen3.7-flash:free`. NIM conserva `nvidia/nemotron-3-ultra-550b-a55b`. Los flags `free` de los sustitutos están verificados por sufijo `:free` o pricing a 0 (el DeepSeek V4 Flash de Zenmux/BazaarLink sigue vivo pero de pago). `MODEL_LABELS` actualizado (nuevos ids con etiqueta amigable, retirados los muertos).
+> - **Pruebas:** test de regresión de auditoría en `providers.test.ts` (defaults sin modelos retirados + DeepSeek/Ollama datados) y aserciones actualizadas en `AIProviderPanel.test.tsx` y `modelLabels.test.ts`. Suite: **1.393 tests** (1.325 cliente + 68 servidor), cobertura global 97,86% statements, lint 0 errores, build limpio. Groq, Gemini, Cloudflare y QwenCloud sin cambios (sin key no verificable en vivo; sus endpoints responden y sus catálogos están documentados).
+
+### Changed
+- `client/src/services/providers.ts`: fallbacks de OpenRouter, NIM, Zenmux, OpenZen, Ollama, Kilo y BazaarLink verificados en vivo (2026-09-05) y defaultModel actualizados donde el anterior estaba muerto; alias muerto fuera de `BAZAARLINK_FREE_EXACT`.
+- `client/src/utils/modelLabels.ts`: etiquetas amigables para los ids nuevos (NIM datados, Kimi K3, defaults free) y retiradas las de ids muertos.
+- `README.md`, `CLAUDE.md`, `MANUAL_TECNICO.md`, `MEJORAS_FUTURAS.md`: versión y métricas.
+- Bump de versión a `v4.0.47` en `package.json`, `client/package.json` y lockfiles.
+
+### Tests
+- `client/src/services/__tests__/providers.test.ts`: test de regresión "auditoría de catálogos en vivo (v4.0.47)" + fallbacks NIM/OpenZen/BazaarLink/Kilo actualizados.
+- `client/src/components/ai-provider/__tests__/AIProviderPanel.test.tsx`: fallbacks de NIM/Zenmux/Kilo según los nuevos catálogos.
+- `client/src/utils/__tests__/modelLabels.test.ts`: etiquetas de los ids verificados.
+
+Cambio de código por ZCode (GLM-5.3-Flash).
+
 ## [4.0.46] — 2026-09-03
 
 > **Fix: documentar con Muse Spark ya devuelve contenido — el razonamiento interno (~1100 tokens) agotaba el presupuesto de salida antes de escribir.**
