@@ -56,7 +56,7 @@ describe('AIProviderPanel — NVIDIA NIM', () => {
     expect(screen.getByText(/Modelos optimizados/)).toBeInTheDocument();
   });
 
-  it('muestra catálogo fallback con Nemotron 3 Ultra recomendado y 15 modelos', () => {
+  it('muestra catálogo fallback con Nemotron 3 Ultra recomendado y 13 modelos verificados (v4.0.47)', () => {
     const { container } = renderPanel();
     selectProvider(container, 'nvidia');
 
@@ -65,10 +65,10 @@ describe('AIProviderPanel — NVIDIA NIM', () => {
 
     const labels = Array.from(select.options).map(o => o.textContent);
     expect(labels).toContain('Nemotron 3 Ultra'); // modelLabel devuelve sin ⭐
-    expect(labels).toContain('GLM 5.2');
-    expect(labels).toContain('Llama 3.3 70B');
-    expect(labels).toContain('DeepSeek V4 Pro');
-    expect(select.options.length).toBe(getProvider('nvidia').staticModels.length); // 15 modelos
+    expect(labels).toContain('Kimi K3');
+    expect(labels).toContain('DeepSeek V4 Pro'); // id datado deepseek-v4-pro-0813
+    expect(labels).toContain('Gemma 4 31B');
+    expect(select.options.length).toBe(getProvider('nvidia').staticModels.length); // 13 modelos
   });
 
   it('valida prefijo de clave nvapi-', () => {
@@ -106,7 +106,7 @@ describe('AIProviderPanel — Zenmux', () => {
     const labels = Array.from(select.options).map(o => o.textContent ?? '');
     const zenmuxCount = getProvider('zenmux').staticModels.length;
     expect(labels.length).toBe(zenmuxCount);
-    expect(labels).toContain('🆓 DeepSeek V4 Flash'); // nuevo recommended (todos free llevan 🆓)
+    expect(labels).toContain('🆓 Agnes 2.5 Flash'); // nuevo recommended desde v4.0.47 (todos free llevan 🆓)
     Array.from(select.options).forEach(o => expect(o.textContent).toContain('🆓'));
     expect(select.value).toBeTruthy();
   });
@@ -253,7 +253,8 @@ describe('AIProviderPanel — Kilo (v3.58.0)', () => {
 
     const labels = Array.from(select.options).map(o => o.textContent ?? '');
     expect(labels).toContain('🆓 inclusionai/ling-3.0-flash:free');
-    expect(labels).toContain('🆓 poolside/laguna-s-2.1:free');
+    // v4.0.47: los ids del mapa MODEL_LABELS se muestran con etiqueta amigable
+    expect(labels).toContain('🆓 Laguna S 2.1 (free)');
     expect(labels).toContain('🆓 nex-agi/nex-n2-pro:free');
     // La rama genérica de fetchModels marca free por sufijo :free (todos lo son)
     Array.from(select.options).forEach(o => expect(o.textContent).toContain('🆓'));
@@ -271,7 +272,8 @@ describe('AIProviderPanel — Kilo (v3.58.0)', () => {
 
     // El fallback KILO_FALLBACK tiene los mismos 3 modelos free
     expect(select.options.length).toBe(3);
-    expect(select.value).toBe('inclusionai/ling-3.0-flash:free');
+    // v4.0.47: ling-3.0-flash:free fue retirado de Kilo; el default es la variante -fin
+    expect(select.value).toBe('inclusionai/ling-3.0-flash-fin:free');
   });
 
   it('valida prefijo de clave JWT (eyJ)', () => {

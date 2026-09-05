@@ -36,24 +36,39 @@ export const MODEL_LABELS: Record<string, string> = {
   'groq/compound-mini': 'Compound Mini (agéntico)',
   'qwen/qwen3.8-27b': 'Qwen 3.8 27B',
   'qwen/qwen3.6-27b': 'Qwen 3.6 27B',
-  // ── NVIDIA NIM ──
+  // ── NVIDIA NIM (fallback verificado en vivo, 2026-09-05 — v4.0.47) ──
   'nvidia/nemotron-3-ultra-550b-a55b': 'Nemotron 3 Ultra',
-  'z-ai/glm-5.2': 'GLM 5.2',
-  'meta/llama-3.3-70b-instruct': 'Llama 3.3 70B',
+  'nvidia/nemotron-3.5-lightning-30b-a3b': 'Nemotron 3.5 Lightning 30B',
+  'nvidia/nemotron-3-super-120b-a12b': 'Nemotron 3 Super 120B',
+  'nvidia/nemotron-nano-3-30b-a3b': 'Nemotron Nano 3 30B',
+  'meta/muse-glimmer-30b': 'Muse Glimmer 30B',
+  'moonshotai/kimi-k3': 'Kimi K3',
+  'moonshotai/kimi-k2.6': 'Kimi K2.6',
+  'deepseek-ai/deepseek-v4-pro-0813': 'DeepSeek V4 Pro',
+  'deepseek-ai/deepseek-v4-flash-0731': 'DeepSeek V4 Flash',
+  'minimaxai/minimax-m3': 'Minimax M3',
+  'google/gemma-4-31b-it': 'Gemma 4 31B',
+  'mistralai/mistral-large-2-instruct': 'Mistral Large 2',
   'meta/llama-3.1-405b-instruct': 'Llama 3.1 405B',
   'mistralai/codestral-22b-instruct-v0.1': 'Codestral 22B (código)',
-  'deepseek-ai/deepseek-v4-pro': 'DeepSeek V4 Pro',
-  'minimaxai/minimax-m3': 'Minimax M3',
-  'qwen/qwen3-next-80b-a3b-instruct': 'Qwen3 Next 80B',
-  'google/gemma-4-31b-it': 'Gemma 4 31B',
-  'stepfun-ai/step-3.7-flash': 'Step 3.7 Flash',
-  'mistralai/mistral-medium-3.5-128b': 'Mistral Medium 3.5',
-  'nvidia/llama-3.3-nemotron-super-49b-v1.5': 'Nemotron Super 49B',
-  // ── Zenmux (modelos FREE confirmados, zenmux.ai/models?price_filter=free, 2026-07-31) ──
-  'deepseek/deepseek-v4-flash-free': 'DeepSeek V4 Flash',
+  // ── Zenmux (modelos FREE verificados por pricing a 0, 2026-09-05 — v4.0.47) ──
+  'sapiens-ai/agnes-2.5-flash': 'Agnes 2.5 Flash',
+  'inclusionai/ling-3.0-tiny': 'Ling 3.0 Tiny',
   'inclusionai/ling-3.0-flash': 'Ling 3.0 Flash',
   'z-ai/glm-4.7-flash-free': 'GLM 4.7 Flash',
   'z-ai/glm-4.6v-flash-free': 'GLM 4.6V Flash',
+  // ── OpenRouter / Kilo (fallbacks free verificados en vivo, 2026-09-05 — v4.0.47) ──
+  'google/gemma-4-26b-a4b-it:free': 'Gemma 4 26B A4B (free)',
+  'google/gemma-4-31b-it:free': 'Gemma 4 31B (free)',
+  'z-ai/glm-5.2:free': 'GLM 5.2 (free)',
+  'nvidia/nemotron-3-ultra-550b-a55b:free': 'Nemotron 3 Ultra (free)',
+  'nvidia/nemotron-3-super-120b-a12b:free': 'Nemotron 3 Super (free)',
+  'minimax/minimax-m3:free': 'MiniMax M3 (free)',
+  'inclusionai/ling-3.0-flash-fin:free': 'Ling 3.0 Flash Fin (free)',
+  'inclusionai/ling-3.0-flash-sante:free': 'Ling 3.0 Flash Sante (free)',
+  'poolside/laguna-s-2.1:free': 'Laguna S 2.1 (free)',
+  'cohere/north-mini-code:free': 'North Mini Code (free)',
+  'stepfun/step-3.7-flash:free': 'Step 3.7 Flash (free)',
   // ── Cloudflare Workers AI (catálogo @cf/, API oficial 2026-07-31) ──
   // Etiquetas para los modelos que aparecen en CLOUDFLARE_FALLBACK y/o en el
   // catálogo dinámico; los ids @cf/... sin etiqueta se muestran tal cual.
@@ -67,8 +82,7 @@ export const MODEL_LABELS: Record<string, string> = {
   '@cf/openai/gpt-oss-20b': 'GPT-OSS 20B',
   '@cf/google/gemma-4-26b-a4b-it': 'Gemma 4 26B A4B',
   '@cf/nvidia/nemotron-3-120b-a12b': 'Nemotron 3 120B',
-  // ── BazaarLink ──
-  'deepseek/deepseek-v4-flash:free': 'DeepSeek V4 Flash',
+  // ── BazaarLink (free verificados en vivo, 2026-09-05 — v4.0.47) ──
   'qwen/qwen3.7-flash:free': 'Qwen 3.7 Flash',
   'auto:free': 'Auto Router (free)',
   // ── QwenCloud ──

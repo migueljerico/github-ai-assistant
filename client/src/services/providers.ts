@@ -176,20 +176,27 @@ const GEMINI_MODELS: ModelOption[] = [
 ];
 
 // Fallback de OpenRouter mientras carga el catálogo o si la API falla.
-// Modelos gratuitos (:free, pricing 0/0) confirmados hoy en la fuente oficial
-// (https://openrouter.ai/models?order=pricing-low-to-high, 2026-07-28), más los
-// "routers" nuevos de OpenRouter (enrutadores dinámicos, no free pero útiles).
+// Modelos gratuitos (:free, pricing 0/0) verificados en vivo contra la API oficial
+// (GET https://openrouter.ai/api/v1/models, 2026-09-05: 19 free), más los
+// "routers" de OpenRouter (enrutadores dinámicos, no free pero útiles).
+// Auditoría v4.0.47: `openai/gpt-oss-20b:free` e `inclusionai/ling-3.0-flash:free`
+// fueron RETIRADOS de OpenRouter (el primero era el defaultModel → la primera
+// llamada fallaba con "modelo no disponible"). El default pasa a Gemma 4 26B,
+// mismo modelo que elige `pickDefaultModel` sobre el catálogo dinámico actual
+// (RELIABLE_MODEL_PREFS: ya no queda ningún gpt-oss free; 'gemma' es el siguiente pref).
 // El catálogo dinámico es la fuente viva; esto es red de seguridad.
 const OPENROUTER_FALLBACK: ModelOption[] = [
   // Modelos free individuales (chat/texto; pricing 0/0) — primero, para que el
   // defaultModel ([0]) sea un free concreto y fiable, no un router.
-  { value: 'openai/gpt-oss-20b:free', label: 'GPT-OSS 20B (free)', free: true, recommended: true },
+  { value: 'google/gemma-4-26b-a4b-it:free', label: 'Gemma 4 26B A4B (free)', free: true, recommended: true },
+  { value: 'google/gemma-4-31b-it:free', label: 'Gemma 4 31B (free)', free: true },
+  { value: 'z-ai/glm-5.2:free', label: 'GLM 5.2 (free)', free: true },
   { value: 'nvidia/nemotron-3-ultra-550b-a55b:free', label: 'Nemotron 3 Ultra (free)', free: true },
   { value: 'nvidia/nemotron-3-super-120b-a12b:free', label: 'Nemotron 3 Super (free)', free: true },
-  { value: 'inclusionai/ling-3.0-flash:free', label: 'Ling 3.0 Flash (free)', free: true },
+  { value: 'minimax/minimax-m3:free', label: 'MiniMax M3 (free)', free: true },
+  { value: 'inclusionai/ling-3.0-flash-fin:free', label: 'Ling 3.0 Flash Fin (free)', free: true },
   { value: 'poolside/laguna-s-2.1:free', label: 'Laguna S 2.1 (free)', free: true },
   { value: 'cohere/north-mini-code:free', label: 'North Mini Code (free)', free: true },
-  { value: 'google/gemma-4-26b-a4b-it:free', label: 'Gemma 4 26B A4B (free)', free: true },
   // Routers (enrutamiento dinámico; NO son free — pricing -1/-1 salvo openrouter/free 0/0)
   { value: 'openrouter/auto', label: 'Auto Router', description: 'provider.openrouter.model.autoDesc' },
   { value: 'openrouter/free', label: 'Free Models Router (200K)', free: true },
@@ -239,57 +246,56 @@ export const NIM_EXCLUDED = [
 const NIM_FEATURED_URL = 'https://assets.ngc.nvidia.com/products/api-catalog/featured-models.json';
 
 // Fallback de NVIDIA NIM mientras carga el catálogo o si la API falla.
-// Modelos chat/código destacados confirmados en la fuente oficial
-// (integrate.api.nvidia.com/v1/models, 2026-08-12). NIM NO distingue gratis/pago
+// Modelos chat/código verificados en vivo contra la fuente oficial
+// (integrate.api.nvidia.com/v1/models, 2026-09-05, filtrados con NIM_EXCLUDED).
+// Auditoría v4.0.47: retirados 9 ids que NIM ya no sirve (`llama-3.3-nemotron-super-49b-v1`,
+// `nemotron-3-nano-30b-a3b`, `z-ai/glm-5.2`, `deepseek-v4-pro`, `deepseek-v4-flash`,
+// `stepfun-ai/step-3.7-flash`, `openai/gpt-oss-120b`, `meta/llama-3.3-70b-instruct`,
+// `mistral-medium-3.5-128b`); los DeepSeek V4 siguen vivos con sufijo de fecha
+// (`-0731`/`-0813`) y de GPT-OSS solo queda el 20B. NIM NO distingue gratis/pago
 // en la API → sin flag free (el acceso free es un entitlement del programa Developer).
 // El catálogo DINÁMICO se habilita vía modelsEndpoint: '/api/nim/models' (proxy
-// en server/index.js línea 480). NIM_FALLBACK es red de seguridad mientras carga.
+// en server/index.js). NIM_FALLBACK es red de seguridad mientras carga.
 const NIM_FALLBACK: ModelOption[] = [
   { value: 'nvidia/nemotron-3-ultra-550b-a55b', label: 'Nemotron 3 Ultra ⭐', recommended: true },
-  { value: 'nvidia/llama-3.3-nemotron-super-49b-v1', label: 'Nemotron Super 49B' },
-  { value: 'nvidia/nemotron-3-super-120b-a12b', label: 'Nemotron 3 Super 120B' },
-  { value: 'nvidia/nemotron-3-nano-30b-a3b', label: 'Nemotron 3 Nano 30B' },
-  // Nuevos modelos free endpoint (nim_type_preview, 2026-08-12)
   { value: 'nvidia/nemotron-3.5-lightning-30b-a3b', label: 'Nemotron 3.5 Lightning 30B ⚡' },
+  { value: 'nvidia/nemotron-3-super-120b-a12b', label: 'Nemotron 3 Super 120B' },
+  { value: 'nvidia/nemotron-nano-3-30b-a3b', label: 'Nemotron Nano 3 30B' },
   { value: 'meta/muse-glimmer-30b', label: 'Muse Glimmer 30B' },
-  { value: 'z-ai/glm-5.2', label: 'GLM 5.2' },
-  { value: 'deepseek-ai/deepseek-v4-pro', label: 'DeepSeek V4 Pro' },
-  { value: 'deepseek-ai/deepseek-v4-flash', label: 'DeepSeek V4 Flash' },
-  { value: 'stepfun-ai/step-3.7-flash', label: 'Step 3.7 Flash' },
-  { value: 'minimaxai/minimax-m3', label: 'Minimax M3' },
-  { value: 'openai/gpt-oss-120b', label: 'GPT-OSS 120B' },
+  { value: 'moonshotai/kimi-k3', label: 'Kimi K3' },
   { value: 'moonshotai/kimi-k2.6', label: 'Kimi K2.6' },
-  { value: 'meta/llama-3.3-70b-instruct', label: 'Llama 3.3 70B' },
-  { value: 'mistralai/mistral-medium-3.5-128b', label: 'Mistral Medium 3.5' },
+  { value: 'deepseek-ai/deepseek-v4-pro-0813', label: 'DeepSeek V4 Pro' },
+  { value: 'deepseek-ai/deepseek-v4-flash-0731', label: 'DeepSeek V4 Flash' },
+  { value: 'minimaxai/minimax-m3', label: 'Minimax M3' },
+  { value: 'openai/gpt-oss-20b', label: 'GPT-OSS 20B' },
+  { value: 'google/gemma-4-31b-it', label: 'Gemma 4 31B' },
+  { value: 'mistralai/mistral-large-2-instruct', label: 'Mistral Large 2' },
 ];
 
-// Fallback de Zenmux — los 6 modelos FREE confirmados hoy en la fuente oficial
-// (https://zenmux.ai/models?price_filter=free, 2026-08-12). El catálogo dinámico es la
-// fuente viva; este array es red de seguridad mientras carga o si la API falla.
-// IDs autoritativos extraídos de la web de Zenmux (sin sufijo -free los agnes y ling-tiny,
-// con sufijo -free los deepseek y glm — igual que aparecen en la API de Zenmux).
+// Fallback de Zenmux — los 4 modelos FREE verificados hoy en la fuente oficial
+// (https://zenmux.ai/api/v1/models, 2026-09-05; pricing prompt/completion a 0).
+// Auditoría v4.0.47: `deepseek/deepseek-v4-flash-free` (era el defaultModel) y
+// `sapiens-ai/agnes-2.0-flash` fueron RETIRADOS de Zenmux; el DeepSeek V4 Flash
+// sigue existiendo pero YA NO es free (pricing 0.66 $/M). El catálogo dinámico es
+// la fuente viva; este array es red de seguridad mientras carga o si la API falla.
 const ZENMUX_FALLBACK: ModelOption[] = [
-  { value: 'deepseek/deepseek-v4-flash-free', label: 'DeepSeek V4 Flash', free: true, recommended: true },
-  { value: 'sapiens-ai/agnes-2.5-flash', label: 'Agnes 2.5 Flash', free: true },
+  { value: 'sapiens-ai/agnes-2.5-flash', label: 'Agnes 2.5 Flash', free: true, recommended: true },
   { value: 'inclusionai/ling-3.0-tiny', label: 'Ling 3.0 Tiny', free: true },
-  { value: 'sapiens-ai/agnes-2.0-flash', label: 'Agnes 2.0 Flash', free: true },
   { value: 'z-ai/glm-4.7-flash-free', label: 'GLM 4.7 Flash', free: true },
   { value: 'z-ai/glm-4.6v-flash-free', label: 'GLM 4.6V Flash', free: true },
 ];
 
 // Fallback de OpenCode Zen mientras carga el catálogo dinámico o si la API falla.
-// Verificado contra el catálogo en vivo (GET /zen/v1/models, 2026-09-03): 66
+// Verificado contra el catálogo en vivo (GET /zen/v1/models, 2026-09-05): 70
 // modelos, de los cuales solo 8 llevan el sufijo "-free" más la excepción sin
-// sufijo `big-pickle`. Retirados: hy3-free, ling-3.0-tiny-free y
-// north-mini-code-free (ya no los sirve la API); nuevo: ling-3.0-flash-fin-free.
-// Token keyless `public`.
+// sufijo `big-pickle`. Auditoría v4.0.47: retirado `laguna-s-2.1-free` (ya no lo
+// sirve la API). Token keyless `public`.
 const OPENZEN_FALLBACK: ModelOption[] = [
   { value: 'big-pickle', label: 'Big Pickle (free)', free: true, recommended: true },
   { value: 'deepseek-v4-flash-free', label: 'DeepSeek V4 Flash (free)', free: true },
   { value: 'mimo-v2.5-free', label: 'MiMo-V2.5 (free)', free: true },
   { value: 'muse-spark-1.3-contributor-free', label: 'Muse Spark 1.3 (free)', free: true },
   { value: 'muse-spark-1.2-contributor-free', label: 'Muse Spark 1.2 (free)', free: true },
-  { value: 'laguna-s-2.1-free', label: 'Laguna S 2.1 (free)', free: true },
   { value: 'ling-3.0-flash-fin-free', label: 'Ling 3.0 Flash Fin (free)', free: true },
   { value: 'nemotron-3-ultra-free', label: 'Nemotron 3 Ultra (free)', free: true },
   { value: 'nemotron-3.5-lightning-free', label: 'Nemotron 3.5 Lightning (free)', free: true },
@@ -317,9 +323,11 @@ const CLOUDFLARE_FALLBACK: ModelOption[] = [
 ];
 
 // Fallback de Ollama Cloud — modelos cloud verificados hoy vía la API oficial
-// (GET https://ollama.com/v1/models, 2026-07-28, 19 modelos). La API NO expone
+// (GET https://ollama.com/v1/models, 2026-09-05, 17 modelos). La API NO expone
 // pricing ni flag free (el free es un entitlement del plan Free/Pro/Max por cuota),
 // así que marcamos todos como free: el tier Free llega a todos, limitado por cuota.
+// Auditoría v4.0.47: retirados `minimax-m2.5` y `kimi-k2.5` (ya no los sirve la
+// API); los DeepSeek V4 pasaron a sufijo de fecha (`:0813`/`:0731`).
 // IDs antiguos inexistentes corregidos (qwen3-coder:480b, devstral-*, ministral-*).
 const OLLAMA_FALLBACK: ModelOption[] = [
   { value: 'kimi-k3', label: 'Kimi K3', free: true, recommended: true },
@@ -327,16 +335,14 @@ const OLLAMA_FALLBACK: ModelOption[] = [
   { value: 'glm-5.1', label: 'GLM 5.1', free: true },
   { value: 'minimax-m3', label: 'MiniMax M3', free: true },
   { value: 'minimax-m2.7', label: 'MiniMax M2.7', free: true },
-  { value: 'minimax-m2.5', label: 'MiniMax M2.5', free: true },
   { value: 'nemotron-3-ultra', label: 'Nemotron 3 Ultra', free: true },
   { value: 'nemotron-3-super', label: 'Nemotron 3 Super', free: true },
   { value: 'nemotron-3-nano:30b', label: 'Nemotron 3 Nano 30B', free: true },
-  { value: 'deepseek-v4-pro', label: 'DeepSeek V4 Pro', free: true },
-  { value: 'deepseek-v4-flash', label: 'DeepSeek V4 Flash', free: true },
+  { value: 'deepseek-v4-pro:0813', label: 'DeepSeek V4 Pro', free: true },
+  { value: 'deepseek-v4-flash:0731', label: 'DeepSeek V4 Flash', free: true },
   { value: 'qwen3.5:397b', label: 'Qwen 3.5 (397B)', free: true },
   { value: 'kimi-k2.7-code', label: 'Kimi K2.7 Code', free: true },
   { value: 'kimi-k2.6', label: 'Kimi K2.6', free: true },
-  { value: 'kimi-k2.5', label: 'Kimi K2.5', free: true },
   { value: 'mistral-large-3:675b', label: 'Mistral Large 3', free: true },
   { value: 'gemma4:31b', label: 'Gemma 4 31B', free: true },
   { value: 'gpt-oss:120b', label: 'GPT-OSS 120B', free: true },
@@ -348,20 +354,25 @@ const OLLAMA_FALLBACK: ModelOption[] = [
 // Fallback de Kilo (api.kilo.ai/api/gateway) mientras carga el catálogo o si falla.
 // Pasarela OpenAI-compatible con catálogo PÚBLICO (GET /models no requiere key) que
 // distingue modelos gratuitos por el sufijo ":free" en el id. Estos son los 3 modelos
-// free configurados hoy (262K contexto, solo texto). El selector marca 🆓 vía flag free.
+// free verificados en vivo (2026-09-05: 17 free en el catálogo). Auditoría v4.0.47:
+// `inclusionai/ling-3.0-flash:free` (era el defaultModel) y `nex-agi/nex-n2-pro:free`
+// fueron RETIRADOS de Kilo; los Ling 3.0 Flash siguen vivos en las variantes
+// `-fin:free`/`-sante:free`. El selector marca 🆓 vía flag free.
 const KILO_FALLBACK: ModelOption[] = [
-  { value: 'inclusionai/ling-3.0-flash:free', label: 'Ling 3.0 Flash (free)', free: true, recommended: true },
+  { value: 'inclusionai/ling-3.0-flash-fin:free', label: 'Ling 3.0 Flash Fin (free)', free: true, recommended: true },
   { value: 'poolside/laguna-s-2.1:free', label: 'Laguna S 2.1 (free)', free: true },
-  { value: 'nex-agi/nex-n2-pro:free', label: 'Nex N2 Pro (free)', free: true },
+  { value: 'stepfun/step-3.7-flash:free', label: 'Step 3.7 Flash (free)', free: true },
 ];
 
 // Fallback de BazaarLink (bazaarlink.ai/api/v1) mientras carga el catálogo dinámico o si falla.
 // Pasarela OpenAI-compatible. Acceso vía PROXY backend /api/bazaarlink.
 // El catálogo es PÚBLICO (GET /models no requiere key -> modelsNeedKey: false).
-// Modelos gratuitos solicitados por el usuario (IDs reales de la API bazaarlink.ai):
+// Modelos gratuitos verificados en vivo (2026-09-05: solo 2 free en el catálogo).
+// Auditoría v4.0.47: `deepseek/deepseek-v4-flash:free` (era el defaultModel) fue
+// RETIRADO de BazaarLink; el DeepSeek V4 Flash sigue existiendo pero YA NO es free
+// (pricing 0.2/0.4 $/M) ni conserva el prefijo de organización (`deepseek-v4-flash`).
 const BAZAARLINK_FALLBACK: ModelOption[] = [
-  { value: 'deepseek/deepseek-v4-flash:free', label: 'DeepSeek V4 Flash (free)', free: true, recommended: true },
-  { value: 'qwen/qwen3.7-flash:free', label: 'Qwen 3.7 Flash (free)', free: true },
+  { value: 'qwen/qwen3.7-flash:free', label: 'Qwen 3.7 Flash (free)', free: true, recommended: true },
   { value: 'auto:free', label: 'Auto Router (free)', free: true },
 ];
 
@@ -588,7 +599,7 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     modelsEndpoint: '/api/kilo/models',
     modelsNeedKey: false, // el catálogo de Kilo es público (GET /models sin auth)
     staticModels: KILO_FALLBACK,
-    defaultModel: KILO_FALLBACK[0].value, // 'inclusionai/ling-3.0-flash:free'
+    defaultModel: KILO_FALLBACK[0].value, // 'inclusionai/ling-3.0-flash-fin:free'
     // La API key de Kilo es un JWT (HS256): empieza por "eyJ" (payload base64url).
     // Validación ligera en cliente (no es validación real de la clave).
     keyPlaceholder: 'eyJhbGciOi...',
@@ -929,7 +940,7 @@ export async function fetchModels(
     // BazaarLink (bazaarlink.ai/api/v1): pasarela OpenAI-compatible con catálogo público.
     // Identifica free por sufijo :free, pricing a 0 o alias exactos conocidos.
     // Filtra modelos obviamente no-chat (embedding, whisper, tts…). Deduplica por id.
-    const BAZAARLINK_FREE_EXACT = ['deepseek/deepseek-v4-flash:free', 'qwen/qwen3.7-flash:free', 'auto:free'];
+    const BAZAARLINK_FREE_EXACT = ['qwen/qwen3.7-flash:free', 'auto:free'];
     const BAZAARLINK_EXCLUDED = ['embed', 'whisper', 'tts', 'asr', 'rerank', 'vision', 'clip', 'audio'];
     type BazaarlinkItem = {
       id: string;
