@@ -1183,3 +1183,61 @@ describe('github.ts', () => {
   });
 });
 
+
+// ── v4.0.48: binaryPaths (imágenes/binarios del árbol) para preservar vistas previas ──
+describe('fetchRepoTreeRecursive — binaryPaths (v4.0.48)', () => {
+  it('expone binaryPaths con los blobs binarios del árbol, excluidos de files y allPaths', async () => {
+    vi.mocked(fetch).mockImplementation(((url: any) => {
+      const u = String(url);
+      if (u.includes('/git/trees/')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            truncated: false,
+            tree: [
+              { path: 'README.md', type: 'blob', size: 10, sha: '1' },
+              { path: 'screenshots/app.png', type: 'blob', size: 2048, sha: '2' },
+              { path: 'screenshots/demo.jpg', type: 'blob', size: 4096, sha: '3' },
+              { path: 'assets/logo.svg', type: 'blob', size: 512, sha: '4' },
+              { path: 'src/a.ts', type: 'blob', size: 10, sha: '5' },
+            ],
+          }),
+        });
+      }
+      // getFileContents
+      return Promise.resolve({ ok: true, json: async () => ({ content: btoa('x'), encoding: 'base64' }) });
+    }) as any);
+
+    const { fetchRepoTreeRecursive } = await import('../github');
+    const res = await fetchRepoTreeRecursive('tok', 'o', 'r', 'main');
+
+    expect(res.binaryPaths).toEqual(
+      expect.arrayContaining(['screenshots/app.png', 'screenshots/demo.jpg', 'assets/logo.svg']),
+    );
+    // Los binarios NO entran en el árbol de texto ni en los archivos con contenido
+    expect(res.binaryPaths).not.toContain('README.md');
+    expect(res.allPaths).not.toContain('screenshots/app.png');
+    expect(res.files.map(f => f.path)).not.toContain('screenshots/app.png');
+    expect(res.files.map(f => f.path)).toContain('README.md');
+  });
+
+  it('binaryPaths es vacío (no undefined) cuando el repo no tiene binarios', async () => {
+    vi.mocked(fetch).mockImplementation(((url: any) => {
+      const u = String(url);
+      if (u.includes('/git/trees/')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            truncated: false,
+            tree: [{ path: 'README.md', type: 'blob', size: 10, sha: '1' }],
+          }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ content: btoa('x'), encoding: 'base64' }) });
+    }) as any);
+
+    const { fetchRepoTreeRecursive } = await import('../github');
+    const res = await fetchRepoTreeRecursive('tok', 'o', 'r', 'main');
+    expect(res.binaryPaths).toEqual([]);
+  });
+});

@@ -1179,10 +1179,10 @@ describe('generateRepoDocs - no inventar autor/año (#28 4a)', () => {
       });
     });
 
-    it('ejecuta en modo normal cuando lightMode es false o se omite (máxTokens 8192 y archivos completos)', async () => {
+    it('ejecuta en modo normal cuando lightMode es false o se omite (máxTokens 16384 y archivos completos, v4.0.48)', async () => {
       const fetchMock = vi.fn().mockImplementation(async (_url, init) => {
         const body = JSON.parse(init.body);
-        expect(body.max_tokens).toBe(8192);
+        expect(body.max_tokens).toBe(16384); // v4.0.48: 8192→16384 (margen reasoning)
         const userMessage = body.messages.find((m: any) => m.role === 'user')?.content || '';
         expect(userMessage).not.toContain('modo ligero/esencial');
         return {
@@ -2922,5 +2922,147 @@ describe('OpenCode Zen responses — reasoning effort minimal (v4.0.46)', () => 
 
     const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
     expect('reasoning' in body).toBe(false);
+  });
+});
+
+// ── v4.0.48: preservación de la vista previa + modelos de razonamiento ──────
+describe('generateRepoDocs — preservación de la vista previa (v4.0.48)', () => {
+  beforeEach(() => { vi.restoreAllMocks(); });
+
+  function mockDocFetch() {
+    return vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: '# doc' } }] }),
+    });
+  }
+
+  it('lista las imágenes binarias existentes en el contexto y añade la regla de preservación de la vista previa', async () => {
+    const fetchMock = mockDocFetch();
+    vi.stubGlobal('fetch', fetchMock);
+
+    await generateRepoDocs(
+      'owner/repo',
+      [{ path: 'README.md', content: '# README con ![Vista previa](./screenshots/app.png)' }],
+      { provider: 'groq', apiKey: 'mock-groq-auth', model: 'llama' }, // gitleaks:allow
+      'es',
+      undefined,
+      { binaryPaths: ['screenshots/app.png', 'docs/img/logo.svg'] },
+    );
+
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    const userMsg = body.messages.find((m: { role: string }) => m.role === 'user');
+    expect(userMsg.content).toContain('IMÁGENES Y ARCHIVOS BINARIOS PRESENTES EN EL REPOSITORIO');
+    expect(userMsg.content).toContain('screenshots/app.png');
+    expect(userMsg.content).toContain('docs/img/logo.svg');
+    const sysMsg = body.messages.find((m: { role: string }) => m.role === 'system');
+    expect(sysMsg.content).toContain('REGLA CRÍTICA DE VISTA PREVIA');
+    expect(sysMsg.content).toContain('PRESERVA');
+    // La directriz de borrado ahora exige confirmación de huérfano en AMBAS listas
+    expect(sysMsg.content).toContain('NINGUNA de las dos listas');
+  });
+
+  it('sin binaryPaths no lista la sección de binarios pero mantiene la regla de vista previa', async () => {
+    const fetchMock = mockDocFetch();
+    vi.stubGlobal('fetch', fetchMock);
+
+    await generateRepoDocs(
+      'owner/repo',
+      [{ path: 'README.md', content: '# x' }],
+      { provider: 'groq', apiKey: 'mock-groq-auth', model: 'llama' }, // gitleaks:allow
+    );
+
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    const userMsg = body.messages.find((m: { role: string }) => m.role === 'user');
+    expect(userMsg.content).not.toContain('IMÁGENES Y ARCHIVOS BINARIOS PRESENTES EN EL REPOSITORIO');
+    const sysMsg = body.messages.find((m: { role: string }) => m.role === 'system');
+    expect(sysMsg.content).toContain('REGLA CRÍTICA DE VISTA PREVIA');
+  });
+
+  it('modo completo pide 16384 tokens de salida (margen para modelos de razonamiento, v4.0.48)', async () => {
+    const fetchMock = mockDocFetch();
+    vi.stubGlobal('fetch', fetchMock);
+
+    await generateRepoDocs(
+      'owner/repo',
+      [{ path: 'src/a.ts', content: 'x' }],
+      { provider: 'groq', apiKey: 'mock-groq-auth', model: 'llama' }, // gitleaks:allow
+    );
+
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(body.max_tokens).toBe(16384);
+  });
+
+  it('modo ligero mantiene 2500 tokens de salida', async () => {
+    const fetchMock = mockDocFetch();
+    vi.stubGlobal('fetch', fetchMock);
+
+    await generateRepoDocs(
+      'owner/repo',
+      [{ path: 'src/a.ts', content: 'x' }],
+      { provider: 'groq', apiKey: 'mock-groq-auth', model: 'llama' }, // gitleaks:allow
+      'es',
+      undefined,
+      { lightMode: true },
+    );
+
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(body.max_tokens).toBe(2500);
+  });
+});
+
+describe('callAI — modelos de razonamiento sin salida (v4.0.48)', () => {
+  beforeEach(() => { vi.restoreAllMocks(); });
+
+  it('no-streaming: content vacío con reasoning_content poblado → error pedagógico de razonamiento', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: '', reasoning_content: 'Pensando en la estructura del README...' } }] }),
+    }));
+    await expect(
+      callAI([{ role: 'user', content: 'x' }], 'sys', 'nvidia', 'mock-nim-auth', 'moonshotai/kimi-k3'),
+    ).rejects.toThrow(/razonamiento.*presupuesto de salida.*Documentación esencial/is);
+  });
+
+  it('no-streaming: content vacío con finish_reason length → error pedagógico de razonamiento', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: '' }, finish_reason: 'length' }] }),
+    }));
+    await expect(
+      callAI([{ role: 'user', content: 'x' }], 'sys', 'nvidia', 'mock-nim-auth', 'moonshotai/kimi-k3'),
+    ).rejects.toThrow(/razonamiento.*presupuesto de salida/is);
+  });
+
+  it('no-streaming: content vacío SIN razonamiento mantiene el error genérico', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: '' } }] }),
+    }));
+    await expect(
+      callAI([{ role: 'user', content: 'x' }], 'sys', 'groq', 'mock-groq-auth', 'llama'), // gitleaks:allow
+    ).rejects.toThrow(/El modelo no devolvió contenido/);
+    await expect(
+      callAI([{ role: 'user', content: 'x' }], 'sys', 'groq', 'mock-groq-auth', 'llama'), // gitleaks:allow
+    ).rejects.not.toThrow(/razonamiento/i);
+  });
+
+  it('streaming: solo llegan deltas reasoning_content y nunca content → error pedagógico de razonamiento', async () => {
+    const encoder = new TextEncoder();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      body: new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode('data: {"choices":[{"delta":{"reasoning_content":"Analizando el repo..."}}]}\n\n'));
+          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+          controller.close();
+        },
+      }),
+    }));
+
+    const tokens: string[] = [];
+    await expect(
+      callAI([{ role: 'user', content: 'x' }], 'sys', 'nvidia', 'mock-nim-auth', 'moonshotai/kimi-k3', 'chat', (t) => tokens.push(t)),
+    ).rejects.toThrow(/razonamiento.*presupuesto de salida/is);
+    expect(tokens).toEqual([]); // el razonamiento NO se filtra al texto visible
   });
 });

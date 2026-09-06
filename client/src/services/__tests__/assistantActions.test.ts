@@ -228,7 +228,7 @@ describe('runDocumentRepo', () => {
   it('devuelve el análisis en el camino feliz', async () => {
     // v3.22.3: runDocumentRepo ahora pre-chequea getRepo y usa su default_branch.
     vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
-    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'a' }, { path: 'b' }], totalScanned: 2, truncated: false, allPaths: ['a', 'b'] } as any);
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'a' }, { path: 'b' }], totalScanned: 2, truncated: false, allPaths: ['a', 'b'], binaryPaths: ['assets/logo.svg'] } as any);
     vi.mocked(generateRepoDocs).mockResolvedValue({ readme: 'R', manualTecnico: 'M' } as any);
     const deps = makeDeps();
 
@@ -240,33 +240,34 @@ describe('runDocumentRepo', () => {
     expect(getFileContents).not.toHaveBeenCalled();
     expect(getRepo).toHaveBeenCalledWith('tok', 'owner', 'repo');
     expect(fetchRepoTreeRecursive).toHaveBeenCalledWith('tok', 'owner', 'repo', 'main');
-    expect(generateRepoDocs).toHaveBeenCalledWith('owner/repo', expect.any(Array), CONFIG, 'es');
+    // v4.0.48: los binaryPaths del árbol llegan a generateRepoDocs vía docOptions.
+    expect(generateRepoDocs).toHaveBeenCalledWith('owner/repo', expect.any(Array), CONFIG, 'es', undefined, { binaryPaths: ['assets/logo.svg'] });
     expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'pending' }));
     expect(deps.setIsChatLoading).toHaveBeenLastCalledWith(false);
   });
 
   it('propaga extraFiles conteniendo imagenes a generateRepoDocs', async () => {
     vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
-    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'a' }], totalScanned: 1, truncated: false, allPaths: ['a'] } as any);
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'a' }], totalScanned: 1, truncated: false, allPaths: ['a'], binaryPaths: [] } as any);
     vi.mocked(generateRepoDocs).mockResolvedValue({ readme: 'R', manualTecnico: 'M' } as any);
     const deps = makeDeps();
 
     const imageFile = new File(['dummy'], 'screen.png', { type: 'image/png' });
     await runDocumentRepo(deps, CONFIG, 'owner/repo', [imageFile]);
 
-    expect(generateRepoDocs).toHaveBeenCalledWith('owner/repo', expect.any(Array), CONFIG, 'es', ['screen.png']);
+    expect(generateRepoDocs).toHaveBeenCalledWith('owner/repo', expect.any(Array), CONFIG, 'es', ['screen.png'], { binaryPaths: [] });
   });
 
   it('propaga extraFiles saneando acentos en nombres de imagen a generateRepoDocs', async () => {
     vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
-    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'a' }], totalScanned: 1, truncated: false, allPaths: ['a'] } as any);
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'a' }], totalScanned: 1, truncated: false, allPaths: ['a'], binaryPaths: [] } as any);
     vi.mocked(generateRepoDocs).mockResolvedValue({ readme: 'R', manualTecnico: 'M' } as any);
     const deps = makeDeps();
 
     const imageFile = new File(['dummy'], 'Captura_Infografía_Notebook.png', { type: 'image/png' });
     await runDocumentRepo(deps, CONFIG, 'owner/repo', [imageFile]);
 
-    expect(generateRepoDocs).toHaveBeenCalledWith('owner/repo', expect.any(Array), CONFIG, 'es', ['Captura_Infografia_Notebook.png']);
+    expect(generateRepoDocs).toHaveBeenCalledWith('owner/repo', expect.any(Array), CONFIG, 'es', ['Captura_Infografia_Notebook.png'], { binaryPaths: [] });
   });
 
   it('notifica en el chat cuando se empleó fallbackModel por sobrecarga', async () => {
@@ -2492,7 +2493,7 @@ describe('assistantActions — Cobertura completa de ramas auxiliares y flujos d
     vi.mocked(createRepo).mockResolvedValue(undefined as any);
     vi.mocked(uploadFilesToRepo).mockRejectedValue(new Error('Fallo al subir archivos adjuntos'));
     vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
-    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'README.md', content: '', size: 0 }], totalScanned: 1, truncated: false, allPaths: ['README.md'] });
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'README.md', content: '', size: 0 }], totalScanned: 1, truncated: false, allPaths: ['README.md'], binaryPaths: [] });
     vi.mocked(generateRepoDocs).mockResolvedValue({ readme: 'README', manualTecnico: 'MANUAL', resumen: 'resumen' });
 
     const deps = makeDeps();

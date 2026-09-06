@@ -398,26 +398,48 @@ async function callOpenAICompatible(
   // Mensaje de error reutilizado cuando el modelo no devuelve contenido.
   const emptyError = 'El modelo no devolvió contenido. Prueba con otro modelo del desplegable ' +
     '(p.ej. Gemma o Llama 3.3 70B free) o con un repositorio más pequeño.';
+  // v4.0.48: mensaje específico cuando un modelo de RAZONAMIENTO agotó el
+  // presupuesto de salida (max_tokens) pensando sin emitir el contenido
+  // (content vacío con reasoning_content poblado o finish_reason 'length').
+  const reasoningEmptyError = 'El modelo de razonamiento gastó todo su presupuesto de salida (max_tokens) ' +
+    'en pensar sin llegar a emitir el documento. Usa ⚡ Documentación esencial (ligera), ' +
+    'elige un modelo sin razonamiento interno (p. ej. Gemma o GPT-OSS) o prueba con un repositorio más pequeño.';
 
   if (stream && res.body) {
     let acc = '';
+    let sawReasoning = false;
     await readSSEStream(res, (json) => {
       try {
-        const parsed = JSON.parse(json) as { choices?: Array<{ delta?: { content?: string } }> };
-        const delta = parsed.choices?.[0]?.delta?.content;
-        if (delta) { acc += delta; onToken!(acc); }
+        const parsed = JSON.parse(json) as { choices?: Array<{ delta?: { content?: string; reasoning_content?: string } }> };
+        const delta = parsed.choices?.[0]?.delta;
+        if (delta?.reasoning_content) sawReasoning = true;
+        const content = delta?.content;
+        if (content) { acc += content; onToken!(acc); }
       } catch { /* línea no-JSON (keep-alive): se ignora */ }
     });
-    if (!acc.trim()) throw new Error(emptyError);
+    if (!acc.trim()) {
+      if (sawReasoning) throw new Error(reasoningEmptyError);
+      throw new Error(emptyError);
+    }
     return acc;
   }
 
-  const data = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
-  const content = data.choices?.[0]?.message?.content;
+  const data = await res.json() as {
+    choices?: Array<{ message?: { content?: string; reasoning_content?: string }; finish_reason?: string }>;
+  };
+  const choice = data.choices?.[0];
+  const content = choice?.message?.content;
   if (!content || !content.trim()) {
     // Algunos modelos gratuitos devuelven contenido vacío (o sin choices) ante
     // prompts grandes; damos un error claro y accionable en vez de una burbuja
     // vacía. No se marca como transitorio (suele ser determinista del modelo).
+    // v4.0.48: si el modelo estaba razonando (reasoning_content poblado) o el
+    // acabado fue por longitud, el contenido vacío se debe a que el razonamiento
+    // interno consumió el presupuesto — mensaje pedagógico específico.
+    const reasoning = choice?.message?.reasoning_content;
+    if ((reasoning && reasoning.trim()) || choice?.finish_reason === 'length') {
+      throw new Error(reasoningEmptyError);
+    }
     throw new Error(emptyError);
   }
   return content;
@@ -1271,6 +1293,13 @@ export function extractRepoSummary(
 export interface GenerateRepoDocsOptions {
   lightMode?: boolean;
   modelOverride?: string;
+  /**
+   * v4.0.48: rutas de archivos binarios/imágenes presentes en el repo (sin
+   * contenido, p. ej. `screenshots/captura.png`). Permite al modelo distinguir
+   * las imágenes que EXISTEN (cuya referencia en el README debe preservarse,
+   * como una vista previa ya publicada) de los enlaces huérfanos a eliminar.
+   */
+  binaryPaths?: string[];
 }
 
 /**
@@ -1290,7 +1319,11 @@ export async function generateRepoDocs(
 
   const isLight = !!options?.lightMode;
   const maxLines = isLight ? 40 : 80;
-  const maxTokensOutput = isLight ? 2500 : 8192;
+  // v4.0.48: modo completo sube de 8192 a 16384 tokens de salida — los modelos de
+  // razonamiento (p. ej. Kimi K3 en NIM) consumen parte de ese presupuesto pensando
+  // y con 8192 podían devolver content vacío (solo razonamiento). El modo ligero
+  // se mantiene en 2500 para respetar cuotas estrictas (lección v4.0.40).
+  const maxTokensOutput = isLight ? 2500 : 16384;
   const analyzedFiles = isLight ? files.slice(0, 6) : files;
 
   const primaryLanguage = detectPrimaryLanguage(files);
@@ -1322,6 +1355,14 @@ export async function generateRepoDocs(
   const existingManual = rawExistingManual ? cleanDocFooter(rawExistingManual) : undefined;
 
   const treeOverview = files.map(f => f.path).join('\n');
+  // v4.0.48: imágenes/binarios que SÍ existen en el repo (árbol completo de blobs,
+  // excluye los ya listados en el árbol de texto). Es la lista de referencia para
+  // decidir si una referencia de imagen del README existente está huérfana o no.
+  const textPaths = new Set(files.map(f => f.path));
+  const existingBinaryPaths = (options?.binaryPaths ?? []).filter(p => !textPaths.has(p));
+  const binaryPathsOverview = existingBinaryPaths.length > 0
+    ? `\n\nIMÁGENES Y ARCHIVOS BINARIOS PRESENTES EN EL REPOSITORIO (EXISTEN, no los elimines ni los renombres; las referencias del README a estas rutas son VÁLIDAS):\n${existingBinaryPaths.map(p => `- ${p}`).join('\n')}`
+    : '';
   const fileContents = analyzedFiles
     .filter(f => f.content)
     .map(f => `### ${f.path}\n${truncateByLines(f.content || '', maxLines)}`)
@@ -1330,7 +1371,7 @@ export async function generateRepoDocs(
     `Repositorio: ${repoName}\n` +
     `Lenguaje principal detectado: ${primaryLanguage}\n` +
     `Archivos analizados: ${analyzedFiles.length}${isLight ? ` (de ${files.length} totales — modo ligero/esencial)` : ''}\n\n` +
-    `ESTRUCTURA DEL PROYECTO:\n\`\`\`\n${treeOverview}\n\`\`\`\n\n` +
+    `ESTRUCTURA DEL PROYECTO:\n\`\`\`\n${treeOverview}\n\`\`\`${binaryPathsOverview}\n\n` +
     `CONTENIDO DE ARCHIVOS CLAVE:\n\n${fileContents}`;
 
   const readmeExistingDirective = existingReadme
@@ -1368,8 +1409,17 @@ REQUISITOS OBLIGATORIOS PARA EL README.md
    - Las tablas deben tener filas con información concreta, no placeholders genéricos
    - Detecta el lenguaje principal y usa badges específicos de ese ecosistema
    - Si el README existente referencia archivos de imagen (*.png, *.jpg, *.gif,
-     *.svg, *.webp) que NO aparecen en la estructura del proyecto (ESTRUCTURA DEL
-     PROYECTO más arriba), ELIMINA esa referencia de imagen completa. No dejes enlaces a archivos inexistentes.
+     *.svg, *.webp), COMPRUEBA PRIMERO si la ruta existe en la estructura del
+     proyecto o en la lista "IMÁGENES Y ARCHIVOS BINARIOS PRESENTES EN EL
+     REPOSITORIO" (si la hay). SOLO ELIMINA la referencia de imagen si la ruta
+     NO aparece en NINGUNA de las dos listas (enlace huérfano confirmado).
+   - REGLA CRÍTICA DE VISTA PREVIA (v4.0.48): si el README existente contiene
+     una sección de vista previa / galería de capturas (p. ej. "🖼️ Vista
+     previa", "Preview", "Screenshots", "Demo") y TODAS las imágenes que
+     referencia existen en el repo (estructura o lista de binarios), PRESERVA
+     ESA SECCIÓN COMPLETA E INTACTA en el README actualizado. NUNCA la borres
+     ni la dejes sin las etiquetas de imagen: la vista previa ya publicada es
+     contenido valioso que el usuario cargó deliberadamente.
    - Si el README referencia imágenes, usa la ruta ./screenshots/FILENAME (no la raíz) y sintaxis Markdown ![alt](./screenshots/FILENAME) (NUNCA fijes anchos como width="750" ni envuelvas en <p align="center"> para no distorsionar ni forzar alineado centrado).
 ${readmeExistingDirective}${dateDirective}${imagesDirective}
 
