@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.48] — 2026-09-06
+
+> **Fix doble: (1) la sección de vista previa/capturas de un README ya publicado ya no se elimina al actualizar la documentación — el modelo recibe la lista de imágenes/binarios reales del repo y solo borra enlaces confirmados como huérfanos; (2) los modelos de razonamiento (p. ej. Kimi K3 en NIM) ya no devuelven "El modelo no devolvió contenido" al agotar el presupuesto de salida pensando — `max_tokens` del modo completo 8192→16384 y error pedagógico específico.**
+> - **Causa raíz de la vista previa:** la directriz anti-enlaces-huérfanos ordenaba eliminar toda referencia de imagen `*.png/*.jpg/...` que no apareciera en la ESTRUCTURA DEL PROYECTO — pero esa lista solo contiene los blobs de TEXTO elegibles (cap #49): las capturas de `screenshots/` nunca figuran en ella, así que al actualizar la documentación el modelo borraba sistemáticamente la vista previa ya publicada por el usuario.
+> - **Fix vista previa (`github.ts`, `assistantActions.ts`, `gemini.ts`):** `fetchRepoTreeRecursive` expone `binaryPaths` (rutas de los blobs binarios del árbol completo —imágenes, fuentes, zips— sin contenido, detectados con `isBinary`), `runDocumentRepo` las propaga a `generateRepoDocs` vía `options.binaryPaths`, que las lista en el contexto ("IMÁGENES Y ARCHIVOS BINARIOS PRESENTES EN EL REPOSITORIO") y añade la REGLA CRÍTICA DE VISTA PREVIA: solo eliminar la referencia si la ruta NO aparece ni en la estructura ni en la lista de binarios (huérfano confirmado), y preservar intacta cualquier sección de vista previa/galería cuyas imágenes existan.
+> - **Causa raíz del razonamiento:** los reasoning models consumen parte del presupuesto de salida pensando; con 8192 tokens en modo completo podían agotarlo sin emitir el documento (content vacío con `reasoning_content` poblado o `finish_reason: 'length'`). El modo ligero se mantiene en 2500 para respetar cuotas estrictas (lección v4.0.40).
+> - **Fix razonamiento (`gemini.ts`):** modo completo sube a 16384 tokens de salida, y cuando el content llega vacío tras razonar (streaming y no-streaming) se lanza un error pedagógico específico que sugiere ⚡ Documentación esencial, un modelo sin razonamiento interno (p. ej. Gemma o GPT-OSS) o un repo más pequeño, en lugar del genérico "El modelo no devolvió contenido".
+> - **Pruebas:** +10 tests unitarios en cliente (2 en `github.test.ts` para `binaryPaths`, 4 en `gemini.test.ts` para el contexto/reglas de vista previa, 4 para el error de razonamiento en streaming y no-streaming; aserciones de `assistantActions.test.ts` actualizadas a la firma de 6 argumentos y verificando la propagación de `binaryPaths`). Suite: **1.403 tests** (1.335 cliente + 68 servidor), lint 0 errores, build limpia.
+
+### Fixed
+- `client/src/services/github.ts`: `FetchTreeResult.binaryPaths` — rutas de los blobs binarios del árbol completo (sin contenido).
+- `client/src/services/assistantActions.ts`: `runDocumentRepo` desestructura `binaryPaths` y lo propaga a `generateRepoDocs` vía `docOptions`.
+- `client/src/services/gemini.ts`: `GenerateRepoDocsOptions.binaryPaths` listado en el contexto; REGLA CRÍTICA DE VISTA PREVIA en el system prompt del README; modo completo 8192→16384 tokens; error pedagógico de razonamiento en `callOpenAICompatible` (streaming y no-streaming).
+- `README.md`, `CLAUDE.md`, `MANUAL_TECNICO.md`, `MEJORAS_FUTURAS.md`, `METODOLOGIA_IA.md`: versión y registro.
+- Bump de versión a `v4.0.48` en `package.json`, `client/package.json` y lockfiles.
+
+### Tests
+- `client/src/services/__tests__/github.test.ts`: `binaryPaths` con blobs binarios (excluidos de `files`/`allPaths`) y vacío cuando el repo no tiene binarios.
+- `client/src/services/__tests__/gemini.test.ts`: contexto de binarios + regla de vista previa (con/sin `binaryPaths`), `max_tokens` 16384/2500 por modo, y error de razonamiento (`reasoning_content`, `finish_reason: 'length'`, streaming, genérico sin razonamiento).
+- `client/src/services/__tests__/assistantActions.test.ts`: propagación de `binaryPaths` a `generateRepoDocs`.
+
+Cambio de código por ZCode (GLM-5.3-Flash).
+
 ## [4.0.47] — 2026-09-05
 
 > **Auditoría integral de los 11 proveedores de IA (metodología del fix de OpenCode): verificación en vivo de endpoints, catálogos y fallbacks — 4 proveedores tenían el modelo por defecto muerto y 7 fallbacks desactualizados.**

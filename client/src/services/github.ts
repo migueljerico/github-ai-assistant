@@ -465,6 +465,14 @@ export interface FetchTreeResult {
   truncated: boolean;
   /** #49: rutas de TODOS los archivos de texto elegibles (árbol completo, sin contenido). */
   allPaths: string[];
+  /**
+   * v4.0.48: rutas de los blobs BINARIOS del árbol completo (imágenes, fuentes,
+   * zips…), sin contenido. Necesarias para que `generateRepoDocs` distinga las
+   * imágenes que SÍ existen en el repo (p. ej. `screenshots/*.png` referenciadas
+   * por una vista previa ya publicada) de los enlaces huérfanos, y NO ordene al
+   * modelo borrar la vista previa al actualizar la documentación.
+   */
+  binaryPaths: string[];
 }
 
 /**
@@ -542,8 +550,14 @@ export async function fetchRepoTreeRecursive(
   // #49: el árbol COMPLETO de paths (todos los blobs de texto elegibles, sin el cap de
   // contenido) para que el modelo conozca TODOS los archivos del repo, no solo los 120.
   const allPaths = allFiles.map(f => f.path);
+  // v4.0.48: rutas binarias del árbol completo (imágenes incluidas) para que la
+  // generación de docs preserve las vistas previas que referencian imágenes reales.
+  const binaryPaths = treeRes.tree
+    .filter(item => item.type === 'blob')
+    .filter(item => isBinary(item.path.split('/').pop() || ''))
+    .map(item => item.path);
 
-  return { files: results, totalScanned: allFiles.length, truncated, allPaths };
+  return { files: results, totalScanned: allFiles.length, truncated, allPaths, binaryPaths };
 }
 
 

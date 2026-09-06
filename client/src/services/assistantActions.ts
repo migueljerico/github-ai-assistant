@@ -205,7 +205,7 @@ export async function runDocumentRepo(
     // + uso de la rama por defecto real (no asumir 'main'; repos con otra rama daban 404).
     // Patrón tomado de runCodeHealth (#44), que ya resolvía esto correctamente.
     const meta = await getRepo(token, owner, repoName);
-    const { files, totalScanned, truncated, allPaths } = await fetchRepoTreeRecursive(token, owner, repoName, meta.default_branch);
+    const { files, totalScanned, truncated, allPaths, binaryPaths } = await fetchRepoTreeRecursive(token, owner, repoName, meta.default_branch);
     const isLight = !!options?.lightMode;
     updateMessage(loadingId, {
       content: isLight
@@ -220,13 +220,18 @@ export async function runDocumentRepo(
 
     const effectiveConfig = options?.modelOverride ? { ...config, model: options.modelOverride } : config;
 
-    const { readme, manualTecnico, resumen, metadatos } = extraImageNames && extraImageNames.length > 0
-      ? (options
-          ? await generateRepoDocs(`${owner}/${repoName}`, files, effectiveConfig, deps.lang, extraImageNames, options)
-          : await generateRepoDocs(`${owner}/${repoName}`, files, effectiveConfig, deps.lang, extraImageNames))
-      : (options
-          ? await generateRepoDocs(`${owner}/${repoName}`, files, effectiveConfig, deps.lang, undefined, options)
-          : await generateRepoDocs(`${owner}/${repoName}`, files, effectiveConfig, deps.lang));
+    // v4.0.48: propagar las rutas binarias/imágenes del árbol para que la IA
+    // preserve las vistas previas ya publicadas (referencias a imágenes reales).
+    const docOptions = { ...options, binaryPaths };
+
+    const { readme, manualTecnico, resumen, metadatos } = await generateRepoDocs(
+      `${owner}/${repoName}`,
+      files,
+      effectiveConfig,
+      deps.lang,
+      extraImageNames && extraImageNames.length > 0 ? extraImageNames : undefined,
+      docOptions,
+    );
 
     // #57 Tanda B: detectar si el repo ya está documentado (README.md o
     // MANUAL_TECNICO.md en la raíz) para avisar al usuario de que se actualizará.
