@@ -28,7 +28,7 @@
   "devDependencies": {
     "@playwright/test": "^1.63.0",
     "concurrently": "^10.0.5",
-    "supertest": "^7.0.0",
+    "supertest": "^7.3.0",
     "vitest": "^5.0.2"
   },
   "overrides": {
