@@ -70,7 +70,10 @@ export interface ProviderDef {
 // Catálogo FIJO de Gemini. El listado dinámico vía proxy fue retirado: la API
 // de Google no era fiable en prod (CORS/fallo del proxy), devolvía modelos
 // incompatibles y el usuario no veía los modelos correctos. Esta lista es la
-// fuente única de verdad — contiene exactamente los 20 modelos operativos a día de hoy.
+// fuente única de verdad — contiene exactamente los 15 modelos operativos a día
+// de hoy (auditoría v4.0.49, 2026-10-15: retirados los shut-down 2.0-flash,
+// 2.0-flash-lite, 3-pro-preview y 3.1-flash-lite-preview, y los deprecados
+// 3.5-flash y 3.7-flash; añadido el nuevo flagship gemini-4-argon).
 const GEMINI_MODELS: ModelOption[] = [
   {
     value: 'gemini-2.5-flash',
@@ -84,14 +87,9 @@ const GEMINI_MODELS: ModelOption[] = [
     description: 'provider.gemini.model.proDesc',
   },
   {
-    value: 'gemini-2.0-flash',
-    label: 'provider.gemini.model.flash20',
-    description: 'provider.gemini.model.flash20Desc',
-  },
-  {
-    value: 'gemini-2.0-flash-lite',
-    label: 'provider.gemini.model.flash20Lite',
-    description: 'provider.gemini.model.flash20LiteDesc',
+    value: 'gemini-4-argon',
+    label: 'provider.gemini.model.argon4',
+    description: 'provider.gemini.model.argon4Desc',
   },
   {
     value: 'gemma-4-26b-a4b-it',
@@ -124,11 +122,6 @@ const GEMINI_MODELS: ModelOption[] = [
     description: 'provider.gemini.model.flash25LiteDesc',
   },
   {
-    value: 'gemini-3-pro-preview',
-    label: 'provider.gemini.model.pro3Preview',
-    description: 'provider.gemini.model.pro3PreviewDesc',
-  },
-  {
     value: 'gemini-3-flash-preview',
     label: 'provider.gemini.model.flashPreview',
     description: 'provider.gemini.model.flashPreviewDesc',
@@ -139,19 +132,9 @@ const GEMINI_MODELS: ModelOption[] = [
     description: 'provider.gemini.model.pro31PreviewDesc',
   },
   {
-    value: 'gemini-3.1-flash-lite-preview',
-    label: 'provider.gemini.model.flash31LitePreview',
-    description: 'provider.gemini.model.flash31LitePreviewDesc',
-  },
-  {
     value: 'gemini-3.1-flash-lite',
     label: 'provider.gemini.model.flash31Lite',
     description: 'provider.gemini.model.flash31LiteDesc',
-  },
-  {
-    value: 'gemini-3.5-flash',
-    label: 'provider.gemini.model.flash35',
-    description: 'provider.gemini.model.flash35Desc',
   },
   {
     value: 'gemini-3.5-flash-lite',
@@ -164,11 +147,6 @@ const GEMINI_MODELS: ModelOption[] = [
     description: 'provider.gemini.model.flash36Desc',
   },
   {
-    value: 'gemini-3.7-flash',
-    label: 'provider.gemini.model.flash37',
-    description: 'provider.gemini.model.flash37Desc',
-  },
-  {
     value: 'gemini-3.8-flash',
     label: 'provider.gemini.model.flash38',
     description: 'provider.gemini.model.flash38Desc',
@@ -177,25 +155,27 @@ const GEMINI_MODELS: ModelOption[] = [
 
 // Fallback de OpenRouter mientras carga el catálogo o si la API falla.
 // Modelos gratuitos (:free, pricing 0/0) verificados en vivo contra la API oficial
-// (GET https://openrouter.ai/api/v1/models, 2026-09-05: 19 free), más los
+// (GET https://openrouter.ai/api/v1/models, 2026-10-14: 14 free), más los
 // "routers" de OpenRouter (enrutadores dinámicos, no free pero útiles).
-// Auditoría v4.0.47: `openai/gpt-oss-20b:free` e `inclusionai/ling-3.0-flash:free`
-// fueron RETIRADOS de OpenRouter (el primero era el defaultModel → la primera
-// llamada fallaba con "modelo no disponible"). El default pasa a Gemma 4 26B,
-// mismo modelo que elige `pickDefaultModel` sobre el catálogo dinámico actual
-// (RELIABLE_MODEL_PREFS: ya no queda ningún gpt-oss free; 'gemma' es el siguiente pref).
+// Auditoría v4.0.49 (2026-10-15): retirados `z-ai/glm-5.2:free` y
+// `minimax/minimax-m3:free` (los modelos base siguen vivos pero sin variante
+// :free) e `inclusionai/ling-3.0-flash-fin:free` (Ling ya no está en OpenRouter).
+// Entran `thinkingmachines/inkling:free`, `nvidia/nemotron-3.5-lightning:free` y
+// `poolside/laguna-xs-2.1:free`. El default sigue siendo Gemma 4 26B (lo mismo
+// que elige `pickDefaultModel` sobre el catálogo dinámico: 'gemma' es el primer
+// pref de RELIABLE_MODEL_PREFS disponible, no queda ningún gpt-oss free).
 // El catálogo dinámico es la fuente viva; esto es red de seguridad.
 const OPENROUTER_FALLBACK: ModelOption[] = [
   // Modelos free individuales (chat/texto; pricing 0/0) — primero, para que el
   // defaultModel ([0]) sea un free concreto y fiable, no un router.
   { value: 'google/gemma-4-26b-a4b-it:free', label: 'Gemma 4 26B A4B (free)', free: true, recommended: true },
   { value: 'google/gemma-4-31b-it:free', label: 'Gemma 4 31B (free)', free: true },
-  { value: 'z-ai/glm-5.2:free', label: 'GLM 5.2 (free)', free: true },
   { value: 'nvidia/nemotron-3-ultra-550b-a55b:free', label: 'Nemotron 3 Ultra (free)', free: true },
   { value: 'nvidia/nemotron-3-super-120b-a12b:free', label: 'Nemotron 3 Super (free)', free: true },
-  { value: 'minimax/minimax-m3:free', label: 'MiniMax M3 (free)', free: true },
-  { value: 'inclusionai/ling-3.0-flash-fin:free', label: 'Ling 3.0 Flash Fin (free)', free: true },
+  { value: 'nvidia/nemotron-3.5-lightning:free', label: 'Nemotron 3.5 Lightning (free)', free: true },
+  { value: 'thinkingmachines/inkling:free', label: 'Inkling (free)', free: true },
   { value: 'poolside/laguna-s-2.1:free', label: 'Laguna S 2.1 (free)', free: true },
+  { value: 'poolside/laguna-xs-2.1:free', label: 'Laguna XS 2.1 (free)', free: true },
   { value: 'cohere/north-mini-code:free', label: 'North Mini Code (free)', free: true },
   // Routers (enrutamiento dinámico; NO son free — pricing -1/-1 salvo openrouter/free 0/0)
   { value: 'openrouter/auto', label: 'Auto Router', description: 'provider.openrouter.model.autoDesc' },
@@ -204,27 +184,31 @@ const OPENROUTER_FALLBACK: ModelOption[] = [
 ];
 
 // Fallback de Groq mientras carga el catálogo o si la API falla.
-// Modelos PRODUCTION confirmados en la fuente oficial (console.groq.com/docs/models).
-// Los dos Llama (`llama-3.1-8b-instant`, `llama-3.3-70b-versatile`) se RETIRAN de Groq
-// el 2026-08-16 (deprecation page); el default se migró a `openai/gpt-oss-20b`
-// (production, 131K). `qwen/qwen3-32b` retirado el 2026-07-17. En v3.65.1 se eliminaron
-// del fallback y del catálogo dinámico ANTES de la fecha: quien los tuviera guardados
-// vería error al chatear el 16-ago. `groq/compound` = sistemas agénticos GPT-OSS+tools.
+// Modelos vigentes confirmados en la fuente oficial (console.groq.com/docs/models,
+// 2026-10-15): gpt-oss-20b/120b (Production) y qwen/qwen3.8-27b (Preview).
+// Los dos Llama (`llama-3.1-8b-instant`, `llama-3.3-70b-versatile`) quedaron solo
+// para Enterprise/ContactSales (retirados el 2026-08-16); `groq/compound` y
+// `groq/compound-mini` se retiraron el 2026-09-21 y se eliminan del fallback en
+// v4.0.49 (quien los tuviera guardados vería error al chatear). El default sigue
+// siendo openai/gpt-oss-20b (production, 131K).
 export const GROQ_FALLBACK: ModelOption[] = [
   { value: 'openai/gpt-oss-20b', label: 'GPT-OSS 20B (fast)', recommended: true },
   { value: 'openai/gpt-oss-120b', label: 'GPT-OSS 120B' },
-  { value: 'groq/compound', label: 'Compound (agéntico)' },
-  { value: 'groq/compound-mini', label: 'Compound Mini (agéntico)' },
+  { value: 'qwen/qwen3.8-27b', label: 'Qwen 3.8 27B' },
 ];
 
-// Prefijos de modelos Groq no-chat que se excluyen del selector (whisper, tts, guard…).
-export const GROQ_EXCLUDED = ['whisper', 'distil-whisper', 'playai', 'llama-guard', 'tts'];
+// Prefijos de modelos Groq no-chat que se excluyen del selector (whisper, tts,
+// guard…). v4.0.49: añadidos 'orpheus' (TTS), 'prompt-guard' y 'safeguard'
+// (moderación), que aparecen en el catálogo y no son de chat.
+export const GROQ_EXCLUDED = ['whisper', 'distil-whisper', 'playai', 'llama-guard', 'tts', 'orpheus', 'prompt-guard', 'safeguard'];
 
-// IDs de modelos Groq RETIRADOS que el catálogo dinámico aún pudiera devolver (la API
-// los sigue sirviendo hasta la fecha de deprecation). Se filtran por defensa en
-// profundidad para no ofrecer modelos que dejan de funcionar. Tras el 2026-08-16 la API
-// ya no los devuelve, por lo que esta lista puede borrarse sin riesgo.
-export const GROQ_DEPRECATED = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+// IDs de modelos Groq no utilizables que el catálogo dinámico pudiera devolver; se
+// filtran por defensa en profundidad para no ofrecer modelos que fallan al chatear.
+// - `llama-3.3-70b-versatile` / `llama-3.1-8b-instant`: retirados el 2026-08-16
+//   (solo Enterprise/ContactSales).
+// - `minimaxai/minimax-m2.7` (v4.0.49, verificado 2026-10-15): Enterprise/
+//   ContactSales → con una key del developer plan da error, igual que los Llama.
+export const GROQ_DEPRECATED = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'minimaxai/minimax-m2.7'];
 
 // Subcadenas de modelos Gemini no generativos (embeddings, visión, etc.) que se
 // excluyen del selector. Debe coincidir con el filtro del backend (#58).
@@ -251,8 +235,10 @@ const NIM_FEATURED_URL = 'https://assets.ngc.nvidia.com/products/api-catalog/fea
 // Auditoría v4.0.47: retirados 9 ids que NIM ya no sirve (`llama-3.3-nemotron-super-49b-v1`,
 // `nemotron-3-nano-30b-a3b`, `z-ai/glm-5.2`, `deepseek-v4-pro`, `deepseek-v4-flash`,
 // `stepfun-ai/step-3.7-flash`, `openai/gpt-oss-120b`, `meta/llama-3.3-70b-instruct`,
-// `mistral-medium-3.5-128b`); los DeepSeek V4 siguen vivos con sufijo de fecha
-// (`-0731`/`-0813`) y de GPT-OSS solo queda el 20B. NIM NO distingue gratis/pago
+// `mistral-medium-3.5-128b`); de GPT-OSS solo queda el 20B. Auditoría v4.0.49
+// (2026-10-15): `deepseek-ai/deepseek-v4-flash-0731` se sustituye por
+// `deepseek-ai/deepseek-v4.1-flash` (el feed NGC featured-models promociona la
+// v4.1 como versión vigente de DeepSeek). NIM NO distingue gratis/pago
 // en la API → sin flag free (el acceso free es un entitlement del programa Developer).
 // El catálogo DINÁMICO se habilita vía modelsEndpoint: '/api/nim/models' (proxy
 // en server/index.js). NIM_FALLBACK es red de seguridad mientras carga.
@@ -265,7 +251,7 @@ const NIM_FALLBACK: ModelOption[] = [
   { value: 'moonshotai/kimi-k3', label: 'Kimi K3' },
   { value: 'moonshotai/kimi-k2.6', label: 'Kimi K2.6' },
   { value: 'deepseek-ai/deepseek-v4-pro-0813', label: 'DeepSeek V4 Pro' },
-  { value: 'deepseek-ai/deepseek-v4-flash-0731', label: 'DeepSeek V4 Flash' },
+  { value: 'deepseek-ai/deepseek-v4.1-flash', label: 'DeepSeek V4.1 Flash' },
   { value: 'minimaxai/minimax-m3', label: 'Minimax M3' },
   { value: 'openai/gpt-oss-20b', label: 'GPT-OSS 20B' },
   { value: 'google/gemma-4-31b-it', label: 'Gemma 4 31B' },
@@ -286,31 +272,37 @@ const ZENMUX_FALLBACK: ModelOption[] = [
 ];
 
 // Fallback de OpenCode Zen mientras carga el catálogo dinámico o si la API falla.
-// Verificado contra el catálogo en vivo (GET /zen/v1/models, 2026-09-05): 70
-// modelos, de los cuales solo 8 llevan el sufijo "-free" más la excepción sin
-// sufijo `big-pickle`. Auditoría v4.0.47: retirado `laguna-s-2.1-free` (ya no lo
-// sirve la API). Token keyless `public`.
+// Verificado contra el catálogo en vivo (GET /zen/v1/models, 2026-10-14: 86
+// modelos; 10 free con sufijo "-free" más la excepción sin sufijo `big-pickle`).
+// Auditoría v4.0.49 (2026-10-15): retirados `deepseek-v4-flash-free` (sustituido
+// por `deepseek-v4.1-flash-free`), `mimo-v2.5-free` (→ `mimo-v2.6-flash-free`),
+// `ling-3.0-flash-fin-free` y `nemotron-3-ultra-free` (ya no existen). Entran
+// `step-5-preview-free` y `cat-jam-free`. Token keyless `public`.
 const OPENZEN_FALLBACK: ModelOption[] = [
   { value: 'big-pickle', label: 'Big Pickle (free)', free: true, recommended: true },
-  { value: 'deepseek-v4-flash-free', label: 'DeepSeek V4 Flash (free)', free: true },
-  { value: 'mimo-v2.5-free', label: 'MiMo-V2.5 (free)', free: true },
+  { value: 'deepseek-v4.1-flash-free', label: 'DeepSeek V4.1 Flash (free)', free: true },
+  { value: 'mimo-v2.6-flash-free', label: 'MiMo-V2.6 Flash (free)', free: true },
   { value: 'muse-spark-1.3-contributor-free', label: 'Muse Spark 1.3 (free)', free: true },
   { value: 'muse-spark-1.2-contributor-free', label: 'Muse Spark 1.2 (free)', free: true },
-  { value: 'ling-3.0-flash-fin-free', label: 'Ling 3.0 Flash Fin (free)', free: true },
-  { value: 'nemotron-3-ultra-free', label: 'Nemotron 3 Ultra (free)', free: true },
   { value: 'nemotron-3.5-lightning-free', label: 'Nemotron 3.5 Lightning (free)', free: true },
+  { value: 'step-5-preview-free', label: 'Step 5 Preview (free)', free: true },
+  { value: 'cat-jam-free', label: 'Cat Jam (free)', free: true },
 ];
 
-// Fallback de Cloudflare Workers AI — modelos @cf/ text-generation verificados hoy
-// vía la API oficial (GET .../ai/models/search, 2026-07-31). El catálogo DINÁMICO es la
-// fuente viva (proxy /api/cloudflare/models); este array es red de seguridad mientras
-// carga o si la API falla. Ordenado por precio ascendente (baratos primero = aptos para
-// el plan Free de 10 000 Neurons/día). EXCLUIDOS del plan Free (caros, requieren Paid):
-// @cf/moonshotai/kimi-k2.6, @cf/moonshotai/kimi-k2.7-code y @cf/zai-org/glm-5.2
-// (developers.cloudflare.com/workers-ai/platform/pricing/). El recommended Qwen3 30B
-// equilibra calidad y bajo consumo de Neurons (0.05/0.33 $/M tokens).
+// Fallback de Cloudflare Workers AI — modelos @cf/ text-generation verificados
+// contra la API oficial (GET .../ai/models/search, 2026-07-31) y la tarifa vigente
+// (developers.cloudflare.com/workers-ai/platform/pricing/, 2026-10-09). El catálogo
+// DINÁMICO es la fuente viva (proxy /api/cloudflare/models); este array es red de
+// seguridad mientras carga o si la API falla. Ordenado por precio ascendente (baratos
+// primero = aptos para el plan Free de 10 000 Neurons/día). EXCLUIDOS del plan Free
+// (caros, requieren Paid): @cf/moonshotai/kimi-k2.6, @cf/moonshotai/kimi-k2.7-code,
+// @cf/zai-org/glm-5.2, @cf/zai-org/glm-5.3[-flash] y @cf/deepseek-ai/deepseek-v4-*
+// (v4.0.49; ver CF_NOT_FREE). El recommended Qwen3 30B equilibra calidad y bajo
+// consumo de Neuronas (0.05/0.33 $/M tokens).
 const CLOUDFLARE_FALLBACK: ModelOption[] = [
   { value: '@cf/qwen/qwen3-30b-a3b-fp8', label: 'Qwen3 30B A3B', recommended: true },
+  { value: '@cf/qwen/qwen3.8-27b', label: 'Qwen 3.8 27B' },
+  { value: '@cf/zai-org/glm-4.7-flash', label: 'GLM 4.7 Flash' },
   { value: '@cf/meta/llama-3.2-3b-instruct', label: 'Llama 3.2 3B' },
   { value: '@cf/meta/llama-3.2-1b-instruct', label: 'Llama 3.2 1B' },
   { value: '@cf/meta/llama-3.1-8b-instruct-fp8', label: 'Llama 3.1 8B FP8' },
@@ -322,27 +314,28 @@ const CLOUDFLARE_FALLBACK: ModelOption[] = [
   { value: '@cf/nvidia/nemotron-3-120b-a12b', label: 'Nemotron 3 120B' },
 ];
 
-// Fallback de Ollama Cloud — modelos cloud verificados hoy vía la API oficial
-// (GET https://ollama.com/v1/models, 2026-09-05, 17 modelos). La API NO expone
+// Fallback de Ollama Cloud — modelos cloud verificados en vivo vía la API oficial
+// (GET https://ollama.com/v1/models, 2026-10-14, 18 modelos). La API NO expone
 // pricing ni flag free (el free es un entitlement del plan Free/Pro/Max por cuota),
 // así que marcamos todos como free: el tier Free llega a todos, limitado por cuota.
-// Auditoría v4.0.47: retirados `minimax-m2.5` y `kimi-k2.5` (ya no los sirve la
-// API); los DeepSeek V4 pasaron a sufijo de fecha (`:0813`/`:0731`).
-// IDs antiguos inexistentes corregidos (qwen3-coder:480b, devstral-*, ministral-*).
+// Auditoría v4.0.49 (2026-10-15): retirados `glm-5.1`, `qwen3.5:397b` y
+// `deepseek-v4-flash:0731`; `nemotron-nano:30b` era en realidad `nemotron-3-nano:30b`;
+// entran `glm-5.3`, `glm-5.3-flash`, `deepseek-v4.1-flash` y `mistral-large-4`.
 const OLLAMA_FALLBACK: ModelOption[] = [
   { value: 'kimi-k3', label: 'Kimi K3', free: true, recommended: true },
+  { value: 'glm-5.3', label: 'GLM 5.3', free: true },
+  { value: 'glm-5.3-flash', label: 'GLM 5.3 Flash', free: true },
   { value: 'glm-5.2', label: 'GLM 5.2', free: true },
-  { value: 'glm-5.1', label: 'GLM 5.1', free: true },
   { value: 'minimax-m3', label: 'MiniMax M3', free: true },
   { value: 'minimax-m2.7', label: 'MiniMax M2.7', free: true },
   { value: 'nemotron-3-ultra', label: 'Nemotron 3 Ultra', free: true },
   { value: 'nemotron-3-super', label: 'Nemotron 3 Super', free: true },
   { value: 'nemotron-3-nano:30b', label: 'Nemotron 3 Nano 30B', free: true },
   { value: 'deepseek-v4-pro:0813', label: 'DeepSeek V4 Pro', free: true },
-  { value: 'deepseek-v4-flash:0731', label: 'DeepSeek V4 Flash', free: true },
-  { value: 'qwen3.5:397b', label: 'Qwen 3.5 (397B)', free: true },
+  { value: 'deepseek-v4.1-flash', label: 'DeepSeek V4.1 Flash', free: true },
   { value: 'kimi-k2.7-code', label: 'Kimi K2.7 Code', free: true },
   { value: 'kimi-k2.6', label: 'Kimi K2.6', free: true },
+  { value: 'mistral-large-4', label: 'Mistral Large 4', free: true },
   { value: 'mistral-large-3:675b', label: 'Mistral Large 3', free: true },
   { value: 'gemma4:31b', label: 'Gemma 4 31B', free: true },
   { value: 'gpt-oss:120b', label: 'GPT-OSS 120B', free: true },
@@ -353,15 +346,20 @@ const OLLAMA_FALLBACK: ModelOption[] = [
 
 // Fallback de Kilo (api.kilo.ai/api/gateway) mientras carga el catálogo o si falla.
 // Pasarela OpenAI-compatible con catálogo PÚBLICO (GET /models no requiere key) que
-// distingue modelos gratuitos por el sufijo ":free" en el id. Estos son los 3 modelos
-// free verificados en vivo (2026-09-05: 17 free en el catálogo). Auditoría v4.0.47:
-// `inclusionai/ling-3.0-flash:free` (era el defaultModel) y `nex-agi/nex-n2-pro:free`
-// fueron RETIRADOS de Kilo; los Ling 3.0 Flash siguen vivos en las variantes
-// `-fin:free`/`-sante:free`. El selector marca 🆓 vía flag free.
+// distingue modelos gratuitos por el sufijo ":free" en el id. Auditoría v4.0.49
+// (2026-10-15, verificado en vivo: 11 free en el catálogo): retirados
+// `inclusionai/ling-3.0-flash-fin:free` (su base Ling ya no existe en Kilo) y
+// `stepfun/step-3.7-flash:free` (solo queda la base de pago). Entran
+// `stepfun/step-5-preview-free`, `nvidia/nemotron-3.5-lightning:free`,
+// `nvidia/nemotron-3-super-120b-a12b:free`, `poolside/laguna-xs-2.1:free` y
+// `thinkingmachines/inkling-small:free`. El selector marca 🆓 vía flag free.
 const KILO_FALLBACK: ModelOption[] = [
-  { value: 'inclusionai/ling-3.0-flash-fin:free', label: 'Ling 3.0 Flash Fin (free)', free: true, recommended: true },
+  { value: 'stepfun/step-5-preview-free', label: 'Step 5 Preview (free)', free: true, recommended: true },
   { value: 'poolside/laguna-s-2.1:free', label: 'Laguna S 2.1 (free)', free: true },
-  { value: 'stepfun/step-3.7-flash:free', label: 'Step 3.7 Flash (free)', free: true },
+  { value: 'poolside/laguna-xs-2.1:free', label: 'Laguna XS 2.1 (free)', free: true },
+  { value: 'nvidia/nemotron-3.5-lightning:free', label: 'Nemotron 3.5 Lightning (free)', free: true },
+  { value: 'nvidia/nemotron-3-super-120b-a12b:free', label: 'Nemotron 3 Super 120B (free)', free: true },
+  { value: 'thinkingmachines/inkling-small:free', label: 'Inkling Small (free)', free: true },
 ];
 
 // Fallback de BazaarLink (bazaarlink.ai/api/v1) mientras carga el catálogo dinámico o si falla.
@@ -378,9 +376,14 @@ const BAZAARLINK_FALLBACK: ModelOption[] = [
 
 // Fallback de QwenCloud (qwencloud.com / DashScope) mientras carga el catálogo dinámico o si falla.
 // Pasarela OpenAI-compatible. Acceso vía PROXY backend /api/qwencloud.
-// Modelos gratuitos de text & code confirmados en la web oficial de QwenCloud:
+// Modelos gratuitos de text & code confirmados en la web oficial de QwenCloud.
+// Auditoría v4.0.49 (2026-10-15): retirados `qwen-turbo`,
+// `qwen3-coder-480b-a35b-instruct` y `deepseek-v4-flash` (retirados el 2026-10-10);
+// entran `deepseek-v4.1-flash` y `qwen3.8-flash` (verificados en las fichas
+// oficiales de qwencloud.com/models).
 const QWENCLOUD_FALLBACK: ModelOption[] = [
   { value: 'qwen3.7-flash', label: 'Qwen 3.7 Flash (free)', free: true, recommended: true },
+  { value: 'qwen3.8-flash', label: 'Qwen 3.8 Flash (free)', free: true },
   { value: 'qwen-plus-character', label: 'Qwen Plus Character (free - instant)', free: true },
   { value: 'qwen-flash-character', label: 'Qwen Flash Character (free - instant)', free: true },
   { value: 'qwen3-coder-flash', label: 'Qwen 3 Coder Flash (free)', free: true },
@@ -390,9 +393,7 @@ const QWENCLOUD_FALLBACK: ModelOption[] = [
   { value: 'qwen3.6-flash', label: 'Qwen 3.6 Flash (free)', free: true },
   { value: 'qwen3.5-flash', label: 'Qwen 3.5 Flash (free)', free: true },
   { value: 'qwen-flash', label: 'Qwen Flash (free)', free: true },
-  { value: 'qwen-turbo', label: 'Qwen Turbo (free)', free: true },
-  { value: 'deepseek-v4-flash', label: 'DeepSeek V4 Flash (free)', free: true },
-  { value: 'qwen3-coder-480b-a35b-instruct', label: 'Qwen 3 Coder 480B (free)', free: true },
+  { value: 'deepseek-v4.1-flash', label: 'DeepSeek V4.1 Flash (free)', free: true },
 ];
 
 export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
@@ -599,7 +600,7 @@ export const PROVIDERS: Record<AIProviderType, ProviderDef> = {
     modelsEndpoint: '/api/kilo/models',
     modelsNeedKey: false, // el catálogo de Kilo es público (GET /models sin auth)
     staticModels: KILO_FALLBACK,
-    defaultModel: KILO_FALLBACK[0].value, // 'inclusionai/ling-3.0-flash-fin:free'
+    defaultModel: KILO_FALLBACK[0].value, // 'stepfun/step-5-preview-free'
     // La API key de Kilo es un JWT (HS256): empieza por "eyJ" (payload base64url).
     // Validación ligera en cliente (no es validación real de la clave).
     keyPlaceholder: 'eyJhbGciOi...',
@@ -891,14 +892,17 @@ export async function fetchModels(
       .map((m: { id: string }) => ({ value: m.id, label: m.id, free: true }));
   } else if (def.id === 'cloudflare') {
     // Cloudflare Workers AI: el proxy /api/cloudflare/models ya filtra task ===
-    // 'Text Generation' y excluye los 3 modelos no-Free (kimi-k2.6, kimi-k2.7-code,
-    // glm-5.2). Aquí re-aplicamos la exclusión no-Free por defensa en profundidad y
+    // 'Text Generation' y excluye los modelos no-Free (ver CF_NOT_FREE). Aquí
+    // re-aplicamos la exclusión no-Free por defensa en profundidad y
     // enriquecemos con etiquetas amigables (CLOUDFLARE_FALLBACK). Respuesta envoltorio
     // { result: [{ name, ... }] }. Orden: por precio input ascendente (baratos =
     // aptos para el plan Free de 10 000 Neurons/día); a igualdad, alfabético.
     // El plan Free no se distingue por modelo: marcamos free a los económicos que
     // mejor consumen la cuota diaria (heurística por id).
-    const CF_NOT_FREE = ['kimi-k2.6', 'kimi-k2.7-code', 'glm-5.2'];
+    // v4.0.49: la tarifa de CF amplió los modelos que exigen Workers Paid (ver
+    // developers.cloudflare.com/workers-ai/platform/pricing/, 2026-10-09).
+    // 'glm-5.3' cubre por substring también 'glm-5.3-flash'.
+    const CF_NOT_FREE = ['kimi-k2.6', 'kimi-k2.7-code', 'glm-5.2', 'glm-5.3', 'deepseek-v4-flash-0731', 'deepseek-v4-pro-0813'];
     const cfLabel = (id: string): string => {
       const hit = CLOUDFLARE_FALLBACK.find(m => m.value === id);
       return hit ? hit.label : id;

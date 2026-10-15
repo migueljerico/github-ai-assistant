@@ -5,8 +5,9 @@ import express from 'express';
 // El endpoint real llama a la REST API de Cloudflare con `fetch` (global):
 // GET /accounts/{account_id}/ai/models/search. Aquí mockeamos `fetch` para simular
 // la respuesta real ({ success, result: [{ id, name, description, task, properties }] })
-// y validar el shaping del proxy: filtro task==='Text Generation', exclusión de los 3
-// modelos no-Free (kimi-k2.6, kimi-k2.7-code, glm-5.2), orden por precio input asc,
+// y validar el shaping del proxy: filtro task==='Text Generation', exclusión de los
+// modelos no-Free (kimi-k2.6, kimi-k2.7-code, glm-5.2/glm-5.3, deepseek-v4-*; v4.0.49),
+// orden por precio input asc,
 // propagación de status. El test refleja el código en producción.
 //
 // (v3.65.0) Proxy de catálogo dinámico para Cloudflare Workers AI.
@@ -36,6 +37,8 @@ const cloudflareModelsPayload = {
     cfModel('@cf/moonshotai/kimi-k2.6', { price: [0.95, 4] }),             // no-Free
     cfModel('@cf/moonshotai/kimi-k2.7-code', { price: [0.95, 4] }),        // no-Free
     cfModel('@cf/zai-org/glm-5.2', { price: [1.4, 4.4] }),                 // no-Free
+    cfModel('@cf/zai-org/glm-5.3-flash', { price: [0.3, 1.2] }),           // no-Free (glm-5.3)
+    cfModel('@cf/deepseek-ai/deepseek-v4-pro-0813', { price: [3, 10] }),   // no-Free (deepseek-v4)
     cfModel('@cf/baai/bge-m3', { task: 'Text Embeddings' }),               // no-chat
     cfModel('@cf/pipecat-ai/smart-turn-v2', { task: 'Dumb Pipe' }),        // no-chat
   ],
@@ -76,7 +79,7 @@ const createTestApp = () => {
       }
       const payload = await upstream.json();
       const all = Array.isArray(payload?.result) ? payload.result : [];
-      const CF_NOT_FREE = ['kimi-k2.6', 'kimi-k2.7-code', 'glm-5.2'];
+      const CF_NOT_FREE = ['kimi-k2.6', 'kimi-k2.7-code', 'glm-5.2', 'glm-5.3', 'deepseek-v4-flash-0731', 'deepseek-v4-pro-0813'];
       const isFreeExcluded = (name) => {
         const low = String(name || '').toLowerCase();
         return CF_NOT_FREE.some(nf => low.includes(nf));
@@ -116,7 +119,7 @@ describe('GET /api/cloudflare/models — proxy de catálogo (v3.65.0)', () => {
   });
   afterEach(() => { vi.unstubAllGlobals(); });
 
-  it('devuelve { result: [...] } solo con Text Generation, sin los 3 no-Free, ordenados por precio input asc', async () => {
+  it('devuelve { result: [...] } solo con Text Generation, sin los no-Free, ordenados por precio input asc', async () => {
     fetchSpy.mockResolvedValue(mockCloudflareResponse(200, cloudflareModelsPayload));
 
     const res = await request(app)
@@ -130,10 +133,12 @@ describe('GET /api/cloudflare/models — proxy de catálogo (v3.65.0)', () => {
     // Se incluyen los modelos de chat aptos para Free.
     expect(names).toContain('@cf/qwen/qwen3-30b-a3b-fp8');
     expect(names).toContain('@cf/openai/gpt-oss-120b');
-    // Se excluyen los 3 modelos no-Free (requieren Workers Paid).
+    // Se excluyen los modelos no-Free (requieren Workers Paid).
     expect(names).not.toContain('@cf/moonshotai/kimi-k2.6');
     expect(names).not.toContain('@cf/moonshotai/kimi-k2.7-code');
     expect(names).not.toContain('@cf/zai-org/glm-5.2');
+    expect(names).not.toContain('@cf/zai-org/glm-5.3-flash');
+    expect(names).not.toContain('@cf/deepseek-ai/deepseek-v4-pro-0813');
     // Se excluyen modelos que no son de chat (otras tareas).
     expect(names).not.toContain('@cf/baai/bge-m3');
     expect(names).not.toContain('@cf/pipecat-ai/smart-turn-v2');

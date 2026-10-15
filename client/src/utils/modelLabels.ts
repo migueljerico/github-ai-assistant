@@ -6,25 +6,20 @@
  * devuelve el id tal cual, de modo que añadir modelos nuevos nunca rompe nada.
  */
 export const MODEL_LABELS: Record<string, string> = {
-  // ── Gemini / Google AI (catálogo fijo: 20 modelos a día de hoy) ──
+  // ── Gemini / Google AI (catálogo fijo: 15 modelos a día de hoy — v4.0.49) ──
   'gemini-2.5-flash': 'Gemini 2.5 Flash',
   'gemini-2.5-pro': 'Gemini 2.5 Pro',
+  'gemini-4-argon': 'Gemini 4 Argon',
   'gemini-3.8-flash': 'Gemini 3.8 Flash',
-  'gemini-3.7-flash': 'Gemini 3.7 Flash',
-  'gemini-3.5-flash': 'Gemini 3.5 Flash',
   'gemini-3.1-flash-lite': 'Gemini 3.1 Flash Lite',
-  'gemini-2.0-flash': 'Gemini 2.0 Flash',
   'gemma-4-31b-it': 'Gemma 4 31B',
-  'gemini-2.0-flash-lite': 'Gemini 2.0 Flash Lite',
   'gemma-4-26b-a4b-it': 'Gemma 4 26B A4B',
   'gemini-flash-latest': 'Gemini Flash Latest',
   'gemini-flash-lite-latest': 'Gemini Flash Lite Latest',
   'gemini-pro-latest': 'Gemini Pro Latest',
   'gemini-2.5-flash-lite': 'Gemini 2.5 Flash Lite',
-  'gemini-3-pro-preview': 'Gemini 3 Pro Preview',
   'gemini-3-flash-preview': 'Gemini 3 Flash Preview',
   'gemini-3.1-pro-preview': 'Gemini 3.1 Pro Preview',
-  'gemini-3.1-flash-lite-preview': 'Gemini 3.1 Flash Lite Preview',
   'gemini-3.5-flash-lite': 'Gemini 3.5 Flash Lite',
   'gemini-3.6-flash': 'Gemini 3.6 Flash',
   // ── Groq (catálogo dinámico + GROQ_FALLBACK vigente, 2026-08-01) ──
@@ -32,8 +27,6 @@ export const MODEL_LABELS: Record<string, string> = {
   // mapa en v3.65.1 (deprecation Groq 2026-08-16); el catálogo dinámico los filtra.
   'openai/gpt-oss-20b': 'GPT-OSS 20B (fast)',
   'openai/gpt-oss-120b': 'GPT-OSS 120B',
-  'groq/compound': 'Compound (agéntico)',
-  'groq/compound-mini': 'Compound Mini (agéntico)',
   'qwen/qwen3.8-27b': 'Qwen 3.8 27B',
   'qwen/qwen3.6-27b': 'Qwen 3.6 27B',
   // ── NVIDIA NIM (fallback verificado en vivo, 2026-09-05 — v4.0.47) ──
@@ -45,7 +38,7 @@ export const MODEL_LABELS: Record<string, string> = {
   'moonshotai/kimi-k3': 'Kimi K3',
   'moonshotai/kimi-k2.6': 'Kimi K2.6',
   'deepseek-ai/deepseek-v4-pro-0813': 'DeepSeek V4 Pro',
-  'deepseek-ai/deepseek-v4-flash-0731': 'DeepSeek V4 Flash',
+  'deepseek-ai/deepseek-v4.1-flash': 'DeepSeek V4.1 Flash',
   'minimaxai/minimax-m3': 'Minimax M3',
   'google/gemma-4-31b-it': 'Gemma 4 31B',
   'mistralai/mistral-large-2-instruct': 'Mistral Large 2',
@@ -57,22 +50,28 @@ export const MODEL_LABELS: Record<string, string> = {
   'inclusionai/ling-3.0-flash': 'Ling 3.0 Flash',
   'z-ai/glm-4.7-flash-free': 'GLM 4.7 Flash',
   'z-ai/glm-4.6v-flash-free': 'GLM 4.6V Flash',
-  // ── OpenRouter / Kilo (fallbacks free verificados en vivo, 2026-09-05 — v4.0.47) ──
+  // ── OpenRouter / Kilo (fallbacks free verificados en vivo, 2026-10-14 — v4.0.49) ──
   'google/gemma-4-26b-a4b-it:free': 'Gemma 4 26B A4B (free)',
   'google/gemma-4-31b-it:free': 'Gemma 4 31B (free)',
-  'z-ai/glm-5.2:free': 'GLM 5.2 (free)',
   'nvidia/nemotron-3-ultra-550b-a55b:free': 'Nemotron 3 Ultra (free)',
   'nvidia/nemotron-3-super-120b-a12b:free': 'Nemotron 3 Super (free)',
-  'minimax/minimax-m3:free': 'MiniMax M3 (free)',
-  'inclusionai/ling-3.0-flash-fin:free': 'Ling 3.0 Flash Fin (free)',
-  'inclusionai/ling-3.0-flash-sante:free': 'Ling 3.0 Flash Sante (free)',
+  'nvidia/nemotron-3.5-lightning:free': 'Nemotron 3.5 Lightning (free)',
+  'thinkingmachines/inkling:free': 'Inkling (free)',
+  'thinkingmachines/inkling-small:free': 'Inkling Small (free)',
   'poolside/laguna-s-2.1:free': 'Laguna S 2.1 (free)',
+  'poolside/laguna-xs-2.1:free': 'Laguna XS 2.1 (free)',
   'cohere/north-mini-code:free': 'North Mini Code (free)',
-  'stepfun/step-3.7-flash:free': 'Step 3.7 Flash (free)',
+  'stepfun/step-5-preview-free': 'Step 5 Preview (free)',
+  // ── OpenCode Zen (fallback free verificado en vivo, 2026-10-14 — v4.0.49) ──
+  'deepseek-v4.1-flash-free': 'DeepSeek V4.1 Flash (free)',
+  'mimo-v2.6-flash-free': 'MiMo-V2.6 Flash (free)',
+  'cat-jam-free': 'Cat Jam (free)',
   // ── Cloudflare Workers AI (catálogo @cf/, API oficial 2026-07-31) ──
   // Etiquetas para los modelos que aparecen en CLOUDFLARE_FALLBACK y/o en el
   // catálogo dinámico; los ids @cf/... sin etiqueta se muestran tal cual.
   '@cf/qwen/qwen3-30b-a3b-fp8': 'Qwen3 30B A3B',
+  '@cf/qwen/qwen3.8-27b': 'Qwen 3.8 27B',
+  '@cf/zai-org/glm-4.7-flash': 'GLM 4.7 Flash',
   '@cf/meta/llama-3.3-70b-instruct-fp8-fast': 'Llama 3.3 70B FP8',
   '@cf/meta/llama-3.2-3b-instruct': 'Llama 3.2 3B',
   '@cf/meta/llama-3.2-1b-instruct': 'Llama 3.2 1B',
@@ -96,9 +95,8 @@ export const MODEL_LABELS: Record<string, string> = {
   'qwen3.6-flash': 'Qwen 3.6 Flash',
   'qwen3.5-flash': 'Qwen 3.5 Flash',
   'qwen-flash': 'Qwen Flash',
-  'qwen-turbo': 'Qwen Turbo',
-  'deepseek-v4-flash': 'DeepSeek V4 Flash',
-  'qwen3-coder-480b-a35b-instruct': 'Qwen 3 Coder 480B',
+  'qwen3.8-flash': 'Qwen 3.8 Flash',
+  'deepseek-v4.1-flash': 'DeepSeek V4.1 Flash',
 };
 
 /** Devuelve la etiqueta amigable de un modelo, o su id si no hay etiqueta conocida. */

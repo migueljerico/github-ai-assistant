@@ -2,7 +2,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge" alt="Estado" />
-  <a href="https://github.com/migueljerico/github-ai-assistant/releases"><img src="https://img.shields.io/badge/Versión-v4.0.48-blue?style=for-the-badge" alt="Versión" /></a>
+  <a href="https://github.com/migueljerico/github-ai-assistant/releases"><img src="https://img.shields.io/badge/Versión-v4.0.49-blue?style=for-the-badge" alt="Versión" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge" alt="License" /></a>
   <a href="./e2e"><img src="https://img.shields.io/badge/Tested_with-Playwright-2EAD33?style=for-the-badge&logo=playwright&logoColor=white" alt="Tested with Playwright" /></a>
   <a href="https://github.com/migueljerico/github-ai-assistant/actions/workflows/ci.yml"><img src="https://github.com/migueljerico/github-ai-assistant/actions/workflows/ci.yml/badge.svg?style=for-the-badge" alt="CI & Coverage" /></a>
@@ -82,7 +82,7 @@ Todo bajo el principio:
 | ⏱️ Tiempo de desarrollo | 2 meses de desarrollo continuo |
 | ⚡ Latencia observada | ~400ms Groq / ~1.2s Gemini, variable según modelo y contexto |
 | 🛡️ Seguridad | Zero-Storage: credenciales solo en memoria React |
-| 🧪 Tests | 1.393 tests unitarios (1.325 cliente + 68 servidor) + 13 E2E (Playwright) |
+| 🧪 Tests | 1.404 tests unitarios (1.336 cliente + 68 servidor) + 13 E2E (Playwright) |
 | 🌐 i18n | 13 idiomas globales (ES, EN, ZH, HI, FR, AR, BN, PT, ID, UR, RU, DE, JA) con soporte RTL |
 | 🌍 Deploy | Google Cloud Run |
 | 📦 Stack | React + TypeScript + Express + Vite |
@@ -236,7 +236,7 @@ Ver detalle en ./docs/SEGURIDAD.md.
 
 El proyecto usa **Vitest**, **React Testing Library**, **Playwright**, **GitHub Actions** y **Codecov**.
 
-- **1.393 tests unitarios (1.325 cliente + 68 servidor)** + **13 tests E2E** con Playwright (5 specs)
+- **1.404 tests unitarios (1.336 cliente + 68 servidor)** + **13 tests E2E** con Playwright (5 specs)
 - Tests unitarios, integración y componentes
 - Tests del servidor
 - Tests E2E del flujo crítico en navegador real (auth → chat → acción confirmada), del toggle de tema, de i18n, de persistencia y de accesibilidad (foco visible `:focus-visible` + `prefers-reduced-motion`, WCAG 2.4.7/2.3.3)
@@ -307,6 +307,7 @@ Entornos agénticos que ejecutaron cambios directos en el repositorio (código, 
 
 | Entorno / Modelo base | Periodo | Aportación principal |
 |---|---|---|
+| **ZCode (DeepSeek V4.1 Flash Free)** | v4.0.49 (2026-10-15) | **v4.0.49:** auditoría de catálogos de los 11 proveedores (continuación de v4.0.47) con verificación en vivo de los endpoints públicos y las fuentes oficiales: Gemini 20→15 modelos operativos (fuera los 4 apagados y los 2 deprecados; entra el flagship `gemini-4-argon` con i18n en 13 idiomas), ids muertos fuera y vigentes dentro en Groq (`groq/compound` retirado el 21-sep), OpenRouter, OpenCode Zen, Kilo (nuevo default `stepfun/step-5-preview-free`), Ollama (18 modelos = catálogo vivo), NIM (`deepseek-v4.1-flash`, feed NGC) y QwenCloud (retiradas del 10-oct); Cloudflare con `CF_NOT_FREE` ampliada (glm-5.3[-flash], deepseek-v4-*) en cliente y servidor; Zenmux y BazaarLink verificados sin cambios. Suite: 1.404 tests en verde (1.336 cliente + 68 servidor), lint y build limpias. |
 | **ZCode (builtin:zai-start-plan/GLM-5.3-Flash)** | v4.0.48 (2026-09-06) | **v4.0.48:** fix doble — (1) preservación de la vista previa: `fetchRepoTreeRecursive` expone `binaryPaths` (blobs binarios del árbol completo, p. ej. `screenshots/*.png`) y `generateRepoDocs` los lista en el contexto con la REGLA CRÍTICA DE VISTA PREVIA ("solo eliminar referencias de imagen confirmadas como huérfanas"), para que actualizar la documentación ya no borre la galería de capturas ya publicada; (2) modelos de razonamiento: `max_tokens` del modo completo 8192→16384 (el think interno consume el presupuesto) y error pedagógico específico cuando el modelo agota el presupuesto razonando sin emitir contenido (streaming y no-streaming). Suite: 1.403 tests en verde (1.335 cliente + 68 servidor), lint y build limpias. |
 | **ZCode (builtin:zai-start-plan/GLM-5.3-Flash)** | v4.0.47 (2026-09-05) | **v4.0.47:** auditoría integral de los 11 proveedores de IA con la metodología del fix de OpenCode — verificación en vivo de los endpoints de chat/modelos y de los 9 proxies, y reconstrucción de los 7 fallbacks desactualizados: 4 defaultModel estaban muertos (OpenRouter `gpt-oss-20b:free`, Zenmux `deepseek-v4-flash-free`, Kilo `ling-3.0-flash:free`, BazaarLink `deepseek-v4-flash:free`) y NIM/Ollama/OpenZen acumulaban 13 ids retirados de sus APIs. Nuevos defaults verificados (Gemma 4 26B free en OpenRouter, Agnes 2.5 Flash en Zenmux, Ling 3.0 Flash Fin en Kilo, Qwen 3.7 Flash en BazaarLink) y `MODEL_LABELS` sincronizado. Suite: 1.393 tests en verde (1.325 cliente + 68 servidor), cobertura global 97,86% statements, lint y build limpias. |
 | **ZCode · Muse Spark 1.3** | v4.0.46 (2026-09-03) | **v4.0.46:** documentar con Muse Spark ya devuelve contenido — reasoning minimal en Responses evita que el think interno agote el presupuesto de salida (botón documentar repo sobre estudio-360, fallaba en ligera y completa). Verificado en vivo con tu repo. Suite: 1.392 tests en verde (1.324 cliente + 68 servidor), lint y build limpias. |
