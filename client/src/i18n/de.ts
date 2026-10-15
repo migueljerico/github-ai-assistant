@@ -151,6 +151,8 @@ export const de = {
   'provider.gemini.model.flash37Desc': 'Gemini 3.7 Flash · Hybrides Denken und modernste Geschwindigkeit · Neueste Generation',
   'provider.gemini.model.flash38': 'Gemini 3.8 Flash',
   'provider.gemini.model.flash38Desc': 'Gemini 3.8 Flash · Optimierte Leistung und extreme Geschwindigkeit · Neueste Generation',
+  'provider.gemini.model.argon4': 'Gemini 4 Argon',
+  'provider.gemini.model.argon4Desc': 'Flagship reasoning model · Unified 1M-token context · Top quality',
   'provider.groq.cardDesc': 'Ultra-fast · Very generous free tier',
   'provider.groq.signupLabel': 'Get free API key at console.groq.com →',
   'provider.openrouter.cardDesc': 'Gateway to 300+ models · free and paid (OpenAI, Claude, Llama…)',

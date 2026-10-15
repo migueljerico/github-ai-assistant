@@ -135,7 +135,7 @@ describe('AIProviderPanel — recuerda proveedor/modelo (#40)', () => {
 });
 
 describe('AIProviderPanel — catálogo fijo de Gemini (v3.24.0)', () => {
-  it('muestra los 20 modelos fijos sin hacer ningún fetch dinámico', () => {
+  it('muestra los 15 modelos fijos sin hacer ningún fetch dinámico', () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
 
@@ -146,27 +146,22 @@ describe('AIProviderPanel — catálogo fijo de Gemini (v3.24.0)', () => {
     expect(select).toBeInTheDocument();
 
     const values = Array.from(select.options).map(o => o.value);
-    // Los 20 modelos operativos del catálogo fijo a día de hoy.
+    // Los 15 modelos operativos del catálogo fijo a día de hoy (v4.0.49).
     expect(values).toEqual([
       'gemini-2.5-flash',
       'gemini-2.5-pro',
-      'gemini-2.0-flash',
-      'gemini-2.0-flash-lite',
+      'gemini-4-argon',
       'gemma-4-26b-a4b-it',
       'gemma-4-31b-it',
       'gemini-flash-latest',
       'gemini-flash-lite-latest',
       'gemini-pro-latest',
       'gemini-2.5-flash-lite',
-      'gemini-3-pro-preview',
       'gemini-3-flash-preview',
       'gemini-3.1-pro-preview',
-      'gemini-3.1-flash-lite-preview',
       'gemini-3.1-flash-lite',
-      'gemini-3.5-flash',
       'gemini-3.5-flash-lite',
       'gemini-3.6-flash',
-      'gemini-3.7-flash',
       'gemini-3.8-flash',
     ]);
 
@@ -261,7 +256,7 @@ describe('AIProviderPanel — Kilo (v3.58.0)', () => {
     expect(select.options.length).toBe(3);
   });
 
-  it('cae al fallback estático (3 modelos) si el catálogo dinámico falla', async () => {
+  it('cae al fallback estático (6 modelos) si el catálogo dinámico falla', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('sin red')));
 
     const { container } = renderPanel();
@@ -270,10 +265,10 @@ describe('AIProviderPanel — Kilo (v3.58.0)', () => {
     const select = container.querySelector('#kilo-model-select') as HTMLSelectElement;
     await waitFor(() => expect(select.disabled).toBe(false));
 
-    // El fallback KILO_FALLBACK tiene los mismos 3 modelos free
-    expect(select.options.length).toBe(3);
-    // v4.0.47: ling-3.0-flash:free fue retirado de Kilo; el default es la variante -fin
-    expect(select.value).toBe('inclusionai/ling-3.0-flash-fin:free');
+    // El fallback KILO_FALLBACK tiene los 6 modelos free verificados en vivo (v4.0.49)
+    expect(select.options.length).toBe(6);
+    // v4.0.49: ling-fin y step-3.7 retirados; el default pasa a Step 5 Preview
+    expect(select.value).toBe('stepfun/step-5-preview-free');
   });
 
   it('valida prefijo de clave JWT (eyJ)', () => {
@@ -404,8 +399,8 @@ describe('AIProviderPanel — interacción de teclado y visibilidad de clave', (
   });
 });
 
-describe('AIProviderPanel — Gemini con Gemini 3.7 y 3.8 Flash', () => {
-  it('renderiza el selector de Gemini con 20 modelos y permite seleccionar Gemini 3.8 Flash', () => {
+describe('AIProviderPanel — Gemini con Gemini 4 Argon y 3.8 Flash', () => {
+  it('renderiza el selector de Gemini con 15 modelos y permite seleccionar Gemini 4 Argon', () => {
     const { container } = renderPanel();
     selectProvider(container, 'gemini');
 
@@ -413,13 +408,14 @@ describe('AIProviderPanel — Gemini con Gemini 3.7 y 3.8 Flash', () => {
     expect(select).toBeInTheDocument();
 
     const options = Array.from(select.options).map(o => o.value);
+    expect(options).toContain('gemini-4-argon');
     expect(options).toContain('gemini-3.8-flash');
-    expect(options).toContain('gemini-3.7-flash');
     expect(options).toContain('gemini-2.5-flash');
-    expect(options.length).toBe(20);
+    expect(options).not.toContain('gemini-3.7-flash');
+    expect(options.length).toBe(15);
 
-    fireEvent.change(select, { target: { value: 'gemini-3.8-flash' } });
-    expect(select.value).toBe('gemini-3.8-flash');
+    fireEvent.change(select, { target: { value: 'gemini-4-argon' } });
+    expect(select.value).toBe('gemini-4-argon');
   });
 });
 

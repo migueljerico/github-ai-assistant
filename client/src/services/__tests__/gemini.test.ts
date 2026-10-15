@@ -2689,7 +2689,7 @@ describe('OpenCode Zen — enrutado a /responses (v4.0.45)', () => {
       'sys',
       'openzen',
       'key',
-      'deepseek-v4-flash-free',
+      'deepseek-v4.1-flash-free',
       'chat',
     );
 
@@ -2787,7 +2787,7 @@ describe('OpenCode Zen — enrutado a /responses (v4.0.45)', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const res = await validateProviderKey('openzen', 'key', 'deepseek-v4-flash-free');
+    const res = await validateProviderKey('openzen', 'key', 'deepseek-v4.1-flash-free');
     expect(res).toEqual({ valid: true });
     expect(fetchMock.mock.calls[0][0]).toBe('/api/openzen');
   });
@@ -2917,7 +2917,7 @@ describe('OpenCode Zen responses — reasoning effort minimal (v4.0.46)', () => 
 
     await callAI(
       [{ role: 'user', content: 'Hola' }], 'sys', 'openzen', 'key',
-      'deepseek-v4-flash-free', 'chat',
+      'deepseek-v4.1-flash-free', 'chat',
     );
 
     const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);

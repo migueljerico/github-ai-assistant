@@ -792,8 +792,8 @@ app.post('/api/cloudflare', cloudflareLimiter, validateChatBody, async (req, res
 //
 // Normaliza server-side (centra el conocimiento de CF aquí, como hace Gemini):
 //   • filtra a modelos de chat (task.name === 'Text Generation'),
-//   • excluye los 3 modelos NO disponibles en el plan Free
-//     (kimi-k2.6, kimi-k2.7-code, glm-5.2) — developers.cloudflare.com/.../pricing/,
+//   • excluye los modelos NO disponibles en el plan Free — tarifa 2026-10-09:
+//     kimi-k2.6, kimi-k2.7-code, glm-5.2, glm-5.3[-flash] y deepseek-v4-* (v4.0.49),
 //   • ordena por precio input ascendente (baratos = aptos para 10 000 Neurons/día),
 //   • devuelve { result: [{ name, description? }] } — la forma que fetchModels parsea.
 // Si el esquema upstream cambia o el parseo queda vacío, el cliente degrada al
@@ -828,8 +828,9 @@ app.get('/api/cloudflare/models', cloudflareLimiter, async (req, res) => {
 
     const payload = await upstream.json();
     const all = Array.isArray(payload?.result) ? payload.result : [];
-    // Modelos excluidos del plan Free (requieren Workers Paid).
-    const CF_NOT_FREE = ['kimi-k2.6', 'kimi-k2.7-code', 'glm-5.2'];
+    // Modelos excluidos del plan Free (requieren Workers Paid; tarifa 2026-10-09).
+    // 'glm-5.3' cubre por substring también 'glm-5.3-flash'.
+    const CF_NOT_FREE = ['kimi-k2.6', 'kimi-k2.7-code', 'glm-5.2', 'glm-5.3', 'deepseek-v4-flash-0731', 'deepseek-v4-pro-0813'];
     const isFreeExcluded = (name) => {
       const low = String(name || '').toLowerCase();
       return CF_NOT_FREE.some(nf => low.includes(nf));

@@ -32,8 +32,13 @@ describe('providers — registro', () => {
     expect(def.staticModels.some(m => m.value === def.defaultModel)).toBe(true);
     expect(def.defaultModel).toBe('qwen3.7-flash');
     expect(def.staticModels.some(m => m.value === 'qwen-plus-character')).toBe(true);
+    // v4.0.49: retirados qwen-turbo, qwen3-coder-480b-a35b-instruct y deepseek-v4-flash;
+    // entran qwen3.8-flash y deepseek-v4.1-flash (verificados en qwencloud.com/models)
+    expect(def.staticModels.some(m => m.value === 'qwen3.8-flash')).toBe(true);
+    expect(def.staticModels.some(m => m.value === 'deepseek-v4.1-flash')).toBe(true);
+    expect(def.staticModels.some(m => m.value === 'qwen-turbo')).toBe(false);
     expect(def.staticModels.every(m => m.free === true)).toBe(true);
-    expect(def.staticModels.length).toBe(13);
+    expect(def.staticModels.length).toBe(12);
   });
 
   it('gemini usa proxy; groq, openrouter y zenmux son openai-compatible con endpoint directo; nvidia, openzen y cloudflare usan proxy backend por CORS', () => {
@@ -63,16 +68,19 @@ describe('providers — registro', () => {
     expect(PROVIDERS.cloudflare.modelsNeedKey).toBe(true);
   });
 
-  it('gemini incluye gemini-3-flash-preview, gemini-3.7-flash y gemini-3.8-flash en staticModels', () => {
+  it('gemini incluye el flagship gemini-4-argon y gemini-3.8-flash; retirados 3.7/3.5 (v4.0.49)', () => {
     expect(PROVIDERS.gemini.staticModels.some(m => m.value === 'gemini-3-flash-preview')).toBe(true);
-    const m37 = PROVIDERS.gemini.staticModels.find(m => m.value === 'gemini-3.7-flash');
-    expect(m37).toBeDefined();
-    expect(m37?.label).toBe('provider.gemini.model.flash37');
-    expect(m37?.description).toBe('provider.gemini.model.flash37Desc');
+    const m4 = PROVIDERS.gemini.staticModels.find(m => m.value === 'gemini-4-argon');
+    expect(m4).toBeDefined();
+    expect(m4?.label).toBe('provider.gemini.model.argon4');
+    expect(m4?.description).toBe('provider.gemini.model.argon4Desc');
     const m38 = PROVIDERS.gemini.staticModels.find(m => m.value === 'gemini-3.8-flash');
     expect(m38).toBeDefined();
     expect(m38?.label).toBe('provider.gemini.model.flash38');
     expect(m38?.description).toBe('provider.gemini.model.flash38Desc');
+    // Deprecados el 2026-10-08 (redirigen a 3.6/3.8): fuera del catálogo
+    expect(PROVIDERS.gemini.staticModels.some(m => m.value === 'gemini-3.7-flash')).toBe(false);
+    expect(PROVIDERS.gemini.staticModels.some(m => m.value === 'gemini-3.5-flash')).toBe(false);
   });
 
   it('kilo: openai-compatible vía proxy backend /api/kilo (sin CORS upstream), catálogo público, modelos free con sufijo :free', () => {
@@ -85,31 +93,35 @@ describe('providers — registro', () => {
     expect(def.modelsNeedKey).toBe(false);
     // Default dentro de staticModels
     expect(def.staticModels.some(m => m.value === def.defaultModel)).toBe(true);
-    // v4.0.47: ling-3.0-flash:free fue retirado de Kilo; la variante viva es -fin:free
-    expect(def.defaultModel).toBe('inclusionai/ling-3.0-flash-fin:free');
+    // v4.0.49: ling-3.0-flash-fin:free y step-3.7-flash:free retirados de Kilo;
+    // el default pasa a Step 5 Preview (free, verificado en vivo 2026-10-14)
+    expect(def.defaultModel).toBe('stepfun/step-5-preview-free');
     // La API key de Kilo es un JWT (HS256): empieza por "eyJ"
     expect(def.keyPrefix).toBe('eyJ');
-    // Los 3 modelos free del fallback llevan flag free (render 🆓)
+    // Los 6 modelos free del fallback llevan flag free (render 🆓)
     expect(def.staticModels.every(m => m.free === true)).toBe(true);
-    expect(def.staticModels.length).toBe(3);
+    expect(def.staticModels.length).toBe(6);
   });
 
-  it('openzen: fallback verificado en vivo 2026-09-05 — muse-spark 1.2/1.3 y ling-3.0-flash-fin-free; retirados laguna-s-2.1-free, hy3-free y ling-3.0-tiny-free (v4.0.47)', () => {
+  it('openzen: fallback verificado en vivo 2026-10-14 — deepseek-v4.1/mimo-v2.6/step-5/cat-jam; retirados los 4 ids muertos (v4.0.49)', () => {
     const def = PROVIDERS.openzen;
     // big-pickle es la excepción sin sufijo -free
     expect(def.staticModels.some(m => m.value === 'big-pickle')).toBe(true);
-    // Muse Spark (familia /responses): antes ni siquiera aparecían en el fallback
+    // Muse Spark (familia /responses): verificados en vivo
     expect(def.staticModels.some(m => m.value === 'muse-spark-1.3-contributor-free')).toBe(true);
     expect(def.staticModels.find(m => m.value === 'muse-spark-1.3-contributor-free')?.free).toBe(true);
     expect(def.staticModels.some(m => m.value === 'muse-spark-1.2-contributor-free')).toBe(true);
     expect(def.staticModels.find(m => m.value === 'muse-spark-1.2-contributor-free')?.free).toBe(true);
-    // En el catálogo en vivo (GET /zen/v1/models, 70 modelos)
-    expect(def.staticModels.some(m => m.value === 'ling-3.0-flash-fin-free')).toBe(true);
-    expect(def.staticModels.find(m => m.value === 'ling-3.0-flash-fin-free')?.free).toBe(true);
-    // Retirados: la API ya no los sirve
-    expect(def.staticModels.some(m => m.value === 'hy3-free')).toBe(false);
-    expect(def.staticModels.some(m => m.value === 'ling-3.0-tiny-free')).toBe(false);
-    // v4.0.47: laguna-s-2.1-free ya no lo sirve la API
+    // Sustitutos nuevos en el catálogo en vivo (GET /zen/v1/models, 86 modelos)
+    expect(def.staticModels.some(m => m.value === 'deepseek-v4.1-flash-free')).toBe(true);
+    expect(def.staticModels.some(m => m.value === 'mimo-v2.6-flash-free')).toBe(true);
+    expect(def.staticModels.some(m => m.value === 'step-5-preview-free')).toBe(true);
+    expect(def.staticModels.some(m => m.value === 'cat-jam-free')).toBe(true);
+    // Retirados: la API ya no los sirve (v4.0.49)
+    expect(def.staticModels.some(m => m.value === 'deepseek-v4-flash-free')).toBe(false);
+    expect(def.staticModels.some(m => m.value === 'mimo-v2.5-free')).toBe(false);
+    expect(def.staticModels.some(m => m.value === 'ling-3.0-flash-fin-free')).toBe(false);
+    expect(def.staticModels.some(m => m.value === 'nemotron-3-ultra-free')).toBe(false);
     expect(def.staticModels.some(m => m.value === 'laguna-s-2.1-free')).toBe(false);
     // Total: 8 modelos en el fallback
     expect(def.staticModels.length).toBe(8);
@@ -117,13 +129,15 @@ describe('providers — registro', () => {
     expect(def.staticModels.every(m => m.free === true)).toBe(true);
   });
 
-  it('nvidia NIM: fallback verificado en vivo 2026-09-05 — DeepSeek V4 con sufijo de fecha; retirados 9 ids muertos (v4.0.47)', () => {
+  it('nvidia NIM: fallback verificado — DeepSeek V4.1 Flash (NGC featured); retirados 9 ids muertos (v4.0.47/v4.0.49)', () => {
     const def = PROVIDERS.nvidia;
     // Nemotron 3 Ultra: default, confirmado en integrate.api.nvidia.com/v1/models
     expect(def.staticModels.some(m => m.value === 'nvidia/nemotron-3-ultra-550b-a55b')).toBe(true);
-    // DeepSeek V4: los ids sin fecha fueron retirados; las variantes datadas siguen vivas
+    // DeepSeek V4: los ids sin fecha fueron retirados; v4.0.49 sustituye la variante
+    // flash 0731 por deepseek-v4.1-flash (feed NGC featured-models)
     expect(def.staticModels.some(m => m.value === 'deepseek-ai/deepseek-v4-pro-0813')).toBe(true);
-    expect(def.staticModels.some(m => m.value === 'deepseek-ai/deepseek-v4-flash-0731')).toBe(true);
+    expect(def.staticModels.some(m => m.value === 'deepseek-ai/deepseek-v4.1-flash')).toBe(true);
+    expect(def.staticModels.some(m => m.value === 'deepseek-ai/deepseek-v4-flash-0731')).toBe(false);
     expect(def.staticModels.some(m => m.value === 'deepseek-ai/deepseek-v4-pro')).toBe(false);
     expect(def.staticModels.some(m => m.value === 'deepseek-ai/deepseek-v4-flash')).toBe(false);
     // Nemotron 3.5 Lightning y Muse Glimmer: siguen en la API real
@@ -143,27 +157,41 @@ describe('providers — registro', () => {
     expect(def.staticModels.some(m => m.value === 'qwen/qwen3-next-80b-a3b-instruct')).toBe(false);
   });
 
-  it('auditoría de catálogos en vivo (v4.0.47): defaults y fallbacks sin modelos retirados de las APIs', () => {
-    // OpenRouter: gpt-oss-20b:free (el default anterior) y ling-3.0-flash:free fueron
-    // retirados de openrouter.ai (verificación en vivo 2026-09-05: 19 free, ninguno gpt-oss).
-    // El default pasa a Gemma 4 26B, el mismo que elige pickDefaultModel sobre el
-    // catálogo dinámico actual (RELIABLE_MODEL_PREFS: ya no hay gpt-oss free → 'gemma').
+  it('auditoría de catálogos en vivo (v4.0.49): defaults y fallbacks sin modelos retirados de las APIs', () => {
+    // OpenRouter: gpt-oss-20b:free y ling-3.0-flash:free fueron retirados (2026-09-05);
+    // en v4.0.49 caen también glm-5.2:free, minimax-m3:free y ling-3.0-flash-fin:free
+    // (verificación en vivo 2026-10-14: 14 free, sin variantes :free de esos modelos).
+    // El default sigue en Gemma 4 26B, el mismo que elige pickDefaultModel sobre el
+    // catálogo dinámico actual (RELIABLE_MODEL_PREFS: no hay gpt-oss free → 'gemma').
     expect(PROVIDERS.openrouter.defaultModel).toBe('google/gemma-4-26b-a4b-it:free');
     const orValues = PROVIDERS.openrouter.staticModels.map(m => m.value);
     expect(orValues).not.toContain('openai/gpt-oss-20b:free');
     expect(orValues).not.toContain('inclusionai/ling-3.0-flash:free');
+    expect(orValues).not.toContain('z-ai/glm-5.2:free');
+    expect(orValues).not.toContain('minimax/minimax-m3:free');
+    expect(orValues).not.toContain('inclusionai/ling-3.0-flash-fin:free');
+    expect(orValues).toContain('thinkingmachines/inkling:free');
+    expect(orValues).toContain('nvidia/nemotron-3.5-lightning:free');
+    expect(orValues).toContain('poolside/laguna-xs-2.1:free');
     // Zenmux: deepseek-v4-flash-free (default anterior) y agnes-2.0-flash retirados;
     // el DeepSeek V4 Flash sigue en Zenmux pero de pago (pricing 0.66 $/M).
     expect(PROVIDERS.zenmux.defaultModel).toBe('sapiens-ai/agnes-2.5-flash');
     const zmValues = PROVIDERS.zenmux.staticModels.map(m => m.value);
     expect(zmValues).not.toContain('deepseek/deepseek-v4-flash-free');
     expect(zmValues).not.toContain('sapiens-ai/agnes-2.0-flash');
-    // Ollama: minimax-m2.5 y kimi-k2.5 retirados de ollama.com; DeepSeek V4 con sufijo de fecha.
+    // Ollama (v4.0.49, verificado en vivo 2026-10-14: 18 modelos): glm-5.1, qwen3.5:397b
+    // y deepseek-v4-flash:0731 retirados; entran glm-5.3[-flash], mistral-large-4 y
+    // deepseek-v4.1-flash.
     const olValues = PROVIDERS.ollama.staticModels.map(m => m.value);
     expect(olValues).not.toContain('minimax-m2.5');
     expect(olValues).not.toContain('kimi-k2.5');
+    expect(olValues).not.toContain('glm-5.1');
+    expect(olValues).not.toContain('qwen3.5:397b');
+    expect(olValues).not.toContain('deepseek-v4-flash:0731');
     expect(olValues).toContain('deepseek-v4-pro:0813');
-    expect(olValues).toContain('deepseek-v4-flash:0731');
+    expect(olValues).toContain('deepseek-v4.1-flash');
+    expect(olValues).toContain('glm-5.3');
+    expect(olValues).toContain('mistral-large-4');
     // BazaarLink: deepseek/deepseek-v4-flash:free retirado (el modelo sigue, de pago y sin prefijo).
     const blValues = PROVIDERS.bazaarlink.staticModels.map(m => m.value);
     expect(blValues).not.toContain('deepseek/deepseek-v4-flash:free');
@@ -192,10 +220,10 @@ describe('providers — registro', () => {
     expect(isResponsesModel(def, 'grok-4.5')).toBe(true);
     expect(isResponsesModel(def, 'grok-build-0.1')).toBe(true);
     // Chat clásico: resto de familias
-    expect(isResponsesModel(def, 'deepseek-v4-flash-free')).toBe(false);
+    expect(isResponsesModel(def, 'deepseek-v4.1-flash-free')).toBe(false);
     expect(isResponsesModel(def, 'big-pickle')).toBe(false);
-    expect(isResponsesModel(def, 'mimo-v2.5-free')).toBe(false);
-    expect(isResponsesModel(def, 'nemotron-3-ultra-free')).toBe(false);
+    expect(isResponsesModel(def, 'mimo-v2.6-flash-free')).toBe(false);
+    expect(isResponsesModel(def, 'cat-jam-free')).toBe(false);
     expect(isResponsesModel(def, '')).toBe(false);
     // Sin responsesEndpoint configurado: nunca enruta (p. ej. Groq)
     expect(isResponsesModel(PROVIDERS.groq, 'gpt-oss-20b')).toBe(false);
@@ -321,28 +349,23 @@ describe('providers — fetchModels', () => {
 
     expect(await fetchModels(PROVIDERS.gemini, 'AIzaSy_test')).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
-    // El catálogo fijo tiene los 20 modelos operativos a día de hoy.
+    // El catálogo fijo tiene los 15 modelos operativos a día de hoy (v4.0.49).
     const values = PROVIDERS.gemini.staticModels.map(m => m.value);
     expect(values).toEqual([
       'gemini-2.5-flash',
       'gemini-2.5-pro',
-      'gemini-2.0-flash',
-      'gemini-2.0-flash-lite',
+      'gemini-4-argon',
       'gemma-4-26b-a4b-it',
       'gemma-4-31b-it',
       'gemini-flash-latest',
       'gemini-flash-lite-latest',
       'gemini-pro-latest',
       'gemini-2.5-flash-lite',
-      'gemini-3-pro-preview',
       'gemini-3-flash-preview',
       'gemini-3.1-pro-preview',
-      'gemini-3.1-flash-lite-preview',
       'gemini-3.1-flash-lite',
-      'gemini-3.5-flash',
       'gemini-3.5-flash-lite',
       'gemini-3.6-flash',
-      'gemini-3.7-flash',
       'gemini-3.8-flash',
     ]);
   });
@@ -405,13 +428,15 @@ describe('providers — fetchModels', () => {
     expect(await fetchModels(PROVIDERS.nvidia, undefined)).toBeNull();
   });
 
-  it('nvidia NIM: fallback estático tiene 13 modelos verificados en vivo (v4.0.47)', () => {
+  it('nvidia NIM: fallback estático tiene 13 modelos verificados (v4.0.47/v4.0.49)', () => {
     // El NIM_FALLBACK es la red de seguridad cuando el catálogo dinámico no está disponible.
     const values = PROVIDERS.nvidia.staticModels.map(m => m.value);
     expect(values).toContain('nvidia/nemotron-3-ultra-550b-a55b');
-    // v4.0.47: DeepSeek V4 con sufijo de fecha y Kimi K3 (ids vivos en la API real)
+    // v4.0.47: DeepSeek V4 con sufijo de fecha y Kimi K3 (ids vivos en la API real);
+    // v4.0.49: la variante flash 0731 se sustituye por deepseek-v4.1-flash (NGC featured)
     expect(values).toContain('deepseek-ai/deepseek-v4-pro-0813');
-    expect(values).toContain('deepseek-ai/deepseek-v4-flash-0731');
+    expect(values).toContain('deepseek-ai/deepseek-v4.1-flash');
+    expect(values).not.toContain('deepseek-ai/deepseek-v4-flash-0731');
     expect(values).toContain('moonshotai/kimi-k3');
     // Nuevos (2026-08-12), confirmados también en la verificación de 2026-09-05
     expect(values).toContain('nvidia/nemotron-3.5-lightning-30b-a3b');
@@ -451,14 +476,13 @@ describe('providers — fetchModels', () => {
       json: async () => ({
         data: [
           { id: 'big-pickle', object: 'model' },
-          { id: 'mimo-v2.5-free', object: 'model' },
+          { id: 'mimo-v2.6-flash-free', object: 'model' },
           { id: 'muse-spark-1.3-contributor-free', object: 'model' },
           { id: 'muse-spark-1.2-contributor-free', object: 'model' },
-          { id: 'laguna-s-2.1-free', object: 'model' },
-          { id: 'ling-3.0-flash-fin-free', object: 'model' },
-          { id: 'nemotron-3-ultra-free', object: 'model' },
+          { id: 'step-5-preview-free', object: 'model' },
+          { id: 'cat-jam-free', object: 'model' },
           { id: 'nemotron-3.5-lightning-free', object: 'model' },
-          { id: 'deepseek-v4-flash-free', object: 'model' },
+          { id: 'deepseek-v4.1-flash-free', object: 'model' },
           { id: 'deepseek-v4-pro', object: 'model' },   // pago — excluido
           { id: 'gpt-5.5', object: 'model' },            // pago — excluido
           { id: 'kimi-k3', object: 'model' },            // pago — excluido
@@ -474,16 +498,17 @@ describe('providers — fetchModels', () => {
     expect(ids).toContain('big-pickle');
     expect(ids).toContain('muse-spark-1.3-contributor-free');
     expect(ids).toContain('muse-spark-1.2-contributor-free');
-    expect(ids).toContain('ling-3.0-flash-fin-free');
+    expect(ids).toContain('mimo-v2.6-flash-free');
     expect(ids).toContain('nemotron-3.5-lightning-free');
-    expect(ids).toContain('deepseek-v4-flash-free');
+    expect(ids).toContain('deepseek-v4.1-flash-free');
+    expect(ids).toContain('step-5-preview-free');
     // Modelos de pago excluidos
     expect(ids).not.toContain('deepseek-v4-pro');
     expect(ids).not.toContain('gpt-5.5');
     expect(ids).not.toContain('kimi-k3');
     // Todos marcados como free
     expect(list!.every(m => m.free)).toBe(true);
-    // OPENZEN_FALLBACK es la red de seguridad (8 modelos desde v4.0.47, sin laguna-s-2.1-free)
+    // OPENZEN_FALLBACK es la red de seguridad (8 modelos desde v4.0.49, sin laguna-s-2.1-free)
     expect(PROVIDERS.openzen.staticModels.length).toBe(8);
     expect(PROVIDERS.openzen.staticModels.every(m => m.free)).toBe(true);
     // Sin key: devuelve null (modelsNeedKey: true)
@@ -500,11 +525,14 @@ describe('providers — fetchModels', () => {
   });
 
   it('cloudflare: catálogo estático (CLOUDFLARE_FALLBACK) sin modelos no-Free y recommended Qwen3', () => {
-    // Catálogo estático = red de seguridad. Los 3 modelos no-Free (kimi-k2.6,
-    // kimi-k2.7-code, glm-5.2) están excluidos; el recommended es Qwen3 30B.
+    // Catálogo estático = red de seguridad. Los modelos no-Free (kimi-k2.6,
+    // kimi-k2.7-code, glm-5.2/glm-5.3, deepseek-v4-*) están excluidos; v4.0.49 añade
+    // Qwen 3.8 27B y GLM 4.7 Flash (tarifa 2026-10-09); el recommended es Qwen3 30B.
     const values = PROVIDERS.cloudflare.staticModels.map(m => m.value);
     expect(values).toEqual([
       '@cf/qwen/qwen3-30b-a3b-fp8',
+      '@cf/qwen/qwen3.8-27b',
+      '@cf/zai-org/glm-4.7-flash',
       '@cf/meta/llama-3.2-3b-instruct',
       '@cf/meta/llama-3.2-1b-instruct',
       '@cf/meta/llama-3.1-8b-instruct-fp8',
@@ -518,6 +546,8 @@ describe('providers — fetchModels', () => {
     expect(values).not.toContain('@cf/moonshotai/kimi-k2.7-code');
     expect(values).not.toContain('@cf/moonshotai/kimi-k2.6');
     expect(values).not.toContain('@cf/zai-org/glm-5.2');
+    expect(values).not.toContain('@cf/zai-org/glm-5.3-flash');
+    expect(values).not.toContain('@cf/deepseek-ai/deepseek-v4-pro-0813');
     expect(PROVIDERS.cloudflare.staticModels.find(m => m.value === '@cf/qwen/qwen3-30b-a3b-fp8')?.recommended).toBe(true);
     expect(PROVIDERS.cloudflare.defaultModel).toBe('@cf/qwen/qwen3-30b-a3b-fp8');
   });
@@ -713,8 +743,8 @@ describe('providers — fetchModels', () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ data: [
-        { id: 'ling-3.0-flash-free' },
-        { id: 'nemotron-3-ultra-free' },
+        { id: 'step-5-preview-free' },
+        { id: 'cat-jam-free' },
         { id: 'paid-model' }, // sin -free → excluido
       ] }),
     });
@@ -722,7 +752,7 @@ describe('providers — fetchModels', () => {
 
     const list = await fetchModels(def, 'sk-test-key');
     const ids = list!.map(m => m.value);
-    expect(ids).toEqual(['ling-3.0-flash-free', 'nemotron-3-ultra-free']);
+    expect(ids).toEqual(['cat-jam-free', 'step-5-preview-free']);
     expect(list!.every(m => m.free === true)).toBe(true);
   });
 

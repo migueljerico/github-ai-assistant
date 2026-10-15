@@ -41,7 +41,7 @@ describe('AIProviderContext', () => {
 
     // Primero conectar
     act(() => {
-      result.current.connect('gemini', 'gemini-key', 'gemini-2.0-flash');
+      result.current.connect('gemini', 'gemini-key', 'gemini-4-argon');
     });
 
     expect(result.current.isConnected).toBe(true);
@@ -71,12 +71,12 @@ describe('AIProviderContext', () => {
 
     // Cambiar a Gemini
     act(() => {
-      result.current.connect('gemini', 'gemini-key', 'gemini-2.0-flash');
+      result.current.connect('gemini', 'gemini-key', 'gemini-4-argon');
     });
 
     expect(result.current.provider).toBe('gemini');
     expect(result.current.apiKey).toBe('gemini-key');
-    expect(result.current.model).toBe('gemini-2.0-flash');
+    expect(result.current.model).toBe('gemini-4-argon');
   });
 
   it('al conectar recuerda proveedor+modelo en sessionStorage (no la key) — #40', () => {

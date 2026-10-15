@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.49] — 2026-10-15
+
+> **Auditoría de catálogos de los 11 proveedores de IA (continuación de v4.0.47): verificación en vivo de los endpoints públicos y de las fuentes oficiales — retiradas 24 entradas muertas/deprecadas de 8 catálogos, añadidas 23 vigentes verificadas y ampliada la lista Cloudflare no-Free.**
+> - **Gemini (catálogo fijo 20→15):** fuera los 4 modelos apagados por Google (`gemini-2.0-flash`, `gemini-2.0-flash-lite`, `gemini-3-pro-preview`, `gemini-3.1-flash-lite-preview`) y los 2 deprecados el 2026-10-08 que ya redirigían a sus sucesores (`gemini-3.5-flash` → 3.6, `gemini-3.7-flash` → 3.8); dentro el nuevo flagship `gemini-4-argon` (GA 2026-10-13) con i18n en los 13 diccionarios (`provider.gemini.model.argon4`/`argon4Desc`).
+> - **Groq:** fuera `groq/compound` y `groq/compound-mini` (retirados el 2026-09-21); dentro `qwen/qwen3.8-27b` (preview vigente); `minimaxai/minimax-m2.7` (Enterprise/ContactSales) a la lista de exclusión y los modelos de audio/moderación (`orpheus`, `prompt-guard`, `safeguard`) fuera del selector.
+> - **OpenCode Zen:** fuera los 4 muertos (`deepseek-v4-flash-free`, `mimo-v2.5-free`, `ling-3.0-flash-fin-free`, `nemotron-3-ultra-free`); dentro sus sustitutos verificados (`deepseek-v4.1-flash-free`, `mimo-v2.6-flash-free`) y `step-5-preview-free`/`cat-jam-free`.
+> - **OpenRouter:** fuera `z-ai/glm-5.2:free` y `minimax/minimax-m3:free` (sin variante `:free`) e `inclusionai/ling-3.0-flash-fin:free`; dentro `thinkingmachines/inkling:free`, `nvidia/nemotron-3.5-lightning:free` y `poolside/laguna-xs-2.1:free`.
+> - **Kilo:** fuera `inclusionai/ling-3.0-flash-fin:free` y `stepfun/step-3.7-flash:free` (muertos); nuevo default `stepfun/step-5-preview-free` y 4 incorporaciones free verificadas en vivo.
+> - **Ollama:** fuera `glm-5.1`, `qwen3.5:397b` y `deepseek-v4-flash:0731`; corregido `nemotron-nano:30b` → `nemotron-3-nano:30b`; dentro `glm-5.3`, `glm-5.3-flash`, `deepseek-v4.1-flash` y `mistral-large-4` (18 modelos = catálogo vivo completo).
+> - **NIM:** `deepseek-ai/deepseek-v4-flash-0731` → `deepseek-ai/deepseek-v4.1-flash` (promocionado en el feed NGC featured-models).
+> - **QwenCloud:** fuera `qwen-turbo`, `qwen3-coder-480b-a35b-instruct` y `deepseek-v4-flash` (retirados el 2026-10-10); dentro `qwen3.8-flash` y `deepseek-v4.1-flash` (fichas oficiales verificadas).
+> - **Cloudflare:** `CF_NOT_FREE` ampliada con `glm-5.3` (cubre `glm-5.3-flash`) y `deepseek-v4-*` (tarifa del 2026-10-09) en cliente y proxy del servidor; añadidos al fallback `@cf/qwen/qwen3.8-27b` y `@cf/zai-org/glm-4.7-flash`.
+> - **Zenmux y BazaarLink:** verificados en vivo sin cambios (todos sus ids siguen vigentes).
+> - **Pruebas:** aserciones de catálogos actualizadas en `providers.test.ts`, `AIProviderPanel.test.tsx`, `modelLabels.test.ts` y `AIProviderContext.test.tsx`, y test del proxy de Cloudflare ampliado. Suite: **1.404 tests** (1.336 cliente + 68 servidor), cobertura global 97,87% statements / 99,37% lines, lint 0 errores y build limpia.
+
+### Changed
+- `client/src/services/providers.ts`: catálogo fijo de Gemini (20→15, `gemini-4-argon`), fallbacks de Groq/OpenRouter/NIM/OpenZen/Ollama/Kilo/QwenCloud/Cloudflare verificados en vivo (2026-10-14) y `CF_NOT_FREE` del cliente ampliada; `GROQ_EXCLUDED`/`GROQ_DEPRECATED` al día.
+- `client/src/utils/modelLabels.ts`: etiquetas amigables de los ids nuevos y retiradas las de los muertos.
+- `client/src/i18n/*.ts` (13 idiomas): claves `provider.gemini.model.argon4` y `provider.gemini.model.argon4Desc`.
+- `server/index.js`: `CF_NOT_FREE` del proxy `/api/cloudflare/models` ampliada a la tarifa 2026-10-09.
+- `README.md`, `CLAUDE.md`, `MANUAL_TECNICO.md`, `MEJORAS_FUTURAS.md`, `METODOLOGIA_IA.md`: versión, métricas y registro de la auditoría.
+- Bump de versión a `v4.0.49` en `package.json`, `client/package.json` y lockfiles.
+
+### Tests
+- `client/src/services/__tests__/providers.test.ts`: catálogo fijo de Gemini de 15 modelos, fallbacks de NIM/OpenZen/Ollama/Kilo/QwenCloud/Cloudflare y auditoría v4.0.49 sin ids retirados.
+- `client/src/components/ai-provider/__tests__/AIProviderPanel.test.tsx`: selector de Gemini (15) y fallback de Kilo (6).
+- `client/src/utils/__tests__/modelLabels.test.ts`: etiquetas de los ids nuevos.
+- `client/src/context/__tests__/AIProviderContext.test.tsx`: modelo de prueba actualizado a un id vivo.
+- `server/__tests__/cloudflareModelsProxy.test.js`: exclusión no-Free ampliada (`glm-5.3-flash`, `deepseek-v4-pro-0813`).
+
+Cambio de código por ZCode (DeepSeek V4.1 Flash Free).
+
 ## [4.0.48] — 2026-09-06
 
 > **Fix doble: (1) la sección de vista previa/capturas de un README ya publicado ya no se elimina al actualizar la documentación — el modelo recibe la lista de imágenes/binarios reales del repo y solo borra enlaces confirmados como huérfanos; (2) los modelos de razonamiento (p. ej. Kimi K3 en NIM) ya no devuelven "El modelo no devolvió contenido" al agotar el presupuesto de salida pensando — `max_tokens` del modo completo 8192→16384 y error pedagógico específico.**
