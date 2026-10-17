@@ -236,6 +236,7 @@ export const bn = {
   'modal.flow.scopeFileDisabled': 'Attach a file before you can document it.',
   'modal.flow.generate': 'Generate documentation',
   'modal.flow.generating': 'Generating documentation...',
+  'modal.flow.streamProgress': '{doc} তৈরি হচ্ছে... প্রাপ্ত অক্ষর: {chars}',
   'modal.flow.continue': 'Continue',
   'modal.flow.back': '← Back',
   'modal.flow.review': 'Review the content before publishing it.',

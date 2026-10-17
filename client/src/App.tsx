@@ -11,7 +11,7 @@ import {
 runPublishSpecificDoc, runStartPublish, runPublishFileDocByKind, formatConversation,
 fetchExistingFileDoc, runPublishBulk,
 } from './services/assistantActions';
-import type { RepoContext, FileContext, PublishTarget, StartPublishResult, CodeHealth, GenerateSpecificResult, DocumentRepoResult } from './services/assistantActions';
+import type { RepoContext, FileContext, PublishTarget, StartPublishResult, CodeHealth, GenerateSpecificResult, DocumentRepoResult, DocumentRepoOptions } from './services/assistantActions';
 import type { DocTarget } from './services/docPublisher';
 import { serializeConversation, parseConversation, conversationFilename } from './utils/conversationIO';
 import { resolveRepoRef } from './utils/repoRef';
@@ -189,7 +189,7 @@ runCancelAction(
 
   const flowGenerateRepo = useCallback(async (
     repoInput: string,
-    options?: { lightMode?: boolean },
+    options?: DocumentRepoOptions,
     extraFiles?: File[],
   ): Promise<DocumentRepoResult> => {
     // 🔥 ZERO-STORAGE: provider, apiKey y model vienen del contexto

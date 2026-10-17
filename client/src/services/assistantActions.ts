@@ -178,6 +178,8 @@ export interface SendParams {
 export interface DocumentRepoOptions {
   lightMode?: boolean;
   modelOverride?: string;
+  /** #77 (v4.0.50): progreso en vivo del streaming (doc activa + caracteres). */
+  onProgress?: (progress: { document: 'readme' | 'manual'; chars: number }) => void;
 }
 
 export type DocumentRepoResult = RepoAnalysis | null | 'repo-missing' | 'context-too-large' | 'timeout' | 'overloaded';

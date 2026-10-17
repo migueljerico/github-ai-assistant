@@ -374,6 +374,29 @@ describe('providers — fetchModels', () => {
     expect(await fetchModels(PROVIDERS.gemini)).toBeNull();
   });
 
+  it('gemini (def con modelosEndpoint manual): filtra GEMINI_EXCLUDED y ordena alfabético (rama dinámica #58)', async () => {
+    sessionStorage.clear();
+    const def = { ...PROVIDERS.gemini, modelsEndpoint: 'https://proxy.example/api/gemini/models', modelsNeedKey: false };
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [
+        { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
+        { id: 'gemini-2.0-flash-vision', name: 'Vision (excluded)' },   // GEMINI_EXCLUDED
+        { id: 'text-embedding-004', name: 'Embed (excluded)' },         // GEMINI_EXCLUDED
+        { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
+      ] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const list = await fetchModels(def, undefined);
+
+    // El backend ya filtra los no-generativos; el cliente repite el filtro
+    // en profundidad y ordena por id (v3.23.0).
+    const ids = list!.map(m => m.value);
+    expect(ids).toEqual(['gemini-2.5-flash', 'gemini-2.5-pro']);
+    expect(list![0].label).toBe('Gemini 2.5 Flash');
+  });
+
   it('groq sin key devuelve null (su catálogo requiere Authorization)', async () => {
     expect(await fetchModels(PROVIDERS.groq)).toBeNull();
   });

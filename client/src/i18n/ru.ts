@@ -236,6 +236,7 @@ export const ru = {
   'modal.flow.scopeFileDisabled': 'Attach a file before you can document it.',
   'modal.flow.generate': 'Generate documentation',
   'modal.flow.generating': 'Generating documentation...',
+  'modal.flow.streamProgress': 'Генерация {doc}... получено символов: {chars}',
   'modal.flow.continue': 'Continue',
   'modal.flow.back': '← Back',
   'modal.flow.review': 'Review the content before publishing it.',

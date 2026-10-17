@@ -34,8 +34,9 @@ interface DocumentFlowModalProps {
   /** Genera la documentación de un repositorio entero. Devuelve el análisis,
    *  `null` si falló, `'repo-missing'` si el repo no existe y es del usuario,
    *  `'context-too-large'` si supera el límite de TPM/tokens, `'timeout'` si se agota el tiempo
-   *  o `'overloaded'` si el proveedor está sobrecargado (503). */
-  onGenerateRepo: (repoInput: string, options?: { lightMode?: boolean; modelOverride?: string }) => Promise<RepoAnalysis | null | 'repo-missing' | 'context-too-large' | 'timeout' | 'overloaded'>;
+   *  o `'overloaded'` si el proveedor está sobrecargado (503).
+   *  #77: acepta `onProgress` para recibir el progreso en vivo del streaming. */
+  onGenerateRepo: (repoInput: string, options?: { lightMode?: boolean; modelOverride?: string; onProgress?: (progress: { document: 'readme' | 'manual'; chars: number }) => void }) => Promise<RepoAnalysis | null | 'repo-missing' | 'context-too-large' | 'timeout' | 'overloaded'>;
   /** Crea un repo inexistente, sube (opcionalmente) archivos y lo documenta. */
   onCreateRepoAndGenerate: (repoInput: string, files?: File[]) => Promise<RepoAnalysis | null>;
   /** Genera la documentación del archivo adjunto. Devuelve el Markdown o null. */
@@ -178,6 +179,8 @@ const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number }
   const [pending, setPending] = useState<'commit' | 'draftpr' | 'release' | null>(null);
   const [pendingKind, setPendingKind] = useState<PublishKind>('commit');
   const [busy, setBusy] = useState(false);
+  // #77: progreso en vivo del streaming de la doc de repo (documento activo + chars recibidos).
+  const [streamProgress, setStreamProgress] = useState<{ document: 'readme' | 'manual'; chars: number } | null>(null);
   const [repoMissing, setRepoMissing] = useState<{ owner: string; repo: string } | null>(null);
 
   // #58 (b): contenido actual de docs/{base}.md en el repo destino (scope file).
@@ -300,8 +303,14 @@ const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number }
     if (!repoInput.trim()) return;
     setBusy(true);
     setFlowError(null);
+    setStreamProgress(null);
     try {
-      const a = await onGenerateRepo(repoInput.trim(), opts);
+      // #77: canal de streaming activado — el modal muestra el doc activo y los
+      // caracteres recibidos en tiempo real.
+      const a = await onGenerateRepo(repoInput.trim(), {
+        ...opts,
+        onProgress: (progress) => setStreamProgress(progress),
+      });
       if (a === 'repo-missing') {
         // El repo no existe y es del usuario → ofrecer crearlo + adjuntar archivos.
         const ref = resolveRepoRef(repoInput.trim(), currentUserLogin);
@@ -316,6 +325,7 @@ const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number }
       }
     } finally {
       setBusy(false);
+      setStreamProgress(null);
     }
   };
 
@@ -891,6 +901,19 @@ return (
                   ⚡ {t('modal.flow.generateLightDirect')}
                 </button>
               </div>
+
+              {/* #77: progreso en vivo del stream (documento activo + caracteres recibidos) */}
+              {busy && streamProgress && (
+                <p
+                  id="flow-stream-progress"
+                  style={{ fontSize: '0.8rem', opacity: 0.8, marginTop: '6px', marginBottom: 0 }}
+                >
+                  {t('modal.flow.streamProgress', {
+                    doc: streamProgress.document === 'manual' ? 'MANUAL_TECNICO.md' : 'README.md',
+                    chars: streamProgress.chars,
+                  })}
+                </p>
+              )}
 
               {/* Aviso de límite de tokens / timeout / sobrecarga con opción de documentación ligera */}
               {contextTooLarge && (

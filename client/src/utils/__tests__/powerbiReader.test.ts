@@ -220,6 +220,25 @@ describe('readPowerBI — Power Query / M (#28 Fase 3b-bis)', () => {
     expect(res.summary).toContain(`Consultas: ${MAX_QUERIES + 5}`);
   });
 
+  it('DataMashup con ZIP interno corrupto: el catch defensivo devuelve null sin romper el informe', async () => {
+    // Cabecera binaria válida (versión + longitud) pero el paquete ZIP interior
+    // está dañado (unzipSync lanza — deflate corrupto, caso real de archivo
+    // incompleto): el catch de extractMashup debe abortar solo el M.
+    vi.mocked(unzipSync).mockImplementation(((data: Uint8Array) => {
+      if (data[0] === 0x50) throw new Error('tar interno corrupto'); // subarray interior marcado 'PK'
+      return {
+        'Report/Layout': u16le(layout([{ name: 'P', visuals: ['card'] }])),
+        'DataMashup': buildDataMashup(),
+      } as never;
+    }) as never);
+
+    const res = await readPowerBI(fakeFile('corrupto.pbix'));
+
+    expect(res.text).toContain('Página "P"');          // informe intacto
+    expect(res.text).not.toContain('Consultas (Power Query / M)');
+    expect(res.summary).not.toContain('Consultas:');
+  });
+
   it('DataMashup con cabecera inválida: se ignora sin romper el informe', async () => {
     const bad = new Uint8Array(12);
     new DataView(bad.buffer).setUint32(4, 9999, true); // longitud > tamaño → se descarta

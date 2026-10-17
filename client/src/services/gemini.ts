@@ -28,7 +28,14 @@
 import type { GeminiAction } from '../types';
 import type { Language } from '../context/LanguageContext';
 import { getProvider, isResponsesModel, modelLabel, resolveEndpoint, type AIProviderType } from './providers';
-import { withTransientRetry, isAbortError, isTransientError, isProviderOverloadedError, combineSignals, DEFAULT_AI_TIMEOUT_MS } from '../utils/retry';
+import { withTransientRetry, isAbortError, isTransientError, isProviderOverloadedError, combineSignals, createInactivityWatchdog, DEFAULT_AI_TIMEOUT_MS } from '../utils/retry';
+
+/**
+ * #77 (v4.0.50): timeout de inactividad para la generación de documentación en
+ * streaming. Es la pausa máxima tolerada SIN recibir ningún dato del stream;
+ * un stream vivo nunca la supera (cada chunk reinicia el temporizador), y un
+ * stream colgado se aborta a los 240s en vez de esperar el tope absoluto a ciegas. */
+export const DOCS_INACTIVITY_MS = 240_000;
 // #23: los system prompts viven en archivos `.md` (mantenibilidad + base para i18n).
 // Se cargan como texto crudo con el import `?raw` de Vite. `.trimEnd()` evita que un
 // salto de línea final del archivo cambie el prompt respecto al literal original.
@@ -210,8 +217,16 @@ export interface AIProviderConfig {
  * Lee un cuerpo `text/event-stream` y llama `onChunk` con el payload de cada
  * línea `data:` (ignora `[DONE]` y los keep-alive vacíos). Soporta tanto el SSE
  * de los proveedores OpenAI-compatibles como el de nuestro proxy de Gemini.
- */
-async function readSSEStream(res: Response, onChunk: (json: string) => void): Promise<void> {
+ *
+ * #77: `onActivity` (opcional) se llama por cada trozo leído del stream, AUNQUE
+ * no traiga contenido (keep-alive, razonamiento): sirve para alimentar el
+ * watchdog de inactividad con la actividad REAL de la conexión (ping), no solo
+ * con el crecimiento del texto acumulado. */
+async function readSSEStream(
+  res: Response,
+  onChunk: (json: string) => void,
+  onActivity?: () => void,  // ← #77: ping del watchdog de inactividad por trozo leído
+): Promise<void> {
   const reader = res.body!.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
@@ -224,6 +239,7 @@ async function readSSEStream(res: Response, onChunk: (json: string) => void): Pr
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
+    if (onActivity) onActivity(); // cada trozo recibido (aunque no traiga contenido) cuenta como actividad
     buffer += decoder.decode(value, { stream: true });
     const lines = buffer.split('\n');
     buffer = lines.pop() ?? '';
@@ -292,6 +308,7 @@ async function callOpenAICompatible(
   maxTokens?: number,  // ← v3.31.0: límite de salida (4096 por defecto; docs usa 8192)
   accountId?: string | null,  // ← v3.33.1: Cloudflare — se envía como header X-Account-Id al proxy
   timeoutMs?: number | null,
+  onActivity?: () => void,  // ← #77: ping del watchdog de inactividad por trozo de stream
 ): Promise<string> {
   // Modo chat necesita más creatividad (0.7); modo acción debe ser determinista
   // para producir JSON estable (0.1). Por defecto se mantiene el comportamiento
@@ -416,7 +433,7 @@ async function callOpenAICompatible(
         const content = delta?.content;
         if (content) { acc += content; onToken!(acc); }
       } catch { /* línea no-JSON (keep-alive): se ignora */ }
-    });
+    }, onActivity);
     if (!acc.trim()) {
       if (sawReasoning) throw new Error(reasoningEmptyError);
       throw new Error(emptyError);
@@ -525,6 +542,7 @@ async function callResponsesCompatible(
   accountId?: string | null,
   timeoutMs?: number | null,
   reasoningEffort?: 'minimal' | 'low' | 'medium' | 'high',
+  onActivity?: () => void,  // ← #77: ping del watchdog de inactividad por trozo de stream
 ): Promise<string> {
   const temperature = mode === 'chat' ? 0.7 : 0.1;
   const stream = Boolean(onToken);
@@ -590,7 +608,7 @@ async function callResponsesCompatible(
           onToken!(acc);
         }
       } catch { /* línea no-JSON (keep-alive): se ignora */ }
-    });
+    }, onActivity);
     if (!acc.trim()) throw new Error(emptyError);
     return acc;
   }
@@ -615,6 +633,7 @@ async function callGeminiDirect(
   signal?: AbortSignal,  // ← #40: permite cancelar la petición (botón Detener)
   maxTokens?: number,  // ← v3.31.0: límite de salida (docs usa 8192)
   timeoutMs?: number | null,
+  onActivity?: () => void,  // ← #77: ping del watchdog de inactividad por trozo de stream
 ): Promise<string> {
   const stream = Boolean(onToken);
   const body: Record<string, unknown> = { apiKey, model, messages, systemPrompt };
@@ -652,7 +671,7 @@ async function callGeminiDirect(
         const parsed = JSON.parse(json) as { text?: string };
         if (parsed.text) { acc += parsed.text; onToken!(acc); }
       } catch { /* línea no-JSON: se ignora */ }
-    });
+    }, onActivity);
     if (!acc.trim()) {
       throw new Error('El modelo no devolvió contenido. Prueba con otro modelo o vuelve a intentarlo.');
     }
@@ -685,6 +704,7 @@ export async function callAI(
   maxTokens?: number,  // ← v3.31.0: límite de salida (docs usa 8192 para no truncar el JSON)
   accountId?: string | null,  // ← Cloudflare: sustituye {account_id} en el endpoint
   timeoutMs?: number | null,  // ← #73: timeout automático (default DEFAULT_AI_TIMEOUT_MS si undefined/null)
+  onActivity?: () => void,  // ← #77: ping del watchdog de inactividad (cada trozo de stream)
 ): Promise<string> {
   const def = getProvider(provider);
   // v3.38.0: límite de salida efectivo. Resolución por prioridad:
@@ -712,10 +732,10 @@ export async function callAI(
     : chatEndpoint;
   return withTransientRetry(() =>
     def.transport === 'gemini-proxy'
-      ? callGeminiDirect(apiKey, model, messages, systemPrompt, mode, onToken, combinedSignal, effectiveMaxTokens, effectiveTimeout)
+      ? callGeminiDirect(apiKey, model, messages, systemPrompt, mode, onToken, combinedSignal, effectiveMaxTokens, effectiveTimeout, onActivity)
       : useResponses
-        ? callResponsesCompatible(activeEndpoint, apiKey, model, messages, systemPrompt, mode, def.extraHeaders, onToken, combinedSignal, effectiveMaxTokens, accountId, effectiveTimeout, def.reasoningEffort)
-        : callOpenAICompatible(chatEndpoint, apiKey, model, messages, systemPrompt, mode, def.extraHeaders, onToken, combinedSignal, effectiveMaxTokens, accountId, effectiveTimeout),
+        ? callResponsesCompatible(activeEndpoint, apiKey, model, messages, systemPrompt, mode, def.extraHeaders, onToken, combinedSignal, effectiveMaxTokens, accountId, effectiveTimeout, def.reasoningEffort, onActivity)
+        : callOpenAICompatible(chatEndpoint, apiKey, model, messages, systemPrompt, mode, def.extraHeaders, onToken, combinedSignal, effectiveMaxTokens, accountId, effectiveTimeout, onActivity),
   );
 }
 
@@ -1300,6 +1320,15 @@ export interface GenerateRepoDocsOptions {
    * como una vista previa ya publicada) de los enlaces huérfanos a eliminar.
    */
   binaryPaths?: string[];
+  /**
+   * #77 (v4.0.50): callback de progreso en vivo. Al pasarlo, las dos llamadas
+   * (README y MANUAL) van en STREAMING con un watchdog de inactividad: se
+   * recibe `{ document, chars }` en cada trozo del stream y la petición se
+   * aborta solo si pasan 240s sin recibir NINGÚN dato (el tope absoluto de la
+   * llamada se mantiene). Sin onProgress se conserva el comportamiento previo
+   * (llamadas no-streaming) para no perturbar los flujos existentes.
+   */
+  onProgress?: (progress: { document: 'readme' | 'manual'; chars: number }) => void;
 }
 
 /**
@@ -1482,14 +1511,26 @@ REPOSITORIO: ${repoName}
   let activeModel = initialModel;
   let fallbackModelUsed: string | undefined = undefined;
 
-  const callDocAI = async (sysPrompt: string): Promise<string> => {
+  const callDocAI = async (sysPrompt: string, doc: 'readme' | 'manual'): Promise<string> => {
+    // #77 (v4.0.50): con onProgress, las llamadas van en streaming y un watchdog de
+    // inactividad (240s sin NINGÚN chunk → abort; el tope absoluto sigue en
+    // effectiveRepoTimeoutMs, que combineSignals une con este signal). El ping
+    // llega por trozo leído del stream (aunque sea puro razonamiento), no por
+    // crecimiento del texto: así no se aborta en fases largas sin contenido.
+    const streaming = Boolean(options?.onProgress);
+    const watchdog = streaming ? createInactivityWatchdog(DOCS_INACTIVITY_MS) : null;
     try {
       return await callAI(
         [{ role: 'user', content: sharedUserContext }],
         withLangDirective(sysPrompt + lightModeDirective, lang),
         provider, apiKey, activeModel,
-        undefined, undefined, undefined,
+        undefined,  // mode (los docs no usan modo chat/acción)
+        streaming
+          ? (textSoFar: string) => options!.onProgress!({ document: doc, chars: textSoFar.length })
+          : undefined,
+        watchdog?.signal,
         maxTokensOutput, accountId, effectiveRepoTimeoutMs,
+        streaming ? () => watchdog!.ping() : undefined,
       );
     } catch (err) {
       // Fallback resiliente automático: si el modelo de Gemini devuelve error 503
@@ -1498,22 +1539,18 @@ REPOSITORIO: ${repoName}
       if (provider === 'gemini' && activeModel !== 'gemini-2.5-flash' && isProviderOverloadedError(err)) {
         activeModel = 'gemini-2.5-flash';
         fallbackModelUsed = 'gemini-2.5-flash';
-        return await callAI(
-          [{ role: 'user', content: sharedUserContext }],
-          withLangDirective(sysPrompt + lightModeDirective, lang),
-          provider, apiKey, activeModel,
-          undefined, undefined, undefined,
-          maxTokensOutput, accountId, effectiveRepoTimeoutMs,
-        );
+        return await callDocAI(sysPrompt, doc);
       }
       throw err;
+    } finally {
+      watchdog?.dispose();
     }
   };
 
   const stripFences = (raw: string): string =>
     raw.replace(/^```(?:markdown)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
 
-  const readmeRaw = await callDocAI(readmeSystemPrompt);
+  const readmeRaw = await callDocAI(readmeSystemPrompt, 'readme');
   let readmeStripped = cleanDocFooter(stripFences(readmeRaw));
   if (!readmeStripped) {
     throw new Error('La IA no devolvió el README. Prueba con otro modelo o vuelve a intentarlo.');
@@ -1536,7 +1573,7 @@ REPOSITORIO: ${repoName}
   const docFooter = buildDocFooter(fallbackModelUsed || initialModel);
   const readme = readmeStripped + '\n\n' + docFooter;
 
-  const manualRaw = await callDocAI(manualSystemPrompt);
+  const manualRaw = await callDocAI(manualSystemPrompt, 'manual');
   const manualStripped = cleanDocFooter(stripFences(manualRaw));
   if (!manualStripped) {
     throw new Error('La IA no devolvió el MANUAL_TECNICO. Prueba con otro modelo o vuelve a intentarlo.');

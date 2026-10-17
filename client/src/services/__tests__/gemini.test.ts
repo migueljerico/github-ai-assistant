@@ -3065,4 +3065,164 @@ describe('callAI — modelos de razonamiento sin salida (v4.0.48)', () => {
     ).rejects.toThrow(/razonamiento.*presupuesto de salida/is);
     expect(tokens).toEqual([]); // el razonamiento NO se filtra al texto visible
   });
+
+  // ── #77 (v4.0.50): streaming + timeout por inactividad en la doc de repos ──
+  describe('generateRepoDocs - streaming con onProgress y watchdog de inactividad (#77)', () => {
+    beforeEach(() => { vi.restoreAllMocks(); });
+
+    const groqConfig = { provider: 'groq' as const, apiKey: 'gsk-mock-groq', model: 'llama-3.3-70b' };
+    const readmeChunk1 = 'data: {"choices":[{"delta":{"content":"# README"}}]}\n\n';
+    const readmeChunk2 = 'data: {"choices":[{"delta":{"content":"\\n\\nContenido"}}]}\n\n';
+    const manualChunk1 = 'data: {"choices":[{"delta":{"content":"# MANUAL"}}]}\n\n';
+    const manualChunk2 = 'data: {"choices":[{"delta":{"content":" generado"}}]}\n\n';
+
+    /** Response-like con cuerpo SSE cerrado al instante (stream rápido). */
+    function sseChunks(chunks: string[]) {
+      const encoder = new TextEncoder();
+      return {
+        ok: true,
+        body: new ReadableStream({
+          start(controller) {
+            for (const c of chunks) controller.enqueue(encoder.encode(c));
+            controller.close();
+          },
+        }),
+      };
+    }
+
+    it('con onProgress: las dos llamadas van en streaming y llegan los progresos {document, chars} en orden', async () => {
+      const events: Array<{ document: 'readme' | 'manual'; chars: number }> = [];
+      const fetchMock = vi.fn()
+        .mockResolvedValueOnce(sseChunks([readmeChunk1, readmeChunk2]))
+        .mockResolvedValueOnce(sseChunks([manualChunk1, manualChunk2]));
+      vi.stubGlobal('fetch', fetchMock);
+
+      const result = await generateRepoDocs(
+        'owner/repo', [{ path: 'src/a.ts', content: 'x' }], groqConfig, 'es', undefined,
+        { onProgress: (p) => events.push(p) },
+      );
+
+      const body1 = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+      expect(body1.stream).toBe(true); // #77: streaming activado
+      expect(body1.stream).toBe((JSON.parse((fetchMock.mock.calls[1][1] as RequestInit).body as string)).stream);
+      // Progresos del README (acumulado: '# README' = 8 chars, luego 19) y del MANUAL (8 y 17).
+      expect(events).toEqual([
+        { document: 'readme', chars: 8 },
+        { document: 'readme', chars: '# README\n\nContenido'.length },
+        { document: 'manual', chars: 8 },
+        { document: 'manual', chars: '# MANUAL generado'.length },
+      ]);
+      expect(result.readme).toContain('# README');
+      expect(result.manualTecnico).toContain('# MANUAL');
+    });
+
+    it('sin onProgress se conserva el comportamiento previo (no-streaming, sin stream:true)', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ choices: [{ message: { content: '# README\n\nContenido' } }] }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      await generateRepoDocs('owner/repo', [{ path: 'src/a.ts', content: 'x' }], groqConfig);
+
+      const body1 = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+      expect(body1.stream).toBeUndefined();
+    });
+
+    it('el ping por CHUNK (puros deltas de razonamiento) mantiene vivo un stream lento', async () => {
+      vi.useFakeTimers();
+      try {
+        // Un modelo de razonamiento puede pasar minutos emitiendo SOLO deltas de
+        // reasoning_content (sin contenido visible). El watchdog debe sobrevivir
+        // gracias al ping por trozo leído, no por crecimiento del texto: sin ese
+        // ping, este stream abortaría al idle (240s) y el test fallaría con
+        // 'stream congelado'. Cronograma (fake timers, márgenes difíciles):
+        //   razonamiento @t=5s · @t=241s · contenido @t=400s · cierre @t=410s.
+        //   Sin ping el abort saltaría en t=240s (antes del delta @241s).
+        //   Con ping: deadlines 245s → 481s → 640s. Total 410s < tope 600s.
+        const encoder = new TextEncoder();
+        const reasonChunk = 'data: {"choices":[{"delta":{"reasoning_content":"pensando"}}]}\n\n';
+        const queue: Array<[number, string | null]> = [];
+        let pendingReject: ((err: Error) => void) | null = null;
+        const dripBody = {
+          getReader: () => ({
+            read: () => new Promise<{ done: boolean; value?: Uint8Array }>((resolve, reject) => {
+              pendingReject = reject;
+              const [delay, text] = queue.shift()!;
+              setTimeout(() => resolve(text ? { done: false, value: encoder.encode(text) } : { done: true }), delay);
+            }),
+          }),
+        };
+        const fetchMock = vi.fn()
+          .mockImplementationOnce((_url: unknown, init: RequestInit) => {
+            init.signal!.addEventListener('abort', () => pendingReject?.(new DOMException('stream congelado', 'AbortError')));
+            queue.push([5_000, reasonChunk], [236_000, reasonChunk], [159_000, readmeChunk1], [10_000, null]);
+            return Promise.resolve({ ok: true, body: dripBody });
+          })
+          .mockImplementationOnce(() => Promise.resolve(sseChunks([manualChunk1, manualChunk2])));
+        vi.stubGlobal('fetch', fetchMock);
+
+        const events: Array<{ document: 'readme' | 'manual'; chars: number }> = [];
+        const run = generateRepoDocs(
+          'owner/repo', [{ path: 'src/a.ts', content: 'x' }], groqConfig, 'es', undefined,
+          { onProgress: (p) => events.push(p) },
+        );
+        // Consumidor temprano: el abort (si lo hubiera) dispara DENTRO del avance
+        // de fake timers, antes de que expect(run).rejects se pueda attach (Node
+        // emitiría unhandledRejection); el rechazo real lo sigue consumiendo el expect.
+        void run.catch(() => { /* consumidor temprano */ });
+
+        // 400s en tiempo fake cubre el cronograma completo (termina en ~410s).
+        await vi.advanceTimersByTimeAsync(410_000);
+
+        const result = await run;
+        // Solo el delta de CONTENIDO final genera progreso visible (chars>0 en t=400s).
+        expect(events.filter(e => e.document === 'readme').length).toBe(1);
+        expect(result.readme).toContain('# README');
+        expect(fetchMock).toHaveBeenCalledTimes(2); // el MANUAL llegó a ejecutarse
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('aborta un stream colgado a los 240s SIN datos (antes del tope absoluto de 600s)', async () => {
+      vi.useFakeTimers();
+      try {
+        // Lector que jamás entrega datos pero rompe en cuanto el signal se aborta.
+        const fetchMock = vi.fn().mockImplementationOnce((_url: unknown, init: RequestInit) => {
+          const body = {
+            getReader: () => ({
+              read: () => {
+                let rejectFn!: (e: Error) => void;
+                const p = new Promise<{ done: boolean; value?: Uint8Array }>((_resolve, reject) => { rejectFn = reject; });
+                // Marca la promesa con un consumidor extra para que Vitest no la
+                // reporte como unhandled rejection además del awaiter de readSSEStream.
+                p.catch(() => { /* el rechazo real lo consume readSSEStream */ });
+                init.signal!.addEventListener('abort', () => rejectFn(new DOMException('stream congelado', 'AbortError')));
+                return p;
+              },
+            }),
+          };
+          return Promise.resolve({ ok: true, body });
+        });
+        vi.stubGlobal('fetch', fetchMock);
+
+        const run = generateRepoDocs(
+          'owner/repo', [{ path: 'src/a.ts', content: 'x' }], groqConfig, 'es', undefined,
+          { onProgress: () => { /* sin datos, nunca llega */ } },
+        );
+        // Consumidor temprano (ver comentario en el test del ping): evita el
+        // unhandledRejection que Node emite al abortar durante el avance de timers.
+        void run.catch(() => { /* consumidor temprano */ });
+
+        // 250s > idle 240s y << tope absoluto 600s: el watchdog debe abortar por inactividad.
+        await vi.advanceTimersByTimeAsync(250_000);
+        await expect(run).rejects.toThrow(/stream congelado/i);
+        // Solo se hizo la llamada al README: el MANUAL no llega a iniciarse.
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
 });

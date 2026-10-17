@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import DocumentFlowModal from '../DocumentFlowModal';
 import { AIProviderContextProvider, useAIProvider } from '../../../context/AIProviderContext';
 import type { RepoAnalysis } from '../../../types';
@@ -1160,7 +1160,7 @@ describe('DocumentFlowModal — Cobertura completa de ramas y callbacks', () => 
       fireEvent.click(document.getElementById('flow-generate-light-btn')!);
 
       await waitFor(() => {
-        expect(onGenerateRepo).toHaveBeenLastCalledWith('owner/repo-grande', { lightMode: true });
+        expect(onGenerateRepo).toHaveBeenLastCalledWith('owner/repo-grande', expect.objectContaining({ lightMode: true }));
         expect(screen.getByText(/Paso 3 de 4/)).toBeInTheDocument();
       });
     });
@@ -1232,7 +1232,7 @@ describe('DocumentFlowModal — Cobertura completa de ramas y callbacks', () => 
       fireEvent.click(document.getElementById('flow-generate-light-direct-btn')!);
 
       await waitFor(() => {
-        expect(onGenerateRepo).toHaveBeenLastCalledWith('owner/repo-grande', { lightMode: true });
+        expect(onGenerateRepo).toHaveBeenLastCalledWith('owner/repo-grande', expect.objectContaining({ lightMode: true }));
         expect(screen.getByText(/Paso 3 de 4/)).toBeInTheDocument();
       });
     });
@@ -1288,7 +1288,7 @@ describe('DocumentFlowModal — Cobertura completa de ramas y callbacks', () => 
 
       // Al pulsar el botón de cambiar a Gemini 2.5 Flash
       fireEvent.click(document.getElementById('flow-switch-gemini-25-btn')!);
-      expect(onGenerateRepo).toHaveBeenCalledWith('owner/repo', { modelOverride: 'gemini-2.5-flash' });
+      expect(onGenerateRepo).toHaveBeenCalledWith('owner/repo', expect.objectContaining({ modelOverride: 'gemini-2.5-flash' }));
     });
 
     it('permite cambiar a otro modelo desde el selector desplegable ante sobrecarga', async () => {
@@ -1310,7 +1310,50 @@ describe('DocumentFlowModal — Cobertura completa de ramas y callbacks', () => 
       });
 
       fireEvent.change(document.getElementById('flow-model-select')!, { target: { value: 'gemini-2.5-pro' } });
-      expect(onGenerateRepo).toHaveBeenCalledWith('owner/repo', { modelOverride: 'gemini-2.5-pro' });
+      expect(onGenerateRepo).toHaveBeenCalledWith('owner/repo', expect.objectContaining({ modelOverride: 'gemini-2.5-pro' }));
+    });
+
+    it('#77: muestra el progreso en vivo del streaming (doc activa + caracteres) y lo limpia al terminar', async () => {
+      // Una promesa aún sin resolver: el progreso llega MIENTRAS la generación está en curso.
+      let resolveGen!: (val: unknown) => void;
+      const onGenerateRepo = vi.fn().mockImplementation(
+        () => new Promise(res => { resolveGen = res; }),
+      );
+
+      setup({ onGenerateRepo });
+
+      fireEvent.click(screen.getByRole('button', { name: /Repositorio entero/ }));
+      const input = screen.getByPlaceholderText(/nombre-del-repo o owner\/repo/);
+      fireEvent.change(input, { target: { value: 'owner/repo' } });
+      fireEvent.click(document.getElementById('flow-generate-btn')!);
+
+      await waitFor(() => expect(onGenerateRepo).toHaveBeenCalled());
+      // Sin progresos todavía → no hay barra de streaming.
+      expect(document.getElementById('flow-stream-progress')).toBeNull();
+
+      // La cadena App→assistantActions→generateRepoDocs entrega el progreso con onProgress.
+      const genOpts = onGenerateRepo.mock.calls[0][1] as {
+        onProgress: (p: { document: 'readme' | 'manual'; chars: number }) => void;
+      };
+      act(() => { genOpts.onProgress({ document: 'readme', chars: 120 }); });
+      await waitFor(() => {
+        const el = document.getElementById('flow-stream-progress');
+        expect(el).toBeInTheDocument();
+        expect(el!.textContent).toContain('README.md');
+        expect(el!.textContent).toContain('120');
+      });
+
+      act(() => { genOpts.onProgress({ document: 'manual', chars: 340 }); });
+      await waitFor(() => {
+        expect(document.getElementById('flow-stream-progress')!.textContent).toContain('MANUAL_TECNICO.md');
+        expect(document.getElementById('flow-stream-progress')!.textContent).toContain('340');
+      });
+
+      // Al terminar la generación, el banner de progreso desaparece.
+      await act(async () => { resolveGen(analysis); });
+      await waitFor(() => {
+        expect(document.getElementById('flow-stream-progress')).toBeNull();
+      });
     });
 
     it('limpia flowError al reintentar con el botón de doc ligera', async () => {

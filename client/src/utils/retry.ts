@@ -144,3 +144,46 @@ export function combineSignals(
   timeoutSignal.addEventListener('abort', () => abort((timeoutSignal as AbortSignal & { reason?: unknown }).reason));
   return bridge.signal;
 }
+
+// ── #77: watchdog de inactividad en streaming ────────────────────────────────
+/**
+ * Crea un AbortSignal que se aborta SOLO si transcurren `idleMs` ms sin que
+ * nadie llame a `ping()` (actividad del stream). A diferencia de
+ * `combineSignals` (timeout ABSOLUTO), un stream vivo que va soltando chunks
+ * nunca se corta: es lo que quieren los modelos de razonamiento generando
+ * documentación (pueden tardar >10 min, siempre que cada chunk confirme vida).
+ *
+ * El `reason` del abort incluye "timeout", por lo que `isTimeoutAbortError`
+ * lo clasifica como tal (banner correcto en la UI, sin reintentos).
+ */
+export interface InactivityWatchdog {
+  /** Signal combinable con CombineSignals/AbortSignal.any. */
+  signal: AbortSignal;
+  /** Registra actividad (chunk recibido): reinicia el temporizador de inactividad. */
+  ping(): void;
+  /** Libera el temporizador; llamar SIEMPRE al terminar la llamada (try/finally). */
+  dispose(): void;
+}
+
+export function createInactivityWatchdog(idleMs: number): InactivityWatchdog {
+  const controller = new AbortController();
+  const abortFn = () =>
+    controller.abort(new DOMException('stream inactivo: timeout por inactividad', 'TimeoutError'));
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  if (idleMs > 0) timer = setTimeout(abortFn, idleMs);
+  return {
+    signal: controller.signal,
+    ping: () => {
+      // Desactivado (idleMs <= 0), ya abortado o ya liberado → no-op.
+      if (!timer || controller.signal.aborted) return;
+      clearTimeout(timer);
+      timer = setTimeout(abortFn, idleMs);
+    },
+    dispose: () => {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    },
+  };
+}
