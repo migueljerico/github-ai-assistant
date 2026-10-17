@@ -255,6 +255,7 @@ export const es = {
   'modal.flow.scopeFileDisabled': 'Adjunta un archivo antes de poder documentarlo.',
   'modal.flow.generate': 'Generar documentación',
   'modal.flow.generating': 'Generando documentación...',
+  'modal.flow.streamProgress': 'Generando {doc}... {chars} caracteres recibidos',
   'modal.flow.continue': 'Continuar',
   'modal.flow.back': '← Atrás',
   'modal.flow.review': 'Revisa el contenido antes de publicarlo.',

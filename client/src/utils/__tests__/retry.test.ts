@@ -1,5 +1,5 @@
-import { describe, it, expect, afterEach } from 'vitest';
-import { isContextTooLargeError, isProviderOverloadedError, isTransientError, isAbortError, withTransientRetry, combineSignals, isTimeoutAbortError, DEFAULT_AI_TIMEOUT_MS } from '../retry';
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
+import { isContextTooLargeError, isProviderOverloadedError, isTransientError, isAbortError, withTransientRetry, combineSignals, createInactivityWatchdog, isTimeoutAbortError, DEFAULT_AI_TIMEOUT_MS } from '../retry';
 
 describe('retry (#40 / #50)', () => {
   describe('isAbortError', () => {
@@ -239,6 +239,67 @@ describe('retry (#40 / #50)', () => {
       const reason = (sig as AbortSignal & { reason?: unknown }).reason as DOMException;
       expect(reason).toBeInstanceOf(DOMException);
       expect(reason.name).toBe('TimeoutError');
+    });
+  });
+
+  // ── #77 (v4.0.50): watchdog de inactividad para streams ────────────────────
+  describe('createInactivityWatchdog (#77 streaming docs)', () => {
+    beforeEach(() => { vi.useFakeTimers(); });
+    afterEach(() => { vi.useRealTimers(); });
+
+    it('aborta tras idleMs sin actividad y su reason se clasifica como timeout', () => {
+      const wd = createInactivityWatchdog(240_000);
+      expect(wd.signal.aborted).toBe(false);
+
+      vi.advanceTimersByTime(240_000);
+
+      expect(wd.signal.aborted).toBe(true);
+      const reason = (wd.signal as AbortSignal & { reason?: unknown }).reason as DOMException;
+      expect(reason).toBeInstanceOf(DOMException);
+      expect(reason.name).toBe('TimeoutError');
+      // El mensaje menciona "timeout" → isTimeoutAbortError lo clasifica bien
+      // (banner correcto en la UI y sin reintentos en withTransientRetry).
+      expect(isTimeoutAbortError(reason)).toBe(true);
+    });
+
+    it('ping() reinicia el temporizador: sin ping durante idleMs NO aborta', () => {
+      const wd = createInactivityWatchdog(1000);
+      // Actividad cada 500ms → nunca se llega a idleMs sin ping.
+      for (let i = 0; i < 8; i++) {
+        vi.advanceTimersByTime(500);
+        wd.ping();
+        expect(wd.signal.aborted).toBe(false);
+      }
+      // Y si luego se deja pasar el idle completo → aborta.
+      vi.advanceTimersByTime(1000);
+      expect(wd.signal.aborted).toBe(true);
+    });
+
+    it('dispose() libera el temporizador: ni el idle ni un ping posterior abortan', () => {
+      const wd = createInactivityWatchdog(1000);
+      wd.dispose();
+      vi.advanceTimersByTime(60_000);
+      expect(wd.signal.aborted).toBe(false);
+      wd.ping(); // no-op tras dispose
+      vi.advanceTimersByTime(60_000);
+      expect(wd.signal.aborted).toBe(false);
+      wd.dispose(); // dispose idempotente (timer ya liberado) → no-op, sin excepciones
+    });
+
+    it('idleMs <= 0: watchdog desactivado (nunca aborta) y ping es no-op', () => {
+      const wd = createInactivityWatchdog(0);
+      wd.ping();
+      vi.advanceTimersByTime(3_600_000);
+      expect(wd.signal.aborted).toBe(false);
+    });
+
+    it('ping() no re-arme tras el abort (ya abortado permanece abortado)', () => {
+      const wd = createInactivityWatchdog(500);
+      vi.advanceTimersByTime(500);
+      expect(wd.signal.aborted).toBe(true);
+      wd.ping(); // no-op: signal ya abortado
+      vi.advanceTimersByTime(10_000);
+      expect(wd.signal.aborted).toBe(true);
     });
   });
 });

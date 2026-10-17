@@ -226,12 +226,11 @@ describe('readPowerBI — Power Query / M (#28 Fase 3b-bis)', () => {
     // incompleto): el catch de extractMashup debe abortar solo el M.
     vi.mocked(unzipSync).mockImplementation(((data: Uint8Array) => {
       if (data[0] === 0x50) throw new Error('tar interno corrupto'); // subarray interior marcado 'PK'
-      return {} as never;
+      return {
+        'Report/Layout': u16le(layout([{ name: 'P', visuals: ['card'] }])),
+        'DataMashup': buildDataMashup(),
+      } as never;
     }) as never);
-    mockZip({
-      'Report/Layout': u16le(layout([{ name: 'P', visuals: ['card'] }])),
-      'DataMashup': buildDataMashup(),
-    });
 
     const res = await readPowerBI(fakeFile('corrupto.pbix'));
 

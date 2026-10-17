@@ -236,6 +236,7 @@ export const hi = {
   'modal.flow.scopeFileDisabled': 'Attach a file before you can document it.',
   'modal.flow.generate': 'Generate documentation',
   'modal.flow.generating': 'Generating documentation...',
+  'modal.flow.streamProgress': '{doc} जनरेट हो रहा है... प्राप्त अक्षर: {chars}',
   'modal.flow.continue': 'Continue',
   'modal.flow.back': '← Back',
   'modal.flow.review': 'Review the content before publishing it.',
