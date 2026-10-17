@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.50] — 2026-10-17
+
+> **Streaming SSE en la generación de documentación (#77) con timeout por inactividad + progreso en vivo en el modal, sprint de cobertura (#26) y bookkeeping del roadmap (#66/#74).**
+> - **#77 — Streaming + watchdog de inactividad:** con `onProgress`, las dos llamadas del flujo de documentación de repo (README y MANUAL_TECNICO) van en streaming SSE y un watchdog (`createInactivityWatchdog`, `retry.ts`) aborta SOLAMENTE si transcurren 240s sin recibir NINGÚN dato del stream (ping por trozo leído, incluidos los deltas puros de razonamiento que no añaden contenido), en vez de esperar a ciegas el tope absoluto (600s completo / 120s ligero, que se mantiene como cinturón). Es el dolor documentado en v4.0.44 con los modelos de razonamiento: un stream sano puede tardar >10 min; uno colgado se corta a los 4 con diagnóstico de timeout.
+> - **#77 — Progreso visible:** `DocumentFlowModal` muestra en vivo el documento activo y los caracteres recibidos (`modal.flow.streamProgress`, ×13 idiomas) mientras llega el streaming; se limpia al terminar la generación.
+> - **#26 — Cobertura:** la rama dinámica de Gemini en `fetchModels` (`providers.ts`, vía def override de `modelsEndpoint`), el catch defensivo de `extractMashup` con ZIP interno corrupto (`powerbiReader.ts`), el BOM UTF-8 en `document.xml` (`docxReader`) y 5 tests del watchdog. Suite: **1.417 tests unitarios (1.349 cliente + 68 servidor)** (+13 respecto a v4.0.49), cobertura global 97,93% statements / 99,43% lines, lint 0 errores (warning preexistente `LanguageContext.tsx`) y build limpia.
+> - **Bookkeeping:** la revisión de catálogos programada para ~Octubre 2026 (#66 Gemini y #74 free/dinámicos) ya la cubrió v4.0.49 → nota de progreso y reprogramación a ~Enero 2027.
+
+### Added
+- `client/src/utils/retry.ts`: `createInactivityWatchdog(idleMs)` — watchdog de inactividad combinable con `combineSignals` (abort con reason `TimeoutError` → clasificable como timeout por la UI y sin reintentos).
+- `client/src/services/gemini.ts`: opción `onProgress` en `generateRepoDocs` (streaming opt-in de las dos llamadas con watchdog de 240s — `DOCS_INACTIVITY_MS` —); parámetro `onActivity` propagado hasta `readSSEStream` (ping por trozo leído) desde `callAI` y los tres transportes (OpenAI-compatible, Responses y proxy Gemini).
+- `client/src/components/confirm/DocumentFlowModal.tsx`: banner de progreso en vivo (`#flow-stream-progress`) durante la generación de la doc de repo.
+- `client/src/services/assistantActions.ts` y `client/src/App.tsx`: `DocumentRepoOptions.onProgress` canalizado desde el modal hasta `generateRepoDocs`.
+- `client/src/i18n/*.ts` (13 idiomas): clave `modal.flow.streamProgress`.
+
+### Changed
+- `MEJORAS_FUTURAS.md`: notas de progreso de #66/#74 (revisión anticipada por v4.0.49; próxima ~Enero 2027), métricas de #26 y registro de #77.
+- Bump de versión a `v4.0.50` en `package.json`, `client/package.json` y lockfiles.
+
+### Tests
+- `client/src/utils/__tests__/retry.test.ts`: 5 tests del watchdog (abort por idle con reason clasificable, ping reinicia el temporizador, dispose idempotente, `idleMs <= 0` desactivado, ping no re-arme tras abort).
+- `client/src/services/__tests__/gemini.test.ts`: 4 tests de #77 (streaming con progresos README/MANUAL y cuerpo `stream:true`, comportamiento no-streaming preservado, el ping por CHUNK mantiene vivo un stream lento con deltas solo de razonamiento, abort del stream colgado a los 240s antes del tope absoluto de 600s).
+- `client/src/components/confirm/__tests__/DocumentFlowModal.test.tsx`: progreso en vivo visible y limpiado al terminar; aserciones de options con `expect.objectContaining`.
+- `client/src/services/__tests__/providers.test.ts`: rama dinámica de Gemini (filtro `GEMINI_EXCLUDED` + orden alfabético) con def override de `modelsEndpoint`.
+- `client/src/utils/__tests__/powerbiReader.test.ts`: catch defensivo de `extractMashup` ante ZIP interno corrupto (el informe sobrevive sin sección de consultas).
+
+Cambio de código por ZCode (GLM-5.3 Flash Free).
+
 ## [4.0.49] — 2026-10-15
 
 > **Auditoría de catálogos de los 11 proveedores de IA (continuación de v4.0.47): verificación en vivo de los endpoints públicos y de las fuentes oficiales — retiradas 24 entradas muertas/deprecadas de 8 catálogos, añadidas 23 vigentes verificadas y ampliada la lista Cloudflare no-Free.**
