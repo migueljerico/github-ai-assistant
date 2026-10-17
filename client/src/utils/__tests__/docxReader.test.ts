@@ -60,6 +60,13 @@ describe('readDocx', () => {
     expect(truncated).toBe(false);
   });
 
+  it('document.xml con BOM UTF-8: lo elimina antes de parsear el XML (decodeUtf8)', async () => {
+    mockZip({ 'word/document.xml': new TextEncoder().encode('\ufeff' + docXml('Con BOM inicial')) });
+    const { text } = await readDocx(fakeFile());
+    expect(text).toContain('Con BOM inicial');    // el parseo del XML no se rompe
+    expect(text.charCodeAt(0)).not.toBe(0xfeff);
+  });
+
   it('encuentra el entry aunque la clave tenga otra caja/prefijo', async () => {
     mockZip({ 'Word/Document.xml': u8(docXml('contenido')) });
     const { text } = await readDocx(fakeFile());
