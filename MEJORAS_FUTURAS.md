@@ -54,9 +54,11 @@ Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de
 ### 🟢 Baja Prioridad
 
 #### #66 — Revisión periódica del catálogo Gemini (cada 2-3 meses)
-**Esfuerzo:** ~1h cada revisión · **Estado:** ⏳ Pendiente (Próxima revisión: ~Octubre 2026)
+**Esfuerzo:** ~1h cada revisión · **Estado:** ⏳ Pendiente (Próxima revisión: ~Enero 2027)
 
-**Contexto:** El catálogo de Gemini es estático (`GEMINI_MODELS` en `client/src/services/providers.ts`, 19 modelos) para garantizar fiabilidad y evitar incluir modelos no-chat expuestos por la API de Google.
+**Contexto:** El catálogo de Gemini es estático (`GEMINI_MODELS` en `client/src/services/providers.ts`, 15 modelos desde v4.0.49) para garantizar fiabilidad y evitar incluir modelos no-chat expuestos por la API de Google.
+
+**Progreso realizado (v4.0.49, 2026-10-15):** ✅ Revisión anticipada (la programada para ~Octubre 2026): catálogo 20→15 con la API oficial como referencia (4 modelos apagados por Google fuera, 2 deprecados el 08-oct fuera, flagship `gemini-4-argon` dentro con i18n ×13). Próxima revisión programada: ~Enero 2027.
 
 **Procedimiento de revisión:**
 1. Consultar la API oficial de Google Gemini (`GET /v1beta/models`).
@@ -66,7 +68,7 @@ Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de
 ---
 
 #### #74 — Revisión periódica de catálogos free/dinámicos (cada 2-3 meses)
-**Esfuerzo:** ~1-2h cada revisión · **Estado:** ⏳ Pendiente (Próxima revisión: ~Octubre 2026)
+**Esfuerzo:** ~1-2h cada revisión · **Estado:** ⏳ Pendiente (Próxima revisión: ~Enero 2027)
 
 
 **Procedimiento de revisión:**
@@ -75,6 +77,8 @@ Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de
 3. Ajustar la lógica de detección `free` en `fetchModels()`.
 
 **Progreso realizado (v4.0.47, 2026-09-05):** ✅ Auditoría integral anticipada de los 11 proveedores (metodología del fix de OpenCode): verificación en vivo de todos los endpoints de chat/modelos y reconstrucción de los fallbacks de OpenRouter, NIM, Zenmux, OpenZen, Ollama, Kilo y BazaarLink con ids verificados — 4 defaultModel muertos corregidos (OpenRouter, Zenmux, Kilo, BazaarLink). Gemini (#66), Cloudflare y QwenCloud quedan para la revisión programada de ~Octubre 2026 (requieren key/account en vivo).
+
+**Progreso realizado (v4.0.49, 2026-10-15):** ✅ Segunda auditoría (continuación de la v4.0.47, misma metodología de verificación en vivo): ids muertos fuera y vigentes dentro en Groq (compounds retirados 21-sep), OpenRouter, OpenCode Zen, Kilo (default `stepfun/step-5-preview-free`), Ollama (18 modelos = catálogo vivo), NIM (`deepseek-v4.1-flash`, feed NGC featured-models), QwenCloud (fichas oficiales; retiradas del 10-oct) y Cloudflare (`CF_NOT_FREE` a la tarifa 09-oct, cliente + proxy); Gemini (#66) y los "pendientes key/account" de la v4.0.47 quedan así cubiertos vía fuentes oficiales. Zenmux y BazaarLink verificados sin cambios. Próxima revisión programada: ~Enero 2027.
 
 ---
 
