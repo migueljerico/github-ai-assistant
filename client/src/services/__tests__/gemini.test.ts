@@ -1176,6 +1176,15 @@ describe('generateRepoDocs - no inventar autor/año (#28 4a)', () => {
         lenguaje: 'TypeScript',
         filesCount: 6,
         lightMode: true,
+        // #77 (v4.0.51): el modo esencial fija su propio presupuesto.
+        contextoAdaptativo: {
+          maxFiles: 6,
+          maxLinesPerFile: 40,
+          maxTokensOutput: 2500,
+          reasons: ['light-mode'],
+          reduced: true,
+          reintento: false,
+        },
       });
     });
 
@@ -3223,6 +3232,188 @@ describe('callAI — modelos de razonamiento sin salida (v4.0.48)', () => {
       } finally {
         vi.useRealTimers();
       }
+    });
+  });
+
+  // ── #77 (v4.0.51): presupuesto adaptativo de contexto en la doc de repos ──
+  describe('generateRepoDocs - presupuesto adaptativo de contexto (#77 v4.0.51)', () => {
+    beforeEach(() => { vi.restoreAllMocks(); });
+
+    const okResponse = () => ({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: '# Doc adaptativa' } }] }),
+    });
+
+    /** Repositorio sintético con N archivos de 100 líneas cada uno. */
+    const repo = (n: number, prefix = 'file') => Array.from({ length: n }, (_, i) => ({
+      path: `${prefix}-${i}.ts`,
+      content: Array.from({ length: 100 }, (_, j) => `linea ${j}`).join('\n'),
+    }));
+
+    it('un repo grande con modelo de razonamiento recorta las líneas por archivo', async () => {
+      const fetchMock = vi.fn().mockImplementation(async () => okResponse());
+      vi.stubGlobal('fetch', fetchMock);
+
+      const result = await generateRepoDocs(
+        'owner/repo',
+        repo(120),
+        { provider: 'groq', apiKey: 'gsk-mock-groq', model: 'qwen/qwen3.8-27b' },
+        'es',
+      );
+
+      const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+      const userMessage = body.messages.find((m: any) => m.role === 'user')?.content || '';
+      // 120 archivos → techo de 60 con contenido; 3000 líneas de presupuesto → 50 líneas por archivo.
+      expect(userMessage).toContain('Archivos analizados: 60 (de 120 totales — contexto adaptativo)');
+      expect(userMessage).toContain('### file-0.ts');
+      expect(userMessage).not.toContain('### file-60.ts');
+      // Contenido truncado a 50 líneas + marca de truncado.
+      expect(userMessage).toContain('linea 49');
+      expect(userMessage).not.toContain('linea 50');
+      expect(result.metadatos?.contextoAdaptativo).toMatchObject({
+        maxFiles: 60,
+        maxLinesPerFile: 50,
+        reduced: true,
+        reintento: false,
+      });
+      expect((result.metadatos?.contextoAdaptativo as { reasons: string[] }).reasons).toContain('reasoning-model');
+    });
+
+    it('un modelo rápido con repo grande solo recorta por el techo de archivos', async () => {
+      const fetchMock = vi.fn().mockImplementation(async () => okResponse());
+      vi.stubGlobal('fetch', fetchMock);
+
+      const result = await generateRepoDocs(
+        'owner/repo',
+        repo(120),
+        { provider: 'groq', apiKey: 'gsk-mock-groq', model: 'llama-3.3-70b-versatile' },
+        'es',
+      );
+
+      const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+      const userMessage = body.messages.find((m: any) => m.role === 'user')?.content || '';
+      expect(userMessage).toContain('Archivos analizados: 60 (de 120 totales — contexto adaptativo)');
+      // Sin recorte de líneas: conserva las 80 líneas por archivo.
+      expect(userMessage).toContain('linea 79');
+      expect(result.metadatos?.contextoAdaptativo).toMatchObject({ maxFiles: 60, maxLinesPerFile: 80 });
+    });
+
+    it('un repo pequeño NO se recorta (comportamiento previo intacto)', async () => {
+      const fetchMock = vi.fn().mockImplementation(async () => okResponse());
+      vi.stubGlobal('fetch', fetchMock);
+
+      const result = await generateRepoDocs(
+        'owner/repo',
+        repo(5),
+        { provider: 'groq', apiKey: 'gsk-mock-groq', model: 'qwen/qwen3.8-27b' },
+        'es',
+      );
+
+      const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+      const userMessage = body.messages.find((m: any) => m.role === 'user')?.content || '';
+      expect(userMessage).toContain('Archivos analizados: 5');
+      expect(userMessage).not.toContain('contexto adaptativo');
+      expect(userMessage).toContain('linea 79');
+      expect(result.metadatos?.contextoAdaptativo).toMatchObject({ reduced: false });
+    });
+
+    it('al recortar archivos se priorizan README, manifiestos y código fuente', async () => {
+      const fetchMock = vi.fn().mockImplementation(async () => okResponse());
+      vi.stubGlobal('fetch', fetchMock);
+
+      // 70 archivos → el presupuesto (60) obliga a descartar 10: se descartan los tests.
+      const files = [
+        { path: 'README.md', content: '# readme' },
+        { path: 'package.json', content: '{}' },
+        { path: 'src/core/engine.ts', content: 'code' },
+        { path: 'assets/logo.png', content: 'bin' },
+        { path: 'tests/e2e/flow.spec.ts', content: 'test' },
+        { path: 'tests/unit/parser.test.ts', content: 'test' },
+        ...Array.from({ length: 64 }, (_, i) => ({ path: `misc/f-${i}.txt`, content: 'x' })),
+      ];
+
+      const result = await generateRepoDocs(
+        'owner/repo',
+        files,
+        { provider: 'groq', apiKey: 'gsk-mock-groq', model: 'llama' },
+        'es',
+      );
+
+      const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+      const userMessage = body.messages.find((m: any) => m.role === 'user')?.content || '';
+      // El README, el manifiesto y el código fuente entran; los tests se descartan.
+      expect(userMessage).toContain('### README.md');
+      expect(userMessage).toContain('### package.json');
+      expect(userMessage).toContain('### src/core/engine.ts');
+      expect(userMessage).not.toContain('### tests/e2e/flow.spec.ts');
+      expect(userMessage).not.toContain('### tests/unit/parser.test.ts');
+      expect(result.metadatos?.filesCount).toBe(60);
+    });
+
+    it('reintenta automáticamente con menos contexto si el proveedor rechaza por TPM (413)', async () => {
+      let call = 0;
+      const bodies: string[] = [];
+      const fetchMock = vi.fn().mockImplementation(async (_url, init) => {
+        call++;
+        bodies.push(JSON.parse(init.body).messages.find((m: any) => m.role === 'user')?.content || '');
+        if (call === 1) {
+          return {
+            ok: false,
+            status: 413,
+            json: async () => ({ error: { message: 'Request too large for model: tokens per minute limit reached' } }),
+          };
+        }
+        return okResponse();
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const result = await generateRepoDocs(
+        'owner/repo',
+        repo(120),
+        { provider: 'groq', apiKey: 'gsk-mock-groq', model: 'llama-3.3-70b-versatile' },
+        'es',
+      );
+
+      // 1er intento (README) falla → reintento con menos contexto → README ok → MANUAL ok.
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+      expect(bodies[0]).toContain('Archivos analizados: 60');
+      expect(bodies[1]).toContain('Archivos analizados: 30'); // presupuesto a la mitad
+      expect(bodies[2]).toContain('Archivos analizados: 30'); // el MANUAL hereda el presupuesto reducido
+      expect(result.metadatos?.contextoAdaptativo).toMatchObject({ maxFiles: 30, reintento: true });
+    });
+
+    it('sostiene la llamada sin configuración (valores por defecto del proveedor)', async () => {
+      const fetchMock = vi.fn().mockImplementation(async () => okResponse());
+      vi.stubGlobal('fetch', fetchMock);
+
+      // Sin config: provider 'groq', apiKey y modelo por defecto (ramas `??`).
+      const result = await generateRepoDocs('repo', [{ path: 'src/a.ts', content: 'x' }]);
+
+      const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+      expect(body.model).toBe('test-model');
+      // Sin barra en el nombre del repo y sin config: la firma usa los valores neutros.
+      expect(result.readme).toContain('documentado por IA (IA)');
+    });
+
+    it('NO reintenta ante un timeout (no duplica la espera del usuario)', async () => {
+      const fetchMock = vi.fn().mockImplementation(async () => ({
+        ok: false,
+        status: 504,
+        json: async () => ({ error: { message: 'Gateway Timeout: upstream timed out' } }),
+      }));
+      vi.stubGlobal('fetch', fetchMock);
+
+      await expect(
+        generateRepoDocs(
+          'owner/repo',
+          repo(120),
+          { provider: 'groq', apiKey: 'gsk-mock-groq', model: 'llama-3.3-70b-versatile' },
+          'es',
+        ),
+      ).rejects.toThrow(/timed out/i);
+
+      // Solo la llamada del README: el timeout se propaga sin reintento.
+      expect(fetchMock).toHaveBeenCalledTimes(1);
     });
   });
 });

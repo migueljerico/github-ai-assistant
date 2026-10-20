@@ -263,8 +263,21 @@ export async function runDocumentRepo(
     const fallbackNotice = metadatos?.fallbackModel
       ? ` (usando ${modelLabel(config.provider, metadatos.fallbackModel as string)} por sobrecarga temporal de ${modelLabel(config.provider, (metadatos.originalModel as string) || config.model)})`
       : '';
+    // #77 (v4.0.51): si el contexto se ha recortado (modelo de razonamiento o repo
+    // muy grande), se le dice al usuario con qué presupuesto se generó la
+    // documentación: si no, puede pensar que faltan archivos por un fallo.
+    const adaptive = metadatos?.contextoAdaptativo as
+      | { maxFiles: number; maxLinesPerFile: number; reduced?: boolean; reintento?: boolean }
+      | undefined;
+    const adaptiveNotice = adaptive?.reduced
+      ? ` ${deps.t('chat.docAdaptiveContext', {
+          files: String(adaptive.maxFiles),
+          lines: String(adaptive.maxLinesPerFile),
+        })}`
+      : '';
+    const adaptiveRetryNotice = adaptive?.reintento ? ` ${deps.t('chat.docAdaptiveRetry')}` : '';
     updateMessage(loadingId, {
-      content: `✅ Documentación generada para **${owner}/${repoName}**${fallbackNotice}. Revisa el contenido antes de hacer commit.`,
+      content: `✅ Documentación generada para **${owner}/${repoName}**${fallbackNotice}. Revisa el contenido antes de hacer commit.${adaptiveNotice}${adaptiveRetryNotice}`,
       isLoading: false,
     });
     updateEntry(histId, { status: 'pending', description: deps.t('history.docReady') });

@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.51] — 2026-10-20
+
+> **#77 (propuesta 2) — Presupuesto adaptativo de contexto en la generación de documentación: menos archivos y menos líneas por llamada cuando el modelo es lento (de razonamiento) o el repositorio es enorme, con reintento automático si el proveedor rechaza el contexto.**
+> - **Nuevo módulo puro `client/src/utils/docContextBudget.ts`:** calcula el presupuesto de contexto (archivos con contenido, líneas por archivo y tokens de salida) en función del tamaño real del repositorio y de si el modelo es de **razonamiento** (más lento por token → la mitad de presupuesto de líneas). El árbol completo del repositorio siempre viaja al modelo, así que conoce la estructura aunque no lea todo el código.
+> - **Selección priorizada de archivos:** al recortar, se priorizan README → manifiestos (`package.json`, `pyproject.toml`…) → código fuente → documentación → resto → tests, manteniendo el orden original del repositorio.
+> - **Reintento automático con la mitad de contexto** cuando el proveedor rechaza la petición por TPM/longitud máxima (413, "Request too large"), el mismo patrón que el chat usa con #50. Un **timeout NO se reintenta**: duplicaría la espera del usuario (el banner existente ya ofrece el modo esencial).
+> - **Transparencia:** el mensaje de resultado del chat indica cuántos archivos y líneas se han usado y si hubo reintento (i18n ×13), y `generateRepoDocs` expone el presupuesto real en `metadatos.contextoAdaptativo`.
+
+### Added
+- `client/src/utils/docContextBudget.ts`: módulo puro (sin dependencias) con `computeDocContextBudget`, `reduceDocBudget`, `canReduceDocBudget`, `selectDocFiles`, `docFilePriority` e `isReasoningModel`, más las constantes del presupuesto (`DOC_MAX_FILES`, `DOC_MAX_LINES_PER_FILE`, `DOC_CONTENT_LINES_BUDGET`, `DOC_REASONING_CONTENT_LINES_BUDGET`, `DOC_LIGHT_BUDGET`…).
+- `client/src/services/gemini.ts`: presupuesto adaptativo en `generateRepoDocs` (el contexto se arma por función según el presupuesto activo), reintento automático con contexto reducido ante error de contexto excesivo y `metadatos.contextoAdaptativo` (archivos, líneas, tokens, motivos, `reduced` y `reintento`).
+- `client/src/services/assistantActions.ts`: aviso en el chat cuando el contexto se ha recortado o cuando ha habido reintento automático.
+- `client/src/i18n/*.ts` (13 idiomas): claves `chat.docAdaptiveContext` y `chat.docAdaptiveRetry`.
+
+### Changed
+- `client/src/services/gemini.ts`: la selección de archivos del modo esencial pasa de `files.slice(0, 6)` (posicional) a la selección priorizada por esencialidad (README/manifest/código fuente primero).
+- `CLAUDE.md`: trampa nueva en §5 sobre el presupuesto adaptativo de contexto de la documentación (qué se recorta, qué no y por qué).
+- `MEJORAS_FUTURAS.md`: #77 cerrado (las 3 propuestas implementadas) y trasladado a `HISTORIAL_MEJORAS.md`; contadores actualizados (81 implementadas / 3 pendientes).
+- Bump de versión a `v4.0.51` en `package.json`, `client/package.json` y lockfiles.
+
+### Tests
+- `client/src/utils/__tests__/docContextBudget.test.ts` (18 tests nuevos): detección de modelos de razonamiento, modo esencial, techo de archivos, recorte de líneas por modelo de razonamiento, suelos de archivos/líneas, reintento con contexto reducido, prioridad y selección de archivos.
+- `client/src/services/__tests__/gemini.test.ts` (7 tests nuevos): recorte por repositorio grande con y sin modelo de razonamiento, repositorio pequeño intacto, priorización de archivos al recortar, reintento automático ante 413 y no-reintento ante timeout.
+- `client/src/services/__tests__/assistantActions.test.ts` (2 tests nuevos): aviso de contexto adaptativo en el chat y ausencia del aviso cuando no hubo recorte.
+
+Suite: **1.444 tests unitarios (1.376 cliente + 68 servidor)** + 13 tests E2E, cobertura global 97,97% statements / 99,44% lines, lint 0 errores (warning preexistente de `LanguageContext.tsx`) y build limpia.
+
+Cambio de código por ZCode (MiniMax M3.1 Flash Free).
+
 ## [4.0.50] — 2026-10-17
 
 > **Streaming SSE en la generación de documentación (#77) con timeout por inactividad + progreso en vivo en el modal, sprint de cobertura (#26) y bookkeeping del roadmap (#66/#74).**

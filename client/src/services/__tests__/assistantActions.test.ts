@@ -290,6 +290,51 @@ describe('runDocumentRepo', () => {
     );
   });
 
+  it('#77 (v4.0.51): avisa en el chat del contexto recortado y del reintento automático', async () => {
+    vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'a' }], totalScanned: 1, truncated: false, allPaths: ['a'] } as any);
+    vi.mocked(generateRepoDocs).mockResolvedValue({
+      readme: 'R',
+      manualTecnico: 'M',
+      metadatos: {
+        contextoAdaptativo: { maxFiles: 24, maxLinesPerFile: 50, reduced: true, reintento: true },
+      },
+    } as any);
+    const deps = makeDeps();
+
+    await runDocumentRepo(deps, CONFIG, 'owner/repo');
+
+    expect(deps.updateMessage).toHaveBeenCalledWith(
+      'msg-1',
+      expect.objectContaining({ content: expect.stringContaining('Contexto adaptativo') }),
+    );
+    const calls = vi.mocked(deps.updateMessage).mock.calls;
+    const content = calls[calls.length - 1][1].content as string;
+    expect(content).toContain('24 archivos');
+    expect(content).toContain('50 líneas');
+    expect(content).toContain('reintentó automáticamente');
+  });
+
+  it('#77 (v4.0.51): no avisa de contexto adaptativo si no hubo recorte', async () => {
+    vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'a' }], totalScanned: 1, truncated: false, allPaths: ['a'] } as any);
+    vi.mocked(generateRepoDocs).mockResolvedValue({
+      readme: 'R',
+      manualTecnico: 'M',
+      metadatos: {
+        contextoAdaptativo: { maxFiles: 12, maxLinesPerFile: 80, reduced: false, reintento: false },
+      },
+    } as any);
+    const deps = makeDeps();
+
+    await runDocumentRepo(deps, CONFIG, 'owner/repo');
+
+    const calls = vi.mocked(deps.updateMessage).mock.calls;
+    const content = calls[calls.length - 1][1].content as string;
+    expect(content).not.toContain('Contexto adaptativo');
+    expect(content).not.toContain('reintentó automáticamente');
+  });
+
   it('propaga options.modelOverride a generateRepoDocs con effectiveConfig', async () => {
     vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
     vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'a' }], totalScanned: 1, truncated: false, allPaths: ['a'] } as any);

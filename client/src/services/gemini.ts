@@ -28,7 +28,15 @@
 import type { GeminiAction } from '../types';
 import type { Language } from '../context/LanguageContext';
 import { getProvider, isResponsesModel, modelLabel, resolveEndpoint, type AIProviderType } from './providers';
-import { withTransientRetry, isAbortError, isTransientError, isProviderOverloadedError, combineSignals, createInactivityWatchdog, DEFAULT_AI_TIMEOUT_MS } from '../utils/retry';
+import { withTransientRetry, isAbortError, isTransientError, isProviderOverloadedError, combineSignals, createInactivityWatchdog, isContextTooLargeError, DEFAULT_AI_TIMEOUT_MS } from '../utils/retry';
+// #77 (v4.0.51): presupuesto adaptativo de contexto para la documentación.
+import {
+  computeDocContextBudget,
+  reduceDocBudget,
+  canReduceDocBudget,
+  selectDocFiles,
+  type DocContextBudget,
+} from '../utils/docContextBudget';
 
 /**
  * #77 (v4.0.50): timeout de inactividad para la generación de documentación en
@@ -1347,13 +1355,26 @@ export async function generateRepoDocs(
   }
 
   const isLight = !!options?.lightMode;
-  const maxLines = isLight ? 40 : 80;
-  // v4.0.48: modo completo sube de 8192 a 16384 tokens de salida — los modelos de
-  // razonamiento (p. ej. Kimi K3 en NIM) consumen parte de ese presupuesto pensando
-  // y con 8192 podían devolver content vacío (solo razonamiento). El modo ligero
-  // se mantiene en 2500 para respetar cuotas estrictas (lección v4.0.40).
-  const maxTokensOutput = isLight ? 2500 : 16384;
-  const analyzedFiles = isLight ? files.slice(0, 6) : files;
+
+  const provider = config?.provider ?? 'groq';
+  const apiKey = config?.apiKey ?? 'test-key';
+  const initialModel = options?.modelOverride ?? config?.model ?? 'test-model';
+
+  // #77 (v4.0.51): presupuesto ADAPTATIVO de contexto. Decide cuántos archivos
+  // y cuántas líneas por archivo se envían al modelo según el tamaño real del
+  // repo y si el modelo es de razonamiento (más lento por token). Con repos
+  // grandes esa llamada se pasaba de tiempo (v4.0.44) o la rechazaba el
+  // proveedor por TPM (v4.0.40). El modo esencial (ligero) que elige el
+  // usuario tiene prioridad absoluta: no se recorta más.
+  // v4.0.48: el modo completo usa 16384 tokens de salida — los modelos de
+  // razonamiento (p. ej. Kimi K3 en NIM) consumen parte de ese presupuesto
+  // pensando y con 8192 podían devolver content vacío (solo razonamiento). El
+  // modo ligero se mantiene en 2500 para respetar cuotas estrictas (v4.0.40).
+  let activeBudget: DocContextBudget = computeDocContextBudget({
+    model: initialModel,
+    fileCount: files.length,
+    lightMode: isLight,
+  });
 
   const primaryLanguage = detectPrimaryLanguage(files);
   const docOwner = repoName.includes('/') ? repoName.split('/')[0] : repoName;
@@ -1392,16 +1413,30 @@ export async function generateRepoDocs(
   const binaryPathsOverview = existingBinaryPaths.length > 0
     ? `\n\nIMÁGENES Y ARCHIVOS BINARIOS PRESENTES EN EL REPOSITORIO (EXISTEN, no los elimines ni los renombres; las referencias del README a estas rutas son VÁLIDAS):\n${existingBinaryPaths.map(p => `- ${p}`).join('\n')}`
     : '';
-  const fileContents = analyzedFiles
-    .filter(f => f.content)
-    .map(f => `### ${f.path}\n${truncateByLines(f.content || '', maxLines)}`)
-    .join('\n\n---\n\n');
-  const sharedUserContext =
-    `Repositorio: ${repoName}\n` +
-    `Lenguaje principal detectado: ${primaryLanguage}\n` +
-    `Archivos analizados: ${analyzedFiles.length}${isLight ? ` (de ${files.length} totales — modo ligero/esencial)` : ''}\n\n` +
-    `ESTRUCTURA DEL PROYECTO:\n\`\`\`\n${treeOverview}\n\`\`\`${binaryPathsOverview}\n\n` +
-    `CONTENIDO DE ARCHIVOS CLAVE:\n\n${fileContents}`;
+  // #77 (v4.0.51): el contexto se arma según el presupuesto ACTIVO (archivos y
+  // líneas). Es una función porque un reintento con contexto reducido tiene que
+  // reconstruirlo con el presupuesto nuevo.
+  let lastAnalyzedCount = files.length;
+  const buildDocContext = (budget: DocContextBudget): string => {
+    const analyzedFiles = selectDocFiles(files, budget.maxFiles);
+    lastAnalyzedCount = analyzedFiles.length;
+    const fileContents = analyzedFiles
+      .filter((f): f is typeof f & { content: string } => !!f.content)
+      .map(f => `### ${f.path}\n${truncateByLines(f.content, budget.maxLinesPerFile)}`)
+      .join('\n\n---\n\n');
+    const analyzedSuffix = isLight
+      ? ` (de ${files.length} totales — modo ligero/esencial)`
+      : budget.reduced
+        ? ` (de ${files.length} totales — contexto adaptativo)`
+        : '';
+    return (
+      `Repositorio: ${repoName}\n` +
+      `Lenguaje principal detectado: ${primaryLanguage}\n` +
+      `Archivos analizados: ${analyzedFiles.length}${analyzedSuffix}\n\n` +
+      `ESTRUCTURA DEL PROYECTO:\n\`\`\`\n${treeOverview}\n\`\`\`${binaryPathsOverview}\n\n` +
+      `CONTENIDO DE ARCHIVOS CLAVE:\n\n${fileContents}`
+    );
+  };
 
   const readmeExistingDirective = existingReadme
     ? `\n\nCONTENIDO ACTUAL DEL README (debes MEJORARLO y ENRIQUECERLO — REGLA DE ORO DE PRESERVACIÓN: CONSERVA TODAS SUS SECCIONES RICAS PREEXISTENTES. No lo reemplaces por una plantilla simplificada; conserva todos sus badges, tablas de métricas, capturas, modelo de seguridad, comparativas y secciones detalladas, actualizando solo datos obsoletos):\n${existingReadme}`
@@ -1490,9 +1525,6 @@ LENGUAJE PRIMARIO DETECTADO: ${primaryLanguage}
 REPOSITORIO: ${repoName}
 ═══════════════════════════════════════════════════════`;
 
-  const provider = config?.provider ?? 'groq';
-  const apiKey = config?.apiKey ?? 'test-key';
-  const initialModel = options?.modelOverride ?? config?.model ?? 'test-model';
   const accountId = config?.accountId;
   // Timeout adaptativo para documentación de repositorio:
   // Si el usuario no especificó un timeout personalizado, se asignan 600s (10 min,
@@ -1521,7 +1553,7 @@ REPOSITORIO: ${repoName}
     const watchdog = streaming ? createInactivityWatchdog(DOCS_INACTIVITY_MS) : null;
     try {
       return await callAI(
-        [{ role: 'user', content: sharedUserContext }],
+        [{ role: 'user', content: buildDocContext(activeBudget) }],
         withLangDirective(sysPrompt + lightModeDirective, lang),
         provider, apiKey, activeModel,
         undefined,  // mode (los docs no usan modo chat/acción)
@@ -1529,7 +1561,7 @@ REPOSITORIO: ${repoName}
           ? (textSoFar: string) => options!.onProgress!({ document: doc, chars: textSoFar.length })
           : undefined,
         watchdog?.signal,
-        maxTokensOutput, accountId, effectiveRepoTimeoutMs,
+        activeBudget.maxTokensOutput, accountId, effectiveRepoTimeoutMs,
         streaming ? () => watchdog!.ping() : undefined,
       );
     } catch (err) {
@@ -1547,10 +1579,35 @@ REPOSITORIO: ${repoName}
     }
   };
 
+  // #77 (v4.0.51): reintento ADAPTATIVO. Si el proveedor rechaza la petición por
+  // contexto excesivo (TPM / longitud máxima), se reintenta UNA vez con la mitad
+  // de archivos y de líneas — el mismo patrón que el chat usa con #50. Un timeout
+  // NO se reintenta: el usuario ya ha esperado y un segundo intento igual de lento
+  // solo duplicaría la espera (el banner de "tiempo de espera agotado" ofrece
+  // además el modo esencial, que sí es la palanca adecuada).
+  let adaptiveRetryUsed = false;
+  const callDocAIWithAdaptiveRetry = async (sysPrompt: string, doc: 'readme' | 'manual'): Promise<string> => {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await callDocAI(sysPrompt, doc);
+      } catch (err) {
+        if (attempt === 0 && isContextTooLargeError(err) && canReduceDocBudget(activeBudget)) {
+          activeBudget = reduceDocBudget(activeBudget);
+          adaptiveRetryUsed = true;
+          console.log(
+            `[#77] Contexto excesivo al documentar — reintentando con ${activeBudget.maxFiles} archivos / ${activeBudget.maxLinesPerFile} líneas por archivo`,
+          );
+          continue;
+        }
+        throw err;
+      }
+    }
+  };
+
   const stripFences = (raw: string): string =>
     raw.replace(/^```(?:markdown)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
 
-  const readmeRaw = await callDocAI(readmeSystemPrompt, 'readme');
+  const readmeRaw = await callDocAIWithAdaptiveRetry(readmeSystemPrompt, 'readme');
   let readmeStripped = cleanDocFooter(stripFences(readmeRaw));
   if (!readmeStripped) {
     throw new Error('La IA no devolvió el README. Prueba con otro modelo o vuelve a intentarlo.');
@@ -1573,7 +1630,7 @@ REPOSITORIO: ${repoName}
   const docFooter = buildDocFooter(fallbackModelUsed || initialModel);
   const readme = readmeStripped + '\n\n' + docFooter;
 
-  const manualRaw = await callDocAI(manualSystemPrompt, 'manual');
+  const manualRaw = await callDocAIWithAdaptiveRetry(manualSystemPrompt, 'manual');
   const manualStripped = cleanDocFooter(stripFences(manualRaw));
   if (!manualStripped) {
     throw new Error('La IA no devolvió el MANUAL_TECNICO. Prueba con otro modelo o vuelve a intentarlo.');
@@ -1586,8 +1643,17 @@ REPOSITORIO: ${repoName}
     resumen: extractRepoSummary(readmeStripped, repoName, primaryLanguage),
     metadatos: {
       lenguaje: primaryLanguage,
-      filesCount: analyzedFiles.length,
+      filesCount: lastAnalyzedCount,
       lightMode: isLight,
+      // #77 (v4.0.51): trazabilidad del presupuesto de contexto realmente usado.
+      contextoAdaptativo: {
+        maxFiles: activeBudget.maxFiles,
+        maxLinesPerFile: activeBudget.maxLinesPerFile,
+        maxTokensOutput: activeBudget.maxTokensOutput,
+        reasons: activeBudget.reasons,
+        reduced: activeBudget.reduced,
+        reintento: adaptiveRetryUsed,
+      },
       ...(fallbackModelUsed ? { fallbackModel: fallbackModelUsed, originalModel: initialModel } : {}),
     },
   };
