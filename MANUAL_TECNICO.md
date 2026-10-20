@@ -1,6 +1,6 @@
 # 📖 Manual Técnico — GitHub AI Assistant
 
-**Versión:** v4.0.50 — Octubre 2026
+**Versión:** v4.0.51 — Octubre 2026
 
 
 ---
@@ -510,6 +510,28 @@ gcloud run deploy github-ai-assistant \
 > valor configurado **persiste** entre deploys automáticos. Para aplicarlo al
 > servicio vivo una única vez:
 > `gcloud run services update github-ai-assistant --region=us-central1 --timeout=600`.
+
+> **⚠️ Presupuesto adaptativo de contexto (v4.0.51, #77):** la documentación
+> completa **no** manda el repositorio entero en cada llamada. El módulo puro
+> `client/src/utils/docContextBudget.ts` calcula el presupuesto (archivos con
+> contenido, líneas por archivo y tokens de salida) según el tamaño real del repo
+> y si el modelo es de **razonamiento** (más lento por token → la mitad de
+> presupuesto de líneas):
+>
+> | Situación | Archivos con contenido | Líneas por archivo |
+> |---|---|---|
+> | Repo ≤ 60 archivos, modelo rápido | todos | 80 |
+> | Repo > 60 archivos, modelo rápido | 60 (priorizados) | 80 |
+> | Repo grande, modelo de razonamiento | 60 (priorizados) | ≤ 50 |
+> | Modo esencial (ligero, elegido por el usuario) | 6 | 40 |
+>
+> Al recortar se **priorizan** README → manifiestos → código fuente →
+> documentación → resto → tests (el árbol completo siempre viaja, así que el
+> modelo conoce la estructura). Si el proveedor rechaza la petición por TPM o
+> longitud máxima, hay un **reintento automático con la mitad de contexto**; un
+> timeout **no** se reintenta (duplicaría la espera). El presupuesto de salida
+> (`max_tokens`) no se toca en el reintento: está calibrado para que los modelos
+> de razonamiento no devuelvan content vacío (v4.0.48).
 
 **`deploy.sh` (deploy manual validado, v3.41.0 — #25-parte3).** Alternativa al
 comando anterior: valida que las **3 variables críticas**

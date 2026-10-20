@@ -31,7 +31,7 @@ reemplazan. Saltarse este paso es la causa nº1 de trabajar en bucle.
 
 ## 1. Visión general
 
-**GitHub AI Assistant** (v4.0.50) es una app web que permite operar la **GitHub
+**GitHub AI Assistant** (v4.0.51) es una app web que permite operar la **GitHub
 REST API en lenguaje natural** a través de un proveedor de IA (Google Gemini,
 Groq Cloud, OpenRouter, NVIDIA NIM, Zenmux, OpenCode Zen, Cloudflare Workers AI,
 la IA propone una acción, y
@@ -397,6 +397,21 @@ Ejecutar **un solo test**: `cd client && npm run test:run -- src/services/github
   deploys del CD (el trigger no especifica el flag). Al subir cualquier timeout
   de la app, verifica la cadena completa: cliente → proxy (`getUpstreamTimeout`,
   tope 600s) → Cloud Run.
+- **⚠️ Presupuesto adaptativo de contexto en la documentación (#77, v4.0.51).** El
+  flujo de documentación **no** manda el repo entero: `utils/docContextBudget.ts`
+  calcula cuántos archivos y cuántas líneas por archivo viajan en cada llamada
+  (`generateRepoDocs`), en función del **tamaño real del repo** y de si el modelo
+  es de **razonamiento** (más lento por token: la mitad de presupuesto de líneas).
+  El árbol completo del repo siempre viaja, así que el modelo conoce la estructura
+  aunque no lea todo el código. Al recortar archivos se **priorizan** los
+  esenciales (README → manifiestos → código fuente → docs → resto → tests).
+  Si el proveedor rechaza la petición por TPM/longitud máxima, hay un
+  **reintento automático con la mitad de contexto** (igual que el chat con #50);
+  un **timeout NO se reintenta** (duplicaría la espera del usuario). El modo
+  esencial (ligero) que elige el usuario manda sobre cualquier recorte. El
+  presupuesto de **salida** (`max_tokens`) no se toca en el reintento: está
+  calibrado para que los modelos de razonamiento no devuelvan content vacío
+  (v4.0.48).
 - **⚠️ No usar sintaxis TypeScript en archivos JavaScript puros (trampa recurrente).**
   `server/index.js` es JS puro (no se transpila con TypeScript). Usar type assertions
   como `as string | undefined` causa `SyntaxError: Unexpected identifier 'as'` al

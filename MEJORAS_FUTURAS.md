@@ -2,7 +2,7 @@
 
 Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de GitHub**.
 
-**Actualizado a:** v4.0.50 — Octubre 2026
+**Actualizado a:** v4.0.51 — Octubre 2026
 
 > 📜 **Historial de Mejoras Implementadas:** Para consultar las 100+ características y correcciones resueltas desde la v1.0.0 a la v4.0.33, consulta el [Historial de Mejoras (`HISTORIAL_MEJORAS.md`)](HISTORIAL_MEJORAS.md).
 
@@ -36,25 +36,6 @@ Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de
 **Pendiente:**
 - Cobertura de edge cases en nuevos servicios y proveedores.
 - Cobertura de ramas defensivas inalcanzables (catch de `pdfReader.ts`, guard de `DiffViewer.tsx`): valorar exclusión o refactor antes que tests artificiales.
-
----
-
-### 🟡 Media Prioridad
-
-#### #77 — Streaming en la generación de documentación con timeout por inactividad
-**Esfuerzo:** ~6-8h · **Estado:** 🔄 Parcial (streaming + inactividad + progreso ✅ v4.0.50; queda la reducción adaptativa de contexto)
-
-**Contexto (v4.0.44):** la documentación completa hace dos llamadas no-streaming secuenciales (README + MANUAL_TECNICO) con timeout absoluto de 600 s por llamada. Los modelos de razonamiento pesados (p. ej. Qwen 3.8 Max vía QwenCloud) en repos muy grandes pueden acercarse o superar ese techo, y subir timeouts indefinidamente no es sostenible: el usuario espera a ciegas sin progreso visible.
-
-**Progreso realizado (v4.0.50, 2026-10-17):** ✅ Propuestas 1 y 3 implementadas.
-- ✅ **Streaming SSE con timeout por inactividad:** con `onProgress`, `generateRepoDocs` genera README y MANUAL_TECNICO en streaming con un watchdog (`createInactivityWatchdog`, `DOCS_INACTIVITY_MS = 240_000`) que aborta solo si transcurren 240s sin recibir NINGÚN dato del stream; el ping llega por trozo leído (nuevo parámetro `onActivity` desde `callAI` hasta los tres transportes) para no abortar en fases largas solo-razonamiento. El tope absoluto (600s/120s) se conserva como cinturón de la plataforma (Cloud Run limita cada request a 600s).
-- ✅ **Progreso en vivo:** `DocumentFlowModal` muestra el documento activo y los caracteres recibidos (`#flow-stream-progress`, clave i18n `modal.flow.streamProgress` ×13). Sin `onProgress` se conserva el comportamiento no-streaming previo (retrocompatible con los demás flujos).
-- ⏳ **Pendiente — reducción adaptativa de contexto** (propuesta 2): menos archivos/líneas por llamada cuando el modelo sea lento o el repo enorme, en el espíritu del presupuesto adaptativo de chat (#50).
-
-**Propuesta:**
-1. Generar las docs con **streaming SSE** (la infraestructura ya existe: `pipeUpstream` en el proxy y `onToken` en `callAI`) y sustituir el timeout absoluto por un **timeout por inactividad** (abortar solo si pasan N segundos sin recibir ningún chunk).
-2. **Reducción adaptativa de contexto** para modelos de razonamiento (menos archivos/líneas por llamada cuando el modelo es lento o el repo enorme), en el espíritu del presupuesto adaptativo de chat (#50).
-3. Progreso visible en `DocumentFlowModal` (documento que se está generando, tokens/chunks recibidos).
 
 ---
 
@@ -93,8 +74,8 @@ Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de
 
 | Categoría | Cantidad | Referencia |
 |---|---|---|
-| ✅ **Mejoras Implementadas** | 80 ítems | [HISTORIAL_MEJORAS.md](HISTORIAL_MEJORAS.md) |
-| ⏳ **Pendientes Activos** | 4 ítems (#26, #66, #74, #77) | Secciones superiores |
+| ✅ **Mejoras Implementadas** | 81 ítems | [HISTORIAL_MEJORAS.md](HISTORIAL_MEJORAS.md) |
+| ⏳ **Pendientes Activos** | 3 ítems (#26, #66, #74) | Secciones superiores |
 | 🗑️ **Descartados / Inviables** | 3 ítems (#33, #35, #36) | [HISTORIAL_MEJORAS.md](HISTORIAL_MEJORAS.md) |
 
 ---
