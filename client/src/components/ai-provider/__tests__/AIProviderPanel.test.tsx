@@ -4,6 +4,40 @@ import { AIProviderContextProvider } from '../../../context/AIProviderContext';
 import AIProviderPanel from '../AIProviderPanel';
 import { getProvider } from '../../../services/providers';
 
+// #26 (v4.0.52): puntos de sutura mockeables sin romper los tests del provider real.
+// - aiCtx: sustituye `useAIProvider` SOLO cuando `aiCtx.override` está definido
+//   (espiando `connect` en el test de conexión tras validateProviderKey).
+// - fm: sustituye `fetchModels` SOLO cuando `fm.override` está definido (respuestas
+//   null/lista sintética para cubrir las ramas del effect del catálogo).
+const aiCtx = vi.hoisted(() => ({
+  override: null as null | (() => {
+    connect: (provider: unknown, key: unknown, model: unknown, accountId: unknown) => void;
+  } & Record<string, unknown>),
+}));
+const fm = vi.hoisted(() => ({
+  override: null as null | ((...args: unknown[]) => Promise<unknown>),
+}));
+
+vi.mock('../../../context/AIProviderContext', async (importOriginal) => {
+  const real = await importOriginal<typeof import('../../../context/AIProviderContext')>();
+  const mod = {
+    ...real,
+    useAIProvider: (() => (aiCtx.override ? aiCtx.override() : real.useAIProvider())) as typeof real.useAIProvider,
+  };
+  return mod;
+});
+
+vi.mock('../../../services/providers', async (importOriginal) => {
+  const real = await importOriginal<typeof import('../../../services/providers')>();
+  const mod = {
+    ...real,
+    fetchModels: ((...args: unknown[]) =>
+      fm.override ? fm.override(...args) : real.fetchModels(...(args as Parameters<typeof real.fetchModels>))
+    ) as unknown as typeof real.fetchModels,
+  };
+  return mod;
+});
+
 afterEach(() => {
   vi.unstubAllGlobals();
   sessionStorage.clear();
@@ -416,6 +450,148 @@ describe('AIProviderPanel — Gemini con Gemini 4 Argon y 3.8 Flash', () => {
 
     fireEvent.change(select, { target: { value: 'gemini-4-argon' } });
     expect(select.value).toBe('gemini-4-argon');
+  });
+});
+
+// ── Ramas restantes (v4.0.52, #26) ────────────────────────────────────────────
+describe('AIProviderPanel — ramas del catálogo dinámico (v4.0.52 #26)', () => {
+  afterEach(() => {
+    fm.override = null;
+    aiCtx.override = null;
+  });
+
+  it('key de 20+ caracteres con prefijo incorrecto: no consulta el catálogo (return de L64)', () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+    const { container } = renderPanel();
+    selectProvider(container, 'nvidia');
+
+    const keyInput = container.querySelector('#nvidia-key-input') as HTMLInputElement;
+    fireEvent.change(keyInput, { target: { value: 'nope_invalid_key_xxx' } });
+
+    // L63 pasa (20+ chars), pero el prefijo 'nvapi-' no coincide → return sin fetch.
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('cloudflare con key larga pero sin account id: no consulta el catálogo (return de L68)', () => {
+    // Las dos guardas se evalúan en orden: sin key 20+ el return ocurre en L63 y
+    // la L68 es inalcanzable; con key larga (cloudflare no tiene keyPrefix) la
+    // ejecución llega a L68 y sale por el accountId vacío.
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+    const { container } = renderPanel();
+    selectProvider(container, 'cloudflare');
+
+    const keyInput = container.querySelector('#cloudflare-key-input') as HTMLInputElement;
+    fireEvent.change(keyInput, { target: { value: 'cfkey_1234567890_abcdefgh' } });
+
+    // El endpoint exige {account_id} y el input está vacío → return antes de fetch.
+    const accountInput = container.querySelector('#cloudflare-accountid-input') as HTMLInputElement;
+    expect(accountInput.value).toBe('');
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('fetchModels null → mantiene el fallback estático y deja de cargar (return de L75)', async () => {
+    fm.override = () => Promise.resolve(null);
+    const { container } = renderPanel();
+    selectProvider(container, 'kilo');
+
+    const select = container.querySelector('#kilo-model-select') as HTMLSelectElement;
+    await waitFor(() => expect(select.disabled).toBe(false)); // termina la carga
+    // Catálogo sin cambios (el estático de kilo: 6 modelos free)
+    expect(select.options.length).toBe(getProvider('kilo').staticModels.length);
+  });
+
+  it('tras cambiar de key, respeta el modelo ya elegido si sigue en el catálogo (return de L85)', async () => {
+    // La lista NO contiene el default de Groq: con la 1ª key válida,
+    // pickDefaultModel deja 'custom-model' (1er item; sin éxitos de preferencias);
+    // el re-run del effect con la 2ª key conserva el modelo porque
+    // stillValid && userChose ('custom-model' ≠ default) → return prev (L85).
+    fm.override = () => Promise.resolve([{ value: 'custom-model', label: 'Custom', free: false }]);
+
+    const { container } = renderPanel();
+    selectProvider(container, 'groq');
+    const select = container.querySelector('#groq-model-select') as HTMLSelectElement;
+    const keyInput = container.querySelector('#groq-key-input') as HTMLInputElement;
+
+    // 1ª carga: la key válida dispara el fetch del catálogo (groq exige 20+ chars 'gsk_')
+    fireEvent.change(keyInput, { target: { value: 'gsk_validkey1234567890' } });
+    await waitFor(() => expect(select.value).toBe('custom-model'));
+
+    // 2ª carga: una key distinta re-ejecuta el effect; el modelo elegido no se re-reeleje
+    fireEvent.change(keyInput, { target: { value: 'gsk_validkey123456789x' } });
+    await waitFor(() => expect(keyInput.value).toBe('gsk_validkey123456789x'));
+    await waitFor(() => expect(select.disabled).toBe(false));
+    expect(select.value).toBe('custom-model');
+  });
+
+  it('tecla no-Enter/Espacio sobre la tarjeta NO selecciona el proveedor (rama falsa de L170)', () => {
+    const { container } = renderPanel();
+    const groqCard = container.querySelector('#select-groq-btn') as HTMLElement;
+
+    fireEvent.keyDown(groqCard, { key: 'Tab' });
+
+    expect(container.querySelector('#groq-model-select')).not.toBeInTheDocument();
+  });
+});
+
+describe('AIProviderPanel — conexión tras validación correcta (v4.0.52 #26)', () => {
+  afterEach(() => {
+    fm.override = null;
+    aiCtx.override = null;
+  });
+
+  it('al cumplirse el setTimeout de 800 ms invoca connect con los datos del formulario (func anónima de L106)', async () => {
+    const geminiService = await import('../../../services/gemini');
+    const validateSpy = vi.spyOn(geminiService, 'validateProviderKey').mockResolvedValue({ valid: true });
+    const connectSpy = vi.fn();
+    aiCtx.override = () => ({
+      connect: connectSpy,
+      isConnected: false,
+      connectedAt: null,
+      provider: null,
+      apiKey: null,
+      model: null,
+      accountId: null,
+      timeoutMs: null,
+      disconnect: vi.fn(),
+      setTimeoutMs: vi.fn(),
+      setModel: vi.fn(),
+    } as never);
+
+    const { container } = renderPanel();
+    selectProvider(container, 'groq');
+    const keyInput = container.querySelector('#groq-key-input') as HTMLInputElement;
+    fireEvent.change(keyInput, { target: { value: 'gsk_validkey123456789' } });
+
+    const timeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+    fireEvent.click(container.querySelector('#ai-connect-btn') as HTMLElement);
+    // Espera a que exista el temporizador del éxito (delay 800 ms); puede haber
+    // otros setTimeout del scheduler antes/después: se localiza por delay.
+    await waitFor(() => expect(timeoutSpy.mock.calls.some(c => c[1] === 800)).toBe(true));
+
+    // Dispara manualmente el temporizador capturado: ejecuta la func de L108.
+    const call800 = timeoutSpy.mock.calls.find(c => c[1] === 800) as unknown as [() => void, number];
+    call800[0]();
+    expect(connectSpy).toHaveBeenCalledWith('groq', 'gsk_validkey123456789', getProvider('groq').defaultModel, null);
+    expect(call800[1]).toBe(800);
+
+    timeoutSpy.mockRestore();
+    validateSpy.mockRestore();
+  });
+
+  it('validación fallida SIN error → muestra el mensaje genérico "Error desconocido"', async () => {
+    const geminiService = await import('../../../services/gemini');
+    const validateSpy = vi.spyOn(geminiService, 'validateProviderKey').mockResolvedValue({ valid: false });
+    const { container } = renderPanel();
+    selectProvider(container, 'groq');
+    const keyInput = container.querySelector('#groq-key-input') as HTMLInputElement;
+    fireEvent.change(keyInput, { target: { value: 'gsk_invalid' } });
+
+    fireEvent.click(container.querySelector('#ai-connect-btn') as HTMLElement);
+
+    await waitFor(() => expect(screen.getByText(/Error desconocido/)).toBeInTheDocument());
+    validateSpy.mockRestore();
   });
 });
 

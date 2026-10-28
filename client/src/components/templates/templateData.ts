@@ -59,21 +59,23 @@ export function buildTemplateCategories(t: TFunc): TemplateCategory[] {
   }
 
   for (const tmplDef of TEMPLATE_DEFS) {
-    const templates = templatesByCategory.get(tmplDef.category);
-    if (templates) {
-      templates.push({
-        id: tmplDef.id,
-        name: t(`tmpl_panel.tmpl_${tmplDef.id}.name`),
-        description: t(`tmpl_panel.tmpl_${tmplDef.id}.description`),
-        instruction: t(`tmpl_panel.tmpl_${tmplDef.id}.instruction`),
-      });
-    }
+    // #26 (v4.0.52): el `if (templates)` era rama muerta — TEMPLATE_DEFS solo
+    // usa categorías registradas en CATEGORY_DEFS (misma fuente de verdad),
+    // y cada id de CATEGORY_DEFS ya se pre-registró en el Map de arriba.
+    templatesByCategory.get(tmplDef.category)!.push({
+      id: tmplDef.id,
+      name: t(`tmpl_panel.tmpl_${tmplDef.id}.name`),
+      description: t(`tmpl_panel.tmpl_${tmplDef.id}.description`),
+      instruction: t(`tmpl_panel.tmpl_${tmplDef.id}.instruction`),
+    });
   }
 
   return CATEGORY_DEFS.map(catDef => ({
     id: catDef.id,
     name: t(`tmpl_panel.cat_${catDef.id}.name`),
     emoji: catDef.emoji,
-    templates: templatesByCategory.get(catDef.id) ?? [],
+    // v4.0.52 (#26): el `?? []` era rama muerta — cada categoría de
+    // CATEGORY_DEFS se registró en el Map al construirlo (siempre existe).
+    templates: templatesByCategory.get(catDef.id) as TemplateCategory['templates'],
   }));
 }

@@ -130,5 +130,29 @@ describe('ChatToolsMenu', () => {
     const btn = screen.getByRole('button', { name: /Más herramientas/i });
     expect(btn).toBeDisabled();
   });
+
+  it('mousedown dentro del menú o del botón NO cierra el menú (#26, v4.0.52)', () => {
+    render(
+      <LanguageProvider>
+        <ChatToolsMenu>
+          <button data-testid="child-btn">Child</button>
+        </ChatToolsMenu>
+      </LanguageProvider>
+    );
+    const btn = screen.getByRole('button', { name: /Más herramientas/i });
+    fireEvent.click(btn); // abre
+
+    // target = un hijo del menú: `!menu.contains(target)` es falso → no cierra
+    fireEvent.mouseDown(screen.getByTestId('child-btn'));
+    expect(screen.queryByTestId('child-btn')).not.toBeNull();
+
+    // target = el propio botón: `!button.contains(target)` es falso → no cierra
+    fireEvent.mouseDown(btn);
+    expect(screen.queryByTestId('child-btn')).not.toBeNull();
+
+    // target fuera de ambos → sí cierra
+    fireEvent.mouseDown(document.body);
+    expect(screen.queryByTestId('child-btn')).toBeNull();
+  });
 });
 

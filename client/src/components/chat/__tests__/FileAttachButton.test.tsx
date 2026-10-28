@@ -31,6 +31,18 @@ describe('FileAttachButton (#28, #57 Tanda B multi-archivo)', () => {
     expect(onAttach.mock.calls[0][0]).toHaveLength(2);
   });
 
+  // #26 (v4.0.52): el falso de `list && list.length > 0` — change sin ficheros
+  // (selección cancelada/carpetas vacías) no debe llamar a onAttach.
+  it('change sin ficheros (lista vacía) no dispara onAttach (v4.0.52 #26)', () => {
+    const onAttach = vi.fn();
+    const { container } = render(<FileAttachButton disabled={false} fileNames={[]} onAttach={onAttach} onClearAt={vi.fn()} />);
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+
+    fireEvent.change(input, { target: { files: [] } });
+
+    expect(onAttach).not.toHaveBeenCalled();
+  });
+
   it('con un archivo adjunto muestra el chip y permite quitarlo (onClearAt(0))', () => {
     const onClearAt = vi.fn();
     render(<FileAttachButton disabled={false} fileNames={['notas.md']} onAttach={vi.fn()} onClearAt={onClearAt} />);

@@ -1225,7 +1225,9 @@ export async function runConfirmAction(deps: ChatDeps, pendingAction: PendingAct
         addEntry({ status, description: message, repo });
       },
     }, t, pendingAction.commitMessage);
-    addMessage({ role: 'assistant', content: t(targetRepos.length !== 1 ? 'history.multiRepoAppliedPlural' : 'history.multiRepoApplied', { count: targetRepos.length }) });
+    // #26 (v4.0.52): dentro de este guard targetRepos.length > 1, así que la
+    // variante singular del ternario previo era rama muerta — siempre plural.
+    addMessage({ role: 'assistant', content: t('history.multiRepoAppliedPlural', { count: targetRepos.length }) });
   } else {
     const histId = addEntry({ status: 'pending', description: action.accion, repo: action.repo });
     const result = await executeAction(token, user, action, undefined, t, pendingAction.commitMessage);

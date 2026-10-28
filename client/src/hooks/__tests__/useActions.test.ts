@@ -2,12 +2,12 @@ import { describe, it, expect, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useActions } from '../useActions';
 
-// Mock the HistoryContext
+// Mock del HistoryContext — espías a nivel de módulo para inspeccionar las
+// llamadas desde los propios tests (#26, v4.0.52).
+const addEntrySpy = vi.fn(() => 'mock-id-' + Math.random());
+const updateEntrySpy = vi.fn();
 vi.mock('../../context/HistoryContext', () => ({
-  useHistory: () => ({
-    addEntry: vi.fn(() => 'mock-id-' + Math.random()),
-    updateEntry: vi.fn(),
-  }),
+  useHistory: () => ({ addEntry: addEntrySpy, updateEntry: updateEntrySpy }),
 }));
 
 describe('useActions Hook', () => {
@@ -38,6 +38,19 @@ describe('useActions Hook', () => {
     });
 
     expect(result.current.pendingAction).toEqual(mockAction);
+  });
+
+  // #26 (v4.0.52): la rama falsa de `repo || null` — sin repo explícito queda null
+  it('logAction sin repo registra repo como null', () => {
+    const { result } = renderHook(() => useActions());
+    act(() => {
+      result.current.logAction('completed', 'acción sin repo');
+    });
+    expect(addEntrySpy).toHaveBeenCalledWith(expect.objectContaining({
+      status: 'completed',
+      description: 'acción sin repo',
+      repo: null,
+    }));
   });
 
   it('should set executing state', () => {

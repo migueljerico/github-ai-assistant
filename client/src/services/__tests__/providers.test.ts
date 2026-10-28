@@ -1039,3 +1039,189 @@ describe('providers — fetchModels (ramas de deduplicación y detección free)'
     expect(list!.find(m => m.value === 'minimax-m2')!.free).toBe(false);
   });
 });
+
+// ── Ramas restantes de fetchModels (v4.0.52, #26) ─────────────────────────────
+describe('providers — fetchModels ramas restantes (v4.0.52 #26)', () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+    vi.restoreAllMocks();
+  });
+
+  it('isFreeOpenRouterModel (formato strings): todas las combinaciones 0 / 0.0 → free', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          // prompt '0' + completion '0.0' (lado 0.0 del completion)
+          { id: 'str/completion-0dot0', pricing: { prompt: '0', completion: '0.0' } },
+          // prompt '0.0' (lado 0.0 del prompt) + completion '0'
+          { id: 'str/prompt-0dot0', pricing: { prompt: '0.0', completion: '0' } },
+          // ambos 0.0
+          { id: 'str/both-0dot0', pricing: { prompt: '0.0', completion: '0.0' } },
+        ],
+      }),
+    }));
+
+    const list = await fetchModels(PROVIDERS.openrouter);
+    expect(list).toHaveLength(3);
+    // Además: los tres items sin `name` → label m.id (rama del || en el mapa).
+    expect(list!.every(m => m.free)).toBe(true);
+    expect(list!.map(m => m.label)).toEqual(['str/both-0dot0', 'str/completion-0dot0', 'str/prompt-0dot0']);
+  });
+
+  it('isFreeOpenRouterModel (formato array): prompt o completion ausentes usan [] en el spread', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          // solo prompt (completion undefined → ~[] en el spread) → free
+          { id: 'arr/prompt-only', pricing: { prompt: [{ value: 0 }] } },
+          // solo completion (prompt undefined → ~[]) con precio > 0 → paid
+          { id: 'arr/completion-only', pricing: { completion: [{ value: 0.5 }] } },
+        ],
+      }),
+    }));
+
+    const list = await fetchModels(PROVIDERS.openrouter);
+    expect(list!.find(m => m.value === 'arr/prompt-only')!.free).toBe(true);
+    expect(list!.find(m => m.value === 'arr/completion-only')!.free).toBe(false);
+  });
+
+  it('cache FRESCA (< TTL): devuelve los modelos cacheados sin llamar a fetch', async () => {
+    sessionStorage.setItem('openrouter_models_cache_v3', JSON.stringify({
+      models: [{ value: 'cache/fresco', label: 'Vieja', free: false }],
+      ts: Date.now(),
+    }));
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const list = await fetchModels(PROVIDERS.openrouter);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(list).toEqual([{ value: 'cache/fresco', label: 'Vieja', free: false }]);
+  });
+
+  it('cache CADUCADA (>= TTL): refetch y sobrescribe la caché', async () => {
+    // ts de hace 2 h — MODELS_CACHE_TTL es 1 h → rama falsa del if de frescura.
+    sessionStorage.setItem('openrouter_models_cache_v3', JSON.stringify({
+      models: [{ value: 'cache/viejo', label: 'Viejo', free: false }],
+      ts: Date.now() - 2 * 60 * 60 * 1000,
+    }));
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [{ id: 'fresco/uno', name: 'Fresco Uno' }] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const list = await fetchModels(PROVIDERS.openrouter);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(list!.find(m => m.value === 'fresco/uno')!.label).toBe('Fresco Uno');
+    // La caché ahora contiene el catálogo nuevo (el viejo queda fuera)
+    const reCached = JSON.parse(sessionStorage.getItem('openrouter_models_cache_v3')!);
+    expect(reCached.models.some((m: { value: string }) => m.value === 'fresco/uno')).toBe(true);
+  });
+
+  it('gemini (def con endpoint): modelos sin name → label m.id (rama del ||)', async () => {
+    const def = { ...PROVIDERS.gemini, modelsEndpoint: 'https://proxy.example/api/gemini/models', modelsNeedKey: false };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [
+        { id: 'gemini-x-sin-name' }, // sin name → label = id
+        { id: 'gemini-2.5-flash', name: 'Flash' },
+      ] }),
+    }));
+
+    const list = await fetchModels(def, 'AIzaSy_test');
+    const target = list!.find(m => m.value === 'gemini-x-sin-name');
+    expect(target).toBeDefined();
+    expect(target!.label).toBe('gemini-x-sin-name');
+  });
+
+  it('nvidia (def con endpoint): featured y no-featured mezclados en el mismo sort (ambos lados del ternario)', async () => {
+    const def = { ...PROVIDERS.nvidia, modelsEndpoint: 'https://nim/models' };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: [
+        { id: 'z-nofeat', name: 'Z NoFeat' },
+        { id: 'nvidia/feat', name: 'Featured' },
+        { id: 'a-nofeat', name: 'A NoFeat' },
+      ] }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ 'featured-models': [
+        { model: 'nvidia/feat' },
+      ] }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const list = await fetchModels(def, 'nvapi_test');
+    // `nvidia/feat` (0) primero; el resto (1) alfabético detrás
+    expect(list!.map(m => m.value)).toEqual(['nvidia/feat', 'a-nofeat', 'z-nofeat']);
+  });
+
+  it('zenmux: entradas sin value ni price dentro de pricing → Number(...) === 0 → free', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          // entrada {} — value y price undefined → cae al 0 del ?? → free
+          { id: 'z/empty-entry', pricing: { prompt: [{}], completion: [{}] } },
+          // entradas solo con `price` (value undefined → p.price) → free
+          { id: 'z/price-only', pricing: { prompt: [{ price: 0 }], completion: [{ price: '0' }] } },
+          // pricing con arrays vacíos → length 0 → free
+          { id: 'z/empty-arrays', pricing: { prompt: [], completion: [] } },
+        ],
+      }),
+    }));
+
+    const list = await fetchModels(PROVIDERS.zenmux, 'sk-test');
+    expect(list).toHaveLength(3);
+    expect(list!.every(m => m.free)).toBe(true);
+  });
+
+  it('bazaarlink: priceIsZero con completions mixtas (prompt 0 + completion != 0 / indefinida), label por los tres niveles', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          // prompt 0 pero completion indefinida → priceIsZero false (3er operando false)
+          { id: 'bal/without-completion', pricing: { prompt: '0' } },
+          // prompt 0 pero completion > 0 → priceIsZero false (3er operando false)
+          { id: 'bal/half-free', pricing: { prompt: '0', completion: '0.001' } },
+          // prompt > 0 → 2º operando false
+          { id: 'bal/prompt-paid', pricing: { prompt: '0.9', completion: '0' } },
+          // prompt 0 y completion 0 (strings) → priceIsZero TRUE → free
+          { id: 'bal/zero-free', pricing: { prompt: '0', completion: '0' } },
+          // label: name truthy
+          { id: 'bal/label-name', name: 'Nombre Bazaar' },
+          // label: display_name (name ausente)
+          { id: 'bal/label-display', display_name: 'Display Bazaar' },
+          // label: id (ambos ausentes)
+          { id: 'bal/label-id' },
+        ],
+      }),
+    }));
+
+    const list = await fetchModels(PROVIDERS.bazaarlink);
+    expect(list!.find(m => m.value === 'bal/without-completion')!.free).toBe(false);
+    expect(list!.find(m => m.value === 'bal/half-free')!.free).toBe(false);
+    expect(list!.find(m => m.value === 'bal/prompt-paid')!.free).toBe(false);
+    expect(list!.find(m => m.value === 'bal/zero-free')!.free).toBe(true);
+    expect(list!.find(m => m.value === 'bal/label-name')!.label).toBe('Nombre Bazaar');
+    expect(list!.find(m => m.value === 'bal/label-display')!.label).toBe('Display Bazaar');
+    expect(list!.find(m => m.value === 'bal/label-id')!.label).toBe('bal/label-id');
+  });
+
+  it('qwencloud: label por los tres niveles (name / display_name / id)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          { id: 'qc/label-name', name: 'Nombre Qwen' },
+          { id: 'qc/label-display', display_name: 'Display Qwen' },
+          { id: 'qc/label-id' },
+        ],
+      }),
+    }));
+
+    const list = await fetchModels(PROVIDERS.qwencloud, 'sk-test');
+    expect(list!.find(m => m.value === 'qc/label-name')!.label).toBe('Nombre Qwen');
+    expect(list!.find(m => m.value === 'qc/label-display')!.label).toBe('Display Qwen');
+    expect(list!.find(m => m.value === 'qc/label-id')!.label).toBe('qc/label-id');
+  });
+});

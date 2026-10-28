@@ -189,4 +189,33 @@ describe('summarizeThread', () => {
     const userMessage = vi.mocked(callAI).mock.calls[0][0][0].content;
     expect(userMessage).toContain('[… truncado …]');
   });
+
+  // ── Ramas restantes (#26, v4.0.52) ──────────────────────────────────────────
+  it('item y comentarios sin user/created_at/body: todos los fallbacks aplican (v4.0.52 #26)', async () => {
+    // `body: ''` → hasBody false, pero sobrevive porque hay un comentario;
+    // así `(item.body || '(sin descripción)')` cae al fallback (rama #26).
+    vi.mocked(getIssueOrPr).mockResolvedValue({
+      number: 7, title: 'Casi vacío', body: '', state: 'open', html_url: 'u', user: undefined,
+    } as any);
+    vi.mocked(getIssueComments).mockResolvedValue([
+      { id: 1 },
+    ] as any);
+
+    await summarizeThread(TOKEN, OWNER, REPO, 7, CONFIG);
+
+    const userMessage = vi.mocked(callAI).mock.calls[0][0][0].content;
+    expect(userMessage).toContain('Autor: @desconocido');
+    expect(userMessage).toContain('(sin descripción)');
+    expect(userMessage).toContain('@desconocido ()');
+  });
+});
+
+// ── Ramas restantes (#26, v4.0.52) ────────────────────────────────────────────
+describe('parseThreadInput — números no válidos (v4.0.52 #26)', () => {
+  it('un número que acaba en «0» no se interpreta como hilo (#0 no existe)', () => {
+    // numMatch captura '0' → parseInt=0 → falsy → el bloque del número se salta
+    // y cae al parseo genérico (repo simple / null).
+    expect(parseThreadInput('casa#0')).toBeNull();
+    expect(parseThreadInput('0')).toEqual({ repo: '0' });
+  });
 });

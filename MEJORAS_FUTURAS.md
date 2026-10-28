@@ -2,7 +2,7 @@
 
 Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de GitHub**.
 
-**Actualizado a:** v4.0.51 — Octubre 2026
+**Actualizado a:** v4.0.52 — Octubre 2026
 
 > 📜 **Historial de Mejoras Implementadas:** Para consultar las 100+ características y correcciones resueltas desde la v1.0.0 a la v4.0.33, consulta el [Historial de Mejoras (`HISTORIAL_MEJORAS.md`)](HISTORIAL_MEJORAS.md).
 
@@ -22,7 +22,9 @@ Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de
 ### 🔴 Alta Prioridad
 
 #### #26 — Mantener y expandir cobertura de tests con Codecov
-**Esfuerzo:** Continuo (2-4h por sprint) · **Estado:** 🔄 En progreso
+**Esfuerzo:** Continuo (2-4h por sprint) · **Estado:** ✅ Objetivo 100% alcanzado (v4.0.52) — ahora es mantenimiento
+
+**Progreso realizado (v4.0.52, 2026-10-28):** ✅ **100% global (statements, branches, functions y lines) en los 79 ficheros** — antes 97,14% / 97,98% / 95,1% / 97,32%. Refactor de ramas muertas en ~20 módulos (guards defensivos inalcanzables borrados con comentario, sin tests artificiales ni `v8 ignore`) y suite nueva de `github.ts` (del 35% al 100%): todos los wrappers REST con arnés de fetch por URL. Suite: **1.582 tests (1.514 cliente + 68 servidor)**, lint 0 errores y build limpia.
 
 **Progreso realizado (v4.0.50, 2026-10-17):** ✅ Sprint de lagunas concretas — rama dinámica de Gemini en `fetchModels` (def override de `modelsEndpoint`), catch defensivo de `extractMashup` con ZIP interno corrupto (`powerbiReader.ts`), BOM UTF-8 en `document.xml` (`docxReader`) y 5 tests del watchdog de inactividad (`retry.ts`). Suite: **1.349 tests en el cliente (76 suites) + 68 en el servidor (9 suites) = 1.417 unitarios** (+13 vs v4.0.49) + 13 E2E. Cobertura global 97,93% statements / 99,43% lines; `retry.ts` con el watchdog nuevo cubierto al 100% de sus ramas nuevas; `providers.ts` al 100% de líneas.
 
@@ -33,9 +35,9 @@ Plan de trabajo activo y tareas pendientes para el proyecto **Asistente de IA de
 - ✅ Cobertura del 100% alcanzada en `gemini.ts` (statements), `github.ts`, `docPublisher.ts`, `threadSummary.ts`, `DocumentFlowModal.tsx` (funciones y statements), `ErrorBoundary`, `FileAttachButton`, `AIProviderContext`, `ConfirmModal`, `useModalDialog`, `ChatMessage` (líneas), `DocumentRepoButton`, `ChangelogButton`, `CodeHealthButton`, `ConversationIOButton`, `AIProviderBadge`, `LanguageSelector` y utilidades/hooks (`repoRef`, `docxReader`, `useDocTargetSelector`, `modelLabels`, `retry`).
 
 
-**Pendiente:**
-- Cobertura de edge cases en nuevos servicios y proveedores.
-- Cobertura de ramas defensivas inalcanzables (catch de `pdfReader.ts`, guard de `DiffViewer.tsx`): valorar exclusión o refactor antes que tests artificiales.
+**Pendiente (mantenimiento del 100%):**
+- Todo cambio o condicional nuevo del diff debe venir con su test (regla Codecov patch) — así el 100% no decae.
+- Ante una rama defensiva nueva inalcanzable: refactor (borrar la rama muerta con comentario) o `v8 ignore` justificado, nunca tests artificiales.
 
 ---
 

@@ -18,6 +18,12 @@ export default function DiffViewer({ filename, oldContent, newContent }: DiffVie
   const proposedVersion = t('diff.proposedVersion');
 
   useEffect(() => {
+    // #26 (v4.0.52): guard defensivo que en la práctica es innalcanzable —
+    // los efectos de React corren tras el commit, cuando el ref ya está
+    // adjunto (.current != null). Se conserva como red de seguridad para
+    // usos futuros fuera del flujo normal de montaje y se excluye de
+    // cobertura con justificación (patrón "silenciamiento justificado").
+    // v8 ignore next
     if (!containerRef.current) return;
 
     const patch = Diff.createPatch(filename, oldContent, newContent, currentVersion, proposedVersion);

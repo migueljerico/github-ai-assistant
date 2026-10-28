@@ -157,3 +157,38 @@ describe('readSpreadsheet (#28 Fase 3a)', () => {
 });
 
 
+
+describe('readSpreadsheet — límites del workbook (v4.0.52 #26)', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('workbook sin SheetNames: lanza el error de hoja vacía', async () => {
+    vi.mocked(XLSX.read).mockReturnValue({} as never);
+    await expect(readSpreadsheet(fakeFile())).rejects.toThrow('La hoja de cálculo está vacía');
+  });
+
+  it('hoja listada sin entry en Sheets: avisa de cabecera sospechosa y continúa', async () => {
+    vi.mocked(XLSX.read).mockReturnValue({ SheetNames: ['Fantasma'], Sheets: {} } as never);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const res = await readSpreadsheet(fakeFile());
+      expect(res.text).toContain('Hoja "Fantasma"');
+      expect(res.text).toContain('0 filas × 0 columnas');
+      expect(res.truncated).toBe(false);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('CSV con línea final vacía: limitCsv la descarta sin alterar la muestra', async () => {
+    vi.mocked(XLSX.read).mockReturnValue(workbook({ Datos: { ref: 'A1:B2', csv: 'a,b\n1,2\n' } }) as never);
+    const res = await readSpreadsheet(fakeFile());
+    expect(res.text).toContain('Contenido:');
+    expect(res.truncated).toBe(false);
+  });
+
+  it('nombre de fichero con extensión vacía (acaba en punto): va por el camino Excel', async () => {
+    vi.mocked(XLSX.read).mockReturnValue(workbook({ Datos: { ref: 'A1:B2', csv: 'a,b\n1,2' } }) as never);
+    await readSpreadsheet(fakeFile('sin_hoja.'));
+    expect(XLSX.read).toHaveBeenCalledWith(expect.any(ArrayBuffer), { type: 'array' });
+  });
+});

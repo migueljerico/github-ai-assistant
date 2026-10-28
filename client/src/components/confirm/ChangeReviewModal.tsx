@@ -64,8 +64,12 @@ export default function ChangeReviewModal({
   };
 
   const selectedAction = selected?.action;
-  const hasDiff = !!selectedAction?.contenidoActual && !!selectedAction?.contenidoPropuesto;
-  const isNewFile = !selectedAction?.contenidoActual && !!selectedAction?.contenidoPropuesto;
+  // #26 (v4.0.52): alias para el render del diff — hasDiff garantiza ambos
+  // contenidos no-null, así que los `?? ''` del render eran ramas muertas.
+  const current = selectedAction?.contenidoActual;
+  const proposed = selectedAction?.contenidoPropuesto;
+  const hasDiff = !!current && !!proposed;
+  const isNewFile = !current && !!proposed;
 
   return (
     <div className="overlay" role="dialog" aria-modal="true" aria-label={t('modal.review.ariaLabel')}>
@@ -115,7 +119,7 @@ export default function ChangeReviewModal({
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                     <span>{isAccepted ? '✓' : '✗'}</span>
-                    <span>{typeEmojis[pa.action.tipo] ?? '🤖'}</span>
+                    <span>{typeEmojis[pa.action.tipo]}</span>
                     <span style={{ fontSize: '0.8rem', fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {pa.action.accion}
                     </span>
@@ -185,8 +189,8 @@ export default function ChangeReviewModal({
                 {hasDiff && (
                   <DiffViewer
                     filename={selected.action.archivo ?? t('modal.confirm.defaultFile')}
-                    oldContent={selected.action.contenidoActual ?? ''}
-                    newContent={selected.action.contenidoPropuesto ?? ''}
+                    oldContent={current as string}
+                    newContent={proposed as string}
                   />
                 )}
                 {isNewFile && (

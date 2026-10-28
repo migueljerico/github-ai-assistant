@@ -3417,3 +3417,249 @@ describe('callAI — modelos de razonamiento sin salida (v4.0.48)', () => {
     });
   });
 });
+
+// ── Ramas restantes de gemini.ts (v4.0.52, #26) ──────────────────────────────
+// Lados de rama que quedaban tras los refactors anti-código-muerto: headers
+// X-Account-Id con proxy, roles assistant, catch(() => ({})) de json(), 402/504
+// con y sin mensaje, esquinas SSE (delta vacío, chunk sin text), diagnósticos
+// de JSON truncado con contenidoPropuesto, objetos anidados del parser,
+// fallback del resumen (repo con '/') y párrafos solo-enlaces. Sin estos tests
+// el codecov/patch del diff fallaría.
+
+function mockOkJson(payload: unknown) {
+  return vi.fn().mockResolvedValue({ ok: true, json: async () => payload });
+}
+
+/** Response-like con cuerpo SSE en líneas (cada chunk termina en '\n\n'). */
+function sseStream(chunks: string[]) {
+  const encoder = new TextEncoder();
+  return {
+    ok: true,
+    body: new ReadableStream({
+      start(controller) {
+        for (const c of chunks) controller.enqueue(encoder.encode(c));
+        controller.close();
+      },
+    }),
+  };
+}
+
+describe('gemini — ramas restantes (v4.0.52 #26)', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('isProxyEndpoint con URL absoluta del MISMO origen también evalúa el pathname', () => {
+    // Sin URL absoluta de mismo origen, el operando derecho del && nunca se
+    // evaluaba: los tests previos solo usaban rutas relativas y otros orígenes.
+    expect(isProxyEndpoint(`${window.location.origin}/api/foo`)).toBe(true);
+    expect(isProxyEndpoint(`${window.location.origin}/otra/cosa`)).toBe(false);
+  });
+
+  it('callAI: los roles assistant del historial se mapean tal cual', async () => {
+    const fetchMock = mockOkJson({ choices: [{ message: { content: 'ok' } }] });
+    vi.stubGlobal('fetch', fetchMock);
+    await callAI(
+      [{ role: 'user', content: 'hola' }, { role: 'assistant', content: 'hola, dime' }],
+      'sys', 'groq', 'key', 'llama-3.1', 'chat',
+    );
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(body.messages.map((m: { role: string }) => m.role)).toEqual(['system', 'user', 'assistant']);
+  });
+
+  it('validateProviderKey (cloudflare): header X-Account-Id cuando llega accountId', async () => {
+    const fetchMock = mockOkJson({ choices: [{ message: { content: 'ok' } }] });
+    vi.stubGlobal('fetch', fetchMock);
+    const res = await validateProviderKey('cloudflare', 'tok', 'qwen-model', 'ACC-01');
+    expect(res).toEqual({ valid: true });
+    const headers = (fetchMock.mock.calls[0][1] as RequestInit).headers as Record<string, string>;
+    expect(headers['X-Account-Id']).toBe('ACC-01');
+  });
+
+  it('qwencloud 403 SIN mensaje → (msg || base) usa base ("AI provider error 403")', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 403, json: async () => ({}) }));
+    await expect(
+      callAI([{ role: 'user', content: 'hi' }], 'sys', 'qwencloud', 'k', 'qwen-algún-modelo', 'action'),
+    ).rejects.toThrow(/AI provider error 403.*Error de autenticación o permisos en QwenCloud/s);
+  });
+
+  it('extractResponsesText: message sin content (?? []) y parts sin texto (if falso)', () => {
+    expect(extractResponsesText({ output: [{ type: 'message' }] })).toBe('');
+    expect(extractResponsesText({
+      output: [{
+        type: 'message',
+        content: [{ type: 'output_text', text: '' }, { type: 'output_text', text: 'Sí, texto' }],
+      }],
+    })).toBe('Sí, texto');
+    expect(extractResponsesText({ output: [{ type: 'message', content: [{ type: 'refusal' }] }] })).toBe('');
+  });
+
+  it('callResponsesCompatible: header X-Account-Id con accountId (enrutado responses)', async () => {
+    const fetchMock = mockOkJson({
+      output: [{ type: 'message', content: [{ type: 'output_text', text: 'respuesta spark' }] }],
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    await callAI(
+      [{ role: 'user', content: 'hi' }], 'sys', 'openzen', 'key',
+      'muse-spark-1.3-contributor-free', 'chat',
+      undefined, undefined, undefined, 'ACC-ID-99',
+    );
+    const headers = (fetchMock.mock.calls[0][1] as RequestInit).headers as Record<string, string>;
+    expect(headers['X-Account-Id']).toBe('ACC-ID-99');
+  });  it('json() que rechaza en el 500 → catch(() => ({})) y error base del status', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => { throw new Error('json roto'); },
+    }));
+    // Vía validateProviderKey: llamada al transporte SIN withTransientRetry.
+    const res = await validateProviderKey('openzen', 'k', 'muse-spark-1.2');
+    expect(res.valid).toBe(false);
+    expect(res.error).toMatch(/AI provider error 500.*saturación del tier gratuito/s);
+  });
+
+  it('402 de responses SIN mensaje → base + hint de créditos agotados', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 402, json: async () => ({}) }));
+    await expect(
+      callAI([{ role: 'user', content: 'hi' }], 'sys', 'openzen', 'k', 'muse-spark-1.2', 'action'),
+    ).rejects.toThrow(/AI provider error 402.*Créditos agotados/s);
+  });
+
+  it('504 de responses CON mensaje → hint vacío y el error conserva el mensaje del proveedor', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 504,
+      json: async () => ({ error: { message: 'upstream se quedó dormido' } }),
+    }));
+    const res = await validateProviderKey('openzen', 'k', 'muse-spark-1.2');
+    expect(res).toEqual({ valid: false, error: 'upstream se quedó dormido' });
+  });
+
+  it('SSE responses: delta vacío se ignora sin romper la acumulación', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(sseStream([
+      'data: {"type":"response.output_text.delta","delta":""}\n\n',
+      'data: {"type":"response.output_text.delta","delta":"Hola"}\n\n',
+    ])));
+    const tokens: string[] = [];
+    const out = await callAI(
+      [{ role: 'user', content: 'hi' }], 'sys', 'openzen', 'key',
+      'muse-spark-1.3-contributor-free', 'chat', (t: string) => tokens.push(t),
+    );
+    expect(out).toBe('Hola');
+    expect(tokens).toEqual(['Hola']);
+  });
+
+  it('SSE responses sin deltas → "no devolvió contenido"', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(sseStream([
+      'data: {"type":"response.created"}\n\n',
+    ])));
+    await expect(
+      callAI(
+        [{ role: 'user', content: 'hi' }], 'sys', 'openzen', 'key',
+        'muse-spark-1.3-contributor-free', 'chat', () => { /* no-op */ },
+      ),
+    ).rejects.toThrow(/no devolvió contenido/i);
+  });
+
+  it('proxy gemini con json() roto en el error → "Gemini proxy error <status>"', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => { throw new Error('json roto'); },
+    }));
+    const res = await validateProviderKey('gemini', 'k', 'gemini-2.5-flash');
+    expect(res).toEqual({ valid: false, error: 'Gemini proxy error 500' });
+  });
+
+  it('SSE gemini: chunk sin text no rompe la acumulación del stream', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(sseStream([
+      'data: {"type":"x","foo":1}\n\n',
+      'data: {"text":"hola"}\n\n',
+    ])));
+    const tokens: string[] = [];
+    const out = await callAI(
+      [{ role: 'user', content: 'hi' }], 'sys', 'gemini', 'k', 'gemini-2.5-flash', 'chat',
+      (t: string) => tokens.push(t),
+    );
+    expect(out).toBe('hola');
+    expect(tokens).toEqual(['hola']);
+  });
+
+  it('validateProviderKey: fallo sin status ni message ("boom") → "Error de conexión…"', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue('boom'));
+    const res = await validateProviderKey('groq', 'k', 'llama-3.1');
+    expect(res).toEqual({ valid: false, error: 'Error de conexión con el proveedor de IA' });
+  });
+
+  it('parser: JSON truncado con contenidoPropuesto → diagnóstico de corte', () => {
+    // Node 24: '{"a":"texto sin cerrar' da "Unterminated string…" (el regex de
+    // truncado solo capta "Unexpected end"/EOF); cortar JUSTO tras los "dos
+    // puntos" sí genera "Unexpected end of JSON input" → entra el diagnóstico.
+    const raw = '{"tipo":"lectura","accion":"docs","metodo":"GET","contenidoPropuesto":';
+    expect(parseGeminiActionWithReason(raw)).toEqual({
+      action: null,
+      error: 'la respuesta se cortó (JSON truncado); prueba un contenido más corto o divide en varias acciones',
+    });
+  });
+
+  it('parser múltiple: acción con objeto anidado (cierra interior sin cortar la búsqueda)', () => {
+    const actions = parseGeminiActions(
+      '{"tipo":"lectura","accion":"ops","metodo":"GET","meta":{"x":1}}',
+    );
+    expect(actions).toHaveLength(1);
+    expect(actions[0]).toMatchObject({ tipo: 'lectura', metodo: 'GET' });
+  });
+
+  it("extractRepoSummary: repo con '/' → fallback devuelve solo el nombre del repo", () => {
+    expect(extractRepoSummary('', 'owner/repo')).toBe('repo');
+    expect(extractRepoSummary('   ', 'owner/repo', 'Desconocido')).toBe('repo');
+  });
+
+  it('extractRepoSummary: párrafo dato de la descripción que es SOLO un enlace gigante se descarta', () => {
+    const readme = [
+      '## Descripción',
+      '',
+      '[Enlace descriptivo del proyecto con su documentación oficial](https://proyecto.example.com)',
+      '',
+      'Texto plano suficiente describiendo el propósito completo del proyecto testigo.',
+    ].join('\n');
+    // El párrafo-only-enlace entra en el bucle de la sección Descripción pero
+    // sale por isOnlyBadgesOrLinks (ramas falsas); el texto plano lo reemplaza.
+    expect(extractRepoSummary(readme)).toBe(
+      'Texto plano suficiente describiendo el propósito completo del proyecto testigo.',
+    );
+  });
+
+  it('generateSpecificDoc sin config → provider/apiKey/model por defecto (?? del registro)', async () => {
+    const fetchMock = mockOkJson({ choices: [{ message: { content: '# doc' } }] });
+    vi.stubGlobal('fetch', fetchMock);
+    await generateSpecificDoc('readme.md');
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    const body = JSON.parse(init.body as string);
+    expect(body.model).toBe('test-model');
+    expect((init.headers as Record<string, string>).Authorization).toBe('Bearer test-key');
+  });
+
+  it('parser: JSON truncado con "content" (sin contenidoPropuesto) → también diagnóstico de corte', () => {
+    // Operando derecho del ||: el candidato lleva la clave "content" (inglés).
+    const raw = '{"tipo":"lectura","accion":"docs","metodo":"GET","content":';
+    expect(parseGeminiActionWithReason(raw)).toEqual({
+      action: null,
+      error: 'la respuesta se cortó (JSON truncado); prueba un contenido más corto o divide en varias acciones',
+    });
+  });
+
+  it('extractRepoSummary: repo SIN barra → fallback usa el nombre tal cual', () => {
+    expect(extractRepoSummary('', 'mi-proyecto')).toBe('mi-proyecto');
+  });
+
+  it("generateSpecificDoc('.env') → baseName cae en 'archivo' (sin nombre antes del punto)", async () => {
+    const fetchMock = mockOkJson({ choices: [{ message: { content: '# doc' } }] });
+    vi.stubGlobal('fetch', fetchMock);
+    await generateSpecificDoc('.env', undefined, undefined, { provider: 'groq', apiKey: 'k', model: 'm' }, 'es');
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    const sys = body.messages.find((m: { role: string }) => m.role === 'system');
+    expect(sys.content).toContain('Documento personalizado (.env)');
+  });
+});
+

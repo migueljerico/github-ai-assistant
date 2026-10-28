@@ -70,4 +70,15 @@ describe('TemplatePanel', () => {
     expect(onSelect).toHaveBeenCalledTimes(1);
     expect(typeof onSelect.mock.calls[0][0]).toBe('string');
   });
+
+  // ── Ramas restantes (#26, v4.0.52): clase del aside en ambos estados ────────
+  it('el aside lleva clase "collapsed" cuando está cerrado y no cuando está abierto (v4.0.52 #26)', () => {
+    const { container: open, rerender } = render(<TemplatePanel isOpen={true} onSelectTemplate={vi.fn()} />);
+    const asideOpen = open.querySelector('aside');
+    expect(asideOpen).toHaveAttribute('class', 'sidebar ');
+
+    rerender(<TemplatePanel isOpen={false} onSelectTemplate={vi.fn()} />);
+    const asideClosed = open.querySelector('aside');
+    expect(asideClosed).toHaveAttribute('class', 'sidebar collapsed');
+  });
 });

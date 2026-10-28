@@ -45,6 +45,27 @@ describe('RepoContextButton (#41)', () => {
     expect(onLoad).toHaveBeenCalledWith('mi-repo');
   });
 
+  // #26 (v4.0.52): el falso de `repoName.trim()` — enviar vacío/espacios no
+  // carga contexto y el formulario permanece abierto (no se cierra).
+  it('enviar el formulario vacío no carga contexto ni lo cierra (v4.0.52 #26)', () => {
+    const onLoad = vi.fn();
+    render(
+      <RepoContextButton
+        disabled={false}
+        activeContext={null}
+        onLoadContext={onLoad}
+        onClearContext={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Cargar repo/ }));
+    const input = screen.getByPlaceholderText(/owner\/repo/);
+    fireEvent.change(input, { target: { value: '   ' } });
+    fireEvent.click(screen.getByRole('button', { name: '✓' }));
+    expect(onLoad).not.toHaveBeenCalled();
+    // El formulario sigue visible (el chip "sin contexto" no aparece).
+    expect(screen.getByPlaceholderText(/owner\/repo/)).toBeInTheDocument();
+  });
+
   it('cancelar (✕) cierra el formulario sin cargar contexto', () => {
     const onLoad = vi.fn();
     render(

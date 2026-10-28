@@ -195,5 +195,17 @@ describe('docContextBudget (#77 v4.0.51 — presupuesto adaptativo de contexto)'
       expect(selectDocFiles([{ path: 'a.ts' }], 0)).toEqual([]);
       expect(selectDocFiles([{ path: 'a.ts' }], -3)).toEqual([]);
     });
+
+    it('empate de prioridad: la segunda clave del comparador ordena por índice original (#26, v4.0.52)', () => {
+      // Los tres ficheros con score empatado fuerzan a evaluar
+      // `a.score - b.score || a.index - b.index` hasta la segunda clave.
+      const files = [
+        { path: 'z/lib/a.ts' },   // 2
+        { path: 'm/src/b.ts' },   // 2 (empate)
+        { path: 'x/other/c.ts' }, // 2 (empate): el menor índice paramos aquí
+      ];
+      const selected = selectDocFiles(files, 2);
+      expect(selected.map(f => f.path)).toEqual(['z/lib/a.ts', 'm/src/b.ts']);
+    });
   });
 });

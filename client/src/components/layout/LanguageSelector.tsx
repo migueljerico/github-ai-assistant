@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useLanguage, LANGUAGES, type Language } from '../../context/LanguageContext';
+import { useLanguage, LANGUAGES, type Language, type LanguageOption } from '../../context/LanguageContext';
 import FlagIcon from './FlagIcon';
 
 export default function LanguageSelector() {
@@ -7,12 +7,19 @@ export default function LanguageSelector() {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const currentOption = LANGUAGES.find((l) => l.code === lang) || LANGUAGES[0];
+  // #26 (v4.0.52): sin fallback `|| LANGUAGES[0]` — `lang` es una unión EXACTA
+  // de los códigos de LANGUAGES (misma fuente de verdad en LanguageContext),
+  // así que find() siempre matchea y el fallback era una rama muerta. Cast
+  // seguro: TS no deduce el tipo del predicado aunque el match siempre exista.
+  const currentOption = LANGUAGES.find((l) => l.code === lang) as LanguageOption;
 
   // Cerrar al hacer clic fuera o al pulsar Esc
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      // #26 (v4.0.52): sin guard `containerRef.current &&` — este handler solo
+      // está suscrito mientras isOpen (ref ya adjunto a estas alturas), igual
+      // que ChatToolsMenu; el cast evita una rama inalcanzable en runtime.
+      if (!(containerRef.current as HTMLDivElement).contains(event.target as Node)) {
         setIsOpen(false);
       }
     };

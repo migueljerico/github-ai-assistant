@@ -73,5 +73,32 @@ describe('useModalDialog', () => {
     }
     expect(() => render(<UnattachedComponent />)).not.toThrow();
   });
+
+  // ── Ramas restantes (#26, v4.0.52) ──────────────────────────────────────────
+  it('Tab con el foco en el primero (sin Shift): no hay trampa ni error (#26)', () => {
+    render(<Dialog onClose={() => {}} />);
+    const first = screen.getByText('primero');
+    const last = screen.getByText('segundo');
+    first.focus();
+    // Rama falsa de `!e.shiftKey && active === lastEl`: el foco queda quieto.
+    fireEvent.keyDown(first, { key: 'Tab' });
+    expect(document.activeElement).toBe(first);
+    expect(document.activeElement).not.toBe(last);
+  });
+
+  it('restaura el foco omitiendo el elemento previo cuando activeElement es null (#26)', () => {
+    // jsdom siempre tiene un activeElement (body); simulamos null para cubrir
+    // el lado falso del `previouslyFocused?.` en la limpieza al desmontar.
+    Reflect.defineProperty(document, 'activeElement', {
+      configurable: true,
+      get: () => null,
+    });
+    try {
+      const { unmount } = render(<Dialog onClose={() => {}} />);
+      expect(() => unmount()).not.toThrow();
+    } finally {
+      Reflect.deleteProperty(document, 'activeElement');
+    }
+  });
 });
 

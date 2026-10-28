@@ -187,3 +187,13 @@ describe('releaseAssets — uploadReleaseAssets', () => {
     await expect(uploadReleaseAssets('tok', 'owner', 'repo', 7, assets)).rejects.toThrow('boom');
   });
 });
+
+describe('nombres de archivo que acaban en punto (v4.0.52 #26)', () => {
+  it('getMimeType devuelve octet-stream cuando la extensión queda vacía', () => {
+    expect(getMimeType('sin-extension.')).toBe('application/octet-stream');
+  });
+
+  it('validateAssetFile valida archivos cuyo nombre acaba en punto', () => {
+    expect(validateAssetFile(makeFile('libre.'))).toEqual({ valid: true });
+  });
+});

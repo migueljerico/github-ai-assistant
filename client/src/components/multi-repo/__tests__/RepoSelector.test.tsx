@@ -235,4 +235,23 @@ describe('RepoSelector', () => {
 
     expect(screen.getByText(/2 repos seleccionados/)).toBeInTheDocument();
   });
+
+  // #26 (v4.0.52): cubre el lado nullish de `(r.description ?? '')` — un repo
+  // sin descripción + un filtro que no matchea su nombre recorre el fallback.
+  it('repos sin descripción: el filtro usa el fallback vacío sin romper (v4.0.52 #26)', async () => {
+    vi.mocked(listAllRepos).mockResolvedValue([
+      makeRepo({ id: 99, name: 'sin-descripcion', description: undefined }),
+    ]);
+
+    render(<RepoSelector selectedRepos={[]} onChange={vi.fn()} />);
+
+    await waitFor(() => expect(screen.getByText('1 repositorios')).toBeInTheDocument());
+
+    fireEvent.change(screen.getByPlaceholderText(/Filtrar repositorios/), {
+      target: { value: 'zzz' },
+    });
+
+    // 'zzz' no está en el nombre (camino por la descripción → '' → sin match).
+    expect(screen.queryByText(/sin-descripcion/)).not.toBeInTheDocument();
+  });
 });

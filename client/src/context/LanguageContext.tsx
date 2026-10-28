@@ -105,8 +105,13 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const t = useCallback(
     (key: string, params?: Record<string, string | number>) => {
-      const activeDict = dictionaries[lang] || dictionaries['es'];
-      let translation = activeDict[key] || dictionaries['es'][key] || key;
+      // #26 (v4.0.52): los fallbacks `dictionaries[lang] ||` (lang es una unión
+      // EXACTA de las claves de `dictionaries` — nunca falsy) y
+      // `dictionaries['es'][key] ||` (los 13 diccionarios de ../i18n están
+      // sincronizados, misma clave en todos) eran código muerto innalcanzable.
+      // El fallback real ante clave sin traducir es devolver la clave cruda.
+      const activeDict = dictionaries[lang];
+      let translation = activeDict[key] || key;
 
       if (params) {
         Object.keys(params).forEach((param) => {

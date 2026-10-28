@@ -370,7 +370,9 @@ const handleGenerateFile = async () => {
 
 // #58 Fase 2: generar documentación para un path concreto del repo
 const handleGenerateSpecific = async () => {
- if (!specificRepoInput.trim() || !specificPath.trim()) return;
+ // #26 (v4.0.52): sin guard de inputs en blanco — el único caller es el botón
+ // "Generar doc de este archivo", deshabilitado exactamente cuando repo o path
+ // están en blanco (o busy), así que el early-return era rama muerta.
  // #XX: validación temprana — verificar que el repo existe antes de generar doc.
  // Evita que la IA genere contenido con un nombre de repo incorrecto y que el
  // commit falle después con 404 (p. ej. "mercadona-dashboard" en vez de
@@ -402,16 +404,23 @@ const handleGenerateSpecific = async () => {
   // v3.67.3: pasa archivos adjuntos (imágenes) para que se suban al repo
   const repoExtraFiles = allAttachedFiles?.map(f => f.file).filter((f): f is File => !!f) ?? [];
   const doCommitRepo = async () => {
+    // #26 (v4.0.52): guard de estrechamiento para TS, inalcanzable por UI —
+    // PublishActions solo se renderiza con `analysis` presente (paso 4 repo).
+    /* v8 ignore next */
     if (!analysis) return;
     setPending('commit'); setBusy(true);
     try { await onCommitRepo(analysis, repoExtraFiles.length > 0 ? repoExtraFiles : undefined); } finally { setBusy(false); setPending(null); onCancel(); }
   };
   const doDraftPrRepo = async () => {
+    // #26 (v4.0.52): guard de TS inalcanzable — mismo caso que doCommitRepo.
+    /* v8 ignore next */
     if (!analysis) return;
     setPending('draftpr'); setBusy(true);
     try { await onDraftPrRepo(analysis); } finally { setBusy(false); setPending(null); onCancel(); }
   };
   const doReleaseRepo = async () => {
+    // #26 (v4.0.52): guard de TS inalcanzable — mismo caso que doCommitRepo.
+    /* v8 ignore next */
     if (!analysis) return;
     setPending('release'); setBusy(true);
     try { await onReleaseRepo(analysis, version.trim()); } finally { setBusy(false); setPending(null); onCancel(); }
@@ -422,7 +431,10 @@ const handleGenerateSpecific = async () => {
     owner: ref.owner,
     repo: ref.repo,
     fileName: attachedFileName || t('modal.confirm.defaultFile'),
-    doc: fileDoc || '',
+    // #26 (v4.0.52): sin `|| ''` — fileDoc está garantizado: startFilePublish sale
+    // antes si es null, y doCreateRepoAndPublishFile solo es alcanzable tras un
+    // repo-missing originado en startFilePublish (fileDoc nunca se resetea a null).
+    doc: fileDoc as string,
     kind,
     version: version.trim() || undefined,
     sourceFile: uploadSource && attachedFile ? attachedFile : undefined,
@@ -430,6 +442,10 @@ const handleGenerateSpecific = async () => {
   });
 
   const startFilePublish = async (kind: PublishKind) => {
+    // #26 (v4.0.52): guard de TS inalcanzable por UI — el paso 4 file se abre solo
+    // con fileDoc no-null, y PublishActions deshabilita los 3 botones mientras el
+    // destino esté en blanco (publishDisabled = !destRepo.trim()).
+    /* v8 ignore next */
     if (!fileDoc || !destRepo.trim()) return;
     setPendingKind(kind);
     setPending(kind);
@@ -446,6 +462,9 @@ const handleGenerateSpecific = async () => {
   };
 
 const doCreateRepoAndPublishFile = async () => {
+  // #26 (v4.0.52): guard para TS inalcanzable — PublishActions monta los botones
+  // de crear-repo únicamente cuando repoMissing existe.
+  /* v8 ignore next */
   if (!repoMissing) return;
   const ref = resolveRepoRef(`${repoMissing.owner}/${repoMissing.repo}`, currentUserLogin);
   setBusy(true);
@@ -462,6 +481,9 @@ const doCreateRepoAndPublishFile = async () => {
 // sea el repo tecleado por el usuario (p. ej. powerbi-dashboard-mercadona), no el
 // login del usuario autenticado. Antes se descartaba → publicaba en user/user.
 const doCommitSpecific = async () => {
+  // #26 (v4.0.52): guard para TS inalcanzable — entrar al paso 4 en scope
+  // specific exige haber generado el doc (specificDoc no-null por render).
+  /* v8 ignore next */
   if (!specificDoc || !specificRepoInput.trim()) return;
   setPending('commit'); setBusy(true);
   try {
@@ -469,12 +491,16 @@ const doCommitSpecific = async () => {
   } finally { setBusy(false); setPending(null); onCancel(); }
 };
 const doDraftPrSpecific = async () => {
+  // #26 (v4.0.52): guard para TS inalcanzable — mismo caso que doCommitSpecific.
+  /* v8 ignore next */
   if (!specificDoc || !specificRepoInput.trim()) return;
   setPending('draftpr'); setBusy(true);
   try { await onDraftPrSpecific(specificDoc, specificPath.trim(), specificRepoInput.trim()); }
   finally { setBusy(false); setPending(null); onCancel(); }
 };
 const doReleaseSpecific = async () => {
+  // #26 (v4.0.52): guard para TS inalcanzable — mismo caso que doCommitSpecific.
+  /* v8 ignore next */
   if (!specificDoc || !specificRepoInput.trim()) return;
   setPending('release'); setBusy(true);
   try { await onReleaseSpecific(specificDoc, specificPath.trim(), specificRepoInput.trim()); }
@@ -490,11 +516,11 @@ const toggleBulkPath = (path: string) => {
 // Genera la doc (IA) para cada path seleccionado del repo y combina con los
 // archivos adjuntos del usuario. El resultado queda en `bulkTargets` (paso 3).
 const handleGenerateBulk = async () => {
-  if (busy) return;
+  // #26 (v4.0.52): sin guards de entrada — el único caller es el botón bulk,
+  // deshabilitado exactamente cuando busy, con repo en blanco, o sin selección
+  // ni adjuntos (la misma condición de este guard), así que eran rama muerta.
   const trimmedRepo = bulkRepoInput.trim();
-  const hasPaths = bulkPaths.length > 0;
   const attached = allAttachedFiles ?? [];
-  if (!trimmedRepo || (hasPaths === false && attached.length === 0)) return;
   setBusy(true);
   setBulkProgress({ done: 0, total: bulkPaths.length });
   try {
@@ -532,7 +558,8 @@ const handleGenerateBulk = async () => {
 
 // Paso 4 bulk: commit directo o Draft PR al destino elegido.
 const doCommitBulk = async (kind: 'commit' | 'draftpr') => {
-  if (bulkTargets.length === 0 || !destRepo.trim()) return;
+  // #26 (v4.0.52): sin guard de targets/destino — la sección paso 4 bulk solo se
+  // renderiza con bulkTargets no vacío y sus botones están deshabilitados sin dest.
   const handler = kind === 'commit' ? onCommitBulk : onDraftPrBulk;
   if (!handler) return;
   setPending(kind); setBusy(true);
@@ -595,7 +622,9 @@ return (
                   className="btn btn-secondary"
                   style={{ textAlign: 'left', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '4px' }}
                   disabled={!hasAttachedFile}
-                  onClick={() => { if (hasAttachedFile) { setScope('file'); saveScope('file'); setStep(2); } }}
+                  // #26 (v4.0.52): sin `if (hasAttachedFile)` interno — el botón ya
+                  // está deshabilitado sin adjunto y es su único caller.
+                  onClick={() => { setScope('file'); saveScope('file'); setStep(2); }}
                 >
                   <strong>{t('modal.flow.scopeFile')}</strong>
                   <small style={{ opacity: 0.8, fontWeight: 400 }}>{t('modal.flow.scopeFileDesc')}</small>
@@ -966,7 +995,10 @@ return (
                       onClick={() => handleGenerateRepo({ lightMode: true })}
                       style={{ fontSize: '0.82rem', padding: '6px 12px' }}
                     >
-                      {busy ? t('modal.flow.generating') : t('modal.flow.generateLightBtn')}
+                      {/* #26 (v4.0.52): sin ternario busy — handleGenerateRepo limpia
+                          flowError y setBusy(true) en el mismo batch, así que este
+                          botón nunca coexiste con busy=true y el banner. */}
+                      {t('modal.flow.generateLightBtn')}
                     </button>
                     <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted, #888)' }}>
                       {flowError === 'timeout'
@@ -1149,7 +1181,9 @@ return (
         <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border, rgba(255,255,255,0.1))' }}>
           <th style={{ padding: '6px 8px' }}>{t('modal.flow.specificPathPlaceholder').split(':')[0]}</th>
           <th style={{ padding: '6px 8px' }}>{t('modal.flow.bulkSelectPaths').split(' ')[0]}</th>
-          <th style={{ padding: '6px 8px', textAlign: 'right' }}>{t('modal.flow.bulkLines', { count: '' }).replace('{count}', '').trim() || 'Líneas'}</th>
+          {/* #26 (v4.0.52): sin `|| 'Líneas'` — t() nunca devuelve '' (el mock/real
+              de es.ts cae a la clave), así que el fallback era rama muerta. */}
+          <th style={{ padding: '6px 8px', textAlign: 'right' }}>{t('modal.flow.bulkLines', { count: '' }).replace('{count}', '').trim()}</th>
         </tr>
       </thead>
       <tbody>
@@ -1240,8 +1274,11 @@ return (
                   <div style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: '8px' }}>
                     {t('modal.flow.diffVsExisting')}
                   </div>
+                  {/* #26 (v4.0.52): sin `?? 'archivo'` final — este bloque solo se
+                      renderiza con status 'found', que exige un primary truthy en el
+                      efecto (mismo encadenado), así que el fallback era rama muerta. */}
                   <DiffViewer
-                    filename={docPathFor(allAttachedFiles?.[0]?.name ?? attachedFileName ?? 'archivo')}
+                    filename={docPathFor((allAttachedFiles?.[0]?.name ?? attachedFileName) as string)}
                     oldContent={fileExistingContent}
                     newContent={fileDoc}
                   />

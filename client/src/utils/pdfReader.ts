@@ -58,16 +58,15 @@ export function assertSupportedFile(file: File): void {
 export async function readPDFAsText(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    
+
+    // v4.0.52 (#26): el try/catch defensivo de onload se elimina — el único
+    // código que puede fallar (extractTextFromPDF) ya se recupera por sí mismo
+    // (devuelve '') y resolve() no lanza; el catcher era código muerto que
+    // quedaba fuera de cobertura sin que ningún flujo real lo alcanzara.
     reader.onload = (event) => {
-      try {
-        const arrayBuffer = event.target?.result as ArrayBuffer;
-        // Basic PDF text extraction (works for simple PDFs)
-        const text = extractTextFromPDF(arrayBuffer);
-        resolve(text || `[PDF: ${file.name}] - Contenido no legible directamente. Por favor, describe el contenido.`);
-      } catch (err) {
-        reject(new Error(`Error al leer PDF: ${(err as Error).message}`));
-      }
+      const arrayBuffer = event.target?.result as ArrayBuffer;
+      const text = extractTextFromPDF(arrayBuffer);
+      resolve(text || `[PDF: ${file.name}] - Contenido no legible directamente. Por favor, describe el contenido.`);
     };
     
     reader.onerror = () => {
@@ -123,14 +122,12 @@ function extractTextFromPDF(arrayBuffer: ArrayBuffer): string {
 export async function readTextFile(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    
+
+    // v4.0.52 (#26): mismo razonamiento que readPDFAsText — el bloque que
+    // se ejecutaba en onload (leer result + resolve) no puede lanzar, así
+    // que el catcher era innalcanzable y escondía cobertura al 100%.
     reader.onload = (event) => {
-      try {
-        const content = event.target?.result as string;
-        resolve(content);
-      } catch (err) {
-        reject(new Error(`Error al leer archivo: ${(err as Error).message}`));
-      }
+      resolve(event.target?.result as string);
     };
     
     reader.onerror = () => {

@@ -48,7 +48,8 @@ const DEFAULT_STATE: DocTargetSelectorState = {
 export function useDocTargetSelector() {
   // Hidratación perezosa desde localStorage (solo en cliente)
   const [state, setState] = useState<DocTargetSelectorState>(() => {
-    if (typeof window === 'undefined') return DEFAULT_STATE;
+    // #26 (v4.0.52): guard de SSR eliminado — SPA de cliente, `window` siempre
+    // está definido al ejecutar el hook.
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return DEFAULT_STATE;
@@ -68,7 +69,8 @@ export function useDocTargetSelector() {
 
   // Persistencia: cada vez que cambia el estado, escribimos en localStorage
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    // #26 (v4.0.52): guard de SSR eliminado (ver hidratación) — el effect
+    // siempre corre en cliente.
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch {
@@ -99,9 +101,9 @@ export function useDocTargetSelector() {
   }, []);
 
   const clear = useCallback(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(STORAGE_KEY);
-    }
+    // #26 (v4.0.52): guard de SSR eliminado (ver hidratación) — clear() solo
+    // corre en cliente.
+    localStorage.removeItem(STORAGE_KEY);
     setState(DEFAULT_STATE);
   }, []);
 

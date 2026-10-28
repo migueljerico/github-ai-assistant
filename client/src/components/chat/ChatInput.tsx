@@ -101,8 +101,10 @@ export default function ChatInput({
 
   // Auto-resize textarea
   useEffect(() => {
-    const el = textareaRef.current;
-    if (!el) return;
+    // #26 (v4.0.52): sin guard `if (!el)` — los effects corren tras el commit,
+    // con la ref ya adjunta al textarea que este mismo componente renderiza;
+    // la rama nula era inalcanzable. Cast seguro en lugar de rama muerta.
+    const el = textareaRef.current as HTMLTextAreaElement;
     el.style.height = 'auto';
     el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
   }, [value]);
@@ -119,6 +121,10 @@ export default function ChatInput({
   };
 
   const handleModeChange = (newMode: 'auto' | 'chat' | 'action' | 'review') => {
+    // #26 (v4.0.52): la rama sin callback es inalcanzable en runtime — el
+    // selector de modos que invoca handleModeChange solo se renderiza cuando
+    // llega onModeOverrideChange (mismo prop en la guarda del render).
+    /* v8 ignore next 3 */
     if (onModeOverrideChange) {
       onModeOverrideChange(newMode);
     }

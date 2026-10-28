@@ -2,7 +2,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Estado-Publicado-4CAF50?style=for-the-badge" alt="Estado" />
-  <a href="https://github.com/migueljerico/github-ai-assistant/releases"><img src="https://img.shields.io/badge/Versión-v4.0.51-blue?style=for-the-badge" alt="Versión" /></a>
+  <a href="https://github.com/migueljerico/github-ai-assistant/releases"><img src="https://img.shields.io/badge/Versión-v4.0.52-blue?style=for-the-badge" alt="Versión" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge" alt="License" /></a>
   <a href="./e2e"><img src="https://img.shields.io/badge/Tested_with-Playwright-2EAD33?style=for-the-badge&logo=playwright&logoColor=white" alt="Tested with Playwright" /></a>
   <a href="https://github.com/migueljerico/github-ai-assistant/actions/workflows/ci.yml"><img src="https://github.com/migueljerico/github-ai-assistant/actions/workflows/ci.yml/badge.svg?style=for-the-badge" alt="CI & Coverage" /></a>
@@ -82,7 +82,7 @@ Todo bajo el principio:
 | ⏱️ Tiempo de desarrollo | 2 meses de desarrollo continuo |
 | ⚡ Latencia observada | ~400ms Groq / ~1.2s Gemini, variable según modelo y contexto |
 | 🛡️ Seguridad | Zero-Storage: credenciales solo en memoria React |
-| 🧪 Tests | 1.444 tests unitarios (1.376 cliente + 68 servidor) + 13 E2E (Playwright) |
+| 🧪 Tests | 1.582 tests unitarios (1.514 cliente + 68 servidor) + 13 E2E (Playwright) · Cobertura 100% (statements/branches/functions/lines) |
 | 🌐 i18n | 13 idiomas globales (ES, EN, ZH, HI, FR, AR, BN, PT, ID, UR, RU, DE, JA) con soporte RTL |
 | 🌍 Deploy | Google Cloud Run |
 | 📦 Stack | React + TypeScript + Express + Vite |
@@ -236,7 +236,7 @@ Ver detalle en ./docs/SEGURIDAD.md.
 
 El proyecto usa **Vitest**, **React Testing Library**, **Playwright**, **GitHub Actions** y **Codecov**.
 
-- **1.444 tests unitarios (1.376 cliente + 68 servidor)** + **13 tests E2E** con Playwright (5 specs)
+- **1.582 tests unitarios (1.514 cliente + 68 servidor)** + **13 tests E2E** con Playwright (5 specs) · Cobertura global **100%** (statements, branches, functions y lines — #26 v4.0.52)
 - Tests unitarios, integración y componentes
 - Tests del servidor
 - Tests E2E del flujo crítico en navegador real (auth → chat → acción confirmada), del toggle de tema, de i18n, de persistencia y de accesibilidad (foco visible `:focus-visible` + `prefers-reduced-motion`, WCAG 2.4.7/2.3.3)
@@ -307,6 +307,7 @@ Entornos agénticos que ejecutaron cambios directos en el repositorio (código, 
 
 | Entorno / Modelo base | Periodo | Aportación principal |
 |---|---|---|
+| **ZCode (GLM-5.3 Flash Free)** | v4.0.52 (2026-10-28) | **v4.0.52:** #26 — **cobertura Codecov al 100% global** (statements, branches, functions y lines; antes 97,14/97,98/95,1/97,32) con **refactor de ramas muertas** en ~20 módulos (guards defensivos inalcanzables borrados con comentario que explica por qué eran muertos, sin tests artificiales ni `v8 ignore`) y **suite nueva de `github.ts`** (del 35% al 100%): los ~40 wrappers REST que ningún consumidor ejercitaba (todos los mockean), con arnés de fetch por URL — defaults de cada wrapper, paginados 100+1, `priorityScore` completo, cap de 120 archivos, re-fetch real del árbol 404, `allSettled` descartando contents 404, `encodeBase64Bytes` por chunks y `ghFetch` (429 con `rateLimitInfo` y sin reintento). Suite: **1.582 tests** (1.514 cliente + 68 servidor), lint 0 errores y build limpia. |
 | **ZCode (MiniMax M3.1 Flash Free)** | v4.0.51 (2026-10-20) | **v4.0.51:** #77 propuesta 2 — **presupuesto adaptativo de contexto** en la documentación de repos (`client/src/utils/docContextBudget.ts`): techo de archivos (60) y de líneas por archivo según el tamaño real del repo, recorte extra a la mitad para los **modelos de razonamiento** (más lentos por token), **selección priorizada** de los archivos esenciales (README → manifiestos → código fuente → docs → resto → tests) y **reintento automático con la mitad de contexto** cuando el proveedor rechaza por TPM/longitud máxima (un timeout NO se reintenta: duplicaría la espera). Aviso en el chat con el presupuesto usado (i18n ×13). Suite: **1.444 tests** (1.376 cliente + 68 servidor), lint 0 errores y build limpia. |
 | **ZCode (GLM-5.3 Flash Free)** | v4.0.50 (2026-10-17) | **v4.0.50:** #77 streaming SSE en la doc de repos con **timeout por inactividad** (`createInactivityWatchdog` en `retry.ts`: 240s sin NINGÚN chunk → abort; ping por trozo leído —incluidos los deltas solo-razonamiento— vía `onActivity` desde `callAI` hasta los tres transportes; tope absoluto 600s/120s conservado como cinturón) y **progreso en vivo** en `DocumentFlowModal` (`#flow-stream-progress`, i18n ×13; sin `onProgress` el flujo previo no-streaming queda intacto), quedando pendiente la reducción adaptativa de contexto (propuesta 2, espíritu #50). #26 sprint de cobertura: rama dinámica de Gemini en `fetchModels`, catch defensivo de `extractMashup` (ZIP interno corrupto) y BOM UTF-8 en `document.xml`. Bookkeeping #66/#74 (catálogos revisados en v4.0.49 → próxima ~Enero 2027). Suite: **1.417 tests** (1.349 cliente + 68 servidor), cobertura 97,93% statements / 99,43% lines, lint y build limpias. |
 | **ZCode (DeepSeek V4.1 Flash Free)** | v4.0.49 (2026-10-15) | **v4.0.49:** auditoría de catálogos de los 11 proveedores (continuación de v4.0.47) con verificación en vivo de los endpoints públicos y las fuentes oficiales: Gemini 20→15 modelos operativos (fuera los 4 apagados y los 2 deprecados; entra el flagship `gemini-4-argon` con i18n en 13 idiomas), ids muertos fuera y vigentes dentro en Groq (`groq/compound` retirado el 21-sep), OpenRouter, OpenCode Zen, Kilo (nuevo default `stepfun/step-5-preview-free`), Ollama (18 modelos = catálogo vivo), NIM (`deepseek-v4.1-flash`, feed NGC) y QwenCloud (retiradas del 10-oct); Cloudflare con `CF_NOT_FREE` ampliada (glm-5.3[-flash], deepseek-v4-*) en cliente y servidor; Zenmux y BazaarLink verificados sin cambios. Suite: 1.404 tests en verde (1.336 cliente + 68 servidor), lint y build limpias. |

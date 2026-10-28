@@ -271,4 +271,44 @@ describe('ConfirmModal', () => {
     fireEvent.click(repo2Tab);
     expect(repo2Tab).toHaveClass('btn-secondary');
   });
+
+  // ── Ramas restantes (#26, v4.0.52) ──────────────────────────────────────────
+  it('acción de borrado con repo/archivo a null: sin filas Repo/Archivo y emoji genérico (v4.0.52 #26)', () => {
+    const action: GeminiAction = {
+      ...mockAction,
+      tipo: 'borrado',
+      metodo: 'DELETE',
+      repo: null,
+      archivo: null,
+      contenidoActual: null,
+      contenidoPropuesto: null,
+    };
+    render(
+      <ConfirmModal
+        {...defaultProps}
+        pendingAction={{ action, targetRepos: [] }}
+      />,
+    );
+
+    // tipo 'borrado' no está en typeEmojis → fallback `?? '🤖'`
+    expect(screen.getByText('🤖')).toBeInTheDocument();
+    // filas condicionales omitidas cuando repo/archivo son null
+    expect(screen.queryByText('Repositorio')).not.toBeInTheDocument();
+    expect(screen.queryByText('Archivo')).not.toBeInTheDocument();
+    // sin diff ni vista de archivo nuevo ni campo de commit
+    expect(screen.queryByTestId('diff-viewer')).not.toBeInTheDocument();
+  });
+
+  it('PUT con diff pero sin archivo: DiffViewer usa el nombre por defecto (v4.0.52 #26)', () => {
+    const action: GeminiAction = { ...mockAction, archivo: null };
+    render(
+      <ConfirmModal
+        {...defaultProps}
+        pendingAction={{ action, targetRepos: [] }}
+      />,
+    );
+
+    expect(screen.getByTestId('diff-viewer')).toBeInTheDocument();
+    expect(screen.getByTestId('diff-viewer')).toHaveTextContent('DiffViewer: archivo');
+  });
 });

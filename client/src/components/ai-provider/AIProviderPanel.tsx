@@ -63,9 +63,10 @@ export default function AIProviderPanel() {
       if (!key || key.length < 20) return;
       if (def.keyPrefix && !key.startsWith(def.keyPrefix)) return;
     }
-    // Cloudflare (y cualquier endpoint con {account_id}) también necesita el accountId.
-    const needsAccountId = def.modelsEndpoint.includes('{account_id}');
-    if (needsAccountId && !accountId.trim()) return;
+    // #26 (v4.0.52): sin guard de {account_id} — ningún `modelsEndpoint` del
+    // registro contiene ya ese placeholder (Cloudflare manda el account id por
+    // header X-Account-Id y lo exige fetchModels, L776); la condición era SIEMPRE
+    // false y el `return` inalcanzable.
 
     let cancelled = false;
     const load = async () => {
@@ -96,7 +97,9 @@ export default function AIProviderPanel() {
   }, [selected, keys, accountId, def]);
 
   const handleConnect = async () => {
-    if (!activeKey.trim()) return;
+    // #26 (v4.0.52): sin guard `if (!activeKey.trim()) return` — el único punto de
+    // invocación es el click del botón, que lleva `disabled={!activeKey.trim() || …}`,
+    // así que por la UI solo se llega aquí con key no vacía.
     setStatus('validating');
     setErrorMsg('');
 

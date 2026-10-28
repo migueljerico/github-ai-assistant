@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.52] — 2026-10-28
+
+> **#26 — Cobertura Codecov al 100% global (statements, branches, functions y lines) con refactor de ramas muertas: cada rama inalcanzable se borró (con comentario que lo justifica) o se testó de verdad, sin tests artificiales ni `v8 ignore`.**
+> - **Refactor de ramas muertas en ~20 módulos:** fallbacks `|| ''` / `?? ''` garantizados por filtros o invariantes previos (`gemini.ts`: content tras filter y `split().pop()`; `github.ts`: `split('/').pop()`), guard SSR de `window` que no aplica en el bundle del cliente (`gemini.ts`), guards duplicados con su único caller (`parseGeminiActions`), ternario con lado singular muerto dentro del guard multi-repo (`assistantActions.ts`) y guards defensivos sin camino real en componentes y hooks (`DocumentFlowModal`, `ChatInput`, `ChatToolsMenu`, `ConfirmModal`, `ChangeReviewModal`, `DiffViewer`, `codeHealth`, `contextRanker`, `docxReader`, `pdfReader`, `powerbiReader`, contexts y hooks).
+> - **`github.ts` del 35% al 100%:** sus ~40 wrappers REST (`getUser`…`listAllRepos`, Git Data API, workflows, issues y PRs) son envoltorios finos de `ghFetch` que ningún módulo ejercitaba de verdad (todos los consumidores los mockean). Suite nueva con arnés de fetch por URL que valida método, body y defaults de cada wrapper.
+> - **Cero déficit en los 79 ficheros del cliente** (verificado con ranking de statements/ramas/funciones sin cubrir).
+
+### Added
+- `client/src/services/__tests__/github.test.ts` (reescrito, 30 tests): arnés `routeFetch` (routing por URL + captura de método/body) que cubre TODOS los wrappers REST — defaults de cada wrapper (`createRepo` con `auto_init`, `createIssue`, `createPullRequest`, `mergePullRequest` con método por defecto, `createBlob`/`createTree`/`createCommit`/`updateRef`…), paginados 100+1 (`getIssueComments`, `getPullReviewComments`, `listAllRepos`), `priorityScore` completo (README < docs raíz < package.json < src/ < config < código < resto, con sort estable), cap de 120 archivos, re-fetch real del árbol 404 con la `default_branch` del meta, `allSettled` descartando contents 404, `encodeBase64Bytes` por chunks de 32 KB y `ghFetch` (429 con `rateLimitInfo` y SIN reintento; fallback de mensaje cuando el body no trae `message` o `json()` rompe).
+- `client/src/components/chat/__tests__/ChatInput.branches.test.tsx` y `client/src/components/chat/__tests__/ChatMessage.avatar.test.tsx` (nuevas): ramas de UI del input y del avatar del mensaje.
+- `client/src/utils/__tests__/retry.test.ts`: lados restantes de `isTransientError` (flag `transient` manual tiene prioridad, 429 con `GitHubAPIError` NO se reintenta, `?? ''` cuando el error no trae mensaje).
+
+### Changed
+- Cobertura global del cliente: **97,14% statements / 97,98% branches / 95,1% functions / 97,32% lines → 100,00% en las cuatro métricas** (todos los ficheros al 100%).
+- `MEJORAS_FUTURAS.md`: #26 pasa de "En progreso" a objetivo alcanzado (100%), con la regla de mantenimiento (cada rama nueva del diff con su test).
+- Bump de versión a `v4.0.52` en `package.json`, `client/package.json` y lockfiles.
+
+### Fixed
+- Lint: variables sin usar eliminadas (`screen` sin uso en un test de `ChatInput`, `hasPaths` residual tras el refactor de guards en `DocumentFlowModal`, parámetros fantasma en mocks de `actionExecutor`/`gemini`) y comillas de un título de test en `gemini.test.ts` que quebraban el parseo de `tsc -b`.
+
+Suite: **1.582 tests unitarios (1.514 cliente + 68 servidor)** + 13 tests E2E, cobertura global **100,00% statements / branches / functions / lines**, lint 0 errores (warning preexistente de `LanguageContext.tsx`) y build limpia.
+
+Cambio de código por ZCode (GLM-5.3 Flash Free).
+
 ## [4.0.51] — 2026-10-20
 
 > **#77 (propuesta 2) — Presupuesto adaptativo de contexto en la generación de documentación: menos archivos y menos líneas por llamada cuando el modelo es lento (de razonamiento) o el repositorio es enorme, con reintento automático si el proveedor rechaza el contexto.**

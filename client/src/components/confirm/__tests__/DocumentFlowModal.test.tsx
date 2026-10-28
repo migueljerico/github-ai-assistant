@@ -1,10 +1,11 @@
 import React, { useEffect } from 'react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import DocumentFlowModal from '../DocumentFlowModal';
 import { AIProviderContextProvider, useAIProvider } from '../../../context/AIProviderContext';
 import type { RepoAnalysis } from '../../../types';
 import type { FileContext } from '../../../services/assistantActions';
+import type { AIProviderType } from '../../../services/providers';
 
 // #58 (b): mockeamos DiffViewer para aislar la lógica del modal (decisión
 // diff vs <pre>) sin depender de diff2html (que inyecta innerHTML en jsdom).
@@ -1400,5 +1401,291 @@ describe('DocumentFlowModal — Cobertura completa de ramas y callbacks', () => 
     });
   });
 });
+
+// ── Ramas restantes de DocumentFlowModal (v4.0.52, #26) ────────────────────────
+// Lados que quedaban tras los refactors anti-código-muerto: cancels async del
+// fetch del doc existente (resolución tras desmontar), hidratación persisted
+// sin instrucciones adicionales, resultados null de los generadores, carrera de
+// reinicio ligero con el input en blanco (el guard del handler sí es alcanzable),
+// target sin attachedFileName (nombre por defecto "archivo"), 'handled' al crear
+// repo+publicar, adjuntos fantasma en bulk (⚠️ y skip en la generación), loop IA
+// con doc null (targets vacíos), handlers bulk ausentes y selector de modelo con
+// modelo '' y proveedor desconocido (?? 0 de staticModels). Los guards de los
+// handlers de publicación quedan como estrechamiento de TS con `v8 ignore`.
+
+function MiniProvider({ provider, model, children }: { provider: string; model: string; children: React.ReactNode }) {
+  return (
+    <AIProviderContextProvider>
+      <ConnectMini provider={provider} model={model} />
+      {children}
+    </AIProviderContextProvider>
+  );
+}
+
+function ConnectMini({ provider, model }: { provider: string; model: string }) {
+  const { connect } = useAIProvider();
+  const connectedRef = React.useRef(false);
+  useEffect(() => {
+    if (!connectedRef.current) {
+      connectedRef.current = true;
+      connect(provider as AIProviderType, 'test-key', model);
+    }
+  }, [connect, provider, model]);
+  return null;
+}
+
+describe('DocumentFlowModal — ramas restantes (v4.0.52 #26)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+
+  /** Navega: paso 1 (archivo) → generar doc → paso 3 → continuar → paso 4. */
+  async function irAPaso4Archivo(overrides: Partial<Props> = {}) {
+    const props = baseProps({ hasAttachedFile: true, attachedFileName: 'notas.txt', ...overrides });
+    const rk = render(<DocumentFlowModal {...props} />);
+    fireEvent.click(screen.getByRole('button', { name: /Archivo adjunto/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Generar documentación/ }));
+    await screen.findByText('# doc');
+    fireEvent.click(screen.getByRole('button', { name: /Continuar/ }));
+    return { props, unmount: rk.unmount };
+  }
+
+  it('fetch del doc existente: resuelve tras desmontar → el .then sale por cancelled', async () => {
+    let resolveExisting!: (v: string | null) => void;
+    const onFetchExistingDoc = vi.fn(() => new Promise<string | null>(res => { resolveExisting = res; }));
+    const { unmount } = await irAPaso4Archivo({ onFetchExistingDoc });
+    fireEvent.change(screen.getByPlaceholderText(/owner\/repo o repo/), { target: { value: 'owner/repo' } });
+    await waitFor(() => expect(onFetchExistingDoc).toHaveBeenCalledTimes(1));
+    unmount();
+    await act(async () => { resolveExisting('# version vieja'); });
+    // Sin aserciones de UI: el objetivo es ejecutar el return del guard cancelled.
+  });
+
+  it('fetch del doc existente: rechaza tras desmontar → el .catch sale por cancelled', async () => {
+    let rejectExisting!: (e: unknown) => void;
+    const onFetchExistingDoc = vi.fn(() => new Promise<string | null>((_, rej) => { rejectExisting = rej; }));
+    const { unmount } = await irAPaso4Archivo({ onFetchExistingDoc });
+    fireEvent.change(screen.getByPlaceholderText(/owner\/repo o repo/), { target: { value: 'owner/repo' } });
+    await waitFor(() => expect(onFetchExistingDoc).toHaveBeenCalledTimes(1));
+    unmount();
+    await act(async () => { rejectExisting(new Error('boom')); });
+  });
+
+  it('hidratación persisted: estado specific SIN extraInstructions no llama onExtraInstructionsChange', () => {
+    localStorage.setItem('doc_target_selector', JSON.stringify({
+      scope: 'specific',
+      specificRepoInput: 'owner/hidratado',
+      specificPath: 'src/hidratado.ts',
+      updatedAt: Date.now(),
+    }));
+    const onExtraInstructionsChange = vi.fn();
+    setup({ onExtraInstructionsChange });
+    expect(onExtraInstructionsChange).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: /Documento específico/ }));
+    expect((document.getElementById('flow-specific-repo-input') as HTMLInputElement).value).toBe('owner/hidratado');
+  });
+
+  it('onGenerateRepo resuelve null → sin banner, sin avance y sin cierre', async () => {
+    const props = setup({ onGenerateRepo: vi.fn().mockResolvedValue(null) });
+    fireEvent.click(screen.getByRole('button', { name: /Repositorio entero/ }));
+    fireEvent.change(screen.getByPlaceholderText(/nombre-del-repo o owner\/repo/), { target: { value: 'owner/repo' } });
+    fireEvent.click(screen.getByRole('button', { name: /Generar documentación/ }));
+    await waitFor(() => expect(props.onGenerateRepo).toHaveBeenCalled());
+    expect(screen.getByPlaceholderText(/nombre-del-repo o owner\/repo/)).toBeInTheDocument();
+    expect(document.getElementById('flow-context-too-large-banner')).toBeNull();
+    expect(props.onCancel).not.toHaveBeenCalled();
+  });
+
+  it('carrera ligera: input vacío cuando llega el error → el botón light hace early-return', async () => {
+    let resolveGen!: (v: RepoAnalysis | null | 'repo-missing' | 'context-too-large' | 'timeout' | 'overloaded') => void;
+    const onGenerateRepo = vi.fn(() => new Promise<RepoAnalysis | null | 'repo-missing' | 'context-too-large' | 'timeout' | 'overloaded'>(res => { resolveGen = res; }));
+    setup({ onGenerateRepo });
+    fireEvent.click(screen.getByRole('button', { name: /Repositorio entero/ }));
+    const input = screen.getByPlaceholderText(/nombre-del-repo o owner\/repo/);
+    fireEvent.change(input, { target: { value: 'owner/repo' } });
+    fireEvent.click(screen.getByRole('button', { name: /Generar documentación/ }));
+    await waitFor(() => expect(onGenerateRepo).toHaveBeenCalled());
+    // Se vacía el input mientras busy (flowError aún no existe, no se limpia el banner futuro).
+    fireEvent.change(input, { target: { value: '' } });
+    await act(async () => { resolveGen('context-too-large'); });
+    await waitFor(() => expect(document.getElementById('flow-context-too-large-banner')).toBeInTheDocument());
+    // Guard alcanzable: nuevo generación con repoInput en blanco → return sin segunda llamada.
+    fireEvent.click(document.getElementById('flow-generate-light-btn')!);
+    expect(onGenerateRepo).toHaveBeenCalledTimes(1);
+    expect(document.getElementById('flow-generate-light-btn')).toBeInTheDocument();
+  });
+
+  it('crear repo con input vacío → early-return; rellenado después → crea sin extras (undefined)', async () => {
+    const props = setup({
+      onGenerateRepo: vi.fn().mockResolvedValue('repo-missing' as never),
+      onCreateRepoAndGenerate: vi.fn().mockResolvedValue({ ...analysis, repoName: 'me/nuevo-repo' }),
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Repositorio entero/ }));
+    const input = screen.getByPlaceholderText(/nombre-del-repo o owner\/repo/);
+    fireEvent.change(input, { target: { value: 'me/nuevo-repo' } });
+    fireEvent.click(screen.getByRole('button', { name: /Generar documentación/ }));
+    await waitFor(() => expect(screen.getByText(/no existe en tu cuenta/)).toBeInTheDocument());
+    // 1) repoInput vacío con repoMissing vigente (el onChange no limpia repoMissing).
+    fireEvent.change(input, { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: /Crear repo y documentar/ }));
+    expect(props.onCreateRepoAndGenerate).not.toHaveBeenCalled();
+    // 2) files null en el input de extras del repo a crear → no se añade nada (if fl false).
+    const createInput = document.querySelector('#flow-create-add-extras input[type="file"]') as HTMLInputElement;
+    fireEvent.change(createInput, { target: { files: null } });
+    expect(document.getElementById('flow-create-extras-list')).toBeNull();
+    // 3) rellenado → crear normal, merged vacío → undefined en el 2º argumento.
+    fireEvent.change(input, { target: { value: 'me/nuevo-repo' } });
+    fireEvent.click(screen.getByRole('button', { name: /Crear repo y documentar/ }));
+    await waitFor(() => expect(props.onCreateRepoAndGenerate).toHaveBeenCalledWith('me/nuevo-repo', undefined));
+    await screen.findByText('README CONTENT');
+  });
+
+  it('crear repo resuelve null → el modal se queda en paso 2 con el banner', async () => {
+    const props = setup({
+      onGenerateRepo: vi.fn().mockResolvedValue('repo-missing' as never),
+      onCreateRepoAndGenerate: vi.fn().mockResolvedValue(null),
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Repositorio entero/ }));
+    fireEvent.change(screen.getByPlaceholderText(/nombre-del-repo o owner\/repo/), { target: { value: 'me/nuevo-repo' } });
+    fireEvent.click(screen.getByRole('button', { name: /Generar documentación/ }));
+    await waitFor(() => expect(screen.getByText(/no existe en tu cuenta/)).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /Crear repo y documentar/ }));
+    await waitFor(() => expect(props.onCreateRepoAndGenerate).toHaveBeenCalled());
+    // Sigue en paso 2: el banner no desapareció (if (a) lado falso).
+    expect(screen.getByText(/no existe en tu cuenta/)).toBeInTheDocument();
+  });
+
+  it('onGenerateFile resuelve null → el modal se queda en paso 2', async () => {
+    const props = setup({ hasAttachedFile: true, attachedFileName: 'notas.txt', onGenerateFile: vi.fn().mockResolvedValue(null) });
+    fireEvent.click(screen.getByRole('button', { name: /Archivo adjunto/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Generar documentación/ }));
+    await waitFor(() => expect(props.onGenerateFile).toHaveBeenCalled());
+    expect(screen.queryByRole('button', { name: /Continuar/ })).not.toBeInTheDocument();
+  });
+
+  it('sin attachedFileName → target usa "archivo" por defecto y el label uploadSource no inserta nombre', async () => {
+    const props = setup({ hasAttachedFile: true, attachedFile: mockFile('sin-nombre.bin') });
+    fireEvent.click(screen.getByRole('button', { name: /Archivo adjunto/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Generar documentación/ }));
+    await screen.findByText('# doc');
+    fireEvent.click(screen.getByRole('button', { name: /Continuar/ }));
+    // attachedFile presente → el checkbox de subir el original se renderiza con fileName ''.
+    expect(screen.getByRole('checkbox', { name: /Subir también el archivo original/ })).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText(/owner\/repo o repo/), { target: { value: 'owner/repo' } });
+    fireEvent.click(screen.getByRole('button', { name: /Commit directo/ }));
+    await waitFor(() => expect(props.onPublishFile).toHaveBeenCalled());
+    const target = (props.onPublishFile as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(target.fileName).toBe('archivo');
+  });
+
+  it('crear repo y publicar resuelve "handled" → el modal NO se cierra', async () => {
+    const { props } = await irAPaso4Archivo({
+      attachedFileName: 'notas.txt',
+      onPublishFile: vi.fn().mockResolvedValue('repo-missing' as const),
+      onCreateRepoAndPublish: vi.fn().mockResolvedValue('handled' as const),
+    });
+    fireEvent.change(screen.getByPlaceholderText(/owner\/repo o repo/), { target: { value: 'nuevo/repo' } });
+    fireEvent.click(screen.getByRole('button', { name: /Commit directo/ }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /Crear repo y publicar/ })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /Crear repo y publicar/ }));
+    await waitFor(() => expect(props.onCreateRepoAndPublish).toHaveBeenCalled());
+    // res 'handled' ≠ 'published' → sin onCancel (if (res === 'published') lado falso).
+    expect(props.onCancel).not.toHaveBeenCalled();
+  });
+
+  it('bulk con adjunto sin File: ⚠️ en paso 2, se salta al generar y no entra al commit', async () => {
+    const ghost = { name: 'ghost.txt', contextText: '', file: undefined as unknown as File };
+    const valid = { name: 'real.txt', contextText: '', file: mockFile('real.txt', 'REAL') };
+    const props = setup({ allAttachedFiles: [ghost, valid] });
+    fireEvent.click(screen.getByRole('button', { name: /Varios archivos a la vez/ }));
+    // fc.file null → ternario del resumen muestra aviso.
+    expect(screen.getByText('⚠️')).toBeInTheDocument();
+    fireEvent.change(document.getElementById('flow-bulk-repo-input') as HTMLInputElement, { target: { value: 'owner/repo' } });
+    fireEvent.click(document.getElementById('flow-generate-bulk-btn') as HTMLElement);
+    await waitFor(() => expect(screen.getByRole('button', { name: /Continuar/ })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /Continuar/ }));
+    fireEvent.click(document.getElementById('flow-bulk-commit-btn') as HTMLElement);
+    await waitFor(() => expect(props.onCommitBulk).toHaveBeenCalled());
+    const targets = (props.onCommitBulk as ReturnType<typeof vi.fn>).mock.calls[0][2];
+    // El ghost se saltó por `if (!fc.file) continue;`: solo entra el adjunto válido.
+    expect(targets.map((tg: { path: string }) => tg.path)).toEqual(['real.txt']);
+  });
+
+  it('bulk: doc null en el loop IA sin adjuntos válidos → targets vacíos y no avanza', async () => {
+    const props = setup({ repoFileTree: [{ path: 'src/a.ts' }], onGenerateSpecific: vi.fn().mockResolvedValue(null) });
+    fireEvent.click(screen.getByRole('button', { name: /Varios archivos a la vez/ }));
+    fireEvent.change(document.getElementById('flow-bulk-repo-input') as HTMLInputElement, { target: { value: 'owner/repo' } });
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(document.getElementById('flow-generate-bulk-btn') as HTMLElement);
+    await waitFor(() => expect(props.onGenerateSpecific).toHaveBeenCalledTimes(1));
+    // result null en el loop → no se añade target; targets vacío → if (targets.length === 0) return.
+    expect(screen.queryByRole('button', { name: /Continuar/ })).not.toBeInTheDocument();
+  });
+
+  it('bulk sin onCommitBulk ni onDraftPrBulk → los clicks no producen efectos', async () => {
+    const props = setup({ repoFileTree: [{ path: 'src/a.ts' }], onCommitBulk: undefined, onDraftPrBulk: undefined });
+    fireEvent.click(screen.getByRole('button', { name: /Varios archivos a la vez/ }));
+    fireEvent.change(document.getElementById('flow-bulk-repo-input') as HTMLInputElement, { target: { value: 'owner/repo' } });
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(document.getElementById('flow-generate-bulk-btn') as HTMLElement);
+    await waitFor(() => expect(screen.getByRole('button', { name: /Continuar/ })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /Continuar/ }));
+    // if (!handler) return en ambos clicks → sin pendings, sin busy, sin cierre.
+    fireEvent.click(document.getElementById('flow-bulk-commit-btn') as HTMLElement);
+    fireEvent.click(document.getElementById('flow-bulk-draftpr-btn') as HTMLElement);
+    expect(props.onCancel).not.toHaveBeenCalled();
+  });
+
+  it('paso 4 archivo: extra con nombre acabado en punto → destino raíz (|| "" del ext)', async () => {
+    await irAPaso4Archivo();
+    const addInput = document.querySelector('#flow-add-extras input[type="file"]') as HTMLInputElement;
+    fireEvent.change(addInput, { target: { files: [mockFile('raro.')] } });
+    expect(screen.getByText('raro.')).toBeInTheDocument();
+    expect(screen.getByText('raíz')).toBeInTheDocument();
+  });
+
+  it('paso 4 archivo: change del input de extras SIN files no añade nada', async () => {
+    await irAPaso4Archivo();
+    const addInput = document.querySelector('#flow-add-extras input[type="file"]') as HTMLInputElement;
+    fireEvent.change(addInput, { target: { files: null } });
+    expect(document.getElementById('flow-extras-list')).toBeNull();
+  });
+
+  it('banner: proveedor conectado sin modelo → selector con value "" y labels planos de qwencloud', async () => {
+    const onGenerateRepo = vi.fn().mockResolvedValue('context-too-large');
+    render(
+      <MiniProvider provider="qwencloud" model="">
+        <DocumentFlowModal {...baseProps({ onGenerateRepo })} />
+      </MiniProvider>
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Repositorio entero/ }));
+    fireEvent.change(screen.getByPlaceholderText(/nombre-del-repo o owner\/repo/), { target: { value: 'owner/repo' } });
+    fireEvent.click(screen.getByRole('button', { name: /Generar documentación/ }));
+    await waitFor(() => expect(document.getElementById('flow-context-too-large-banner')).toBeInTheDocument());
+    const select = document.getElementById('flow-model-select') as HTMLSelectElement;
+    expect(select).toBeInTheDocument();
+    // aiContext.model vacío → rama del `|| ''` del value; labels sin 'provider.'
+    // → rama del literal del ternario del option (labels planos de qwencloud).
+    expect(screen.getByText('Qwen 3.7 Flash (free)')).toBeInTheDocument();
+  });
+
+  it('banner: proveedor desconocido (pref dañado) → staticModels ausente cae en ?? 0 y no hay selector', async () => {
+    const onGenerateRepo = vi.fn().mockResolvedValue('context-too-large');
+    render(
+      <MiniProvider provider="ghost-provider" model="">
+        <DocumentFlowModal {...baseProps({ onGenerateRepo })} />
+      </MiniProvider>
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Repositorio entero/ }));
+    fireEvent.change(screen.getByPlaceholderText(/nombre-del-repo o owner\/repo/), { target: { value: 'owner/repo' } });
+    fireEvent.click(screen.getByRole('button', { name: /Generar documentación/ }));
+    await waitFor(() => expect(document.getElementById('flow-context-too-large-banner')).toBeInTheDocument());
+    // length inexistente → ?? 0 → (>1) falso → sin selector. model vacío evita el
+    // badge (modelLabel crashearía con un provider desconocido).
+    expect(document.getElementById('flow-model-select')).toBeNull();
+  });
+});
+
 
 

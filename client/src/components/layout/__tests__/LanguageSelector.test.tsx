@@ -144,5 +144,39 @@ describe('LanguageSelector', () => {
     const button = screen.getByRole('button', { name: /select language/i });
     expect(button).toHaveTextContent('ES');
   });
+
+  // ── Ramas restantes (#26, v4.0.52) ──────────────────────────────────────────
+  it('tecla no-Enter/Espacio sobre una opción: no selecciona (v4.0.52 #26)', () => {
+    render(
+      <LanguageProvider>
+        <TestConsumer />
+      </LanguageProvider>
+    );
+
+    const button = screen.getByRole('button', { name: /select language/i });
+    fireEvent.click(button);
+
+    const enOption = screen.getAllByRole('option').find((opt) => opt.textContent?.includes('English'));
+    expect(enOption).toBeDefined();
+    fireEvent.keyDown(enOption!, { key: 'Tab' });
+
+    expect(screen.getByTestId('current-lang')).toHaveTextContent('es');
+  });
+
+  it('mousedown dentro del desplegable (sobre el propio botón) NO cierra (v4.0.52 #26)', () => {
+    render(
+      <LanguageProvider>
+        <LanguageSelector />
+      </LanguageProvider>
+    );
+
+    const button = screen.getByRole('button', { name: /select language/i });
+    fireEvent.click(button);
+    expect(screen.getByRole('listbox')).toBeInTheDocument();
+
+    // target dentro del contenedor del selector → contains() true → no cierra.
+    fireEvent.mouseDown(button);
+    expect(screen.getByRole('listbox')).toBeInTheDocument();
+  });
 });
 
