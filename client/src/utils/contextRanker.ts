@@ -137,6 +137,10 @@ export function rankFilesByQuery(query: string, files: RepoTreeFile[], topN: num
     for (const term of new Set(doc)) df.set(term, (df.get(term) ?? 0) + 1);
   }
   const idf = (term: string): number => {
+    // `?? 0` es inalcanzable en runtime: `df` se construye a partir de estos
+    // mismos `docs`, así que todo término que llega a idf() ya fue indexado;
+    // la guarda existe solo para el tipado estricto de TS (#26, v4.0.52).
+    // v8 ignore next
     const n = df.get(term) ?? 0;
     return Math.log(1 + (N - n + 0.5) / (n + 0.5));
   };

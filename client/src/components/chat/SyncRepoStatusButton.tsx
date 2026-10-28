@@ -12,7 +12,9 @@ export default function SyncRepoStatusButton({
   const { t } = useLanguage();
 
   const handleClick = () => {
-    const repo = prompt(t('syncRepo.prompt') ?? 'Introduce el repositorio (owner/repo o nombre):');
+    // #26 (v4.0.52): el `?? 'Introduce...'` era código muerto — t() siempre
+    // devuelve un string (fallback final a la clave cruda en LanguageContext).
+    const repo = prompt(t('syncRepo.prompt'));
     if (repo && repo.trim()) {
       onSyncRepoStatus(repo.trim());
     }

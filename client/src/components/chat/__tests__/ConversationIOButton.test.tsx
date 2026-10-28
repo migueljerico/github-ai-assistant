@@ -30,6 +30,15 @@ describe('ConversationIOButton (#46)', () => {
     expect(onImport).toHaveBeenCalledWith(file);
   });
 
+  // #26 (v4.0.52): el falso de `file ?` — cancelar la selección (files null).
+  it('change sin fichero (cancelado) no invoca onImport (v4.0.52 #26)', () => {
+    const onImport = vi.fn();
+    const { container } = render(<ConversationIOButton disabled={false} hasMessages={true} onExport={vi.fn()} onImport={onImport} />);
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: null } });
+    expect(onImport).not.toHaveBeenCalled();
+  });
+
   it('pulsar Importar desencadena el clic en el input de archivo oculto', () => {
     const { container } = render(<ConversationIOButton disabled={false} hasMessages={true} onExport={vi.fn()} onImport={vi.fn()} />);
     const input = container.querySelector('input[type="file"]') as HTMLInputElement;

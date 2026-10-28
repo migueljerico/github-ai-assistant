@@ -120,12 +120,12 @@ vi.mock('../../utils/powerbiReader', () => ({ readPowerBI: vi.fn() }));
 vi.mock('../../utils/docxReader', () => ({ readDocx: vi.fn() }));
 vi.mock('../changelogGenerator', () => ({ generateChangelog: vi.fn() }));
 
-import { generateRepoDocs, generateFileDoc, generateSpecificDoc, buildRepoContextSummary, callAI, parseGeminiAction, parseGeminiActions, parseGeminiActionWithReason, chatPromptWithContext } from '../gemini';
+import { generateRepoDocs, generateFileDoc, generateSpecificDoc, buildRepoContextSummary, buildSecurityAuditContext, callAI, parseGeminiAction, parseGeminiActions, parseGeminiActionWithReason, chatPromptWithContext } from '../gemini';
 import { assertSupportedFile, readFileContent } from '../../utils/pdfReader';
 import { readSpreadsheet } from '../../utils/spreadsheetReader';
 import { readPowerBI } from '../../utils/powerbiReader';
 import { readDocx } from '../../utils/docxReader';
-import { fetchRepoTreeRecursive, getFileContents, createRepo, repoExists, getRepo, updateRepo, listCommitDates, listRecentCommits, getCommit } from '../github';
+import { fetchRepoTreeRecursive, getFileContents, createRepo, repoExists, getRepo, updateRepo, listCommitDates, listRecentCommits, getCommit, GitHubAPIError } from '../github';
 import { writeDocFiles, createDocsDraftPr, publishFileDoc, uploadFilesToRepo, publishBulkCommit, publishBulkDraftPr } from '../docPublisher';
 import { summarizeThread, parseThreadInput, listOpenThreads, formatThreadList } from '../threadSummary';
 import { generateChangelog } from '../changelogGenerator';
@@ -2794,6 +2794,492 @@ describe('assistantActions — Cobertura completa de ramas auxiliares y flujos d
         content: expect.stringContaining('⚠️ El contexto del repositorio sigue siendo demasiado grande'),
       }),
     );
+  });
+});
+
+// ── Ramas restantes de assistantActions (v4.0.52, #26) ────────────────────────
+// Últimos lados MISS del módulo: buildSignature sin modelo/provider, mensajes de
+// carga con árbol truncado, respaldos cuando allPaths llega undefined, guards
+// "repoNeeded" de los botones, salto de commits/patches problemáticos en el sync,
+// tolerancia de la auditoría (content vacío, errores no-404, repoContext),
+// descubrimiento de entrypoints/compose, acción JSON en modo chat, extras en el
+// commit de docs, el camino de modo revisión con multi-repo y acciones raras,
+// mismatch hacia chat, contexto sin re-ranking, prompt de acción con archivo,
+// adjuntos sin extensión, errores de publicación (404/sin mensaje) y sourceFile
+// en draftpr/commit. OJO: no hay restoreMocks global, así que este describe
+// re-fija los defaults de los parsers antes de cada test (los mockReturnValue de
+// tests previos persisten entre tests del fichero).
+describe('assistantActions — ramas restantes (v4.0.52 #26)', () => {
+  const CONFIG_EMPTY_MODEL = { provider: 'groq' as const, apiKey: 'k', model: '' };
+
+  beforeEach(() => {
+    // Defaults de fábrica (los impl persistentes de tests previos se pisan aquí).
+    vi.mocked(parseGeminiAction).mockImplementation(() => undefined as never);
+    vi.mocked(parseGeminiActions).mockImplementation(() => []);
+    vi.mocked(parseGeminiActionWithReason).mockImplementation((raw: string) => {
+      const action = parseGeminiAction(raw);
+      return action ? { action } : { action: null, error: 'no se encontró JSON de acción válido' };
+    });
+    vi.mocked(resolveMode).mockImplementation(() => 'chat' as never);
+  });
+
+  it('buildSignature: sin modelo → "IA"; con modelo y sin provider → el modelo tal cual', () => {
+    const base = { user: { login: 'me' }, providerName: 'Groq', lang: 'es' as const };
+    // model undefined → deps.model ?? 'IA' (lado derecho de ?? y del ternario).
+    expect(buildSignature({ ...base, model: undefined as never, provider: undefined as never })).toContain('(IA)');
+    // model presente pero provider ausente → el modelo se usa sin modelLabel.
+    expect(buildSignature({ ...base, model: 'mi-modelo', provider: undefined as never })).toContain('(mi-modelo)');
+  });
+
+  it('runDocumentRepo: árbol truncado muestra "(de N totales)" en el mensaje de carga', async () => {
+    vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'a' }], totalScanned: 5, truncated: true, allPaths: ['a'] } as any);
+    vi.mocked(generateRepoDocs).mockResolvedValue({ readme: 'R', manualTecnico: 'M' } as any);
+    const deps = makeDeps();
+
+    await runDocumentRepo(deps, CONFIG, 'owner/repo');
+
+    expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', expect.objectContaining({
+      content: expect.stringContaining('(de 5 totales)'),
+    }));
+  });
+
+  it('runDocumentRepo: allPaths undefined cae a los paths de files; getFileContents falsy → actual undefined', async () => {
+    vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({
+      files: [{ path: 'README.md' }, { path: 'x.ts' }], totalScanned: 2, truncated: false, allPaths: undefined,
+    } as any);
+    vi.mocked(generateRepoDocs).mockResolvedValue({ readme: 'R', manualTecnico: 'M' } as any);
+    // Falsy (no 404): cubre el `if (!existing) return undefined` de fetchActual.
+    vi.mocked(getFileContents).mockResolvedValue(undefined as any);
+    const deps = makeDeps();
+
+    const result = (await runDocumentRepo(deps, CONFIG, 'owner/repo')) as { readmeActual?: string; manualActual?: string };
+
+    // alreadyDocumented se detectó vía el respaldo de files.map (no allPaths).
+    expect(getFileContents).toHaveBeenCalledWith('tok', 'owner', 'repo', 'README.md');
+    expect(getFileContents).toHaveBeenCalledWith('tok', 'owner', 'repo', 'MANUAL_TECNICO.md');
+    expect(result.readmeActual).toBeUndefined();
+    expect(result.manualActual).toBeUndefined();
+    // runDocumentRepo deja la entrada en 'pending' (esperando confirmación del modal).
+    expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'pending' }));
+  });
+
+  it('runDocumentRepo: fallbackModel con originalModel vacío usa config.model en el aviso', async () => {
+    vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'a' }], totalScanned: 1, truncated: false, allPaths: ['a'] } as any);
+    vi.mocked(generateRepoDocs).mockResolvedValue({
+      readme: 'R', manualTecnico: 'M',
+      metadatos: { fallbackModel: 'gpt-mini', originalModel: '' },
+    } as any);
+    const deps = makeDeps();
+
+    await runDocumentRepo(deps, CONFIG, 'owner/repo');
+
+    expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', expect.objectContaining({
+      content: expect.stringContaining('usando gpt-mini por sobrecarga temporal de m'),
+    }));
+  });
+
+  it('runDocumentRepo: errores pedagógicos con config.model vacío → model "IA"', async () => {
+    const setupOk = () => {
+      vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
+      vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'a' }], totalScanned: 1, truncated: false, allPaths: ['a'] } as any);
+    };
+
+    // context-too-large
+    setupOk();
+    vi.mocked(generateRepoDocs).mockRejectedValueOnce(new Error('context length exceeded'));
+    const deps1 = makeDeps();
+    expect(await runDocumentRepo(deps1, CONFIG_EMPTY_MODEL, 'owner/repo')).toBe('context-too-large');
+    expect(deps1.t).toHaveBeenCalledWith('chat.docContextTooLarge', expect.objectContaining({ model: 'IA' }));
+
+    // timeout
+    setupOk();
+    vi.mocked(generateRepoDocs).mockRejectedValueOnce(new Error('Request timed out after 180s'));
+    const deps2 = makeDeps();
+    expect(await runDocumentRepo(deps2, CONFIG_EMPTY_MODEL, 'owner/repo')).toBe('timeout');
+    expect(deps2.t).toHaveBeenCalledWith('chat.docTimeout', expect.objectContaining({ model: 'IA' }));
+
+    // overloaded
+    setupOk();
+    vi.mocked(generateRepoDocs).mockRejectedValueOnce(Object.assign(new Error('The model is overloaded'), { status: 503 }));
+    const deps3 = makeDeps();
+    expect(await runDocumentRepo(deps3, CONFIG_EMPTY_MODEL, 'owner/repo')).toBe('overloaded');
+    expect(deps3.t).toHaveBeenCalledWith('chat.docOverloaded', expect.objectContaining({ model: 'IA' }));
+  });
+
+  it('runLoadRepoContext: provider param aplica su budget; truncated avisa del recorte', async () => {
+    vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [{ path: 'a' }], totalScanned: 5, truncated: true, allPaths: ['a'] } as any);
+    const deps = makeDeps();
+
+    const ctx = await runLoadRepoContext(deps, 'owner/repo', 'groq');
+
+    expect(ctx).not.toBeNull();
+    expect(ctx!.truncated).toBe(true);
+    expect(deps.updateMessage).toHaveBeenCalledWith('msg-1', expect.objectContaining({
+      content: expect.stringContaining('analizo el contenido de 1'),
+    }));
+  });
+
+  it('runSummarizeThread: repo sin owner → owner = usuario autenticado', async () => {
+    vi.mocked(parseThreadInput).mockReturnValueOnce({ repo: 'solo-repo', number: 3 } as any);
+    vi.mocked(summarizeThread).mockResolvedValue('S');
+    const deps = makeDeps();
+
+    await runSummarizeThread(deps, CONFIG, 'solo-repo#3', null);
+
+    expect(summarizeThread).toHaveBeenCalledWith('tok', 'me', 'solo-repo', 3, CONFIG);
+  });
+
+  it('runGenerateChangelog: input sin repo → chat.repoNeeded y sin llamada', async () => {
+    const deps = makeDeps();
+
+    await runGenerateChangelog(deps, CONFIG, '');
+
+    expect(deps.t).toHaveBeenCalledWith('chat.repoNeeded');
+    expect(generateChangelog).not.toHaveBeenCalled();
+    expect(deps.setIsChatLoading).not.toHaveBeenCalledWith(true);
+  });
+
+  it('runCodeHealth: input sin repo avisa; allPaths undefined usa los paths de files', async () => {
+    // sin repo
+    const deps1 = makeDeps();
+    expect(await runCodeHealth(deps1, '')).toBeNull();
+    expect(deps1.t).toHaveBeenCalledWith('chat.repoNeeded');
+    expect(getRepo).not.toHaveBeenCalled();
+
+    // allPaths undefined → languageDistribution sobre files.map(f => f.path)
+    vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({
+      files: [{ path: 'src/a.ts', content: '' }], totalScanned: 1, truncated: false, allPaths: undefined,
+    } as any);
+    vi.mocked(listCommitDates).mockResolvedValue([]);
+    const deps2 = makeDeps();
+    const health = await runCodeHealth(deps2, 'owner/repo');
+    expect(health).not.toBeNull();
+    expect(health!.languages).toContainEqual({ language: 'TypeScript', count: 1 });
+  });
+
+  it('runSyncRepoStatus: input sin repo → chat.repoNeeded y sin listar commits', async () => {
+    const deps = makeDeps();
+
+    expect(await runSyncRepoStatus(deps, '', CONFIG)).toBeNull();
+
+    expect(deps.t).toHaveBeenCalledWith('chat.repoNeeded');
+    expect(listRecentCommits).not.toHaveBeenCalled();
+  });
+
+  it('runSyncRepoStatus: commit fallido se salta, file sin patch se omite, patch larga se trunca y lang en → English', async () => {
+    vi.mocked(listRecentCommits).mockResolvedValue([{ sha: 'aaa1111', message: 'c1' }, { sha: 'bbb2222', message: 'c2' }] as any);
+    vi.mocked(getCommit)
+      .mockRejectedValueOnce(new Error('boom')) // 1er commit falla → console.warn y se sigue
+      .mockResolvedValueOnce({
+        sha: 'bbb2222ccc',
+        message: 'feat: algo\n\nbody',
+        author: { name: 'J', date: '2024-01-01' },
+        files: [
+          { filename: 'big.ts', status: 'modified', additions: 1, deletions: 1, changes: 2, patch: '+'.repeat(2500) },
+          { filename: 'bin.bin', status: 'added', additions: 0, deletions: 0, changes: 0 }, // sin patch
+        ],
+      } as any);
+    vi.mocked(callAI).mockResolvedValue('RESUMEN');
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const deps = { ...makeDeps(), lang: 'en' as const };
+
+    const result = await runSyncRepoStatus(deps, 'owner/repo', CONFIG);
+
+    expect(warnSpy).toHaveBeenCalled();
+    warnSpy.mockRestore();
+    expect(result).not.toBeNull();
+    expect(result!.commitsAnalyzed).toBe(1);
+    const systemPrompt = String(vi.mocked(callAI).mock.calls[0][1]);
+    expect(systemPrompt).toContain('English');
+    const contextText = String((vi.mocked(callAI).mock.calls[0][0] as Array<{ content: string }>)[0].content);
+    expect(contextText).toContain('... (truncado)');
+    expect(contextText).not.toContain('bin.bin');
+  });
+
+  it('runSecurityAudit: content vacío y error no-404 se toleran; repoContext construye el contexto general', async () => {
+    vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [], totalScanned: 0, truncated: false, allPaths: [] } as any);
+    vi.mocked(getFileContents).mockImplementation(async (...args: unknown[]) => {
+      const path = args[3] as string;
+      if (path === 'package.json') return { content: '' } as any; // → decodeBase64('')
+      if (path === 'Dockerfile') throw new Error('permiso denegado'); // no-404 → console.warn
+      throw new GitHubAPIError('Not Found', 404);
+    });
+    vi.mocked(callAI).mockResolvedValue('AUDIT');
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const deps = makeDeps();
+
+    await runSecurityAudit(deps, CONFIG, 'owner/repo', {
+      repoContext: {
+        repoName: 'owner/repo', contextText: 'CTX', files: [{ path: 'a.ts' }, { path: 'b.ts' }] as never[],
+        allPaths: ['a.ts'], filesAnalyzed: 2, totalFiles: 2, truncated: false,
+      } as any,
+    });
+
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('[#52]'), expect.anything());
+    warnSpy.mockRestore();
+    const sens = (vi.mocked(buildSecurityAuditContext).mock.calls[0][1] as Array<{ path: string; content?: string }>);
+    expect(sens.find(s => s.path === 'package.json')!.content).toBe('decoded()');
+    expect(buildRepoContextSummary).toHaveBeenCalledWith('owner/repo', expect.arrayContaining([expect.objectContaining({ path: 'a.ts' })]), expect.objectContaining({ maxFiles: 8, maxLinesPerFile: 60 }));
+  });
+
+  it('runSecurityAudit: descubre entrypoints y compose; src/app.ts no se descubre', async () => {
+    vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({
+      files: [], totalScanned: 0, truncated: false,
+      allPaths: ['entrypoints/index.js', 'docker-compose.yml', 'src/app.ts'],
+    } as any);
+    vi.mocked(getFileContents).mockRejectedValue(new GitHubAPIError('Not Found', 404));
+    vi.mocked(callAI).mockResolvedValue('OK');
+    const deps = makeDeps();
+
+    await runSecurityAudit(deps, CONFIG, 'owner/repo');
+
+    const fetched = vi.mocked(getFileContents).mock.calls.map(c => c[3]);
+    expect(fetched).toContain('entrypoints/index.js');
+    expect(fetched).toContain('docker-compose.yml');
+    expect(fetched).not.toContain('src/app.ts');
+  });
+
+  it('runSecurityAudit: allPaths undefined → solo los paths fijos (sin descubiertos)', async () => {
+    vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [], totalScanned: 0, truncated: false, allPaths: undefined } as any);
+    vi.mocked(getFileContents).mockRejectedValue(new GitHubAPIError('Not Found', 404));
+    vi.mocked(callAI).mockResolvedValue('OK');
+    const deps = makeDeps();
+
+    await runSecurityAudit(deps, CONFIG, 'owner/repo');
+
+    const fetched = vi.mocked(getFileContents).mock.calls.map(c => c[3]) as string[];
+    const fixed = ['package.json', 'package-lock.json', 'Dockerfile', '.env.example', 'requirements.txt', 'go.mod', 'Cargo.toml'];
+    expect(fetched).toHaveLength(fixed.length);
+    expect(fetched.every(p => fixed.includes(p))).toBe(true);
+  });
+
+  it('runSecurityAudit: acción JSON con accion larga en modo chat → se extrae el texto', async () => {
+    vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
+    vi.mocked(fetchRepoTreeRecursive).mockResolvedValue({ files: [], totalScanned: 0, truncated: false, allPaths: [] } as any);
+    vi.mocked(getFileContents).mockRejectedValue(new GitHubAPIError('Not Found', 404));
+    vi.mocked(parseGeminiAction).mockReturnValueOnce({
+      accion: 'A'.repeat(80), tipo: 'lectura', metodo: 'GET', endpoint: '/x', repo: 'r',
+    } as never);
+    vi.mocked(callAI).mockResolvedValue('{"accion":"..."}');
+    const deps = makeDeps();
+
+    await runSecurityAudit(deps, CONFIG, 'owner/repo');
+
+    expect(deps.updateMessage).toHaveBeenLastCalledWith(expect.any(String), expect.objectContaining({ content: 'A'.repeat(80) }));
+  });
+
+  it('runCommitDocs: extraFiles → " + N archivo(s) adjunto(s)"', async () => {
+    vi.mocked(writeDocFiles).mockResolvedValue(undefined as any);
+    const deps = makeDeps();
+
+    await runCommitDocs(deps, ANALYSIS, [new File(['x'], 'extra.txt')]);
+
+    expect(deps.addMessage).toHaveBeenCalledWith(expect.objectContaining({
+      content: expect.stringContaining('+ 1 archivo(s) adjunto(s)'),
+    }));
+  });
+
+  it('modo revisión: actions vacío pero reason.action presente → notice con reason vacía', async () => {
+    vi.mocked(resolveMode).mockReturnValueOnce('action' as never);
+    vi.mocked(callAI).mockResolvedValue('no-json');
+    vi.mocked(parseGeminiActions).mockReturnValueOnce([]);
+    vi.mocked(parseGeminiActionWithReason).mockReturnValueOnce({ action: { accion: 'X' } as never, error: '' });
+    const deps = makeDeps();
+
+    await runSend(deps, CONFIG, { ...SEND_PARAMS, modeOverride: 'review', reviewMode: true });
+
+    expect(deps.addReviewAction).not.toHaveBeenCalled();
+    const notice = deps.t('chat.actionParseFailed.reason', { reason: '' });
+    expect(deps.updateMessage).toHaveBeenCalledWith('msg-2', expect.objectContaining({
+      content: expect.stringContaining(notice),
+    }));
+  });
+
+  it('modo revisión: multi-repo con 1 repo seleccionado → targetRepos = selección', async () => {
+    vi.mocked(resolveMode).mockReturnValueOnce('action' as never);
+    vi.mocked(callAI).mockResolvedValue('{...}');
+    vi.mocked(getFileContents).mockResolvedValue(undefined as any); // enriquecer falla → catch → sigue
+    const selRepo = { name: 'r1', owner: { login: 'u1' } } as any;
+    vi.mocked(parseGeminiActions).mockReturnValueOnce([
+      { accion: 'Actualizar README', metodo: 'PUT', repo: 'u1/r1', archivo: 'README.md', requiereConfirmacion: true } as any,
+    ]);
+    const deps = makeDeps();
+
+    await runSend(deps, CONFIG, { ...SEND_PARAMS, modeOverride: 'review', reviewMode: true, multiRepoEnabled: true, selectedRepos: [selRepo] });
+
+    expect(deps.addReviewAction).toHaveBeenCalledWith(expect.objectContaining({ targetRepos: [selRepo] }));
+  });
+
+  it('modo revisión: PUT con content vacío no enriquece, DELETE también se encola; readonly fallido sin ✅', async () => {
+    vi.mocked(resolveMode).mockReturnValueOnce('action' as never);
+    vi.mocked(callAI).mockResolvedValue('{...}');
+    vi.mocked(getFileContents).mockResolvedValue({ content: '' } as any); // if (file.content) → falso
+    const putAction = { accion: 'Actualizar', metodo: 'PUT', repo: 'r', archivo: 'a.md', requiereConfirmacion: true } as any;
+    const delAction = { accion: 'Borrar', metodo: 'DELETE', repo: 'r', archivo: 'b.md', requiereConfirmacion: true } as any;
+    const readAction = { accion: 'Leer', metodo: 'GET', repo: 'r', requiereConfirmacion: false } as any;
+    vi.mocked(parseGeminiActions).mockReturnValueOnce([putAction, delAction, readAction]);
+    vi.mocked(executeAction).mockResolvedValue({ success: false, message: 'fallo lectura' } as any);
+    const deps = makeDeps();
+
+    await runSend(deps, CONFIG, { ...SEND_PARAMS, modeOverride: 'review', reviewMode: true });
+
+    // La PUT se encola SIN contenidoActual (content vacío no cuenta como diff) y la
+    // DELETE (lado derecho del ||) también se encola como acción de escritura.
+    expect(deps.addReviewAction).toHaveBeenCalledWith(expect.objectContaining({ action: putAction }));
+    expect(deps.addReviewAction).toHaveBeenCalledWith(expect.objectContaining({ action: delAction }));
+    // La readonly fallida marca la entrada como error y no añade mensaje ✅.
+    expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'error', description: 'fallo lectura' }));
+    expect(executeAction).toHaveBeenCalledTimes(1);
+    expect(deps.addMessage).not.toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('✅') }));
+  });
+
+  it('runSend: mismatch hacia chat sugiere cambiar a chat sin llamar a la IA', async () => {
+    vi.mocked(detectModeMismatch).mockReturnValueOnce({ suggestMode: 'chat', retryText: 'reformula como pregunta' } as never);
+    const deps = makeDeps();
+
+    await runSend(deps, CONFIG, SEND_PARAMS);
+
+    expect(callAI).not.toHaveBeenCalled();
+    const calls = vi.mocked(deps.updateMessage).mock.calls;
+    const last = calls[calls.length - 1][1] as { content: string; actionMode?: { mode: string; retryText: string } };
+    expect(last.content).toBe(deps.t('chat.modeMismatch.toChat'));
+    expect(last.actionMode).toEqual({ mode: 'chat', retryText: 'reformula como pregunta' });
+  });
+
+  it('runSend: repoContext sin files pasa el contextText tal cual (sin re-ranking)', async () => {
+    vi.mocked(callAI).mockResolvedValue('respuesta');
+    const deps = makeDeps();
+
+    await runSend(deps, CONFIG, {
+      ...SEND_PARAMS,
+      repoContext: { repoName: 'o/r', contextText: 'LEGACY_CTX', files: [], filesAnalyzed: 0, totalFiles: 0, truncated: false } as any,
+    });
+
+    expect(chatPromptWithContext).toHaveBeenCalledWith('LEGACY_CTX');
+    const calls = vi.mocked(deps.updateMessage).mock.calls;
+    const last = calls[calls.length - 1][1] as { consultedFiles?: string[] };
+    expect(last.consultedFiles).toBeUndefined();
+  });
+
+  it('runSend: modo acción con archivo adjunto inyecta el contexto en el prompt de acción', async () => {
+    vi.mocked(resolveMode).mockReturnValueOnce('action' as never);
+    vi.mocked(callAI).mockResolvedValue('{...}');
+    vi.mocked(parseGeminiAction).mockReturnValueOnce({
+      accion: 'Leer issues', tipo: 'lectura', metodo: 'GET', endpoint: '/repos/o/r/issues', repo: 'o/r', requiereConfirmacion: false,
+    } as never);
+    vi.mocked(executeAction).mockResolvedValue({ success: true, message: 'OK' } as any);
+    const deps = makeDeps();
+
+    await runSend(deps, CONFIG, { ...SEND_PARAMS, fileContext: [{ name: 'a.txt', contextText: 'FILE_CTX' }] });
+
+    const systemPrompt = String(vi.mocked(callAI).mock.calls[0][1]);
+    expect(systemPrompt).toContain('REPOSITORIO Y ARCHIVOS EN CONTEXTO ACTIVO');
+    expect(systemPrompt).toContain('ACTION_PROMPT');
+    expect(systemPrompt).toContain('FILE_CTX');
+  });
+
+  it('runSend: multi-repo con 1 repo → pendingAction con targetRepos = selección', async () => {
+    vi.mocked(resolveMode).mockReturnValueOnce('action' as never);
+    vi.mocked(callAI).mockResolvedValue('{...}');
+    vi.mocked(getFileContents).mockResolvedValue(undefined as any);
+    const selRepo = { name: 'r1', owner: { login: 'u1' } } as any;
+    vi.mocked(parseGeminiAction).mockReturnValueOnce({
+      accion: 'Actualizar README', tipo: 'escritura', metodo: 'PUT', repo: 'u1/r1', archivo: 'README.md', requiereConfirmacion: true,
+    } as never);
+    const deps = makeDeps();
+
+    await runSend(deps, CONFIG, { ...SEND_PARAMS, multiRepoEnabled: true, selectedRepos: [selRepo] });
+
+    expect(deps.setPendingAction).toHaveBeenCalledWith(expect.objectContaining({ targetRepos: [selRepo] }));
+    expect(deps.setPendingAction).toHaveBeenCalledWith(expect.objectContaining({ action: expect.objectContaining({ accion: 'Actualizar README' }) }));
+  });
+
+  it('runSend: solo lectura fallida → entry error y sin mensaje ✅', async () => {
+    vi.mocked(resolveMode).mockReturnValueOnce('action' as never);
+    vi.mocked(callAI).mockResolvedValue('{...}');
+    vi.mocked(parseGeminiAction).mockReturnValueOnce({
+      accion: 'Leer', tipo: 'lectura', metodo: 'GET', endpoint: '/repos/o/r', repo: 'o/r', requiereConfirmacion: false,
+    } as never);
+    vi.mocked(executeAction).mockResolvedValue({ success: false, message: 'meh' } as any);
+    const deps = makeDeps();
+
+    await runSend(deps, CONFIG, SEND_PARAMS);
+
+    expect(deps.updateEntry).toHaveBeenCalledWith('hist-1', expect.objectContaining({ status: 'error', description: 'meh' }));
+    expect(deps.addMessage).not.toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('✅') }));
+  });
+
+  it('runAttachFile: sin extensión y con nombre vacío cae al lector de texto (|| "" del ext)', async () => {
+    vi.mocked(readFileContent).mockResolvedValue('CONTENIDO');
+    const deps = makeDeps();
+
+    // Sin punto en el nombre: ext = 'readme' (lado izquierdo).
+    const ctx1 = await runAttachFile(deps, new File(['CONTENIDO'], 'readme'));
+    expect(ctx1).toEqual({ name: 'readme', contextText: 'FMT(readme):CONTENIDO' });
+
+    // Nombre vacío: split().pop() da '' → lado derecho del `|| ''`.
+    const ctx2 = await runAttachFile(deps, new File(['CONTENIDO'], ''));
+    expect(ctx2).toEqual({ name: '', contextText: 'FMT():CONTENIDO' });
+  });
+
+  it('runPublishSpecificDoc: GitHubAPIError 404 → "No encontré el repositorio"', async () => {
+    vi.mocked(publishFileDoc).mockRejectedValueOnce(new GitHubAPIError('Not Found', 404));
+    const deps = makeDeps();
+
+    await runPublishSpecificDoc(deps, 'owner', 'repo', 'docs/a.md', '# doc', 'commit');
+
+    expect(deps.addMessage).toHaveBeenCalledWith(expect.objectContaining({
+      content: expect.stringContaining('No encontré el repositorio **owner/repo**'),
+    }));
+  });
+
+  it('runPublishSpecificDoc: error sin mensaje → cae a chat.unknownError', async () => {
+    vi.mocked(publishFileDoc).mockRejectedValueOnce(new Error(''));
+    const deps = makeDeps();
+
+    await runPublishSpecificDoc(deps, 'owner', 'repo', 'docs/a.md', '# doc', 'commit');
+
+    expect(deps.t).toHaveBeenCalledWith('chat.unknownError');
+    expect(deps.addMessage).toHaveBeenCalledWith(expect.objectContaining({
+      content: expect.stringContaining('Error al publicar docs/a.md'),
+    }));
+  });
+
+  it('runGenerateSpecificDoc: existing.content vacío → currentContent = decoded("")', async () => {
+    vi.mocked(getFileContents).mockResolvedValue({ content: '' } as any);
+    vi.mocked(generateSpecificDoc).mockResolvedValue('# DOC');
+    const deps = makeDeps();
+
+    const result = await runGenerateSpecificDoc(deps, CONFIG, 'owner/repo', 'docs/a.md');
+
+    expect(result).toEqual({ doc: '# DOC', currentContent: 'decoded()' });
+  });
+
+  it('runPublishSpecificDoc: draftpr y commit con sourceFile → "+ archivo fuente"', async () => {
+    const deps = makeDeps();
+    const sourceFile = new File(['x'], 'src.txt');
+
+    // draftpr con sourceFile
+    vi.mocked(publishFileDoc).mockResolvedValueOnce({ pr: { number: 9, html_url: 'http://pr/9' } as any } as any);
+    await runPublishSpecificDoc(deps, 'owner', 'repo', 'docs/a.md', '# doc', 'draftpr', undefined, sourceFile);
+    expect(deps.addMessage).toHaveBeenCalledWith(expect.objectContaining({
+      content: expect.stringContaining('Draft PR [#9](http://pr/9) con `docs/a.md` + archivo fuente'),
+    }));
+
+    // commit sin pr y con sourceFile
+    vi.mocked(publishFileDoc).mockResolvedValueOnce({} as any);
+    await runPublishSpecificDoc(deps, 'owner', 'repo', 'docs/a.md', '# doc', 'commit', undefined, sourceFile);
+    expect(deps.addMessage).toHaveBeenCalledWith(expect.objectContaining({
+      content: expect.stringContaining('`docs/a.md` + archivo fuente commiteado en **owner/repo**'),
+    }));
   });
 });
 

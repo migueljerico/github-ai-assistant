@@ -41,7 +41,9 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
 function readStoredTheme(): Theme {
-  if (typeof window === 'undefined') return 'auto';
+  // #26 (v4.0.52): el guard `typeof window === 'undefined'` se elimina — este
+  // bundle es una SPA de cliente (Vite) y `window` siempre existe aquí; era
+  // una rama de isomorfismo SSR inalcanzable y sin cobertura posible.
   try {
     const saved = localStorage.getItem(STORAGE_KEY) as Theme | null;
     return saved && VALID_THEMES.includes(saved) ? saved : 'auto';
@@ -52,7 +54,8 @@ function readStoredTheme(): Theme {
 }
 
 function getSystemTheme(): ResolvedTheme {
-  if (typeof window === 'undefined' || !window.matchMedia) return 'dark';
+  // #26 (v4.0.52): idem readStoredTheme — en cliente `window.matchMedia`
+  // existe siempre (API WHATWG); el guard de SSR era una rama muerta.
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 

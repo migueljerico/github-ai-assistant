@@ -1,6 +1,6 @@
 # 📖 Manual Técnico — GitHub AI Assistant
 
-**Versión:** v4.0.51 — Octubre 2026
+**Versión:** v4.0.52 - Octubre 2026
 
 
 ---
@@ -563,7 +563,7 @@ de arriba.
 - **CI:** GitHub Actions ejecuta en cada push/PR a `main`:
   - `.github/workflows/ci.yml` (`CI & Coverage`): lint + tests del cliente con cobertura + tests del servidor (job `server-test`) + escaneo de secretos (gitleaks).
   - `.github/workflows/e2e.yml` (`E2E`): tests E2E con Playwright sobre la arquitectura real (Express sirviendo el SPA construido). Workflow separado para tener un badge de estado dedicado en el README.
-- **Cobertura actual:** >96% líneas (ver Codecov para el valor exacto; umbral mínimo Vitest 70%) · 1.259 tests en el cliente + 60 en el servidor (1.319 totales) + 13 tests E2E con Playwright (5 specs, incluyendo `a11y.spec.ts` de foco visible y movimiento reducido desde v3.64.0)
+- **Cobertura actual:** 100% statements / branches / functions / lines (#26, v4.0.52 — umbral mínimo Vitest 70%) · 1.514 tests en el cliente + 68 en el servidor (1.582 totales) + 13 tests E2E con Playwright (5 specs, incluyendo `a11y.spec.ts` de foco visible y movimiento reducido desde v3.64.0)
 
 ### Módulos testeados
 
@@ -577,7 +577,7 @@ de arriba.
 | `gemini.ts` | parseGeminiAction, detectPrimaryLanguage, temperatura por modo, contexto de repo (#41), `generateFileDoc` (incorpora conversación), enrutado OpenRouter, reintento transitorio (`withTransientRetry`) | ✅ |
 | `docPublisher.ts` | Commit directo / Draft PR (#45); `publishFileDoc` + binarios/extras (`uploadPathFor`) (#28) | ✅ |
 | `threadSummary.ts` | Resumen de hilos issue/PR (#32): parseo, issue vs PR, hilo vacío | ✅ |
-| `assistantActions.ts` | Orquestación del chat (#42): `runSend`, `runConfirmAction`, `runCancelAction`; documentar repo (`runCommitDocs`/`runCreateDraftPr`/`runCreateRepoRelease`); documentar/publicar archivo (`runPublishFileDoc`/`runCreateFileRelease`) y `runAttachFile` (~98%) | ✅ |
+| `assistantActions.ts` | Orquestación del chat (#42): `runSend`, `runConfirmAction`, `runCancelAction`; documentar repo (`runCommitDocs`/`runCreateDraftPr`/`runCreateRepoRelease`); documentar/publicar archivo (`runPublishFileDoc`/`runCreateFileRelease`) y `runAttachFile` (100%) | ✅ |
 | `repoRef.ts` | `resolveRepoRef` (owner/repo vs repo) | ✅ |
 | `DocumentFlowModal.tsx` / `PublishActions.tsx` | Stepper 4 pasos (alcance → generar → revisar → destino + método); barra de acciones compartida (v3.10.0); tabs README/MANUAL; offer crear repo; extras a subir | ✅ |
 | `modeDetection.ts` | Chat vs action; sesgo a chat con contexto de repo/archivo | ✅ |

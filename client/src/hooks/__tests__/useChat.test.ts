@@ -53,6 +53,30 @@ describe('useChat Hook', () => {
     expect(result.current.messages[0].isLoading).toBe(false);
   });
 
+  // #26 (v4.0.52): la rama falsa del `m.id === id ?` — los demás mensajes NO
+  // se tocan al actualizar solo uno.
+  it('updateMessage solo altera el mensaje objetivo cuando hay varios', () => {
+    const { result } = renderHook(() => useChat());
+
+    let firstId = '';
+    let secondId = '';
+    act(() => {
+      firstId = result.current.addMessage({ role: 'user', content: 'Primero' });
+    });
+    act(() => {
+      secondId = result.current.addMessage({ role: 'assistant', content: 'Segundo', isLoading: true });
+    });
+
+    act(() => {
+      result.current.updateMessage(secondId, { content: 'Segundo actualizado', isLoading: false });
+    });
+
+    expect(result.current.messages[0].id).toBe(firstId);
+    expect(result.current.messages[0].content).toBe('Primero');
+    expect(result.current.messages[1].content).toBe('Segundo actualizado');
+    expect(result.current.messages[1].isLoading).toBe(false);
+  });
+
   it('should delete a message by ID', () => {
     const { result } = renderHook(() => useChat());
 

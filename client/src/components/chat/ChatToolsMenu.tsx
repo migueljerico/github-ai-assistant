@@ -39,11 +39,18 @@ export default function ChatToolsMenu({ children, disabled }: ChatToolsMenuProps
 
   // Manejar navegación por teclado dentro del menú
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!isOpen) return;
-    
-    // Obtener todos los elementos interactivos dentro del menú
+    // v4.0.52 (#26): la guarda `if (!isOpen) return;` se elimina — el onKeyDown
+    // vive en el dropdown que SOLO se renderiza con isOpen=true, así que el
+    // caso "cerrado" jamás alcanza este handler (rama muerta).
+
+    // Obtener todos los elementos interactivos dentro del menú. El cast es
+    // seguro: el onKeyDown vive en el dropdown que SOLO se renderiza con
+    // isOpen=true, así que `menuRef.current` ya está adjunto a estas alturas
+    // (#26, v4.0.52 — elimina una guarda/`|| []` innalcanzables en runtime).
     const elements = Array.from(
-      menuRef.current?.querySelectorAll('button:not([disabled]), [href]:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])') || []
+      (menuRef.current as HTMLDivElement).querySelectorAll(
+        'button:not([disabled]), [href]:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ),
     ) as HTMLElement[];
     
     if (elements.length === 0) return;
@@ -71,10 +78,10 @@ export default function ChatToolsMenu({ children, disabled }: ChatToolsMenuProps
         onClick={() => setIsOpen(prev => !prev)}
         aria-expanded={isOpen}
         aria-haspopup="true"
-        title={t('chat.moreTools') || 'Más herramientas'}
-        aria-label={t('chat.moreTools') || 'Más herramientas'}
+        title={t('chat.moreTools')}
+        aria-label={t('chat.moreTools')}
       >
-        ⚙️ {t('chat.moreTools') || 'Más herramientas'} <span style={{ fontSize: '0.8em', marginLeft: '4px' }}>▼</span>
+        ⚙️ {t('chat.moreTools')} <span style={{ fontSize: '0.8em', marginLeft: '4px' }}>▼</span>
       </button>
 
       {isOpen && (

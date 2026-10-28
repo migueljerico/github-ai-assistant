@@ -76,7 +76,9 @@ export function useModalDialog<T extends HTMLElement = HTMLDivElement>(onClose: 
     node.addEventListener('keydown', onKeyDown);
     return () => {
       node.removeEventListener('keydown', onKeyDown);
-      previouslyFocused?.focus?.();
+      // HTMLElement siempre define focus() (DOM estándar); el `?.` extra era
+      // código defensivo muerto (#26, v4.0.52).
+      previouslyFocused?.focus();
     };
   }, []);
 

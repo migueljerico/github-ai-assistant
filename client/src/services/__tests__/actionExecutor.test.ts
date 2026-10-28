@@ -668,3 +668,245 @@ describe('actionExecutor.ts', () => {
   });
 });
 
+// ── Ramas restantes de actionExecutor (v4.0.52, #26) ─────────────────────────
+// Dos familias de lados que quedaban: (1) los ternarios `t ? t(key) : fallback`
+// solo evaluaban el fallback (ningún test previo pasaba t, el mock i18n);
+// (2) operands de detalle: owner malformado → user.login, archivo ausente en
+// GET /contents, contenidoPropuesto ausente en PUT, mensaje por defecto en
+// DELETE, body/state ausentes en issues.
+
+describe('actionExecutor — ramas restantes (v4.0.52 #26)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const user = { login: 'testuser' };
+  const token = 'test-token';
+  // Mock i18n minimal: la clave devuelve "T:<clave>" y las params se ignoran.
+  const t = (key: string): string => `T:${key}`;
+
+  const baseAction = (extra: Partial<GeminiAction>): GeminiAction => ({
+    tipo: 'lectura',
+    accion: 'prueba',
+    endpoint: '/repos/o/r',
+    metodo: 'GET',
+    repo: null,
+    archivo: null,
+    contenidoPropuesto: null,
+    payload: {},
+    requiereConfirmacion: false,
+    ...extra,
+  });
+
+  it('resolveEndpoint: owner vacío en targetRepo → cae a user.login', async () => {
+    // defensa contra shapes heredados de caché (owner sin login); la expresión
+    // de reemplazo se evalúa igual aunque el endpoint no traiga placeholder.
+    vi.mocked(ghFetch).mockResolvedValue({});
+    const action = baseAction({ endpoint: '/repos/{owner}/{repo}/x' });
+
+    const repo = { name: 'derp', owner: {} } as unknown as GitHubRepo;
+    const result = await executeAction(token, user, action, repo);
+
+    expect(result.success).toBe(true);
+    expect(vi.mocked(ghFetch).mock.calls[0][1]).toBe('/repos/testuser/derp/x');
+  });
+
+  it('GET /contents SIN archivo → path "" y mensaje por t (i18n)', async () => {
+    vi.mocked(getFileContents).mockResolvedValue({ content: 'base64content' } as never);
+    const action = baseAction({ endpoint: '/repos/o/r/contents/x', archivo: undefined as never });
+
+    const result = await executeAction(token, user, action, undefined, t);
+
+    expect(result.success).toBe(true);
+    expect(result.message).toBe('T:history.exec.fileRead');
+    expect(vi.mocked(getFileContents).mock.calls[0][3]).toBe('');
+  });
+
+  it('GET genérico con t → mensaje i18n', async () => {
+    vi.mocked(ghFetch).mockResolvedValue({ ok: 1 });
+    const action = baseAction({ endpoint: '/repos/o/r/x' });
+
+    const result = await executeAction(token, user, action, undefined, t);
+
+    expect(result.message).toBe('T:history.exec.completed');
+  });
+
+  it('GET /user/repos con t → mensaje i18n de repositorios encontrados', async () => {
+    vi.mocked(listAllRepos).mockResolvedValue([
+      { name: 'r1', full_name: 'u/r1' },
+      { name: 'r2', full_name: 'u/r2' },
+    ] as never);
+    const action = baseAction({ endpoint: '/user/repos' });
+
+    const result = await executeAction(token, user, action, undefined, t);
+
+    expect(result.message).toBe('T:history.exec.reposFound');
+    expect(vi.mocked(listAllRepos).mock.calls[0][0]).toBe(token);
+  });
+
+  it('POST /user/repos con t → mensaje i18n con el nombre del repo', async () => {
+    vi.mocked(createRepo).mockResolvedValue({ name: 'nuevo' } as never);
+    const action = baseAction({
+      endpoint: '/user/repos', metodo: 'POST', payload: { name: 'nuevo' },
+    });
+
+    const result = await executeAction(token, user, action, undefined, t);
+
+    expect(vi.mocked(createRepo).mock.calls[0][1]).toBe('nuevo');
+    expect(result.message).toBe('T:history.exec.repoCreated');
+  });
+
+  it('POST genérico con t → mensaje i18n', async () => {
+    vi.mocked(ghFetch).mockResolvedValue({ ok: 1 });
+    const action = baseAction({ endpoint: '/repos/o/r/stars', metodo: 'POST', payload: {} });
+
+    const result = await executeAction(token, user, action, undefined, t);
+
+    expect(result.message).toBe('T:history.exec.completed');
+  });
+
+  it('PATCH genérico con t → mensaje i18n', async () => {
+    vi.mocked(ghFetch).mockResolvedValue({ ok: 1 });
+    const action = baseAction({ endpoint: '/repos/o/r/topics', metodo: 'PATCH', payload: {} });
+
+    const result = await executeAction(token, user, action, undefined, t);
+
+    expect(result.message).toBe('T:history.exec.completed');
+  });
+
+  it('PUT con t y sin contenidoPropuesto → contenido "" y message i18n de actualización', async () => {
+    vi.mocked(getFileContents).mockResolvedValue({ sha: 'sha-existente' } as never);
+    vi.mocked(createOrUpdateFile).mockResolvedValue({} as never);
+    const action = baseAction({
+      endpoint: '/repos/o/r/contents/a.md', metodo: 'PUT', archivo: 'a.md',
+      contenidoPropuesto: undefined as never,
+    });
+
+    const result = await executeAction(token, user, action, undefined, t);
+
+    expect(result.message).toBe('T:history.exec.fileUpdated');
+    expect(vi.mocked(createOrUpdateFile).mock.calls[0][4]).toBe('');
+  });
+
+  it('DELETE con t y sin mensaje confirmado → "chore: delete …" por defecto', async () => {
+    vi.mocked(getFileContents).mockResolvedValue({ sha: 'sha-actual' } as never);
+    vi.mocked(deleteFile).mockResolvedValue({} as never);
+    const action = baseAction({
+      endpoint: '/repos/o/r/contents/a.md', metodo: 'DELETE', archivo: 'a.md', payload: {},
+    });
+
+    const result = await executeAction(token, user, action, undefined, t);
+
+    expect(result.message).toBe('T:history.exec.fileDeleted');
+    expect(vi.mocked(deleteFile).mock.calls[0][5]).toBe('chore: delete a.md via Asistente de IA');
+  });
+
+  it('executeActionMultiRepo con t → mensaje "processing" i18n por repo', async () => {
+    vi.mocked(ghFetch).mockResolvedValue({ ok: 1 });
+    const repos = [
+      { name: 'r1', full_name: 'owner/r1', owner: { login: 'owner' } },
+      { name: 'r2', full_name: 'owner/r2', owner: { login: 'owner' } },
+    ] as unknown as GitHubRepo[];
+    const onProgress = vi.fn();
+    const action = baseAction({ endpoint: '/repos/o/r/x' });
+
+    await executeActionMultiRepo(token, user, action, repos, { onProgress }, t);
+
+    expect(onProgress.mock.calls[0][2]).toBe('T:history.exec.processing');
+  });
+
+  it('issue: comentario con t y payload sin body → body ""', async () => {
+    vi.mocked(commentOnIssue).mockResolvedValue({ id: 1 } as never);
+    const repo = { name: 'r', full_name: 'owner/r', owner: { login: 'owner' } } as unknown as GitHubRepo;
+    const action = baseAction({
+      endpoint: '/repos/owner/r/issues/5/comments', metodo: 'POST', payload: {},
+    });
+
+    const result = await executeIssueAction(token, user, action, repo, t);
+
+    expect(vi.mocked(commentOnIssue).mock.calls[0][4]).toBe('');
+    expect(result.message).toBe('T:history.exec.commentAdded');
+  });
+
+  it('issue PATCH con t y payload state closed → mensaje i18n', async () => {
+    vi.mocked(updateIssueState).mockResolvedValue({ number: 7 } as never);
+    const repo = { name: 'r', full_name: 'owner/r', owner: { login: 'owner' } } as unknown as GitHubRepo;
+    const action = baseAction({
+      endpoint: '/repos/owner/r/issues/7', metodo: 'PATCH', payload: { state: 'closed' },
+    });
+
+    const result = await executeIssueAction(token, user, action, repo, t);
+
+    expect(result.message).toBe('T:history.exec.issueStateChanged');
+    expect(vi.mocked(updateIssueState).mock.calls[0][4]).toBe('closed');
+  });
+
+  it('issue PATCH sin state → cae a "open" (message de reapertura)', async () => {
+    vi.mocked(updateIssueState).mockResolvedValue({ number: 7 } as never);
+    const repo = { name: 'r', full_name: 'owner/r', owner: { login: 'owner' } } as unknown as GitHubRepo;
+    const action = baseAction({
+      endpoint: '/repos/owner/r/issues/7', metodo: 'PATCH', payload: {},
+    });
+
+    const result = await executeIssueAction(token, user, action, repo, t);
+
+    expect(vi.mocked(updateIssueState).mock.calls[0][4]).toBe('open');
+    expect(result.message).toBe('T:history.exec.issueStateChanged');
+  });
+
+  it('issue no reconocido con t → mensaje i18n genérico', async () => {
+    const repo = { name: 'r', full_name: 'owner/r', owner: { login: 'owner' } } as unknown as GitHubRepo;
+    const action = baseAction({ endpoint: '/repos/owner/r/issues/9/labels', metodo: 'GET' });
+
+    const result = await executeIssueAction(token, user, action, repo, t);
+
+    expect(result).toEqual({ success: false, message: 'T:history.exec.unknownIssueAction' });
+  });
+
+  it('PR merge con t → mensaje i18n', async () => {
+    vi.mocked(mergePullRequest).mockResolvedValue({ merged: true } as never);
+    const repo = { name: 'r', full_name: 'owner/r', owner: { login: 'owner' } } as unknown as GitHubRepo;
+    const action = baseAction({
+      endpoint: '/repos/owner/r/pulls/12/merge', metodo: 'PUT',
+      payload: { merge_method: 'squash' },
+    });
+
+    const result = await executePRAction(token, user, action, repo, t);
+
+    expect(vi.mocked(mergePullRequest).mock.calls[0][4]).toBe('squash');
+    expect(result.message).toBe('T:history.exec.prMerged');
+  });
+
+  it('PR no reconocido con t → mensaje i18n genérico', async () => {
+    const repo = { name: 'r', full_name: 'owner/r', owner: { login: 'owner' } } as unknown as GitHubRepo;
+    const action = baseAction({ endpoint: '/repos/owner/r/pulls/12/files', metodo: 'GET' });
+
+    const result = await executePRAction(token, user, action, repo, t);
+
+    expect(result).toEqual({ success: false, message: 'T:history.exec.unknownPRAction' });
+  });
+
+  it('workflow rerun con t → mensaje i18n', async () => {
+    vi.mocked(triggerWorkflowRun).mockResolvedValue({ ok: 1 } as never);
+    const repo = { name: 'r', full_name: 'owner/r', owner: { login: 'owner' } } as unknown as GitHubRepo;
+    const action = baseAction({
+      endpoint: '/repos/owner/r/actions/runs/42/rerun', metodo: 'POST',
+    });
+
+    const result = await executeWorkflowAction(token, user, action, repo, t);
+
+    expect(vi.mocked(triggerWorkflowRun).mock.calls[0][3]).toBe(42);
+    expect(result.message).toBe('T:history.exec.workflowRerun');
+  });
+
+  it('workflow no reconocido con t → mensaje i18n genérico', async () => {
+    const repo = { name: 'r', full_name: 'owner/r', owner: { login: 'owner' } } as unknown as GitHubRepo;
+    const action = baseAction({ endpoint: '/repos/owner/r/actions/runs/42/logs', metodo: 'GET' });
+
+    const result = await executeWorkflowAction(token, user, action, repo, t);
+
+    expect(result).toEqual({ success: false, message: 'T:history.exec.unknownWorkflowAction' });
+  });
+});
+
+

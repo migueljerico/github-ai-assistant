@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { formatResultData } from '../formatResult';
+import type { GitHubRepoItem } from '../formatResult';
 
 describe('formatResultData', () => {
   it('debería formatear array de repositorios', () => {
@@ -124,3 +125,22 @@ describe('formatResultData', () => {
 });
 
 
+
+describe('formatResultData — campos opcionales del array de repos (#26, v4.0.52)', () => {
+  it('formatea un repo del array SIN description ni updated_at (false de los `? :`)', () => {
+    const out = formatResultData([
+      {
+        name: 'repo-min',
+        full_name: 'user/repo-min',
+        private: false,
+        html_url: 'https://github.com/user/repo-min',
+        stargazers_count: 3,
+        language: 'TypeScript',
+        fork: true,
+      } as GitHubRepoItem,
+    ]);
+    expect(out).toContain('🌐 Público ⭐ 3 · TypeScript · 🍴 Fork');
+    expect(out).toContain('· 🍴 Fork');
+    expect(out).not.toContain('   ');
+  });
+});

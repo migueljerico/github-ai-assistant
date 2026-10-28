@@ -247,3 +247,35 @@ describe('suggestCommitMessage', () => {
     expect(result).toMatch(/^feat:/);
   });
 });
+
+// ── Ramas restantes (#26, v4.0.52) ────────────────────────────────────────────
+describe('buildSuggestionUserMessage / fallbackCommitMessage — acciones sin archivo ni repo (v4.0.52 #26)', () => {
+  it('sin `archivo` ni `repo` las secciones Archivo/Repo se omiten', () => {
+    const msg = buildSuggestionUserMessage(
+      { ...baseAction, archivo: '', repo: '' },
+      [],
+    );
+    expect(msg).not.toMatch(/- Archivo:/);
+    expect(msg).not.toMatch(/- Repo:/);
+    expect(msg).toMatch(/Tipo: escritura/);
+  });
+
+  it('sin `contenidoPropuesto` se omite el bloque de extracto (v4.0.52 #26)', () => {
+    const msg = buildSuggestionUserMessage(
+      { ...baseAction, contenidoPropuesto: '' },
+      [],
+    );
+    expect(msg).not.toMatch(/Extracto del contenido propuesto/);
+    expect(msg).toMatch(/Tipo: escritura/);
+  });
+
+  it('fallbackCommitMessage sin archivo usa la descripción de la acción como target', () => {
+    const msg = fallbackCommitMessage({ ...baseAction, archivo: '' });
+    expect(msg).toMatch(/^chore: ActualizarREADME/);
+  });
+
+  it('fallbackCommitMessage sin archivo ni descripción cae a "archivo"', () => {
+    const msg = fallbackCommitMessage({ ...baseAction, archivo: '', accion: '' });
+    expect(msg).toBe('chore: archivo');
+  });
+});

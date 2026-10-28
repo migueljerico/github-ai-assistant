@@ -86,6 +86,30 @@ describe('pdfReader', () => {
       expect(text).not.toContain('secreto');
     });
 
+    // v4.0.52 (#26): el catch defensivo de extractTextFromPDF SÍ es alcanzable —
+    // un ArrayBuffer inválido (aquí un BigInt) hace que `new Uint8Array(...)`
+    // lance TypeError; el catch lo captura y devuelve '' y readPDFAsText resuelve
+    // con el mensaje de fallback para no romper el flujo de adjuntos.
+    it('recupera el flujo ante un ArrayBuffer corrupto (catch defensivo, #26)', async () => {
+      const file = fileFrom('x', 'corrupto.pdf');
+      const originalFileReader = globalThis.FileReader;
+      class MockFileReader {
+        onload: ((e: { target: { result: unknown } }) => void) | null = null;
+        onerror: (() => void) | null = null;
+        readAsArrayBuffer() {
+          setTimeout(() => this.onload?.({ target: { result: BigInt(1) } }), 1);
+        }
+      }
+      globalThis.FileReader = MockFileReader as unknown as typeof FileReader;
+      try {
+        const text = await readPDFAsText(file);
+        expect(text).toContain('corrupto.pdf');
+        expect(text).toContain('no legible');
+      } finally {
+        globalThis.FileReader = originalFileReader;
+      }
+    });
+
     it('devuelve un mensaje de fallback cuando no hay texto legible', async () => {
       // Bytes no imprimibles → extracción vacía → mensaje de fallback
       const file = new File([new Uint8Array([0, 1, 2, 3])], 'binario.pdf');
@@ -160,5 +184,16 @@ describe('assertSupportedFile (#28)', () => {
     const huge = fileFrom('x', 'enorme.pbix');
     Object.defineProperty(huge, 'size', { value: MAX_POWERBI_SIZE_BYTES + 1 });
     expect(() => assertSupportedFile(huge)).toThrow(/máximo/i);
+  });
+});
+
+describe('nombres de archivo sin extensión real (v4.0.52 #26)', () => {
+  it('assertSupportedFile rechaza un nombre que acaba en punto (ext vacía)', () => {
+    expect(() => assertSupportedFile(fileFrom('x', 'sin-ext.'))).toThrow(/no puedo leer/i);
+  });
+
+  it('readFileContent enruta un nombre que acaba en punto hacia lectura de texto', async () => {
+    const content = await readFileContent(fileFrom('plano', 'texto.'));
+    expect(content).toBe('plano');
   });
 });

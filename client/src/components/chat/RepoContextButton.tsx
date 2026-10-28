@@ -29,6 +29,10 @@ export default function RepoContextButton({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // El botón ✓ lleva `disabled={!repoName.trim()}`, así que por la UI solo se
+    // llega aquí con texto no vacío; el `if` es guarda defensiva ante submits
+    // programáticos (enter con botón deshabilitado no hace submit, #26 v4.0.52).
+    /* v8 ignore next 5 */
     if (repoName.trim()) {
       onLoadContext(repoName.trim());
       setRepoName('');

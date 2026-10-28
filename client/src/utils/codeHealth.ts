@@ -27,6 +27,9 @@ export interface LanguageSlice { language: string; count: number; }
 export function languageDistribution(paths: string[]): LanguageSlice[] {
   const counts: Record<string, number> = {};
   for (const path of paths) {
+    // `?? ''` es exigido por TS (split().pop() tipa string | undefined) pero es
+    // inalcanzable en runtime: split siempre devuelve ≥1 elemento (#26, v4.0.52).
+    // v8 ignore next
     const ext = (path.split('.').pop() ?? '').toLowerCase();
     const lang = EXT_LANGUAGE[ext];
     if (!lang) continue;
@@ -40,8 +43,11 @@ export function languageDistribution(paths: string[]): LanguageSlice[] {
   if (sorted.length <= MAX_LANGUAGE_SLICES) return sorted;
 
   const head = sorted.slice(0, MAX_LANGUAGE_SLICES);
+  // v4.0.52 (#26): el ternario `rest > 0 ? … : head` era una rama muerta —
+  // todos los counts provienen de `counts[lang] + 1`, así que si
+  // `sorted.length > MAX_LANGUAGE_SLICES` entonces `rest` es siempre > 0.
   const rest = sorted.slice(MAX_LANGUAGE_SLICES).reduce((acc, s) => acc + s.count, 0);
-  return rest > 0 ? [...head, { language: 'Otros', count: rest }] : head;
+  return [...head, { language: 'Otros', count: rest }];
 }
 
 export interface DebtFile { path: string; count: number; }

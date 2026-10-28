@@ -10,6 +10,9 @@ import {
   MAX_TABLES,
   MAX_QUERIES,
   MAX_M_CHARS,
+  MAX_VISUALS_PER_PAGE,
+  MAX_COLUMNS_PER_TABLE,
+  MAX_MEASURES_PER_TABLE,
 } from '../powerbiReader';
 
 /** Codifica un string a UTF-16LE (como guarda Power BI), con BOM opcional. */
@@ -387,3 +390,224 @@ describe('readPowerBI — Power Query / M (#28 Fase 3b-bis)', () => {
   });
 });
 
+
+// ── Ramas límite y defensivas restantes (#26, v4.0.52) ──────────────────────
+describe('readPowerBI — ramas límite y defensivas (#26, v4.0.52)', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  /** DataMashup binario válido [8B cabecera] + paquete interno 'PK' de N bytes. */
+  function mashupEntry(innerLen: number): Uint8Array {
+    const inner = new Uint8Array(innerLen);
+    inner[0] = 0x50; inner[1] = 0x4b; // 'PK' — marca que distingue la llamada interna
+    const entry = new Uint8Array(8 + innerLen);
+    new DataView(entry.buffer).setUint32(4, innerLen, true);
+    entry.set(inner, 8);
+    return entry;
+  }
+
+  it('findEntry: localiza entries con otra caja y con prefijo de carpeta', async () => {
+    mockZip({
+      'report/layout': u16le(layout([{ name: 'Caja', visuals: ['card'] }])),
+      'Visuals/DataModelSchema': u16le(schema([{ name: 'T', columns: [], measures: [] }])),
+    });
+    const res = await readPowerBI(fakeFile('caja.pbit'));
+    expect(res.text).toContain('Página "Caja"');
+    expect(res.summary).toContain('Modelo: 1 tabla');
+  });
+
+  it('Layout sin array sections: informe vacío (0 páginas) sin romper el flujo', async () => {
+    mockZip({ 'Report/Layout': u16le('{"name": "layout"}') });
+    const res = await readPowerBI(fakeFile('sin_sections.pbix'));
+    expect(res.summary).toContain('Informe: 0 página(s), 0 visual(es)');
+  });
+
+  it('sección sin displayName ni visualContainers: fallbacks legibles', async () => {
+    const sec = JSON.stringify({ sections: [{}, { visualContainers: [{}] }] });
+    mockZip({ 'Report/Layout': u16le(sec) });
+    const res = await readPowerBI(fakeFile('fallback.pbix'));
+    expect(res.text).toContain('Página "Página sin nombre"');
+    expect(res.text).toContain('(sin visuales)');
+    expect(res.text).toContain('desconocido');
+  });
+
+  it('config no-JSON y visualType ausente: visual "desconocido" (catch defensivo)', async () => {
+    const sec = JSON.stringify({
+      sections: [{
+        displayName: 'Rota',
+        visualContainers: [
+          { config: '{no-es-json' },
+          { config: JSON.stringify({ singleVisual: { other: 1 } }) },
+        ],
+      }],
+    });
+    mockZip({ 'Report/Layout': u16le(sec) });
+    const res = await readPowerBI(fakeFile('rota.pbix'));
+    expect(res.text).toContain('desconocido ×2');
+  });
+
+  it('más de MAX_VISUALS_PER_PAGE visuales en una página: marca truncado', async () => {
+    const vis = Array.from({ length: MAX_VISUALS_PER_PAGE + 2 }, () => ({
+      config: JSON.stringify({ singleVisual: { visualType: 'card' } }),
+    }));
+    mockZip({
+      'Report/Layout': u16le(JSON.stringify({ sections: [{ displayName: 'Muchos', visualContainers: vis }] })),
+    });
+    const res = await readPowerBI(fakeFile('muchos.pbix'));
+    expect(res.truncated).toBe(true);
+  });
+
+  it('DataModelSchema sin model.tables: modelo vacío y sin particiones M', async () => {
+    mockZip({ 'DataModelSchema': u16le('{"model": {}}') });
+    const res = await readPowerBI(fakeFile('sin_tablas.pbit'));
+    expect(res.summary).toContain('Modelo: 0 tabla(s), 0 medida(s)');
+    expect(res.summary).not.toContain('Consultas:');
+  });
+
+  it('tabla sin nombre, columnas sin name/dataType y medida sin expresión', async () => {
+    const sch = JSON.stringify({
+      model: {
+        tables: [{
+          columns: [{ dataType: 'string' }, {}],
+          measures: [{ name: 'SinExpr' }, {}],
+        }],
+      },
+    });
+    mockZip({ 'DataModelSchema': u16le(sch) });
+    const res = await readPowerBI(fakeFile('huecos.pbit'));
+    expect(res.text).toContain('Tabla "Tabla sin nombre"');
+    expect(res.text).toContain('? (string)');
+    expect(res.text).toContain('? (desconocido)');
+    expect(res.text).toContain('SinExpr = (sin expresión)');
+    expect(res.text).toContain('? = (sin expresión)');
+  });
+
+  it('más de MAX_COLUMNS_PER_TABLE y MAX_MEASURES_PER_TABLE: marca truncado', async () => {
+    const sch = JSON.stringify({
+      model: {
+        tables: [{
+          name: 'Fat',
+          columns: Array.from({ length: MAX_COLUMNS_PER_TABLE + 1 }, (_, i) => ({ name: `C${i}` })),
+          measures: Array.from({ length: MAX_MEASURES_PER_TABLE + 1 }, (_, i) => ({ name: `M${i}`, expression: '1' })),
+        }],
+      },
+    });
+    mockZip({ 'DataModelSchema': u16le(sch) });
+    const res = await readPowerBI(fakeFile('fat.pbit'));
+    expect(res.truncated).toBe(true);
+  });
+
+  it('DataMashup demasiado corto (<8 bytes): ignorado sin romper el informe', async () => {
+    mockZip({
+      'Report/Layout': u16le(layout([{ name: 'Corto', visuals: ['card'] }])),
+      'DataMashup': new Uint8Array([1, 2, 3]),
+    });
+    const res = await readPowerBI(fakeFile('corto.pbix'));
+    expect(res.text).toContain('Página "Corto"');
+    expect(res.summary).not.toContain('Consultas:');
+  });
+
+  it('DataMashup con paquete interno sin Formulas/Section1.m: ignorado', async () => {
+    const entry = mashupEntry(4);
+    vi.mocked(unzipSync).mockImplementation(((data: Uint8Array) => {
+      if (data[0] === 0x50) return { '[Content_Types].xml': new Uint8Array([1]) } as never;
+      return {
+        'Report/Layout': u16le(layout([{ name: 'SinM', visuals: ['card'] }])),
+        'DataMashup': entry,
+      } as never;
+    }) as never);
+    const res = await readPowerBI(fakeFile('sin_seccion.pbix'));
+    expect(res.text).toContain('Página "SinM"');
+    expect(res.summary).not.toContain('Consultas:');
+  });
+
+  it('DataMashup XML sin blob base64 largo: ignorado', async () => {
+    mockZip({
+      'Report/Layout': u16le(layout([{ name: 'Xml', visuals: ['card'] }])),
+      'DataMashup': new TextEncoder().encode('<DataMashup><Nada>sin base64 larga</Nada></DataMashup>'),
+    });
+    const res = await readPowerBI(fakeFile('xml.pbix'));
+    expect(res.text).toContain('Página "Xml"');
+    expect(res.summary).not.toContain('Consultas:');
+  });
+
+  it('Formulas/Section1.m vacío: sin consultas legibles → error claro (solo DataMashup)', async () => {
+    const entry = mashupEntry(16);
+    vi.mocked(unzipSync).mockImplementation(((data: Uint8Array) =>
+      (data[0] === 0x50
+        ? { 'Formulas/Section1.m': new Uint8Array(0) } as never
+        : { 'DataMashup': entry } as never)) as never);
+    await expect(readPowerBI(fakeFile('vacio_m.pbix'))).rejects.toThrow(/informe ni el modelo/i);
+  });
+
+  it('Section1.m sin `shared`: bloque de consultas con aviso de nombres', async () => {
+    const entry = mashupEntry(8);
+    vi.mocked(unzipSync).mockImplementation(((data: Uint8Array) =>
+      (data[0] === 0x50
+        ? { 'Formulas/Section1.m': new TextEncoder().encode('section Section1;\n\n// nada compartido') } as never
+        : { 'DataMashup': entry } as never)) as never);
+    const res = await readPowerBI(fakeFile('sin_shared.pbix'));
+    expect(res.text).toContain('_(sin nombres de consulta detectados)_');
+    expect(res.summary).toContain('Consultas: 0');
+  });
+
+  it('particiones no-M y sin expresión: se saltan; nombre heredado o genérico', async () => {
+    const sch = JSON.stringify({
+      model: {
+        tables: [
+          {
+            name: 'Origen',
+            partitions: [
+              { name: 'P1', source: { type: 'other', expression: 'x' } },
+              { source: { type: 'm', expression: '' } },
+              { source: { type: 'm', expression: 'let x = 1 in x' } },
+            ],
+          },
+          { partitions: [{ source: { type: 'm', expression: 'let y = 2 in y' } }] },
+        ],
+      },
+    });
+    mockZip({ 'DataModelSchema': u16le(sch) });
+    const res = await readPowerBI(fakeFile('particiones.pbit'));
+    expect(res.text).toContain('- Origen');
+    expect(res.text).toContain('- Consulta sin nombre');
+    expect(res.summary).toContain('Consultas: 2');
+  });
+
+  it('muchas particiones M y M enorme: truncado (nombres y presupuesto de caracteres)', async () => {
+    const tables = Array.from({ length: MAX_QUERIES + 2 }, (_, i) => ({
+      name: `Q${i}`,
+      partitions: [{ name: `Q${i}`, source: { type: 'm', expression: 'let x = "' + 'A'.repeat(200) + '" in x' } }],
+    }));
+    mockZip({ 'DataModelSchema': u16le(JSON.stringify({ model: { tables } })) });
+    const res = await readPowerBI(fakeFile('muchas_particiones.pbit'));
+    expect(res.truncated).toBe(true);
+    expect(res.summary).toContain(`Consultas: ${MAX_QUERIES + 2}`);
+  });
+
+  it('XML legacy con dos blobs base64: sort elige el más largo y parsea el binario', async () => {
+    // Paquete binario [MS-QDEFF] válido (paquete interno 'PK' de 120 bytes) con
+    // Section1.m, codificado en base64 — y un segundo blob base64 más corto de
+    // relleno. tryXmlMashup ordena los blobs (comparador de sort) y se queda
+    // con el primero por longitud → el binario válido.
+    const section = 'section Section1;\n\nshared Corta = 1;';
+    const innerBytes = new Uint8Array(120);
+    innerBytes[0] = 0x50; innerBytes[1] = 0x4b;
+    const bin = new Uint8Array(8 + innerBytes.length);
+    new DataView(bin.buffer).setUint32(4, innerBytes.length, true);
+    bin.set(innerBytes, 8);
+    const longB64 = btoa(String.fromCharCode(...bin));
+    const shortB64 = 'A'.repeat(longB64.length - 10);
+    const xml = new TextEncoder().encode(
+      `<DataMashup><PackageOPC>${longB64}</PackageOPC><Otro>${shortB64}</Otro></DataMashup>`,
+    );
+    vi.mocked(unzipSync).mockImplementation(((data: Uint8Array) =>
+      (data[0] === 0x50
+        ? { 'Formulas/Section1.m': new TextEncoder().encode(section) } as never
+        : { 'DataMashup': xml } as never)) as never);
+
+    const res = await readPowerBI(fakeFile('dos_blobs.pbix'));
+
+    expect(res.text).toContain('- Corta');
+    expect(res.summary).toContain('Consultas: 1');
+  });
+});

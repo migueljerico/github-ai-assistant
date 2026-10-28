@@ -122,7 +122,10 @@ export function buildRepoContextSummary(
   const bodies = files
     .filter(f => f.content)
     .slice(0, maxFiles)
-    .map(f => `### ${f.path}\n\`\`\`\n${truncateByLines(f.content || '', maxLines)}\n\`\`\``)
+    // #26 (v4.0.52): sin `|| ''` — el filter de arriba ya garantiza `f.content`
+    // truthy, así que el fallback era rama muerta; el cast solo anula el
+    // `| undefined` del tipo (el filtro no lo estrecha para TS).
+    .map(f => `### ${f.path}\n\`\`\`\n${truncateByLines(f.content as string, maxLines)}\n\`\`\``)
     .join('\n\n');
 
   return `Repositorio: ${repoName}\nArchivos en el repo: ${treePaths.length}\n\n` +
@@ -152,7 +155,8 @@ export function buildSecurityAuditContext(
   const maxLinesPerFile = opts.maxLinesPerFile ?? 120;
   const bodies = sensitiveFiles
     .filter(f => f.content && f.content.trim())
-    .map(f => `### ${f.path}\n\`\`\`\n${truncateByLines(f.content || '', maxLinesPerFile)}\n\`\`\``)
+    // #26 (v4.0.52): sin `|| ''` — el filter garantiza content truthy; mismo cast.
+    .map(f => `### ${f.path}\n\`\`\`\n${truncateByLines(f.content as string, maxLinesPerFile)}\n\`\`\``)
     .join('\n\n');
 
   if (!bodies) {
@@ -250,7 +254,9 @@ async function readSSEStream(
     if (onActivity) onActivity(); // cada trozo recibido (aunque no traiga contenido) cuenta como actividad
     buffer += decoder.decode(value, { stream: true });
     const lines = buffer.split('\n');
-    buffer = lines.pop() ?? '';
+    // #26 (v4.0.52): sin `?? ''` — split() de un string siempre genera ≥1
+    // elemento, así que `pop()` nunca es undefined; cast solo para TS.
+    buffer = lines.pop() as string;
     for (const line of lines) flushLine(line);
   }
   flushLine(buffer);
@@ -268,7 +274,10 @@ async function readSSEStream(
  */
 export function isGroqEndpoint(endpoint: string): boolean {
   try {
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://localhost';
+    // #26 (v4.0.52): sin guard SSR (`typeof window !== 'undefined' ? … :
+    // 'https://localhost'`) — este módulo solo vive en el bundle del cliente,
+    // así que `window` siempre está definido y el literal era rama muerta.
+    const origin = window.location.origin;
     const host = new URL(endpoint, origin).hostname;
     return host === 'groq.com' || host.endsWith('.groq.com');
   } catch {
@@ -286,7 +295,8 @@ export function isProxyEndpoint(endpoint: string): boolean {
   if (!endpoint) return false;
   if (endpoint.startsWith('/api/') || endpoint.startsWith('/')) return true;
   try {
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://localhost';
+    // #26 (v4.0.52): mismo guard SSR eliminado que en isGroqEndpoint.
+    const origin = window.location.origin;
     const parsed = new URL(endpoint, origin);
     return parsed.origin === origin && parsed.pathname.startsWith('/api');
   } catch {
@@ -1012,7 +1022,9 @@ export function parseGeminiActions(rawText: string): GeminiAction[] {
 
 /** Busca el primer objeto JSON balanceado desde una posición dada. */
 function firstBalancedJsonObjectFrom(text: string, start: number): string | null {
-  if (start >= text.length || text[start] !== '{') return null;
+  // #26 (v4.0.52): sin guard `start >= text.length || text[start] !== '{'` — el
+  // único caller (parseGeminiActions) garantiza con indexOf('{') que `start`
+  // apunta a un '{' in-bounds; la rama del return null era inalcanzable.
   let depth = 0;
   let inString = false;
   let escaped = false;
@@ -1122,7 +1134,8 @@ export function detectPrimaryLanguage(files: Array<{ path: string }>): string {
   };
   const counts: Record<string, number> = {};
   for (const f of files) {
-    const ext = '.' + (f.path.split('.').pop() ?? '').toLowerCase();
+    // #26 (v4.0.52): sin `?? ''` — split().pop() nunca es undefined; cast para TS.
+    const ext = '.' + f.path.split('.').pop()!.toLowerCase();
     if (extMap[ext]) counts[ext] = (counts[ext] ?? 0) + 1;
   }
   const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
@@ -1734,7 +1747,9 @@ export async function generateSpecificDoc(
   extraImageFiles?: string[],
 ): Promise<string> {
   const langInstruction = lang === 'en' ? 'IN ENGLISH' : 'EN ESPAÑOL';
-  const ext = targetPath.split('.').pop()?.toLowerCase() || '';
+  // #26 (v4.0.52): sin `?.` ni `|| ''` — split().pop() nunca es undefined ni
+  // nulla; el original encadenaba dos ramas muertas.
+  const ext = targetPath.split('.').pop()!.toLowerCase();
   const baseName = targetPath.replace(/\.[^.]+$/, '').replace(/[^\w.-]+/g, '-') || 'archivo';
 
   const now = new Date();

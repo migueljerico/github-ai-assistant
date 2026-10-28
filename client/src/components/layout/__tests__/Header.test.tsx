@@ -226,4 +226,41 @@ describe('Header', () => {
     const button = screen.getByRole('button', { name: /plantillas/i });
     expect(button).toHaveAttribute('title', 'Mostrar plantillas');
   });
+
+  // ── Ramas restantes (#26, v4.0.52): historyOpen en ambas direcciones ────────
+  it('debería mostrar título "Ocultar historial" cuando historyOpen es true (v4.0.52 #26)', () => {
+    vi.mocked(useAuth).mockReturnValue(unauthUser());
+
+    render(<Header {...defaultProps} historyOpen={true} />);
+
+    const button = screen.getByRole('button', { name: /historial/i });
+    expect(button).toHaveAttribute('title', 'Ocultar historial');
+    expect(button).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('debería mostrar título "Mostrar historial" cuando historyOpen es false (v4.0.52 #26)', () => {
+    vi.mocked(useAuth).mockReturnValue(unauthUser());
+
+    render(<Header {...defaultProps} historyOpen={false} />);
+
+    const button = screen.getByRole('button', { name: /historial/i });
+    expect(button).toHaveAttribute('title', 'Mostrar historial');
+    expect(button).toHaveAttribute('aria-pressed', 'false');
+  });
 });
+
+/** Helper: usuario no autenticado para el mock de useAuth (evita repetición). */
+function unauthUser() {
+  return {
+    isAuthenticated: false,
+    token: null,
+    user: null,
+    isLoading: false,
+    error: null,
+    connectedAt: null,
+    loginWithPat: vi.fn(),
+    logout: vi.fn(),
+    initiateOAuth: vi.fn(),
+    setTokenFromOAuth: vi.fn(),
+  } as const;
+}

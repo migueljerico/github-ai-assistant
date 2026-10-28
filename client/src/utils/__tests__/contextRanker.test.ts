@@ -117,3 +117,16 @@ describe('contextRanker (#49)', () => {
   });
 });
 
+
+describe('rankFilesByQuery — contenido totalmente en blanco (v4.0.52 #26)', () => {
+  it('no se rompe cuando todos los docs son vacíos y avgLen cae a 0 (usa 1)', () => {
+    const ranked = rankFilesByQuery('databases', [mk('a.ts', ''), mk('b.ts', '')], 2);
+    expect(ranked).toHaveLength(2);
+  });
+
+  it('avgLen 0 con docs sin tokens útiles: usa el fallback 1 (#26, v4.0.52)', () => {
+    // Rutas sin caracteres alfanuméricos → tokenize no extrae nada → avgLen 0.
+    const ranked = rankFilesByQuery('readme', [mk('//', ''), mk('~/~', '')], 2);
+    expect(ranked).toHaveLength(2);
+  });
+});

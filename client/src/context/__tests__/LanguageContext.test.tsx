@@ -93,4 +93,40 @@ describe('LanguageContext', () => {
       'useLanguage must be used within a LanguageProvider'
     );
   });
+
+  // ── Ramas restantes (#26, v4.0.52) ──────────────────────────────────────────
+  it('hidrata el idioma guardado en sessionStorage (#26, v4.0.52)', () => {
+    sessionStorage.setItem('app-lang', 'en');
+    render(
+      <LanguageProvider>
+        <TestComponent />
+      </LanguageProvider>
+    );
+    expect(screen.getByTestId('lang')).toHaveTextContent('en');
+    expect(document.documentElement.lang).toBe('en');
+  });
+
+  it('ignora un idioma inválido en sessionStorage y cae a español (#26, v4.0.52)', () => {
+    sessionStorage.setItem('app-lang', 'xx');
+    render(
+      <LanguageProvider>
+        <TestComponent />
+      </LanguageProvider>
+    );
+    expect(screen.getByTestId('lang')).toHaveTextContent('es');
+    expect(document.documentElement.lang).toBe('es');
+  });
+
+  it('t(): clave sin traducción devuelve la propia clave (#26, v4.0.52)', () => {
+    function Probe() {
+      const { t } = useLanguage();
+      return <span data-testid="probe">{t('clave.inexistente.probe')}</span>;
+    }
+    render(
+      <LanguageProvider>
+        <Probe />
+      </LanguageProvider>
+    );
+    expect(screen.getByTestId('probe')).toHaveTextContent('clave.inexistente.probe');
+  });
 });

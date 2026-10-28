@@ -121,4 +121,74 @@ describe('ChangeReviewModal', () => {
     render(<ChangeReviewModal {...defaultProps} />);
     expect(screen.getByText(/selecciona un cambio/i)).toBeInTheDocument();
   });
+
+  // ── Ramas restantes (#26, v4.0.52) ──────────────────────────────────────────
+  it('al ampliar la lista de acciones re-sincroniza accepted[] con valores por defecto (v4.0.52 #26)', () => {
+    const { rerender } = render(<ChangeReviewModal {...defaultProps} />);
+    expect(screen.getByText(/2 de 2 seleccionados/i)).toBeInTheDocument();
+
+    // (actions.length !== prevActionsLen) pasa a true → setPrevActionsLen +
+    // setAccepted(actions.map((_, i) => accepted[i] ?? true)) con la posición
+    // pendiente undefined en el índice 2 → rama nullish del ??
+    rerender(
+      <ChangeReviewModal
+        {...defaultProps}
+        actions={[...mockActions, { action: mockAction2, targetRepos: [] }]}
+      />,
+    );
+
+    expect(screen.getByText(/3 de 3 seleccionados/i)).toBeInTheDocument();
+  });
+
+  it('archivo nuevo (sin contenido actual): vista previa en <pre>, sin diff (v4.0.52 #26)', () => {
+    render(<ChangeReviewModal {...defaultProps} />);
+    fireEvent.click(screen.getByTestId('review-item-1')); // mockAction2 sin contenidoActual
+
+    expect(screen.queryByTestId('diff-viewer')).not.toBeInTheDocument();
+    expect(screen.getByText(/contenido del nuevo archivo/i)).toBeInTheDocument();
+    expect(screen.getByText(/## v1\.0\.0/)).toBeInTheDocument();
+  });
+
+  it('acción sin contenido: mensaje "Sin vista previa disponible" (v4.0.52 #26)', () => {
+    const vacia: GeminiAction = {
+      ...mockAction1, contenidoActual: null, contenidoPropuesto: null,
+    };
+    render(
+      <ChangeReviewModal
+        {...defaultProps}
+        actions={[{ action: vacia, targetRepos: [] }]}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('review-item-0'));
+
+    expect(screen.getByText(/Sin vista previa disponible/i)).toBeInTheDocument();
+    expect(screen.queryByTestId('diff-viewer')).not.toBeInTheDocument();
+  });
+
+  it('diff con archivo null: DiffViewer usa el nombre por defecto (v4.0.52 #26)', () => {
+    const sinArchivo: GeminiAction = { ...mockAction1, archivo: null };
+    render(
+      <ChangeReviewModal
+        {...defaultProps}
+        actions={[{ action: sinArchivo, targetRepos: [] }]}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('review-item-0'));
+
+    expect(screen.getByTestId('diff-viewer')).toBeInTheDocument();
+    expect(screen.getByTestId('diff-viewer')).toHaveTextContent('DiffViewer: archivo');
+  });
+
+  it('isExecuting + executionProgress: muestra el progreso de ejecución (v4.0.52 #26)', () => {
+    render(
+      <ChangeReviewModal
+        {...defaultProps}
+        isExecuting={true}
+        executionProgress={{ done: 1, total: 3, current: 'Aplicando a repo-b' }}
+      />,
+    );
+
+    expect(screen.getByText(/1\/3/)).toBeInTheDocument();
+    expect(screen.getByText(/repo-b/)).toBeInTheDocument();
+  });
 });

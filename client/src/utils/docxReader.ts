@@ -34,11 +34,13 @@ function findEntry(zip: Record<string, Uint8Array>, name: string): Uint8Array | 
   return undefined;
 }
 
-/** Decodifica un entry UTF-8 (con posible BOM) como texto plano. */
+/** Decodifica un entry UTF-8 como texto plano. */
 function decodeUtf8(bytes: Uint8Array): string {
-  let text = new TextDecoder('utf-8').decode(bytes);
-  if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
-  return text;
+  // v4.0.52 (#26): el recorte manual de BOM (charCodeAt(0) === 0xFEFF) era
+  // código muerto — WHATWG Encoding ya elimina la BOM por defecto
+  // (TextDecoder con ignoreBOM: false), así que la rama jamás se ejecutaba
+  // ni en Node ni en el navegador y quedaba fuera de cobertura.
+  return new TextDecoder('utf-8').decode(bytes);
 }
 
 /** Decodifica las entidades XML más comunes (nombradas y numéricas). */

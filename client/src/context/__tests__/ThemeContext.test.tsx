@@ -166,4 +166,38 @@ describe('ThemeContext (#71)', () => {
     expect(() => renderHook(() => useTheme())).toThrow(/must be used within a ThemeProvider/);
     spy.mockRestore();
   });
+
+  // ── Ramas restantes (#26, v4.0.52) ──────────────────────────────────────────
+  it('aplica el color meta theme-color según el tema resuelto (#26)', () => {
+    const meta = document.createElement('meta');
+    meta.setAttribute('name', 'theme-color');
+    document.head.appendChild(meta);
+    try {
+      const { result } = renderTheme();
+      act(() => result.current.setTheme('dark'));
+      expect(meta.getAttribute('content')).toBe('#0d1117');
+      act(() => result.current.setTheme('light'));
+      expect(meta.getAttribute('content')).toBe('#f6f8fa');
+    } finally {
+      meta.remove();
+    }
+  });
+
+  it('localStorage roto: readStoredTheme cae a "auto" sin romper (#26)', () => {
+    const spy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('modo privado');
+    });
+    const { result } = renderTheme();
+    expect(result.current.theme).toBe<Theme>('auto');
+    spy.mockRestore();
+  });
+
+  it('reacciona en vivo al SO también al volver a claro (#26)', () => {
+    const { result } = renderTheme();
+    act(() => emitSystemPrefersDark(true));
+    expect(result.current.resolvedTheme).toBe('dark');
+    // El SO vuelve al claro: el listener debe refrescar el resuelto (rama falsa).
+    act(() => emitSystemPrefersDark(false));
+    expect(result.current.resolvedTheme).toBe('light');
+  });
 });

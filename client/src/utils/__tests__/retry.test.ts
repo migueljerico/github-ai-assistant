@@ -303,3 +303,33 @@ describe('retry (#40 / #50)', () => {
     });
   });
 });
+
+describe('guardas ante objetos sin `message` (v4.0.52 #26)', () => {
+  it('isContextTooLargeError devuelve false cuando falta el mensaje', () => {
+    expect(isContextTooLargeError({ status: 500 })).toBe(false);
+    expect(isContextTooLargeError({})).toBe(false);
+  });
+
+  it('isTimeoutAbortError devuelve false cuando falta el mensaje', () => {
+    expect(isTimeoutAbortError({ name: 'Error' })).toBe(false);
+    expect(isTimeoutAbortError({})).toBe(false);
+  });
+});
+
+describe('isTransientError — lados restantes (v4.0.52 #26)', () => {
+  it('err.transient fuerza el reintento (primer guard)', () => {
+    expect(isTransientError({ transient: true })).toBe(true);
+    expect(isTransientError({ transient: true, status: 404 })).toBe(true); // gana el flag manual
+  });
+
+  it('429 con GitHubAPIError NO se reintenta (lo gestiona ghFetch con headers)', () => {
+    // name 'GitHubAPIError' + 429 → return false (tercer lado del && de L23).
+    expect(isTransientError({ status: 429, name: 'GitHubAPIError', message: 'API rate limit exceeded' })).toBe(false);
+    // En cambio, un 429 con otro nombre sí es transitorio (patrón "rate limit"/status).
+    expect(isTransientError({ status: 429, name: 'Error', message: '' })).toBe(true);
+  });
+
+  it('objeto sin message → el ?? usa "" y el patrón no casa (false)', () => {
+    expect(isTransientError({})).toBe(false);
+  });
+});

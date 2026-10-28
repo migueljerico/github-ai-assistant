@@ -1,35 +1,46 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// #26 (v4.0.52): cubre ramas de github.ts no alcanzadas por los tests de
+// servicios que lo mockean (docPublisher/threadSummary/assistantActions…):
+//   · compareCommits con respuesta sin commits  → `data.commits ?? []` (L125)
+//   · fetchRepoTreeRecursive con getRepo sin default_branch → `|| 'main'` (L497)
+//   · árbol con blob SIN `size` → `item.size ?? 0` (L528 / L542)
+//   · blob cuyo contents API devuelve `content: ''` → rama falsa del ternario (L541)
+//   · TODOS los wrappers REST (getUser, createRepo, issues, PRs, git data…),
+//     que son envoltorios finos de ghFetch que ningún módulo ejercita de verdad.
+// El arnés es un fetch global con routing por URL (patrón providers.test.ts).
+
 import {
-  decodeBase64,
+  compareCommits,
+  fetchRepoTreeRecursive,
   encodeBase64,
-  encodeBase64Bytes,
-  createOrUpdateBinaryFile,
-  getUser,
-  createRepo,
-  getRepo,
-  repoExists,
-  updateRepo,
-  getBranchSha,
-  getFileContents,
-  createOrUpdateFile,
-  deleteFile,
   ghFetch,
   GitHubAPIError,
-  getIssueOrPr,
-  getIssueComments,
-  getPullReviewComments,
+  getUser,
+  listUserRepos,
   getLatestReleaseTag,
-  compareCommits,
   listRecentCommits,
   listCommitDates,
+  getCommit,
+  createRepo,
+  updateRepo,
+  repoExists,
+  encodeBase64Bytes,
+  createOrUpdateBinaryFile,
+  createOrUpdateFile,
+  deleteFile,
   listIssues,
   createIssue,
   updateIssueState,
   commentOnIssue,
+  getIssueOrPr,
+  getIssueComments,
+  getPullReviewComments,
   listPullRequests,
   createPullRequest,
   mergePullRequest,
   listBranches,
+  getBranchSha,
   createBranch,
   deleteBranch,
   createBlob,
@@ -40,1204 +51,649 @@ import {
   listWorkflowRuns,
   triggerWorkflowRun,
   listAllRepos,
-  listUserRepos,
-  getCommit,
 } from '../github';
 
-// Mock de fetch global
-(globalThis as any).fetch = vi.fn();
+const TOKEN = 'ghp_test';
 
-describe('github.ts', () => {
+describe('compareCommits — respuesta sin commits (#26, v4.0.52)', () => {
   beforeEach(() => {
-    // mockReset (en vez de clearAllMocks) para vaciar también la cola de
-    // mockResolvedValueOnce entre tests; evita que un test consuma un mock residual del anterior.
-    vi.clearAllMocks();
-    vi.mocked(fetch).mockReset();
+    vi.restoreAllMocks();
   });
 
-  describe('decodeBase64', () => {
-    it('debería decodificar Base64 correctamente', () => {
-      const encoded = btoa('Hello World');
-      const decoded = decodeBase64(encoded);
-      expect(decoded).toBe('Hello World');
+  it('{} del compare API → lista vacía (rama nullish del ??)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({}),
     });
+    vi.stubGlobal('fetch', fetchMock);
 
-    it('debería manejar caracteres UTF-8', () => {
-      const text = 'Hola ñandú';
-      const encoded = btoa(unescape(encodeURIComponent(text)));
-      const decoded = decodeBase64(encoded);
-      expect(decoded).toBe(text);
-    });
+    const out = await compareCommits(TOKEN, 'o', 'r', 'main', 'feat');
+    expect(out).toEqual([]);
+  });
+});
 
-    it('debería ignorar espacios en blanco', () => {
-      const encoded = 'SGVs\nbG8g\nV29ybGQ=';
-      const decoded = decodeBase64(encoded);
-      expect(decoded).toBe('Hello World');
-    });
+describe('ghFetch — error con GitHubAPIError (#26, v4.0.52)', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
   });
 
-  describe('encodeBase64', () => {
-    it('debería codificar texto a Base64', () => {
-      const text = 'Hello World';
-      const encoded = encodeBase64(text);
-      expect(encoded).toBe(btoa(text));
-    });
-
-    it('debería manejar caracteres UTF-8', () => {
-      const text = 'Hola ñandú';
-      const encoded = encodeBase64(text);
-      const decoded = decodeBase64(encoded);
-      expect(decoded).toBe(text);
-    });
-  });
-
-  describe('encodeBase64Bytes (binario, #28 4a)', () => {
-    it('codifica bytes crudos a Base64', () => {
-      const bytes = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0xff, 0x00]);
-      const encoded = encodeBase64Bytes(bytes);
-      // Verificación independiente.
-      expect(encoded).toBe(btoa('PK\x03\x04\xff\x00'));
-    });
-
-    it('maneja arrays grandes sin desbordar la pila', () => {
-      const bytes = new Uint8Array(100_000).fill(65); // 'A'
-      expect(() => encodeBase64Bytes(bytes)).not.toThrow();
-      expect(encodeBase64Bytes(bytes).length).toBeGreaterThan(0);
-    });
-  });
-
-  describe('createOrUpdateBinaryFile (#28 4a)', () => {
-    it('hace PUT con el base64 de los bytes y la rama indicada', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ commit: { sha: 'c1' }, content: {} }) } as any);
-      const bytes = new Uint8Array([1, 2, 3]);
-
-      await createOrUpdateBinaryFile('tok', 'me', 'r', 'informe.pbit', bytes, 'msg', 'sha1', 'rama');
-
-      const [, init] = vi.mocked(fetch).mock.calls[0];
-      const body = JSON.parse((init as RequestInit).body as string);
-      expect(body.content).toBe(encodeBase64Bytes(bytes));
-      expect(body.sha).toBe('sha1');
-      expect(body.branch).toBe('rama');
-    });
-  });
-
-  describe('ghFetch', () => {
-    it('debería hacer petición GET exitosa', async () => {
-      const mockData = { login: 'testuser', id: 123 };
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockData,
-      } as any);
-
-      const result = await ghFetch('test-token', '/user');
-
-      expect(result).toEqual(mockData);
-      expect(fetch).toHaveBeenCalledWith(
-        'https://api.github.com/user',
-        expect.objectContaining({
-          headers: expect.objectContaining({
-            Authorization: 'Bearer test-token',
-          }),
-        })
-      );
-    });
-
-    it('debería lanzar GitHubAPIError en respuesta no-ok', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: false,
-        status: 404,
-        json: async () => ({ message: 'Not Found' }),
-      } as any);
-
-      await expect(ghFetch('test-token', '/user/unknown')).rejects.toThrow(GitHubAPIError);
-    });
-
-    it('debería incluir información de rate limit en error 429', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: false,
-        status: 429,
-        headers: {
-          get: (key: string) => {
-            if (key === 'x-ratelimit-reset') return '1234567890';
-            if (key === 'x-ratelimit-remaining') return '0';
-            return null;
-          },
-        },
-        json: async () => ({ message: 'Rate limit exceeded' }),
-      } as any);
-
-      try {
-        await ghFetch('test-token', '/user');
-        expect.fail('Debería haber lanzado error');
-      } catch (err) {
-        expect(err).toBeInstanceOf(GitHubAPIError);
-        expect((err as GitHubAPIError).status).toBe(429);
-      }
-    });
-
-    it('reintenta ante un 503 transitorio y acaba devolviendo OK (#40)', async () => {
-      vi.mocked(fetch)
-        .mockResolvedValueOnce({ ok: false, status: 503, json: async () => ({ message: 'unavailable' }) } as any)
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: 1 }) } as any);
-
-      const result = await ghFetch('tok', '/user');
-
-      expect(result).toEqual({ ok: 1 });
-      expect(fetch).toHaveBeenCalledTimes(2); // 1 fallo transitorio + 1 reintento OK
-    });
-
-    it('NO reintenta un 404 (una sola llamada) (#40)', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({ ok: false, status: 404, json: async () => ({ message: 'Not Found' }) } as any);
-      await expect(ghFetch('tok', '/x')).rejects.toThrow(GitHubAPIError);
-      expect(fetch).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  describe('getUser', () => {
-    it('debería obtener el usuario autenticado', async () => {
-      const mockUser = { login: 'testuser', id: 123 };
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockUser,
-      } as any);
-
-      const result = await getUser('test-token');
-
-      expect(result).toEqual(mockUser);
-    });
-  });
-
-  describe('createRepo', () => {
-    it('debería crear un repositorio', async () => {
-      const mockRepo = { name: 'new-repo', full_name: 'testuser/new-repo' };
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockRepo,
-      } as any);
-
-      const result = await createRepo('test-token', 'new-repo', 'Description', false);
-
-      expect(result).toEqual(mockRepo);
-      expect(fetch).toHaveBeenCalledWith(
-        'https://api.github.com/user/repos',
-        expect.objectContaining({
-          method: 'POST',
-          body: expect.stringContaining('new-repo'),
-        })
-      );
-    });
-  });
-
-  describe('updateRepo (v3.31.0)', () => {
-    it('debería hacer PATCH /repos/:owner/:repo con la descripción', async () => {
-      const mockRepo = { name: 'repo', full_name: 'owner/repo', description: 'nuevo about' };
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockRepo,
-      } as any);
-
-      const result = await updateRepo('test-token', 'owner', 'repo', { description: 'nuevo about' });
-
-      expect(result).toEqual(mockRepo);
-      expect(fetch).toHaveBeenCalledWith(
-        'https://api.github.com/repos/owner/repo',
-        expect.objectContaining({
-          method: 'PATCH',
-          body: expect.stringContaining('nuevo about'),
-        })
-      );
-    });
-  });
-
-  describe('getFileContents', () => {
-    it('debería obtener el contenido de un archivo', async () => {
-      const mockFile = { content: 'SGVsbG8=', sha: 'abc123' };
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockFile,
-      } as any);
-
-      const result = await getFileContents('test-token', 'testuser', 'myrepo', 'README.md');
-
-      expect(result).toEqual(mockFile);
-    });
-  });
-
-  describe('createOrUpdateFile', () => {
-    it('debería crear un archivo nuevo', async () => {
-      const mockResult = { commit: { sha: 'commit123' }, content: { path: 'test.txt' } };
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockResult,
-      } as any);
-
-      const result = await createOrUpdateFile(
-        'test-token',
-        'testuser',
-        'myrepo',
-        'test.txt',
-        'contenido',
-        'chore: add test.txt'
-      );
-
-      expect(result).toEqual(mockResult);
-    });
-
-    it('debería actualizar un archivo existente con SHA', async () => {
-      const mockResult = { commit: { sha: 'commit456' }, content: { path: 'test.txt' } };
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockResult,
-      } as any);
-
-      const result = await createOrUpdateFile(
-        'test-token',
-        'testuser',
-        'myrepo',
-        'test.txt',
-        'contenido actualizado',
-        'chore: update test.txt',
-        'old-sha-123'
-      );
-
-      expect(result).toEqual(mockResult);
-      expect(fetch).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({
-          body: expect.stringContaining('old-sha-123'),
-        })
-      );
-    });
-
-    it('debería incluir branch en el body cuando se especifica (#45)', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ commit: { sha: 'c1' }, content: { path: 'README.md' } }),
-      } as any);
-
-      await createOrUpdateFile(
-        'test-token',
-        'testuser',
-        'myrepo',
-        'README.md',
-        'contenido',
-        'docs: update',
-        'sha-1',
-        'docs/auto-123'
-      );
-
-      const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string);
-      expect(body.branch).toBe('docs/auto-123');
-    });
-
-    it('NO debería incluir branch en el body cuando no se especifica', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ commit: { sha: 'c1' }, content: { path: 'test.txt' } }),
-      } as any);
-
-      await createOrUpdateFile('test-token', 'testuser', 'myrepo', 'test.txt', 'x', 'chore: x');
-
-      const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string);
-      expect(body.branch).toBeUndefined();
-    });
-  });
-
-  describe('getRepo', () => {
-    it('debería pedir el repo y devolver su metadata', async () => {
-      const mockRepo = { name: 'myrepo', default_branch: 'main' };
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockRepo,
-      } as any);
-
-      const result = await getRepo('test-token', 'testuser', 'myrepo');
-
-      expect(result).toEqual(mockRepo);
-      expect(fetch).toHaveBeenCalledWith(
-        'https://api.github.com/repos/testuser/myrepo',
-        expect.any(Object)
-      );
-    });
-  });
-
-  describe('getLatestReleaseTag (#34)', () => {
-    it('devuelve el tag del último release', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ tag_name: 'v1.2.3' }) } as any);
-      await expect(getLatestReleaseTag('tok', 'o', 'r')).resolves.toBe('v1.2.3');
-      expect(fetch).toHaveBeenCalledWith('https://api.github.com/repos/o/r/releases/latest', expect.any(Object));
-    });
-
-    it('devuelve null si el repo no tiene releases (404)', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({ ok: false, status: 404, json: async () => ({ message: 'Not Found' }) } as any);
-      await expect(getLatestReleaseTag('tok', 'o', 'r')).resolves.toBeNull();
-    });
-
-    it('propaga otros errores no recuperables (422)', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({ ok: false, status: 422, json: async () => ({ message: 'boom' }) } as any);
-      await expect(getLatestReleaseTag('tok', 'o', 'r')).rejects.toThrow();
-    });
-  });
-
-  describe('compareCommits / listRecentCommits (#34)', () => {
-    it('compareCommits mapea los commits entre base y head', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ commits: [{ sha: 'a', commit: { message: 'feat: x' } }, { sha: 'b', commit: { message: 'fix: y' } }] }),
-      } as any);
-
-      const out = await compareCommits('tok', 'o', 'r', 'v1.0.0', 'main');
-
-      expect(out).toEqual([{ sha: 'a', message: 'feat: x' }, { sha: 'b', message: 'fix: y' }]);
-      expect(fetch).toHaveBeenCalledWith('https://api.github.com/repos/o/r/compare/v1.0.0...main', expect.any(Object));
-    });
-
-    it('listRecentCommits mapea la lista de commits', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => [{ sha: 'c', commit: { message: 'docs: z' } }],
-      } as any);
-
-      const out = await listRecentCommits('tok', 'o', 'r', 10);
-
-      expect(out).toEqual([{ sha: 'c', message: 'docs: z' }]);
-      expect(fetch).toHaveBeenCalledWith('https://api.github.com/repos/o/r/commits?per_page=10', expect.any(Object));
-    });
-
-    it('listCommitDates mapea las fechas de autor de los commits (#44)', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => [
-          { commit: { author: { date: '2026-06-01T10:00:00Z' } } },
-          { commit: { committer: { date: '2026-06-02T10:00:00Z' } } }, // sin author → cae a committer
-          { commit: {} }, // sin fecha → se descarta
-        ],
-      } as any);
-
-      const out = await listCommitDates('tok', 'o', 'r');
-
-      expect(out).toEqual(['2026-06-01T10:00:00Z', '2026-06-02T10:00:00Z']);
-      expect(fetch).toHaveBeenCalledWith('https://api.github.com/repos/o/r/commits?per_page=100', expect.any(Object));
-    });
-  });
-
-  describe('fetchRepoTreeRecursive (#49)', () => {
-    it('expone allPaths (todos los blobs) y descarga los docs de raíz por su prioridad', async () => {
-      vi.mocked(fetch).mockImplementation(((url: any) => {
-        const u = String(url);
-        if (u.includes('/git/trees/')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => ({
-              truncated: false,
-              tree: [
-                { path: 'README.md', type: 'blob', size: 10, sha: '1' },
-                { path: 'MEJORAS_FUTURAS.md', type: 'blob', size: 10, sha: '2' },
-                { path: 'src/a.ts', type: 'blob', size: 10, sha: '3' },
-                { path: 'src', type: 'tree', size: 0, sha: '4' },
-              ],
-            }),
-          });
-        }
-        // getFileContents
-        return Promise.resolve({ ok: true, json: async () => ({ content: btoa('x'), encoding: 'base64' }) });
-      }) as any);
-
-      const { fetchRepoTreeRecursive } = await import('../github');
-      const res = await fetchRepoTreeRecursive('tok', 'o', 'r', 'main');
-
-      expect(res.allPaths).toEqual(expect.arrayContaining(['README.md', 'MEJORAS_FUTURAS.md', 'src/a.ts']));
-      expect(res.allPaths).not.toContain('src'); // las entradas 'tree' no cuentan
-      // MEJORAS_FUTURAS.md (prioridad subida en #49) entra entre los archivos con contenido
-      expect(res.files.map(f => f.path)).toContain('MEJORAS_FUTURAS.md');
-    });
-
-    it('resuelve default_branch via getRepo cuando defaultBranch es omitido o cuando /git/trees/main da 404 (fallback a master)', async () => {
-      vi.mocked(fetch).mockImplementation((url) => {
-        const u = String(url);
-        if (u.endsWith('/git/trees/main?recursive=1')) {
-          return Promise.resolve({ ok: false, status: 404, json: async () => ({ message: 'Not Found' }) } as any);
-        }
-        if (u.endsWith('/repos/o/r')) {
-          return Promise.resolve({ ok: true, json: async () => ({ default_branch: 'master' }) } as any);
-        }
-        if (u.endsWith('/git/trees/master?recursive=1')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => ({
-              truncated: false,
-              tree: [{ path: 'README.md', type: 'blob', size: 10, sha: '1' }],
-            }),
-          } as any);
-        }
-        return Promise.resolve({ ok: true, json: async () => ({ content: btoa('x'), encoding: 'base64' }) } as any);
-      });
-
-      const { fetchRepoTreeRecursive } = await import('../github');
-      const res = await fetchRepoTreeRecursive('tok', 'o', 'r');
-      expect(res.files).toHaveLength(1);
-      expect(res.allPaths).toEqual(['README.md']);
-    });
-
-    it('fetchRepoTreeRecursive usa main si getRepo falla al resolver branch omitido', async () => {
-      vi.mocked(fetch).mockImplementation((url) => {
-        const u = String(url);
-        if (u.endsWith('/repos/o/r')) {
-          return Promise.resolve({ ok: false, status: 500, json: async () => ({ message: 'Error' }) } as any);
-        }
-        if (u.endsWith('/git/trees/main?recursive=1')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => ({
-              truncated: false,
-              tree: [{ path: 'README.md', type: 'blob', size: 10, sha: '1' }],
-            }),
-          } as any);
-        }
-        return Promise.resolve({ ok: true, json: async () => ({ content: btoa('x'), encoding: 'base64' }) } as any);
-      });
-
-      const { fetchRepoTreeRecursive } = await import('../github');
-      const res = await fetchRepoTreeRecursive('tok', 'o', 'r');
-      expect(res.allPaths).toEqual(['README.md']);
-    });
-
-    it('fetchRepoTreeRecursive relanza el error 404 si la rama por defecto es la misma', async () => {
-      vi.mocked(fetch).mockImplementation((url) => {
-        const u = String(url);
-        if (u.endsWith('/git/trees/main?recursive=1')) {
-          return Promise.resolve({ ok: false, status: 404, json: async () => ({ message: 'Not Found' }) } as any);
-        }
-        if (u.endsWith('/repos/o/r')) {
-          return Promise.resolve({ ok: true, json: async () => ({ default_branch: 'main' }) } as any);
-        }
-        return Promise.resolve({ ok: true, json: async () => ({}) } as any);
-      });
-
-      const { fetchRepoTreeRecursive } = await import('../github');
-      await expect(fetchRepoTreeRecursive('tok', 'o', 'r', 'main')).rejects.toThrow();
-    });
-
-    it('fetchRepoTreeRecursive relanza errores no-404 (ej. 500)', async () => {
-      vi.mocked(fetch).mockResolvedValue({ ok: false, status: 500, json: async () => ({ message: 'Server Error' }) } as any);
-      const { fetchRepoTreeRecursive } = await import('../github');
-      await expect(fetchRepoTreeRecursive('tok', 'o', 'r', 'main')).rejects.toThrow();
-    });
-
-    // ── Expansión de cobertura (#26) — ramas de priorityScore y refetch 404 ────
-
-    it('ordena por prioridad: package.json y configs antes que ficheros sin patrón', async () => {
-      vi.mocked(fetch).mockImplementation(((url: any) => {
-        const u = String(url);
-        if (u.includes('/git/trees/')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => ({
-              truncated: false,
-              tree: [
-                { path: 'LICENSE', type: 'blob', size: 10, sha: '0' },        // prioridad 5 (fallback)
-                { path: 'app.py', type: 'blob', size: 10, sha: '1' },         // prioridad 4 (código)
-                { path: 'vite.config.yaml', type: 'blob', size: 10, sha: '2' },// prioridad 3 (config)
-                { path: 'package.json', type: 'blob', size: 10, sha: '3' },    // prioridad 1
-                { path: 'README.md', type: 'blob', size: 10, sha: '4' },       // prioridad 0
-              ],
-            }),
-          });
-        }
-        // getFileContents
-        return Promise.resolve({ ok: true, json: async () => ({ content: btoa('x'), encoding: 'base64' }) });
-      }) as any);
-
-      const { fetchRepoTreeRecursive } = await import('../github');
-      const res = await fetchRepoTreeRecursive('tok', 'o', 'r', 'main');
-
-      // allPaths queda ordenado por priorityScore ascendente
-      expect(res.allPaths).toEqual(['README.md', 'package.json', 'vite.config.yaml', 'app.py', 'LICENSE']);
-    });
-
-    it('404 en la rama pedida explícitamente: reintenta con la rama por defecto del repo', async () => {
-      vi.mocked(fetch).mockImplementation((url) => {
-        const u = String(url);
-        if (u.endsWith('/git/trees/develop?recursive=1')) {
-          return Promise.resolve({ ok: false, status: 404, json: async () => ({ message: 'Not Found' }) } as any);
-        }
-        if (u.endsWith('/repos/o/r')) {
-          return Promise.resolve({ ok: true, json: async () => ({ default_branch: 'main' }) } as any);
-        }
-        if (u.endsWith('/git/trees/main?recursive=1')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => ({
-              truncated: false,
-              tree: [{ path: 'README.md', type: 'blob', size: 10, sha: '1' }],
-            }),
-          } as any);
-        }
-        return Promise.resolve({ ok: true, json: async () => ({ content: btoa('x'), encoding: 'base64' }) } as any);
-      });
-
-      const { fetchRepoTreeRecursive } = await import('../github');
-      const res = await fetchRepoTreeRecursive('tok', 'o', 'r', 'develop');
-      expect(res.allPaths).toEqual(['README.md']);
-    });
-  });
-
-  describe('repoExists', () => {
-    it('devuelve true si el repo existe (200)', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ name: 'r' }) } as any);
-      await expect(repoExists('tok', 'me', 'r')).resolves.toBe(true);
-    });
-
-    it('devuelve false ante un 404', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({ ok: false, status: 404, json: async () => ({ message: 'Not Found' }) } as any);
-      await expect(repoExists('tok', 'me', 'r')).resolves.toBe(false);
-    });
-
-    it('propaga otros errores no recuperables (422)', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({ ok: false, status: 422, json: async () => ({ message: 'boom' }) } as any);
-      await expect(repoExists('tok', 'me', 'r')).rejects.toThrow();
-    });
-  });
-
-  describe('getBranchSha', () => {
-    it('debería devolver el SHA HEAD de la rama', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ ref: 'refs/heads/main', object: { sha: 'base-sha-123' } }),
-      } as any);
-
-      const sha = await getBranchSha('test-token', 'testuser', 'myrepo', 'main');
-
-      expect(sha).toBe('base-sha-123');
-      expect(fetch).toHaveBeenCalledWith(
-        'https://api.github.com/repos/testuser/myrepo/git/ref/heads/main',
-        expect.any(Object)
-      );
-    });
-  });
-
-  describe('deleteFile', () => {
-    it('debería eliminar un archivo', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({}),
-      } as any);
-
-      await deleteFile('test-token', 'testuser', 'myrepo', 'old.txt', 'sha123', 'chore: delete');
-
-      expect(fetch).toHaveBeenCalledWith(
-        'https://api.github.com/repos/testuser/myrepo/contents/old.txt',
-        expect.objectContaining({
-          method: 'DELETE',
-        })
-      );
-    });
-  });
-
-  describe('getIssueOrPr', () => {
-    it('debería usar el endpoint de issues y exponer pull_request', async () => {
-      const mockPr = { number: 12, title: 'PR', body: 'x', state: 'open', html_url: 'u', user: { login: 'a' }, pull_request: { url: 'y' } };
-      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => mockPr } as any);
-
-      const result = await getIssueOrPr('test-token', 'owner', 'repo', 12);
-
-      expect(result.pull_request).toBeTruthy();
-      expect(fetch).toHaveBeenCalledWith(
-        'https://api.github.com/repos/owner/repo/issues/12',
-        expect.any(Object)
-      );
-    });
-  });
-
-  describe('getIssueComments', () => {
-    it('debería concatenar varias páginas hasta una página incompleta', async () => {
-      const fullPage = Array.from({ length: 100 }, (_, i) => ({ id: i, body: 'c', user: { login: 'a' }, created_at: '2026-01-01' }));
-      const lastPage = [{ id: 999, body: 'fin', user: { login: 'b' }, created_at: '2026-01-02' }];
-      vi.mocked(fetch)
-        .mockResolvedValueOnce({ ok: true, json: async () => fullPage } as any)
-        .mockResolvedValueOnce({ ok: true, json: async () => lastPage } as any);
-
-      const result = await getIssueComments('test-token', 'owner', 'repo', 5);
-
-      expect(result).toHaveLength(101);
-      expect(fetch).toHaveBeenCalledTimes(2);
-      expect(fetch).toHaveBeenNthCalledWith(
-        1, 'https://api.github.com/repos/owner/repo/issues/5/comments?per_page=100&page=1', expect.any(Object)
-      );
-      expect(fetch).toHaveBeenNthCalledWith(
-        2, 'https://api.github.com/repos/owner/repo/issues/5/comments?per_page=100&page=2', expect.any(Object)
-      );
-    });
-
-    it('debería parar tras una única página incompleta', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => [{ id: 1, body: 'c', user: { login: 'a' }, created_at: 'x' }] } as any);
-
-      const result = await getIssueComments('test-token', 'owner', 'repo', 5);
-
-      expect(result).toHaveLength(1);
-      expect(fetch).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  describe('getPullReviewComments', () => {
-    it('debería usar el endpoint de pulls/comments', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => [] } as any);
-
-      await getPullReviewComments('test-token', 'owner', 'repo', 12);
-
-      expect(fetch).toHaveBeenNthCalledWith(
-        1, 'https://api.github.com/repos/owner/repo/pulls/12/comments?per_page=100&page=1', expect.any(Object)
-      );
-    });
-  });
-
-  // ── Cobertura de edge cases para #26 (v3.50.6) ──────────────────────────────
-  // Ramas de error/transitorias y wrappers sin test directo. El objetivo es subir
-  // `branches` por encima del umbral de cobertura de CI con margen.
-
-  describe('ghFetch — edge cases (#26)', () => {
-    it('lanza GitHubAPIError ante un 401 (token expirado/no válido)', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: false, status: 401, json: async () => ({ message: 'Bad credentials' }),
-      } as any);
-
-      await expect(ghFetch('tok', '/user')).rejects.toMatchObject({
-        name: 'GitHubAPIError', status: 401, message: 'Bad credentials',
-      });
-      // 401 NO es transitorio → una sola llamada
-      expect(fetch).toHaveBeenCalledTimes(1);
-    });
-
-    it('trata un 403 como rate limit: el mensaje enriquecido dispara reintento (#40 interacción)', async () => {
-      // GitHub devuelve 403 para el "secondary rate limit"; isRateLimitError() cubre 429 y 403.
-      // El mensaje enriquecido ("Rate limit...") matchea el patrón transitorio de retry.ts,
-      // así que ghFetch reintenta 2 veces antes de propagar. Empujamos 3 respuestas idénticas.
-      const rateLimitResp = {
-        ok: false, status: 403,
-        headers: {
-          // parseRateLimitHeaders lee las keys en Pascal-Case exactas.
-          get: (key: string) => {
-            if (key === 'X-RateLimit-Reset') return '9999999999';
-            if (key === 'X-RateLimit-Remaining') return '0';
-            return null;
-          },
-        },
-        json: async () => ({ message: 'Forbidden — secondary rate limit' }),
-      };
-      vi.mocked(fetch)
-        .mockResolvedValueOnce(rateLimitResp as any)
-        .mockResolvedValueOnce(rateLimitResp as any)
-        .mockResolvedValueOnce(rateLimitResp as any);
-
-      await expect(ghFetch('tok', '/user')).rejects.toMatchObject({
-        name: 'GitHubAPIError', status: 403,
-      });
-      // 1 intento + 2 reintentos = 3 llamadas (el mensaje "Rate limit" es transient por patrón).
-      expect(fetch).toHaveBeenCalledTimes(3);
-    });
-
-    it('un 403 puro (sin mensaje de rate limit) NO se reintenta (4xx no transitorio)', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: false, status: 403,
-        headers: { get: () => null },
-        json: async () => ({ message: 'Forbidden: permisos insuficientes' }),
-      } as any);
-
-      await expect(ghFetch('tok', '/user')).rejects.toMatchObject({
-        name: 'GitHubAPIError', status: 403,
-      });
-      expect(fetch).toHaveBeenCalledTimes(1);
-    });
-
-    it('propaga el 5xx tras agotar los 2 reintentos (#40)', async () => {
-      vi.mocked(fetch)
-        .mockResolvedValueOnce({ ok: false, status: 502, json: async () => ({ message: 'Bad Gateway' }) } as any)
-        .mockResolvedValueOnce({ ok: false, status: 502, json: async () => ({ message: 'Bad Gateway' }) } as any)
-        .mockResolvedValueOnce({ ok: false, status: 502, json: async () => ({ message: 'Bad Gateway' }) } as any);
-
-      await expect(ghFetch('tok', '/x')).rejects.toMatchObject({ name: 'GitHubAPIError', status: 502 });
-      // 1 intento + 2 reintentos = 3 llamadas
-      expect(fetch).toHaveBeenCalledTimes(3);
-    });
-
-    it('reintenta ante un fallo de red (fetch rejection) y propaga si persiste', async () => {
-      vi.mocked(fetch)
-        .mockRejectedValueOnce(new TypeError('Failed to fetch'))
-        .mockRejectedValueOnce(new TypeError('Failed to fetch'))
-        .mockRejectedValueOnce(new TypeError('Failed to fetch'));
-
-      await expect(ghFetch('tok', '/x')).rejects.toThrow('Failed to fetch');
-      expect(fetch).toHaveBeenCalledTimes(3);
-    });
-
-    it('reintenta ante un fallo de red y luego recupera (#40)', async () => {
-      vi.mocked(fetch)
-        .mockRejectedValueOnce(new TypeError('Failed to fetch'))
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ recovered: true }) } as any);
-
-      await expect(ghFetch('tok', '/x')).resolves.toEqual({ recovered: true });
-      expect(fetch).toHaveBeenCalledTimes(2);
-    });
-
-    it('usa mensaje fallback cuando el body no trae `message`', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: false, status: 418, json: async () => ({ /* sin message */ }),
-      } as any);
-
-      await expect(ghFetch('tok', '/x')).rejects.toMatchObject({
-        message: expect.stringContaining('GitHub API 418'),
-      });
-    });
-
-    it('cae a {} cuando res.json() lanza (payload malformado) y usa mensaje fallback', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: false, status: 502,
-        json: async () => { throw new SyntaxError('Unexpected token'); },
-      } as any);
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: false, status: 502,
-        json: async () => { throw new SyntaxError('Unexpected token'); },
-      } as any);
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: false, status: 502,
-        json: async () => { throw new SyntaxError('Unexpected token'); },
-      } as any);
-
-      await expect(ghFetch('tok', '/x')).rejects.toMatchObject({
-        name: 'GitHubAPIError', status: 502,
-        message: expect.stringContaining('GitHub API 502'),
-      });
-    });
-  });
-
-  describe('getLatestReleaseTag — tag ausente (#26)', () => {
-    it('devuelve null si la respuesta no trae tag_name', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ /* sin tag_name */ }) } as any);
-      await expect(getLatestReleaseTag('tok', 'o', 'r')).resolves.toBeNull();
-    });
-  });
-
-  describe('encodeBase64Bytes — chunking (#28 4a, #26)', () => {
-    it('procesa por chunks cuando el array supera 0x8000 bytes', () => {
-      // 0x8000 + 1 fuerza dos pasadas del bucle interno.
-      const bytes = new Uint8Array(0x8001).fill(0x41);
-      const encoded = encodeBase64Bytes(bytes);
-      const expected = btoa('A'.repeat(0x8001));
-      expect(encoded).toBe(expected);
-    });
-
-    it('codifica un array vacío', () => {
-      expect(encodeBase64Bytes(new Uint8Array(0))).toBe('');
-    });
-  });
-
-  describe('createOrUpdateBinaryFile — sin sha / sin branch (#26)', () => {
-    it('omite sha y branch cuando no se pasan', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true, json: async () => ({ commit: { sha: 'c1' }, content: {} }),
-      } as any);
-
-      await createOrUpdateBinaryFile('tok', 'me', 'r', 'f.bin', new Uint8Array([1]), 'msg');
-
-      const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string);
-      expect(body.sha).toBeUndefined();
-      expect(body.branch).toBeUndefined();
-    });
-  });
-
-  describe('fetchRepoTreeRecursive — truncated y filtros (#49, #26)', () => {
-    it('marca truncated:true cuando el árbol del API viene truncado', async () => {
-      const { fetchRepoTreeRecursive } = await import('../github');
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          truncated: true,
-          tree: [{ path: 'README.md', type: 'blob', size: 10, sha: '1' }],
-        }),
-      } as any);
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true, json: async () => ({ content: btoa('x') }),
-      } as any);
-
-      const res = await fetchRepoTreeRecursive('tok', 'o', 'r', 'main');
-
-      expect(res.truncated).toBe(true);
-    });
-
-    it('excluye archivos binarios y archivos > 50 KB de allPaths', async () => {
-      const { fetchRepoTreeRecursive } = await import('../github');
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          truncated: false,
-          tree: [
-            { path: 'README.md', type: 'blob', size: 100, sha: '1' },
-            { path: 'imagen.png', type: 'blob', size: 100, sha: '2' },           // binario
-            { path: 'big.log', type: 'blob', size: 200 * 1024, sha: '3' },        // > 150 KB
-            { path: 'src', type: 'tree', size: 0, sha: '4' },                     // dir
-          ],
-        }),
-      } as any);
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true, json: async () => ({ content: btoa('x') }),
-      } as any);
-
-      const res = await fetchRepoTreeRecursive('tok', 'o', 'r', 'main');
-
-      expect(res.allPaths).toEqual(['README.md']);
-      expect(res.totalScanned).toBe(1);
-    });
-
-    it('tolera que getFileContents falle en algunos archivos (Promise.allSettled)', async () => {
-      const { fetchRepoTreeRecursive } = await import('../github');
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          truncated: false,
-          tree: [
-            { path: 'a.ts', type: 'blob', size: 10, sha: '1' },
-            { path: 'b.ts', type: 'blob', size: 10, sha: '2' },
-          ],
-        }),
-      } as any);
-      // a.ts OK, b.ts 404 → se descarta sin romper el batch
-      vi.mocked(fetch)
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ content: btoa('A') }) } as any)
-        .mockResolvedValueOnce({ ok: false, status: 404, json: async () => ({ message: 'Not Found' }) } as any);
-
-      const res = await fetchRepoTreeRecursive('tok', 'o', 'r', 'main');
-
-      expect(res.files.map(f => f.path)).toEqual(['a.ts']);
-    });
-
-    it('marca truncated:true cuando hay más de 120 archivos elegibles', async () => {
-      const { fetchRepoTreeRecursive } = await import('../github');
-      const tree = Array.from({ length: 130 }, (_, i) => ({
-        path: `f${i}.ts`, type: 'blob', size: 10, sha: String(i),
-      }));
-      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ truncated: false, tree }) } as any);
-      // getFileContents para los 120 primeros (en batches de 5 = 24 lotes).
-      for (let i = 0; i < 120; i++) {
-        vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ content: btoa('x') }) } as any);
-      }
-
-      const res = await fetchRepoTreeRecursive('tok', 'o', 'r', 'main');
-
-      expect(res.truncated).toBe(true);
-      expect(res.files).toHaveLength(120);
-    });
-  });
-
-  describe('listUserRepos / listAllRepos — paginación (#26)', () => {
-    it('listUserRepos pide /user/repos con per_page=100', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => [] } as any);
-      await listUserRepos('tok');
-      expect(fetch).toHaveBeenCalledWith('https://api.github.com/user/repos?per_page=100', expect.any(Object));
-    });
-
-    it('listAllRepos pagina hasta una página incompleta', async () => {
-      const fullPage = Array.from({ length: 100 }, (_, i) => ({ id: i, name: `r${i}` }));
-      const lastPage = [{ id: 999, name: 'last' }];
-      vi.mocked(fetch)
-        .mockResolvedValueOnce({ ok: true, json: async () => fullPage } as any)
-        .mockResolvedValueOnce({ ok: true, json: async () => lastPage } as any);
-
-      const out = await listAllRepos('tok');
-
-      expect(out).toHaveLength(101);
-      expect(fetch).toHaveBeenNthCalledWith(
-        1, 'https://api.github.com/user/repos?per_page=100&page=1&sort=updated', expect.any(Object)
-      );
-      expect(fetch).toHaveBeenNthCalledWith(
-        2, 'https://api.github.com/user/repos?per_page=100&page=2&sort=updated', expect.any(Object)
-      );
-    });
-  });
-
-  describe('Issues & PRs wrappers (#26)', () => {
-    it('listIssues pasa el state al query param', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => [] } as any);
-      await listIssues('tok', 'o', 'r', 'closed');
-      expect(fetch).toHaveBeenCalledWith(
-        'https://api.github.com/repos/o/r/issues?state=closed&per_page=100', expect.any(Object)
-      );
-    });
-
-    it('createIssue hace POST con title/body/labels/assignees', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ number: 7 }) } as any);
-      await createIssue('tok', 'o', 'r', 'Bug', 'body', ['bug'], ['alice']);
-      const [, init] = vi.mocked(fetch).mock.calls[0];
-      const body = JSON.parse((init as RequestInit).body as string);
-      expect(body).toEqual({ title: 'Bug', body: 'body', labels: ['bug'], assignees: ['alice'] });
-      expect(init).toMatchObject({ method: 'POST' });
-    });
-
-    it('updateIssueState hace PATCH con el nuevo estado', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ number: 7, state: 'closed' }) } as any);
-      await updateIssueState('tok', 'o', 'r', 7, 'closed');
-      expect(fetch).toHaveBeenCalledWith(
-        'https://api.github.com/repos/o/r/issues/7',
-        expect.objectContaining({ method: 'PATCH' })
-      );
-    });
-
-    it('commentOnIssue hace POST al endpoint de comentarios', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ id: 1 }) } as any);
-      await commentOnIssue('tok', 'o', 'r', 7, 'comentario');
-      expect(fetch).toHaveBeenCalledWith(
-        'https://api.github.com/repos/o/r/issues/7/comments',
-        expect.objectContaining({ method: 'POST' })
-      );
-    });
-
-    it('listPullRequests pasa el state al query param', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => [] } as any);
-      await listPullRequests('tok', 'o', 'r', 'all');
-      expect(fetch).toHaveBeenCalledWith(
-        'https://api.github.com/repos/o/r/pulls?state=all&per_page=100', expect.any(Object)
-      );
-    });
-
-    it('createPullRequest hace POST con head/base/draft', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ number: 9 }) } as any);
-      await createPullRequest('tok', 'o', 'r', 'T', 'feature', 'main', 'body', true);
-      const [, init] = vi.mocked(fetch).mock.calls[0];
-      const body = JSON.parse((init as RequestInit).body as string);
-      expect(body).toEqual({ title: 'T', head: 'feature', base: 'main', body: 'body', draft: true });
-    });
-
-    it('mergePullRequest hace PUT al endpoint de merge con merge_method', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ sha: 's', merged: true, message: 'ok' }) } as any);
-      await mergePullRequest('tok', 'o', 'r', 9, 'squash', 'title', 'msg');
-      const [url, init] = vi.mocked(fetch).mock.calls[0];
-      expect(url).toBe('https://api.github.com/repos/o/r/pulls/9/merge');
-      expect(init).toMatchObject({ method: 'PUT' });
-      expect(JSON.parse((init as RequestInit).body as string)).toMatchObject({ merge_method: 'squash', commit_title: 'title' });
-    });
-  });
-
-  describe('Branches & workflows wrappers (#26)', () => {
-    it('listBranches pide el endpoint de branches', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => [] } as any);
-      await listBranches('tok', 'o', 'r');
-      expect(fetch).toHaveBeenCalledWith('https://api.github.com/repos/o/r/branches?per_page=100', expect.any(Object));
-    });
-
-    it('createBranch hace POST a git/refs con ref + sha', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ ref: 'refs/heads/x' }) } as any);
-      await createBranch('tok', 'o', 'r', 'feature', 'sha1');
-      const [, init] = vi.mocked(fetch).mock.calls[0];
-      expect(init).toMatchObject({ method: 'POST' });
-      expect(JSON.parse((init as RequestInit).body as string)).toEqual({ ref: 'refs/heads/feature', sha: 'sha1' });
-    });
-
-    it('deleteBranch hace DELETE al ref', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({}) } as any);
-      await deleteBranch('tok', 'o', 'r', 'feature');
-      expect(fetch).toHaveBeenCalledWith(
-        'https://api.github.com/repos/o/r/git/refs/heads/feature',
-        expect.objectContaining({ method: 'DELETE' })
-      );
-    });
-
-    // ── #58 (a): Git Data API (bulk atómico) ──
-    it('createBlob hace POST a git/blobs con content + encoding', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ sha: 'blob-sha-1' }) } as any);
-      const out = await createBlob('tok', 'o', 'r', 'contenido');
-      expect(out).toEqual({ sha: 'blob-sha-1' });
-      const [, init] = vi.mocked(fetch).mock.calls[0];
-      expect(init).toMatchObject({ method: 'POST' });
-      expect(JSON.parse((init as RequestInit).body as string)).toEqual({ content: 'contenido', encoding: 'utf-8' });
-    });
-
-    it('createTree hace POST a git/trees con base_tree + tree[]', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ sha: 'tree-sha-1' }) } as any);
-      const out = await createTree('tok', 'o', 'r', 'base-sha', [{ path: 'a.md', sha: 'blobA' }, { path: 'b.md', sha: 'blobB' }]);
-      expect(out).toEqual({ sha: 'tree-sha-1' });
-      const [, init] = vi.mocked(fetch).mock.calls[0];
-      expect(init).toMatchObject({ method: 'POST' });
-      const body = JSON.parse((init as RequestInit).body as string);
-      expect(body.base_tree).toBe('base-sha');
-      expect(body.tree).toEqual([
-        { path: 'a.md', mode: '100644', type: 'blob', sha: 'blobA' },
-        { path: 'b.md', mode: '100644', type: 'blob', sha: 'blobB' },
-      ]);
-    });
-
-    it('createTree con baseTreeSha=null omite base_tree', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ sha: 'tree-sha-2' }) } as any);
-      await createTree('tok', 'o', 'r', null, [{ path: 'x.md', sha: 'blobX' }]);
-      const body = JSON.parse((vi.mocked(fetch).mock.calls[0][1] as RequestInit).body as string);
-      expect(body.base_tree).toBeUndefined();
-      expect(body.tree[0]).toMatchObject({ path: 'x.md', sha: 'blobX' });
-    });
-
-    it('createCommit hace POST a git/commits con message + tree + parents', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ sha: 'commit-sha-1' }) } as any);
-      const out = await createCommit('tok', 'o', 'r', 'msg', 'tree-sha', ['parent-sha']);
-      expect(out).toEqual({ sha: 'commit-sha-1' });
-      const body = JSON.parse((vi.mocked(fetch).mock.calls[0][1] as RequestInit).body as string);
-      expect(body).toEqual({ message: 'msg', tree: 'tree-sha', parents: ['parent-sha'] });
-    });
-
-    it('updateRef hace PATCH a git/refs/{ref} con sha + force:false', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({}) } as any);
-      await updateRef('tok', 'o', 'r', 'heads/main', 'commit-sha-1');
-      expect(fetch).toHaveBeenCalledWith(
-        'https://api.github.com/repos/o/r/git/refs/heads/main',
-        expect.objectContaining({ method: 'PATCH' })
-      );
-      const body = JSON.parse((vi.mocked(fetch).mock.calls[0][1] as RequestInit).body as string);
-      expect(body).toEqual({ sha: 'commit-sha-1', force: false });
-    });
-
-    it('listWorkflows desenvuelve workflows[]', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ workflows: [{ id: 1, name: 'CI' }] }) } as any);
-      const out = await listWorkflows('tok', 'o', 'r');
-      expect(out).toEqual([{ id: 1, name: 'CI' }]);
-    });
-
-    it('listWorkflowRuns sin status construye la URL sin query', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ workflow_runs: [{ id: 1 }] }) } as any);
-      await listWorkflowRuns('tok', 'o', 'r', 42);
-      expect(fetch).toHaveBeenCalledWith('https://api.github.com/repos/o/r/actions/workflows/42/runs', expect.any(Object));
-    });
-
-    it('listWorkflowRuns con status añade ?status=', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ workflow_runs: [] }) } as any);
-      await listWorkflowRuns('tok', 'o', 'r', 42, 'failed');
-      expect(fetch).toHaveBeenCalledWith('https://api.github.com/repos/o/r/actions/workflows/42/runs?status=failed', expect.any(Object));
-    });
-
-    it('triggerWorkflowRun hace POST al rerun', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ status: 202 }) } as any);
-      await triggerWorkflowRun('tok', 'o', 'r', 99);
-      expect(fetch).toHaveBeenCalledWith(
-        'https://api.github.com/repos/o/r/actions/runs/99/rerun',
-        expect.objectContaining({ method: 'POST' })
-      );
-    });
-  });
-
-  describe('getCommit — mapeo (#48, #26)', () => {
-    it('desenvuelve sha/message/author y aplica files ?? []', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          sha: 'abc',
-          commit: { message: 'feat: x', author: { name: 'A', email: 'a@b.c', date: '2026-01-01' } },
-          files: [{ filename: 'f.ts', status: 'modified', additions: 1, deletions: 1, changes: 2 }],
-        }),
-      } as any);
-
-      const out = await getCommit('tok', 'o', 'r', 'abc');
-
-      expect(out).toMatchObject({ sha: 'abc', message: 'feat: x' });
-      expect(out.author).toEqual({ name: 'A', email: 'a@b.c', date: '2026-01-01' });
-      expect(out.files).toHaveLength(1);
-    });
-
-    it('cae a [] cuando la respuesta no trae files', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          sha: 'abc',
-          commit: { message: 'x', author: { name: 'A', email: 'a@b.c', date: '2026-01-01' } },
-        }),
-      } as any);
-
-      const out = await getCommit('tok', 'o', 'r', 'abc');
-      expect(out.files).toEqual([]);
-    });
-  });
-
-  describe('github.ts - Coberturas faltantes especificas', () => {
-    it('clasifica prioridad de archivos desconocidos cayendo al score por defecto 5 (cobertura línea 448)', async () => {
-      const { fetchRepoTreeRecursive } = await import('../github');
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          truncated: false,
-          tree: [{ path: 'custom_data.xyz', type: 'blob', size: 10, sha: '1' }],
-        }),
-      } as any);
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true, json: async () => ({ content: btoa('custom text') }),
-      } as any);
-
-      const res = await fetchRepoTreeRecursive('tok', 'o', 'r', 'main');
-      expect(res.files.map(f => f.path)).toContain('custom_data.xyz');
-    });
-
-    it('pagina varias paginas en getPullReviewComments hasta recibir un batch menor que perPage (cobertura línea 704)', async () => {
-      const page1 = Array.from({ length: 100 }, (_, i) => ({ id: i, body: `comment_${i}` }));
-      const page2 = [{ id: 101, body: 'final' }];
-      vi.mocked(fetch)
-        .mockResolvedValueOnce({ ok: true, json: async () => page1 } as any)
-        .mockResolvedValueOnce({ ok: true, json: async () => page2 } as any);
-
-      const comments = await getPullReviewComments('tok', 'o', 'r', 10);
-      expect(comments).toHaveLength(101);
-      expect(fetch).toHaveBeenCalledTimes(2);
+  it('respuesta 4xx (404) lanza GitHubAPIError con mensaje del body', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      json: async () => ({ message: 'Not Found' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(ghFetch(TOKEN, '/repos/o/r')).rejects.toMatchObject({
+      name: 'GitHubAPIError',
+      status: 404,
+      message: 'Not Found',
     });
   });
 });
 
-
-// ── v4.0.48: binaryPaths (imágenes/binarios del árbol) para preservar vistas previas ──
-describe('fetchRepoTreeRecursive — binaryPaths (v4.0.48)', () => {
-  it('expone binaryPaths con los blobs binarios del árbol, excluidos de files y allPaths', async () => {
-    vi.mocked(fetch).mockImplementation(((url: any) => {
-      const u = String(url);
-      if (u.includes('/git/trees/')) {
-        return Promise.resolve({
-          ok: true,
-          json: async () => ({
-            truncated: false,
-            tree: [
-              { path: 'README.md', type: 'blob', size: 10, sha: '1' },
-              { path: 'screenshots/app.png', type: 'blob', size: 2048, sha: '2' },
-              { path: 'screenshots/demo.jpg', type: 'blob', size: 4096, sha: '3' },
-              { path: 'assets/logo.svg', type: 'blob', size: 512, sha: '4' },
-              { path: 'src/a.ts', type: 'blob', size: 10, sha: '5' },
-            ],
-          }),
-        });
-      }
-      // getFileContents
-      return Promise.resolve({ ok: true, json: async () => ({ content: btoa('x'), encoding: 'base64' }) });
-    }) as any);
-
-    const { fetchRepoTreeRecursive } = await import('../github');
-    const res = await fetchRepoTreeRecursive('tok', 'o', 'r', 'main');
-
-    expect(res.binaryPaths).toEqual(
-      expect.arrayContaining(['screenshots/app.png', 'screenshots/demo.jpg', 'assets/logo.svg']),
-    );
-    // Los binarios NO entran en el árbol de texto ni en los archivos con contenido
-    expect(res.binaryPaths).not.toContain('README.md');
-    expect(res.allPaths).not.toContain('screenshots/app.png');
-    expect(res.files.map(f => f.path)).not.toContain('screenshots/app.png');
-    expect(res.files.map(f => f.path)).toContain('README.md');
+describe('fetchRepoTreeRecursive — ramas restantes (#26, v4.0.52)', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
   });
 
-  it('binaryPaths es vacío (no undefined) cuando el repo no tiene binarios', async () => {
-    vi.mocked(fetch).mockImplementation(((url: any) => {
-      const u = String(url);
-      if (u.includes('/git/trees/')) {
-        return Promise.resolve({
-          ok: true,
-          json: async () => ({
-            truncated: false,
-            tree: [{ path: 'README.md', type: 'blob', size: 10, sha: '1' }],
-          }),
-        });
-      }
-      return Promise.resolve({ ok: true, json: async () => ({ content: btoa('x'), encoding: 'base64' }) });
-    }) as any);
+  it('árbol con blob sin size, fichero vacío y binario; getRepo sin default_branch → rama "main" + sides nulos', async () => {
+    const routes: Array<{ match: RegExp; payload: unknown }> = [
+      { match: /^https:\/\/api\.github\.com\/repos\/o\/r$/, payload: {} }, // sin default_branch
+      {
+        match: /\/git\/trees\/main\?/,
+        payload: {
+          truncated: false,
+          tree: [
+            { path: 'README.md', type: 'blob', size: 40, sha: 's1' },
+            { path: 'src/app.ts', type: 'blob', sha: 's2' }, // sin `size` → ?? 0
+            { path: 'docs/captura.png', type: 'blob', size: 10, sha: 's3' }, // binario
+            { path: 'vacio.txt', type: 'blob', size: 0, sha: 's4' },
+          ],
+        },
+      },
+      { match: /\/contents\/README\.md$/, payload: { content: encodeBase64('# README') } },
+      { match: /\/contents\/src\/app\.ts$/, payload: { content: encodeBase64('export {}') } },
+      { match: /\/contents\/vacio\.txt$/, payload: { content: '' } }, // ternario lado '' (L541)
+    ];
 
-    const { fetchRepoTreeRecursive } = await import('../github');
-    const res = await fetchRepoTreeRecursive('tok', 'o', 'r', 'main');
-    expect(res.binaryPaths).toEqual([]);
+    const fetchMock = vi.fn().mockImplementation(async (url: string) => {
+      const hit = routes.find(r => r.match.test(url));
+      if (!hit) return { ok: false, status: 404, json: async () => ({ message: 'No route: ' + url }) };
+      return { ok: true, json: async () => hit.payload };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const out = await fetchRepoTreeRecursive(TOKEN, 'o', 'r');
+
+    // 3 blobs de texto elegibles (binario fuera), ordenados por prioridad:
+    // README (0) < src/ (2) < vacio.txt (resto). El fichero sin `size` entra con size 0.
+    expect(out.totalScanned).toBe(3);
+    expect(out.allPaths).toEqual(['README.md', 'src/app.ts', 'vacio.txt']);
+    expect(out.binaryPaths).toEqual(['docs/captura.png']);
+    expect(out.truncated).toBe(false);
+
+    // Contenido y size en el resultado: vacio.txt con content '' (ternario falso)
+    const vacio = out.files.find(f => f.path === 'vacio.txt');
+    expect(vacio).toBeDefined();
+    expect(vacio!.content).toBe('');
+    // src/app.ts sin size en el árbol → size 0 (rama nullish del ??)
+    expect(out.files.find(f => f.path === 'src/app.ts')!.content).toBe('export {}');
+    expect(out.files.find(f => f.path === 'src/app.ts')!.size).toBe(0);
+    // README con contenido decodificado
+    expect(out.files.find(f => f.path === 'README.md')!.content).toBe('# README');
+    // El getRepo por defecto (sin branch) fue consultado una vez
+    expect(fetchMock.mock.calls.some(([u]) => String(u).endsWith('/repos/o/r'))).toBe(true);
+  });
+
+  it('con defaultBranch explícito: no consulta getRepo y lee el árbol de esa rama', async () => {
+    const routes: Array<{ match: RegExp; payload: unknown }> = [
+      {
+        match: /\/git\/trees\/dev\?/,
+        payload: { truncated: false, tree: [{ path: 'doc.md', type: 'blob', size: 12, sha: 's1' }] },
+      },
+      { match: /\/contents\/doc\.md$/, payload: { content: encodeBase64('hola') } },
+    ];
+    const fetchMock = vi.fn().mockImplementation(async (url: string) => {
+      const hit = routes.find(r => r.match.test(url));
+      return { ok: true, json: async () => (hit ? hit.payload : {}) };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const out = await fetchRepoTreeRecursive(TOKEN, 'o', 'r', 'dev');
+    expect(out.allPaths).toEqual(['doc.md']);
+    // nunca consultó /repos/o/r (el meta) porque la rama llegó explícita
+    expect(fetchMock.mock.calls.some(([u]) => String(u).endsWith('/repos/o/r'))).toBe(false);
+  });
+
+  it('sin defaultBranch: el meta inicial decide la rama (aunque trees/main esté 404, nunca se consulta)', async () => {
+    const routes: Array<{ match: RegExp; payload: unknown; status?: number }> = [
+      { match: /\/git\/trees\/main\?/, payload: { message: 'Not Found' }, status: 404 },
+      { match: /^https:\/\/api\.github\.com\/repos\/o\/r$/, payload: { default_branch: 'trunk' } },
+      {
+        match: /\/git\/trees\/trunk\?/,
+        payload: { truncated: true, tree: [{ path: 'a.md', type: 'blob', size: 4, sha: 's1' }] },
+      },
+      { match: /\/contents\/a\.md$/, payload: { content: encodeBase64('hola') } },
+    ];
+    const fetchMock = vi.fn().mockImplementation(async (url: string) => {
+      const hit = routes.find(r => r.match.test(url));
+      return { ok: (hit?.status ?? 200) !== 404, status: hit?.status ?? 200, json: async () => hit!.payload };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    // SIN defaultBranch: la 1ª llamada es getRepo → default_branch 'trunk'; el
+    // árbol consultado es trees/trunk (éxito a la primera). La ruta trees/main 404
+    // queda sin usar: con meta inicial correcto el catch de L510 no se alcanza.
+    const out = await fetchRepoTreeRecursive(TOKEN, 'o', 'r');
+    expect(out.truncated).toBe(true); // treeRes.truncated propagado
+    expect(out.allPaths).toEqual(['a.md']);
+  });
+});
+
+// ── Wrappers REST de github.ts (v4.0.52 #26) ─────────────────────────────────
+// El resto de funciones son envoltorios finos de ghFetch que los módulos
+// consumidores SIEMPRE mockean, así que ningún test las ejercitaba de verdad.
+// Arnés: fetch global con routing por URL + captura de método/body. Los fallos
+// 4xx (404/400/422 y el 429 con GitHubAPIError) NO se reintentan, así que cada
+// llamada implica exactamente 1 fetch y los tests no tienen esperas.
+interface FetchCall { url: string; method: string; body?: unknown }
+interface Route { match: RegExp; payload?: unknown; status?: number; headers?: Record<string, string> }
+
+function routeFetch(routes: Route[]) {
+  const calls: FetchCall[] = [];
+  const fetchMock = vi.fn().mockImplementation(async (url: string | URL, init?: RequestInit) => {
+    const href = String(url);
+    calls.push({
+      url: href,
+      method: init?.method ?? 'GET',
+      body: init?.body ? JSON.parse(String(init.body)) : undefined,
+    });
+    const hit = routes.find(r => r.match.test(href));
+    if (!hit) return { ok: false, status: 404, json: async () => ({ message: `No route: ${href}` }) };
+    const status = hit.status ?? 200;
+    const res: Record<string, unknown> = { ok: status < 400, status, json: async () => hit.payload };
+    if (hit.headers) res.headers = { get: (h: string) => hit.headers?.[h] };
+    return res;
+  });
+  return { fetchMock, calls };
+}
+
+/** Aserción compacta: hubo una llamada con método+URL (y opcionalmente body).
+ *  `from` permite buscar la n-ésima llamada cuando la URL se repite. Devuelve
+ *  el índice encontrado para encadenar la siguiente búsqueda. */
+function expectCall(calls: FetchCall[], method: string, urlRe: RegExp, body?: unknown, from = 0): number {
+  const idx = calls.findIndex((c, i) => i >= from && c.method === method && urlRe.test(c.url));
+  expect(idx, `llamada esperada: ${method} ${urlRe.source}`).toBeGreaterThanOrEqual(0);
+  if (body !== undefined) expect(calls[idx].body).toEqual(body);
+  return idx;
+}
+
+describe('wrappers REST de github.ts (v4.0.52 #26)', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('getUser y listUserRepos: GET /user y /user/repos?per_page=100', async () => {
+    const { fetchMock, calls } = routeFetch([
+      { match: /\/user\/repos\?per_page=100$/, payload: [{ name: 'r', owner: { login: 'u' } }] },
+      { match: /\/user$/, payload: { login: 'u' } },
+    ]);
+    vi.stubGlobal('fetch', fetchMock);
+
+    expect(await getUser(TOKEN)).toEqual({ login: 'u' });
+    expect(await listUserRepos(TOKEN)).toHaveLength(1);
+    expectCall(calls, 'GET', /\/user$/);
+    expectCall(calls, 'GET', /\/user\/repos\?per_page=100$/);
+  });
+
+  it('getLatestReleaseTag: tag_name, sin tag_name → null, 404 → null y 400 → propaga', async () => {
+    const { fetchMock, calls } = routeFetch([
+      { match: /\/repos\/a\/b\/releases\/latest$/, payload: { tag_name: 'v1.2.3' } },
+      { match: /\/repos\/c\/d\/releases\/latest$/, payload: {} }, // sin tag_name → ?? null
+      { match: /\/repos\/e\/f\/releases\/latest$/, payload: { message: 'Not Found' }, status: 404 },
+      { match: /\/repos\/g\/h\/releases\/latest$/, payload: { message: 'Bad Request' }, status: 400 },
+    ]);
+    vi.stubGlobal('fetch', fetchMock);
+
+    expect(await getLatestReleaseTag(TOKEN, 'a', 'b')).toBe('v1.2.3');
+    expect(await getLatestReleaseTag(TOKEN, 'c', 'd')).toBeNull();
+    expect(await getLatestReleaseTag(TOKEN, 'e', 'f')).toBeNull(); // sin releases aún
+    await expect(getLatestReleaseTag(TOKEN, 'g', 'h')).rejects.toMatchObject({ name: 'GitHubAPIError', status: 400 });
+    expect(calls).toHaveLength(4);
+  });
+
+  it('listRecentCommits/listCommitDates: per_page default y explícito; fechas con fallback a committer y filtrado', async () => {
+    const commits = [
+      { sha: 's1', commit: { message: 'm1', author: { date: '2024-01-01' } } },
+      { sha: 's2', commit: { message: 'm2', committer: { date: '2024-01-02' } } },
+      { sha: 's3', commit: { message: 'm3' } }, // sin fechas → filtrado
+    ];
+    const { fetchMock, calls } = routeFetch([
+      { match: /\/repos\/o\/r\/commits\?/, payload: commits },
+    ]);
+    vi.stubGlobal('fetch', fetchMock);
+
+    expect(await listRecentCommits(TOKEN, 'o', 'r')).toEqual([
+      { sha: 's1', message: 'm1' }, { sha: 's2', message: 'm2' }, { sha: 's3', message: 'm3' },
+    ]);
+    await listRecentCommits(TOKEN, 'o', 'r', 7);
+    expect(await listCommitDates(TOKEN, 'o', 'r')).toEqual(['2024-01-01', '2024-01-02']);
+    await listCommitDates(TOKEN, 'o', 'r', 10);
+
+    expectCall(calls, 'GET', /commits\?per_page=50$/);
+    expectCall(calls, 'GET', /commits\?per_page=7$/);
+    expectCall(calls, 'GET', /commits\?per_page=100$/);
+    expectCall(calls, 'GET', /commits\?per_page=10$/);
+  });
+
+  it('getCommit: mapea el detalle y usa [] cuando `files` falta (?? [])', async () => {
+    const detail = {
+      sha: 'abc',
+      commit: { message: 'feat: x', author: { name: 'n', email: 'e', date: 'd' } },
+      files: [{ filename: 'f.ts', status: 'modified', additions: 1, deletions: 0, changes: 1 }],
+    };
+    const { fetchMock, calls } = routeFetch([
+      { match: /\/repos\/a\/b\/commits\/s1$/, payload: detail },
+      { match: /\/repos\/c\/d\/commits\/s2$/, payload: { sha: 'x', commit: detail.commit } }, // sin files
+    ]);
+    vi.stubGlobal('fetch', fetchMock);
+
+    expect(await getCommit(TOKEN, 'a', 'b', 's1')).toEqual({
+      sha: 'abc',
+      message: 'feat: x',
+      author: { name: 'n', email: 'e', date: 'd' },
+      files: detail.files,
+    });
+    expect((await getCommit(TOKEN, 'c', 'd', 's2')).files).toEqual([]);
+    expectCall(calls, 'GET', /commits\/s1$/);
+  });
+
+  it('createRepo/updateRepo: POST con defaults (auto_init) y PATCH de metadatos', async () => {
+    const { fetchMock, calls } = routeFetch([
+      { match: /\/user\/repos$/, payload: { name: 'n' } },
+      { match: /\/repos\/o\/r$/, payload: { name: 'r' } },
+    ]);
+    vi.stubGlobal('fetch', fetchMock);
+
+    await createRepo(TOKEN, 'n');
+    await createRepo(TOKEN, 'n2', 'desc', true);
+    await updateRepo(TOKEN, 'o', 'r', { description: 'nueva' });
+
+    const firstRepoPost = expectCall(calls, 'POST', /\/user\/repos$/, { name: 'n', description: '', private: false, auto_init: true });
+    expectCall(calls, 'POST', /\/user\/repos$/, { name: 'n2', description: 'desc', private: true, auto_init: true }, firstRepoPost + 1);
+    expectCall(calls, 'PATCH', /\/repos\/o\/r$/, { description: 'nueva' });
+  });
+
+  it('repoExists: true (200), false (404) y propaga otros errores (400)', async () => {
+    const { fetchMock } = routeFetch([
+      { match: /\/repos\/si\/existe$/, payload: { name: 'existe' } },
+      { match: /\/repos\/no\/existe$/, payload: { message: 'Not Found' }, status: 404 },
+      { match: /\/repos\/boom\/existe$/, payload: { message: 'Bad Request' }, status: 400 },
+    ]);
+    vi.stubGlobal('fetch', fetchMock);
+
+    expect(await repoExists(TOKEN, 'si', 'existe')).toBe(true);
+    expect(await repoExists(TOKEN, 'no', 'existe')).toBe(false);
+    await expect(repoExists(TOKEN, 'boom', 'existe')).rejects.toMatchObject({ name: 'GitHubAPIError', status: 400 });
+  });
+
+  it('encodeBase64Bytes: chunking por 32 KB (dos pasadas) y roundtrip de texto', () => {
+    expect(encodeBase64Bytes(new Uint8Array([104, 111, 108, 97]))).toBe(btoa('hola'));
+    const big = new Uint8Array(0x8001); // 32769 bytes → 2 iteraciones del chunk
+    big[0] = 65;
+    big[0x8000] = 90;
+    const decoded = atob(encodeBase64Bytes(big));
+    expect(decoded.length).toBe(0x8001);
+    expect(decoded.charCodeAt(0)).toBe(65);
+    expect(decoded.charCodeAt(0x8000)).toBe(90);
+  });
+
+  it('createOrUpdateBinaryFile/createOrUpdateFile/deleteFile: PUT y DELETE en /contents con sha/branch opcionales', async () => {
+    const bytes = new Uint8Array([1, 2, 3]);
+    const { fetchMock, calls } = routeFetch([
+      { match: /\/contents\//, payload: { commit: { sha: 'c1' } } },
+    ]);
+    vi.stubGlobal('fetch', fetchMock);
+
+    await createOrUpdateBinaryFile(TOKEN, 'o', 'r', 'img.png', bytes, 'subo binario', 'sha0', 'feat');
+    expectCall(calls, 'PUT', /\/contents\/img\.png$/, {
+      message: 'subo binario', content: encodeBase64Bytes(bytes), sha: 'sha0', branch: 'feat',
+    });
+    await createOrUpdateBinaryFile(TOKEN, 'o', 'r', 'img2.png', bytes, 'binario nuevo'); // sin sha ni branch
+    expectCall(calls, 'PUT', /\/contents\/img2\.png$/, { message: 'binario nuevo', content: encodeBase64Bytes(bytes) });
+
+    await createOrUpdateFile(TOKEN, 'o', 'r', 'docs/a.md', 'texto', 'msg'); // sin sha ni branch
+    expectCall(calls, 'PUT', /\/contents\/docs\/a\.md$/, { message: 'msg', content: encodeBase64('texto') });
+    await createOrUpdateFile(TOKEN, 'o', 'r', 'docs/b.md', 'texto2', 'msg2', 'sha1', 'dev'); // actualización en rama
+    expectCall(calls, 'PUT', /\/contents\/docs\/b\.md$/, { message: 'msg2', content: encodeBase64('texto2'), sha: 'sha1', branch: 'dev' });
+
+    await deleteFile(TOKEN, 'o', 'r', 'docs/a.md', 'sha0', 'borro');
+    expectCall(calls, 'DELETE', /\/contents\/docs\/a\.md$/, { message: 'borro', sha: 'sha0' });
+  });
+
+  it('fetchRepoTreeRecursive: priorityScore ordena por prioridad y el cap de 120 activa truncated', async () => {
+    const tree = [
+      { path: 'otro.txt', type: 'blob', size: 10, sha: 's1' },
+      { path: 'script.py', type: 'blob', size: 10, sha: 's2' },
+      { path: 'tsconfig.json', type: 'blob', size: 10, sha: 's3' },
+      { path: 'MEJORAS_FUTURAS.md', type: 'blob', size: 10, sha: 's4' },
+      { path: 'package.json', type: 'blob', size: 10, sha: 's5' },
+      { path: 'README.md', type: 'blob', size: 10, sha: 's6' },
+      { path: 'src/app.ts', type: 'blob', size: 10, sha: 's7' },
+      { path: 'carpeta', type: 'tree', sha: 's8' }, // no blob → fuera
+      { path: 'logo.png', type: 'blob', size: 10, sha: 's9' }, // binario → fuera del texto
+    ];
+    const many = Array.from({ length: 121 }, (_, i) => ({ path: `m/f${i}.md`, type: 'blob', size: 4, sha: `x${i}` }));
+
+    const { fetchMock, calls } = routeFetch([
+      { match: /\/git\/trees\/main\?/, payload: { truncated: false, tree: [...many, ...tree] } },
+      { match: /\/contents\//, payload: { content: encodeBase64('x') } },
+    ]);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const out = await fetchRepoTreeRecursive(TOKEN, 'o', 'r', 'main');
+
+    // 121 (m/*) + 7 textos = 128 blobs elegibles → cap 120 → truncated
+    expect(out.totalScanned).toBe(128);
+    expect(out.files).toHaveLength(120);
+    expect(out.truncated).toBe(true);
+    // El sort es estable: en el score-1, MEJORAS_FUTURAS.md precede a package.json
+    // porque así venían en el árbol original. Orden: README(0) < docs raíz(1) y
+    // package.json(1) < src/(2) < tsconfig.json(3) < script.py(4) < resto(5).
+    expect(out.allPaths.slice(0, 6)).toEqual([
+      'README.md', 'MEJORAS_FUTURAS.md', 'package.json', 'src/app.ts', 'tsconfig.json', 'script.py',
+    ]);
+    expect(out.allPaths[out.allPaths.length - 1]).toBe('otro.txt');
+    expect(out.binaryPaths).toEqual(['logo.png']);
+    expect(calls.filter(c => /\/contents\//.test(c.url))).toHaveLength(120);
+  });
+
+  it('fetchRepoTreeRecursive: getRepo 404 o sin default_branch → rama "main" (catch + || de L497)', async () => {
+    const { fetchMock, calls } = routeFetch([
+      { match: /\/repos\/a\/b$/, payload: { message: 'Not Found' }, status: 404 },
+      { match: /\/repos\/c\/d$/, payload: { default_branch: '' } },
+      { match: /\/git\/trees\/main\?/, payload: { truncated: false, tree: [{ path: 'x.md', type: 'blob', size: 2, sha: 's' }] } },
+      { match: /\/contents\/x\.md$/, payload: { content: encodeBase64('y') } },
+    ]);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const out1 = await fetchRepoTreeRecursive(TOKEN, 'a', 'b'); // getRepo 404 → catch → 'main'
+    expect(out1.allPaths).toEqual(['x.md']);
+    const out2 = await fetchRepoTreeRecursive(TOKEN, 'c', 'd'); // default_branch '' → || 'main'
+    expect(out2.allPaths).toEqual(['x.md']);
+    expect(calls.filter(c => /\/git\/trees\/main\?/.test(c.url))).toHaveLength(2);
+  });
+
+  it('fetchRepoTreeRecursive: árbol 404 y meta con la MISMA rama → propaga el 404 (else de L517)', async () => {
+    const { fetchMock, calls } = routeFetch([
+      { match: /\/repos\/o\/r$/, payload: { default_branch: 'main' } },
+      { match: /\/git\/trees\/main\?/, payload: { message: 'Not Found' }, status: 404 },
+    ]);
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(fetchRepoTreeRecursive(TOKEN, 'o', 'r')).rejects.toMatchObject({ name: 'GitHubAPIError', status: 404 });
+    // getRepo consultado 2 veces (inicial + re-check del catch) y el árbol 1 vez
+    expect(calls.filter(c => /\/repos\/o\/r$/.test(c.url))).toHaveLength(2);
+  });
+
+  it('fetchRepoTreeRecursive: error no-404 del árbol (400) con branch explícita → propaga (else de L520)', async () => {
+    const { fetchMock } = routeFetch([
+      { match: /\/git\/trees\/dev\?/, payload: { message: 'Bad Request' }, status: 400 },
+    ]);
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(fetchRepoTreeRecursive(TOKEN, 'o', 'r', 'dev')).rejects.toMatchObject({ name: 'GitHubAPIError', status: 400 });
+  });
+
+  it('fetchRepoTreeRecursive: contents que falla se descarta vía allSettled y el resto entra', async () => {
+    const { fetchMock, calls } = routeFetch([
+      {
+        match: /\/git\/trees\/main\?/,
+        payload: {
+          truncated: false,
+          tree: [
+            { path: 'a.md', type: 'blob', size: 4, sha: 's1' },
+            { path: 'b.md', type: 'blob', size: 4, sha: 's2' },
+          ],
+        },
+      },
+      { match: /\/contents\/a\.md$/, payload: { message: 'Not Found' }, status: 404 },
+      { match: /\/contents\/b\.md$/, payload: { content: encodeBase64('hola') } },
+    ]);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const out = await fetchRepoTreeRecursive(TOKEN, 'o', 'r', 'main');
+
+    expect(out.files).toEqual([{ path: 'b.md', content: 'hola', size: 4 }]);
+    expect(out.allPaths).toEqual(['a.md', 'b.md']); // el árbol completo sí incluye a.md
+    expect(calls.filter(c => /\/contents\//.test(c.url))).toHaveLength(2);
+  });
+
+  it('issues: listIssues (state default y explícito), createIssue (defaults), updateIssueState y commentOnIssue', async () => {
+    const { fetchMock, calls } = routeFetch([
+      { match: /\/issues\?state=/, payload: [{ number: 1 }] },
+      { match: /\/repos\/o\/r\/issues$/, payload: { number: 2 } },
+      { match: /\/issues\/7$/, payload: { number: 7 } },
+      { match: /\/issues\/7\/comments$/, payload: { id: 9, body: 'hola', created_at: 't' } },
+    ]);
+    vi.stubGlobal('fetch', fetchMock);
+
+    await listIssues(TOKEN, 'o', 'r');
+    await listIssues(TOKEN, 'o', 'r', 'closed');
+    await createIssue(TOKEN, 'o', 'r', 'Título');
+    await createIssue(TOKEN, 'o', 'r', 'T2', 'cuerpo', ['bug'], ['yo']);
+    await updateIssueState(TOKEN, 'o', 'r', 7, 'closed');
+    expect(await commentOnIssue(TOKEN, 'o', 'r', 7, 'hola')).toEqual({ id: 9, body: 'hola', created_at: 't' });
+
+    expectCall(calls, 'GET', /issues\?state=open&per_page=100$/);
+    expectCall(calls, 'GET', /issues\?state=closed&per_page=100$/);
+    const firstIssuePost = expectCall(calls, 'POST', /\/repos\/o\/r\/issues$/, { title: 'Título', body: '', labels: [], assignees: [] });
+    expectCall(calls, 'POST', /\/repos\/o\/r\/issues$/, { title: 'T2', body: 'cuerpo', labels: ['bug'], assignees: ['yo'] }, firstIssuePost + 1);
+    expectCall(calls, 'PATCH', /\/issues\/7$/, { state: 'closed' });
+    expectCall(calls, 'POST', /\/issues\/7\/comments$/, { body: 'hola' });
+  });
+
+  it('getIssueOrPr + getIssueComments: paginado 100+1', async () => {
+    const mk = (i: number) => ({ id: i, body: `b${i}`, user: { login: 'u' }, created_at: '2024-01-01T00:00:00Z' });
+    const { fetchMock, calls } = routeFetch([
+      { match: /\/repos\/o\/r\/issues\/5$/, payload: { number: 5, title: 't', body: null, state: 'open', html_url: 'u', user: null, pull_request: {} } },
+      { match: /\/issues\/5\/comments\?per_page=100&page=1$/, payload: Array.from({ length: 100 }, (_, i) => mk(i)) },
+      { match: /\/issues\/5\/comments\?per_page=100&page=2$/, payload: [mk(100)] },
+      { match: /\/issues\/5\/comments/, payload: [] },
+    ]);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const issue = await getIssueOrPr(TOKEN, 'o', 'r', 5);
+    expect(issue.pull_request).toBeDefined(); // es un PR disfrazado de issue
+    const comments = await getIssueComments(TOKEN, 'o', 'r', 5);
+    expect(comments).toHaveLength(101);
+    expect(comments[0]).toEqual(mk(0));
+    expect(comments[100]).toEqual(mk(100));
+    expectCall(calls, 'GET', /issues\/5\/comments\?per_page=100&page=1$/);
+    expectCall(calls, 'GET', /issues\/5\/comments\?per_page=100&page=2$/);
+  });
+
+  it('getPullReviewComments: paginado 100+1 sobre /pulls/{n}/comments', async () => {
+    const mk = (i: number) => ({ id: i, body: `b${i}`, user: null, created_at: 't', path: 'a.ts', line: 3 });
+    const { fetchMock, calls } = routeFetch([
+      { match: /\/pulls\/9\/comments\?per_page=100&page=1$/, payload: Array.from({ length: 100 }, (_, i) => mk(i)) },
+      { match: /\/pulls\/9\/comments\?per_page=100&page=2$/, payload: [mk(100)] },
+    ]);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const out = await getPullReviewComments(TOKEN, 'o', 'r', 9);
+    expect(out).toHaveLength(101);
+    expectCall(calls, 'GET', /pulls\/9\/comments\?per_page=100&page=1$/);
+    expectCall(calls, 'GET', /pulls\/9\/comments\?per_page=100&page=2$/);
+  });
+
+  it('PRs: listPullRequests (default y explícito), createPullRequest (defaults) y mergePullRequest (método default y explícito)', async () => {
+    const { fetchMock, calls } = routeFetch([
+      { match: /\/pulls\?state=/, payload: [{ number: 1 }] },
+      { match: /\/repos\/o\/r\/pulls$/, payload: { number: 2 } },
+      { match: /\/pulls\/3\/merge$/, payload: { sha: 'm', merged: true, message: 'ok' } },
+    ]);
+    vi.stubGlobal('fetch', fetchMock);
+
+    await listPullRequests(TOKEN, 'o', 'r');
+    await listPullRequests(TOKEN, 'o', 'r', 'all');
+    await createPullRequest(TOKEN, 'o', 'r', 'T', 'feat', 'main');
+    await createPullRequest(TOKEN, 'o', 'r', 'T2', 'feat', 'main', 'cuerpo', true);
+    await mergePullRequest(TOKEN, 'o', 'r', 3);
+    expect(await mergePullRequest(TOKEN, 'o', 'r', 3, 'squash', 'Título', 'Mensaje')).toEqual({ sha: 'm', merged: true, message: 'ok' });
+
+    expectCall(calls, 'GET', /pulls\?state=open&per_page=100$/);
+    expectCall(calls, 'GET', /pulls\?state=all&per_page=100$/);
+    const firstPrPost = expectCall(calls, 'POST', /\/repos\/o\/r\/pulls$/, { title: 'T', head: 'feat', base: 'main', body: '', draft: false });
+    expectCall(calls, 'POST', /\/repos\/o\/r\/pulls$/, { title: 'T2', head: 'feat', base: 'main', body: 'cuerpo', draft: true }, firstPrPost + 1);
+    const firstMerge = expectCall(calls, 'PUT', /pulls\/3\/merge$/, { merge_method: 'merge' }); // undefineds se descartan en JSON
+    expectCall(calls, 'PUT', /pulls\/3\/merge$/, { merge_method: 'squash', commit_title: 'Título', commit_message: 'Mensaje' }, firstMerge + 1);
+  });
+
+  it('branches: listBranches, getBranchSha, createBranch y deleteBranch (sin headers extra → `|| {}` de ghFetch)', async () => {
+    const { fetchMock, calls } = routeFetch([
+      { match: /\/branches\?per_page=100$/, payload: [{ name: 'main' }] },
+      { match: /\/git\/ref\/heads\/main$/, payload: { object: { sha: 'SHA1' } } },
+      { match: /\/git\/refs$/, payload: { ref: 'refs/heads/feat' } },
+      { match: /\/git\/refs\/heads\//, payload: {} },
+    ]);
+    vi.stubGlobal('fetch', fetchMock);
+
+    expect(await listBranches(TOKEN, 'o', 'r')).toEqual([{ name: 'main' }]);
+    expect(await getBranchSha(TOKEN, 'o', 'r', 'main')).toBe('SHA1');
+    await createBranch(TOKEN, 'o', 'r', 'feat', 'SHA1');
+    await deleteBranch(TOKEN, 'o', 'r', 'feat');
+
+    expectCall(calls, 'GET', /branches\?per_page=100$/);
+    expectCall(calls, 'GET', /git\/ref\/heads\/main$/);
+    expectCall(calls, 'POST', /\/git\/refs$/, { ref: 'refs/heads/feat', sha: 'SHA1' });
+    expectCall(calls, 'DELETE', /git\/refs\/heads\/feat$/);
+  });
+
+  it('git data: createBlob (encoding default), createTree (con/sin base_tree), createCommit y updateRef', async () => {
+    const { fetchMock, calls } = routeFetch([
+      { match: /\/git\/blobs$/, payload: { sha: 'B1' } },
+      { match: /\/git\/trees$/, payload: { sha: 'T1' } },
+      { match: /\/git\/commits$/, payload: { sha: 'C1' } },
+      { match: /\/git\/refs\//, payload: { ok: true } },
+    ]);
+    vi.stubGlobal('fetch', fetchMock);
+
+    expect(await createBlob(TOKEN, 'o', 'r', 'contenido')).toEqual({ sha: 'B1' });
+    expect(await createBlob(TOKEN, 'o', 'r', 'YmFzZTY0', 'base64')).toEqual({ sha: 'B1' });
+    expect(await createTree(TOKEN, 'o', 'r', 'BT', [{ path: 'a', sha: 'sa' }, { path: 'b', sha: 'sb', mode: '100755' }])).toEqual({ sha: 'T1' });
+    expect(await createTree(TOKEN, 'o', 'r', null, [{ path: 'c', sha: 'sc' }])).toEqual({ sha: 'T1' });
+    expect(await createCommit(TOKEN, 'o', 'r', 'msg', 'T1', ['p1', 'p2'])).toEqual({ sha: 'C1' });
+    await updateRef(TOKEN, 'o', 'r', 'heads/main', 'C1');
+
+    const firstBlob = expectCall(calls, 'POST', /git\/blobs$/, { content: 'contenido', encoding: 'utf-8' });
+    expectCall(calls, 'POST', /git\/blobs$/, { content: 'YmFzZTY0', encoding: 'base64' }, firstBlob + 1);
+    const firstTree = expectCall(calls, 'POST', /git\/trees$/, {
+      tree: [
+        { path: 'a', mode: '100644', type: 'blob', sha: 'sa' }, // sin mode → ?? '100644'
+        { path: 'b', mode: '100755', type: 'blob', sha: 'sb' },
+      ],
+      base_tree: 'BT',
+    });
+    expectCall(calls, 'POST', /git\/trees$/, { tree: [{ path: 'c', mode: '100644', type: 'blob', sha: 'sc' }] }, firstTree + 1); // sin base_tree
+    expectCall(calls, 'POST', /git\/commits$/, { message: 'msg', tree: 'T1', parents: ['p1', 'p2'] });
+    expectCall(calls, 'PATCH', /git\/refs\/heads\/main$/, { sha: 'C1', force: false });
+  });
+
+  it('workflows: listWorkflows, listWorkflowRuns (con/sin status) y triggerWorkflowRun', async () => {
+    const { fetchMock, calls } = routeFetch([
+      { match: /\/actions\/workflows$/, payload: { workflows: [{ id: 1, name: 'CI' }] } },
+      { match: /\/workflows\/99\/runs\?status=/, payload: { workflow_runs: [{ id: 5 }] } },
+      { match: /\/workflows\/99\/runs$/, payload: { workflow_runs: [] } },
+      { match: /\/actions\/runs\/5\/rerun$/, payload: { rerun: true } },
+    ]);
+    vi.stubGlobal('fetch', fetchMock);
+
+    expect(await listWorkflows(TOKEN, 'o', 'r')).toEqual([{ id: 1, name: 'CI' }]);
+    expect(await listWorkflowRuns(TOKEN, 'o', 'r', 99)).toEqual([]);
+    expect(await listWorkflowRuns(TOKEN, 'o', 'r', 99, 'success')).toEqual([{ id: 5 }]);
+    expect(await triggerWorkflowRun(TOKEN, 'o', 'r', 5)).toEqual({ rerun: true });
+
+    expectCall(calls, 'GET', /actions\/workflows$/);
+    expectCall(calls, 'GET', /workflows\/99\/runs$/);
+    expectCall(calls, 'GET', /workflows\/99\/runs\?status=success$/);
+    expectCall(calls, 'POST', /actions\/runs\/5\/rerun$/);
+  });
+
+  it('listAllRepos: paginado 100+1 hasta que una página viene incompleta', async () => {
+    const repos = (n0: number, count: number) =>
+      Array.from({ length: count }, (_, i) => ({ name: `r${n0 + i}`, owner: { login: 'u' } }));
+    const { fetchMock, calls } = routeFetch([
+      { match: /\/user\/repos\?per_page=100&page=1&sort=updated$/, payload: repos(0, 100) },
+      { match: /\/user\/repos\?per_page=100&page=2&sort=updated$/, payload: repos(100, 1) },
+    ]);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const all = await listAllRepos(TOKEN);
+    expect(all).toHaveLength(101);
+    expect(all[100]).toEqual({ name: 'r100', owner: { login: 'u' } });
+    expectCall(calls, 'GET', /user\/repos\?per_page=100&page=1&sort=updated$/);
+    expectCall(calls, 'GET', /user\/repos\?per_page=100&page=2&sort=updated$/);
+  });
+
+  it('fetchRepoTreeRecursive: branch explícita 404 → re-fetch con la default_branch real del meta (then de L512)', async () => {
+    const { fetchMock, calls } = routeFetch([
+      { match: /\/repos\/o\/r$/, payload: { default_branch: 'trunk' } },
+      { match: /\/git\/trees\/main\?/, payload: { message: 'Not Found' }, status: 404 },
+      { match: /\/git\/trees\/trunk\?/, payload: { truncated: true, tree: [{ path: 'a.md', type: 'blob', size: 4, sha: 's1' }] } },
+      { match: /\/contents\/a\.md$/, payload: { content: encodeBase64('hola') } },
+    ]);
+    vi.stubGlobal('fetch', fetchMock);
+
+    // Con branch explícita 'main' NO hay getRepo inicial: el árbol 404 → catch →
+    // meta → 'trunk' ≠ 'main' → re-fetch del árbol en trunk (L512-516).
+    const out = await fetchRepoTreeRecursive(TOKEN, 'o', 'r', 'main');
+    expect(out.truncated).toBe(true);
+    expect(out.allPaths).toEqual(['a.md']);
+    expect(calls.filter(c => /\/git\/trees\/trunk\?/.test(c.url))).toHaveLength(1);
+  });
+
+  it('compareCommits: mapea los commits del payload (callback del map)', async () => {
+    const { fetchMock } = routeFetch([
+      { match: /\/compare\/main\.\.\.feat$/, payload: { commits: [{ sha: 's1', commit: { message: 'm1' } }, { sha: 's2', commit: { message: 'm2' } }] } },
+    ]);
+    vi.stubGlobal('fetch', fetchMock);
+
+    expect(await compareCommits(TOKEN, 'o', 'r', 'main', 'feat')).toEqual([
+      { sha: 's1', message: 'm1' }, { sha: 's2', message: 'm2' },
+    ]);
+  });
+
+  it('ghFetch: 429 → GitHubAPIError con rateLimitInfo, mensaje pedagógico y SIN reintento', async () => {
+    const reset = Math.floor(Date.now() / 1000) + 600;
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+      json: async () => ({ message: 'API rate limit exceeded' }),
+      headers: { get: (h: string) => (h === 'X-RateLimit-Reset' ? String(reset) : '0') },
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const err = await ghFetch(TOKEN, '/repos/o/r').catch(e => e) as GitHubAPIError;
+    expect(err.name).toBe('GitHubAPIError');
+    expect(err.status).toBe(429);
+    expect(err.message).toContain('Rate limit alcanzado');
+    expect(err.rateLimitInfo?.resetTime).toBe(reset);
+    expect(err.rateLimitInfo?.remainingSeconds).toBeGreaterThanOrEqual(595);
+    // 429 con GitHubAPIError no es transitorio → 1 sola llamada (sin backoff de 800/1600 ms)
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('ghFetch: body sin message y json() roto → mensaje fallback "GitHub API <status>: <path>"', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: false, status: 422, json: async () => ({}) }) // sin message
+      .mockResolvedValueOnce({ ok: false, status: 422, json: () => Promise.reject(new Error('json roto')) }); // catch(() => ({}))
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(ghFetch(TOKEN, '/x')).rejects.toMatchObject({ name: 'GitHubAPIError', message: 'GitHub API 422: /x' });
+    await expect(ghFetch(TOKEN, '/y')).rejects.toMatchObject({ name: 'GitHubAPIError', message: 'GitHub API 422: /y' });
+    expect(fetchMock).toHaveBeenCalledTimes(2); // 422 no se reintenta
   });
 });

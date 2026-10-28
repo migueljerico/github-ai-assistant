@@ -196,4 +196,51 @@ describe('AIProviderContext', () => {
     expect(result.current).toBeDefined();
     expect(result.current?.isConnected).toBe(false);
   });
+
+  // ── Ramas restantes (#26, v4.0.52) ───────────────────────────────────────────
+  it('connect sin accountId: accountId queda a null y el timeout sin preferencia es null (#26)', () => {
+    const { result } = renderHook(() => useAIProvider(), {
+      wrapper: AIProviderContextProvider,
+    });
+    act(() => {
+      result.current.connect('groq', 'key', 'llama-3.3-70b');
+    });
+    expect(result.current.accountId).toBeNull();
+    expect(result.current.timeoutMs).toBeNull();
+  });
+
+  it('connect con preferencia guardada: hidrata el timeout (#73, #26)', () => {
+    sessionStorage.setItem('ai_provider_pref', JSON.stringify({
+      provider: 'groq', model: 'llama-3.3-70b', timeoutMs: 55000,
+    }));
+    const { result } = renderHook(() => useAIProvider(), {
+      wrapper: AIProviderContextProvider,
+    });
+    act(() => {
+      result.current.connect('gemini', 'key', 'gemini-2.5-flash');
+    });
+    expect(result.current.timeoutMs).toBe(55000);
+  });
+
+  it('setTimeoutMs sin conexión: solo estado interno, no persiste (#26)', () => {
+    const { result } = renderHook(() => useAIProvider(), {
+      wrapper: AIProviderContextProvider,
+    });
+    act(() => {
+      result.current.setTimeoutMs(60000);
+    });
+    expect(result.current.timeoutMs).toBe(60000);
+    expect(sessionStorage.getItem('ai_provider_pref')).toBeNull();
+  });
+
+  it('setModel sin proveedor conectado: no persiste preferencia (#26)', () => {
+    const { result } = renderHook(() => useAIProvider(), {
+      wrapper: AIProviderContextProvider,
+    });
+    act(() => {
+      result.current.setModel('solo-modelo');
+    });
+    expect(result.current.model).toBe('solo-modelo');
+    expect(sessionStorage.getItem('ai_provider_pref')).toBeNull();
+  });
 });

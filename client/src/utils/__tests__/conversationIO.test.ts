@@ -96,3 +96,42 @@ describe('conversationFilename', () => {
   });
 });
 
+
+describe('tolerancia a timestamp en string y mensajes sin `action` (v4.0.52 #26)', () => {
+  it('serializeConversation acepta un timestamp como string ISO y no serializa `action`', () => {
+    const asString = '2026-06-27T10:00:00Z';
+    // Cast intencionado: en runtime un mensaje revivido de JSON puede llegar
+    // como string; el serializador lo normaliza a ISO (rama falsa de instanceof).
+    const msg = { id: '9', role: 'assistant', content: 'hola', timestamp: asString } as unknown as ChatMessage;
+    const parsed = JSON.parse(serializeConversation([msg], [], 'owner/repo'));
+    expect(parsed.messages[0]).toEqual({
+      id: '9', role: 'assistant', content: 'hola', timestamp: new Date(asString).toISOString(),
+    });
+  });
+
+  it('parseConversation sin conversationHistory ni `action` devuelve defaults sanos', () => {
+    const json = JSON.stringify({
+      version: 1,
+      repoContextName: 'owner/repo',
+      messages: [
+        { id: '1', role: 'user', content: 'hola', timestamp: new Date('2026-06-27T10:00:00Z').toISOString() },
+      ],
+    });
+    const parsed = parseConversation(json);
+    expect(parsed.messages).toHaveLength(1);
+    expect(parsed.messages[0].action).toBeUndefined();
+    expect(parsed.conversationHistory).toEqual([]);
+  });
+
+  it('serializeConversation conserva el `action` cuando existe (#26, v4.0.52)', () => {
+    const msg = {
+      id: '10',
+      role: 'assistant',
+      content: 'hecho',
+      timestamp: new Date('2026-06-27T11:00:00Z'),
+      action: 'read',
+    } as unknown as ChatMessage;
+    const parsed = JSON.parse(serializeConversation([msg], [], 'owner/repo'));
+    expect(parsed.messages[0].action).toBe('read');
+  });
+});

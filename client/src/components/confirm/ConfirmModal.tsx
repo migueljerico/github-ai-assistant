@@ -31,7 +31,11 @@ export default function ConfirmModal({
   const isMulti = targetRepos.length > 1;
   const modalRef = useModalDialog<HTMLDivElement>(onCancel);
 
-  const hasDiff = !!action.contenidoActual && !!action.contenidoPropuesto;
+  // #26 (v4.0.52): alias para el render del diff — hasDiff garantiza ambos
+  // contenidos no-null, así que los `?? ''` del render eran ramas muertas.
+  const current = action.contenidoActual;
+  const proposed = action.contenidoPropuesto;
+  const hasDiff = !!current && !!proposed;
   const isNewFile = !action.contenidoActual && !!action.contenidoPropuesto;
 
   // #53: el textarea de commit solo aplica a acciones que van a crear/editar/
@@ -110,7 +114,9 @@ export default function ConfirmModal({
           {isMulti && (
             <div style={{ marginBottom: '16px' }}>
               <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-                {t(targetRepos.length !== 1 ? 'modal.confirm.multiRepoTextPlural' : 'modal.confirm.multiRepoText', { count: targetRepos.length })}
+                {/* #26 (v4.0.52): sin ternario — isMulti es length > 1, así que
+                    la rama singular era inalcanzable; siempre se usa la clave plural */}
+                {t('modal.confirm.multiRepoTextPlural', { count: targetRepos.length })}
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                 {targetRepos.map((repo, i) => (
@@ -132,8 +138,8 @@ export default function ConfirmModal({
           {hasDiff && (
             <DiffViewer
               filename={action.archivo ?? t('modal.confirm.defaultFile')}
-              oldContent={action.contenidoActual ?? ''}
-              newContent={action.contenidoPropuesto ?? ''}
+              oldContent={current as string}
+              newContent={proposed as string}
             />
           )}
 

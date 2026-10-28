@@ -85,3 +85,19 @@ describe('releaseGenerator', () => {
     });
   });
 });
+
+describe('createGitHubRelease — mensaje de error sin `message` en el body (#26, v4.0.52)', () => {
+  it('usa statusText cuando el body del error no trae message', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({}), {
+      status: 422,
+      statusText: 'Unprocessable Entity',
+    })));
+    try {
+      await expect(
+        createGitHubRelease('tok', 'o', 'r', { version: 'v1.0.0', title: 'T', body: 'B' }),
+      ).rejects.toThrow('Error al crear release: Unprocessable Entity');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});

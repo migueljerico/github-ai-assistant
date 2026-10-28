@@ -524,7 +524,10 @@ export async function fetchRepoTreeRecursive(
 
   const allFiles = treeRes.tree
     .filter(item => item.type === 'blob')
-    .filter(item => !isBinary(item.path.split('/').pop() || ''))
+    // #26 (v4.0.52): sin `|| ''` — `split().pop()` nunca devuelve undefined en
+    // runtime (el split de un string siempre genera ≥1 elemento), así que el
+    // fallback era una rama muerta; el cast solo anula el `| undefined` del tipo.
+    .filter(item => !isBinary(item.path.split('/').pop() as string))
     .filter(item => (item.size ?? 0) <= MAX_FILE_SIZE);
 
   allFiles.sort((a, b) => priorityScore(a.path) - priorityScore(b.path));
@@ -554,7 +557,8 @@ export async function fetchRepoTreeRecursive(
   // generación de docs preserve las vistas previas que referencian imágenes reales.
   const binaryPaths = treeRes.tree
     .filter(item => item.type === 'blob')
-    .filter(item => isBinary(item.path.split('/').pop() || ''))
+    // #26 (v4.0.52): mismo cast que arriba — el `|| ''` era rama muerta.
+    .filter(item => isBinary(item.path.split('/').pop() as string))
     .map(item => item.path);
 
   return { files: results, totalScanned: allFiles.length, truncated, allPaths, binaryPaths };

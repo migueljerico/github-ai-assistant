@@ -50,19 +50,17 @@ export interface PowerBIResult {
   truncated: boolean;
 }
 
-/** Decodifica un entry UTF-16LE (con posible BOM) y lo parsea como JSON. */
+/** Decodifica un entry UTF-16LE y lo parsea como JSON. */
 function decodeUtf16Json(bytes: Uint8Array): unknown {
-  let text = new TextDecoder('utf-16le').decode(bytes);
-  // Quita el BOM (U+FEFF) si TextDecoder no lo eliminó.
-  if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
-  return JSON.parse(text);
+  // v4.0.52 (#26): sin recorte manual de BOM — WHATWG Encoding ya lo elimina por
+  // defecto (TextDecoder con ignoreBOM: false, verificado en Node) y la rama
+  // `charCodeAt(0) === 0xFEFF` jamás se ejecutaba (código muerto sin cobertura).
+  return JSON.parse(new TextDecoder('utf-16le').decode(bytes));
 }
 
-/** Decodifica un entry UTF-8 (con posible BOM) como texto plano (p. ej. el `.m`). */
+/** Decodifica un entry UTF-8 como texto plano (p. ej. el `.m`). */
 function decodeUtf8(bytes: Uint8Array): string {
-  let text = new TextDecoder('utf-8').decode(bytes);
-  if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
-  return text;
+  return new TextDecoder('utf-8').decode(bytes);
 }
 
 /** Busca un entry del zip por clave exacta o por su nombre final (case-insensitive). */
@@ -187,10 +185,9 @@ function base64ToBytes(b64: string): Uint8Array {
 /** Decodifica bytes como texto probando UTF-8 y, si parece UTF-16, UTF-16LE. */
 function decodeText(bytes: Uint8Array): string {
   // Heurística: muchos bytes nulos en posiciones pares ⇒ UTF-16LE.
+  // (Sin recorte de BOM: TextDecoder ya lo elimina, rama muerta — v4.0.52 #26.)
   if (bytes.length >= 2 && bytes[1] === 0x00 && bytes[0] !== 0x00) {
-    let t = new TextDecoder('utf-16le').decode(bytes);
-    if (t.charCodeAt(0) === 0xfeff) t = t.slice(1);
-    return t;
+    return new TextDecoder('utf-16le').decode(bytes);
   }
   return decodeUtf8(bytes);
 }

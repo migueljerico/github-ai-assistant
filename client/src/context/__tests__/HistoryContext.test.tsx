@@ -116,7 +116,7 @@ describe('HistoryContext', () => {
     expect(result.current.entries).toEqual([]);
   });
 
-  it('exportLog construye el blob, el nombre de archivo y dispara la descarga', () => {
+  it('exportLog construye el blob, el nombre de archivo y dispara la descarga', async () => {
     const { result } = renderHook(() => useHistory(), { wrapper: HistoryProvider });
 
     // Entrada completada y otra en error para cubrir los dos emojis principales
@@ -133,6 +133,13 @@ describe('HistoryContext', () => {
     act(() => {
       result.current.updateEntry(ids[0], { status: 'completed' });
       result.current.updateEntry(ids[1], { status: 'error' });
+    });
+
+    // #26 (v4.0.52): entrada SIN repo — cubre el falso del ternario del sufijo
+    act(() => {
+      result.current.addEntry(
+        baseEntry({ status: 'pending', description: 'sin repo', repo: null }),
+      );
     });
 
     const createObjectURL = vi.fn(() => 'blob:mock-url');
@@ -161,6 +168,17 @@ describe('HistoryContext', () => {
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
     expect(appendSpy).toHaveBeenCalled();
     expect(removeSpy).toHaveBeenCalled();
+
+    // #26 (v4.0.52): el contenido del blob usa el sufijo `· repo` solo cuando
+    // la entrada lo trae (rama falsa del ternario).
+    vi.restoreAllMocks();
+    const blob = (createObjectURL as unknown as { mock: { calls: unknown[][] } }).mock.calls[0][0] as Blob;
+    const text = await blob.text();
+    expect(text).toContain('crear repo · demo');
+    expect(text).toContain('falló algo · otro');
+    const third = text.split('\n')[3];
+    expect(third).toContain('sin repo');
+    expect(third).not.toContain('·');
 
     vi.restoreAllMocks();
   });

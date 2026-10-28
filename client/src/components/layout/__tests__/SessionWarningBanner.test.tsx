@@ -263,4 +263,78 @@ describe('SessionWarningBanner', () => {
     expect(screen.getByText(/Clave de IA/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Reconectar GitHub/i })).toBeInTheDocument();
   });
+
+  // ── Ramas restantes (#26, v4.0.52) ──────────────────────────────────────────
+  it('conectado pero SIN connectedAt: el segundo operando del && frena el aviso (v4.0.52 #26)', () => {
+    vi.mocked(useAuth).mockReturnValue({
+      isAuthenticated: true,
+      connectedAt: null,
+      token: 'ghp_mocktoken',
+      user: { login: 'test' } as any,
+      isLoading: false,
+      error: null,
+      loginWithPat: vi.fn(),
+      logout: vi.fn(),
+      initiateOAuth: vi.fn(),
+      setTokenFromOAuth: vi.fn(),
+    });
+
+    vi.mocked(useAIProvider).mockReturnValue({
+      isConnected: true,
+      connectedAt: null,
+      provider: 'gemini',
+      apiKey: 'test-key',
+      model: 'gemini-2.5-flash',
+      accountId: null,
+      timeoutMs: null,
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+      setTimeoutMs: vi.fn(),
+      setModel: vi.fn(),
+    });
+
+    render(<SessionWarningBanner />);
+    expect(screen.queryByText(/Token de GitHub/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Clave de IA/)).not.toBeInTheDocument();
+  });
+
+  it('segundo tick del intervalo con los mismos avisos: el comparador por valor devuelve el estado previo (v4.0.52 #26)', () => {
+    vi.mocked(useAuth).mockReturnValue({
+      isAuthenticated: true,
+      connectedAt: Date.now() - 9 * 60 * 60 * 1000,
+      token: 'ghp_mocktoken',
+      user: { login: 'test' } as any,
+      isLoading: false,
+      error: null,
+      loginWithPat: vi.fn(),
+      logout: vi.fn(),
+      initiateOAuth: vi.fn(),
+      setTokenFromOAuth: vi.fn(),
+    });
+
+    vi.mocked(useAIProvider).mockReturnValue({
+      isConnected: false,
+      connectedAt: null,
+      provider: null,
+      apiKey: null,
+      model: null,
+      accountId: null,
+      timeoutMs: null,
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+      setTimeoutMs: vi.fn(),
+      setModel: vi.fn(),
+    });
+
+    render(<SessionWarningBanner />);
+    expect(screen.getByText(/Token de GitHub/)).toBeInTheDocument();
+
+    // Segunda ejecución de checkTTL (interval): prev y next son idénticos →
+    // prev.every(...) se invoca (ambos operandos del &&) → same → devuelve prev.
+    act(() => {
+      vi.advanceTimersByTime(61_000);
+    });
+
+    expect(screen.getByText(/Token de GitHub/)).toBeInTheDocument();
+  });
 });

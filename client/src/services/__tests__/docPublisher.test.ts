@@ -514,3 +514,107 @@ describe('writeDocFiles / uploadFilesToRepo — archivos adjuntos extra (#26)', 
     expect(vi.mocked(createOrUpdateBinaryFile).mock.calls.every(c => c[7] === 'docs/auto-2')).toBe(true);
   });
 });
+
+// ── Ramas restantes de docPublisher (v4.0.52, #26) ────────────────────────────
+describe('docPublisher — ramas restantes (v4.0.52 #26)', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  const SIG = 'ZCode (GLM-5.3)';
+
+  describe('helpers de nombres', () => {
+    it("uploadPathFor(''): sanitize vacío → 'archivo' y extensión vacía (sin carpeta)", () => {
+      // cubre los `|| 'archivo'` (sanitize sobre '') y el `|| ''` del ext ("")
+      expect(uploadPathFor('')).toBe('archivo');
+    });
+
+    it("isImageFile(''): extensión vacía → false (lado '' del ||)", () => {
+      expect(isImageFile('')).toBe(false);
+    });
+
+    it('buildImageMarkdown con imagen sin nombre antes del punto → alt "captura"', () => {
+      expect(buildImageMarkdown(['.png'])).toBe('\n\n## 📸 Capturas\n\n![captura](./screenshots/.png)\n');
+    });
+  });
+
+  describe('publishFileDoc con signature (modo Draft PR)', () => {
+    it('commit message, título y body del PR citan la signature (lados verdaderos de los 3 ternarios)', async () => {
+      vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
+      vi.mocked(getBranchSha).mockResolvedValue('base-sha');
+      vi.mocked(createBranch).mockResolvedValue({} as any);
+      vi.mocked(getFileContents).mockRejectedValue(new Error('404'));
+      vi.mocked(createOrUpdateFile).mockResolvedValue({ commit: { sha: 'c' }, content: { sha: 'c', name: 'x', path: 'x', type: 'file' } as any });
+      vi.mocked(createPullRequest).mockResolvedValue({ number: 3, html_url: 'http://pr/3' } as any);
+
+      await publishFileDoc(TOKEN, OWNER, REPO, 'doc/adjunta.md', '# Doc', { draft: true, signature: SIG }, 777);
+
+      // message del commit (ternario L239)
+      expect(vi.mocked(createOrUpdateFile).mock.calls[0][5]).toBe(`docs: doc/adjunta.md generado por ${SIG}`);
+      // prTitle (ternario L269) y prBody (ternario L270-272)
+      expect(vi.mocked(createPullRequest).mock.calls[0][3]).toBe(`docs: doc/adjunta.md (generado por ${SIG})`);
+      expect(vi.mocked(createPullRequest).mock.calls[0][6]).toContain(`generado por ${SIG}`);
+    });
+  });
+
+  describe('createDocsDraftPr con signature', () => {
+    it('el título del PR cita la signature (ternario L339)', async () => {
+      vi.mocked(getRepo).mockResolvedValue({ default_branch: 'main' } as any);
+      vi.mocked(getBranchSha).mockResolvedValue('base-sha');
+      vi.mocked(createBranch).mockResolvedValue({} as any);
+      vi.mocked(getFileContents).mockResolvedValue({ sha: 's' } as any);
+      vi.mocked(createOrUpdateFile).mockResolvedValue({ commit: { sha: 'c' }, content: { sha: 'c', name: 'x', path: 'x', type: 'file' } as any });
+      vi.mocked(createPullRequest).mockResolvedValue({ number: 5, html_url: 'http://pr/5' } as any);
+
+      await createDocsDraftPr(
+        TOKEN, OWNER, REPO,
+        { readme: 'R', manualTecnico: 'M', filesAnalyzed: 2, repoName: `${OWNER}/${REPO}` },
+        99, SIG,
+      );
+
+      expect(vi.mocked(createPullRequest).mock.calls[0][3]).toBe(`docs: documentación generada por ${SIG}`);
+    });
+  });
+
+  describe('bulk con signature y plural (2 targets)', () => {
+    it('publishBulkCommit: mensaje "docs: bulk de 2 archivos — {sig}" (tail + plural)', async () => {
+      vi.mocked(getRepo).mockResolvedValueOnce({ default_branch: 'main' } as any);
+      vi.mocked(getBranchSha).mockResolvedValueOnce('base-sha');
+      vi.mocked(createBlob).mockResolvedValue({ sha: 'blob-z' });
+      vi.mocked(createTree).mockResolvedValueOnce({ sha: 'tree-sha' });
+      vi.mocked(createCommit).mockResolvedValueOnce({ sha: 'commit-sha' });
+      vi.mocked(updateRef).mockResolvedValueOnce(undefined);
+
+      const out = await publishBulkCommit(
+        TOKEN, OWNER, REPO,
+        [{ path: 'a.md', content: 'A' }, { path: 'b.md', content: 'B' }],
+        SIG,
+      );
+
+      expect(out.commitSha).toBe('commit-sha');
+      expect(vi.mocked(createCommit).mock.calls[0][3]).toBe(`docs: bulk de 2 archivos — ${SIG}`);
+    });
+
+    it('publishBulkDraftPr: título plural del PR + body con signature', async () => {
+      vi.mocked(getRepo).mockResolvedValueOnce({ default_branch: 'main' } as any);
+      vi.mocked(getBranchSha).mockResolvedValueOnce('base-sha');
+      vi.mocked(createBranch).mockResolvedValueOnce({} as any);
+      vi.mocked(createBlob).mockResolvedValue({ sha: 'blob-w' });
+      vi.mocked(createTree).mockResolvedValueOnce({ sha: 'tree-sha' });
+      vi.mocked(createCommit).mockResolvedValueOnce({ sha: 'commit-sha' });
+      vi.mocked(updateRef).mockResolvedValueOnce(undefined);
+      vi.mocked(createPullRequest).mockResolvedValueOnce({ number: 8, html_url: 'http://pr/8' } as any);
+
+      const out = await publishBulkDraftPr(
+        TOKEN, OWNER, REPO,
+        [{ path: 'a.md', content: 'A' }, { path: 'b.md', content: 'B' }],
+        555, SIG,
+      );
+
+      // título plural (ternario L462 lado 's')
+      expect(vi.mocked(createPullRequest).mock.calls[0][3]).toBe('docs: bulk de 2 archivos');
+      // body con signature (buildBulkPrBody)
+      expect(vi.mocked(createPullRequest).mock.calls[0][6]).toContain('2 archivos');
+      expect(vi.mocked(createPullRequest).mock.calls[0][6]).toContain(SIG);
+      expect(out.branchName).toBe('docs/bulk-555');
+    });
+  });
+});

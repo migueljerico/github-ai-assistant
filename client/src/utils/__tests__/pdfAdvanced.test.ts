@@ -121,3 +121,45 @@ describe('pdfAdvanced', () => {
 });
 
 
+
+describe('readPDFBasic — catch defensivo ante ArrayBuffer corrupto (v4.0.52 #26)', () => {
+  it('rechaza con error claro cuando el reader entrega un resultado no convertible', async () => {
+    const p = Promise.reject(new Error('pdfjs fail'));
+    p.catch(() => {});
+    mockGetDocument.mockReturnValue({ promise: p });
+
+    const file = fileFrom('x', 'corrupto.pdf');
+    const realFileReader = globalThis.FileReader;
+    class MockFileReader {
+      onerror: (() => void) | null = null;
+      onload: ((e: { target: { result: unknown } }) => void) | null = null;
+      readAsArrayBuffer() {
+        setTimeout(() => this.onload?.({ target: { result: BigInt(1) } }), 1);
+      }
+    }
+    globalThis.FileReader = MockFileReader as unknown as typeof FileReader;
+    try {
+      // `new Uint8Array(1n)` lanza TypeError → el catch interno rechaza con
+      // el mensaje claro y el fallback de readPDFAdvanced lo propaga.
+      await expect(readPDFAdvanced(file)).rejects.toThrow('Error al extraer texto del PDF');
+    } finally {
+      globalThis.FileReader = realFileReader;
+    }
+  });
+});
+
+describe('readPDFBasic — filtro de bytes al caer a la extracción básica (#26, v4.0.52)', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('conserva \r, \n e imprimibles; descarta el resto', async () => {
+    // pdfjs roto → catch de readPDFAdvanced → readPDFBasic con el FileReader
+    // real de jsdom. Bytes: OK(2) \r(13) \n(10) nto(3) \u0000 \u007f — cubre
+    // todas las sub-ramas del filtro `(byte >= 32 && byte <= 126) || === 10 || === 13`.
+    mockGetDocument.mockImplementation(() => { throw new Error('pdfjs roto'); });
+    const res = await readPDFAdvanced(fileFrom('OK\r\nnto\u0000\u007f', 'bytes.pdf'));
+    expect(res).toContain('OK');
+    expect(res).toContain('nto');
+    expect(res).not.toContain('\u0000');
+    expect(res).not.toContain('\u007f');
+  });
+});
