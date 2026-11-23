@@ -29,7 +29,7 @@
     "@playwright/test": "^1.65.1",
     "concurrently": "^10.0.7",
     "supertest": "^7.3.2",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.1"
   },
   "overrides": {
     "shell-quote": ">=1.11.0"
