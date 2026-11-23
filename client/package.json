@@ -45,6 +45,6 @@
     "minimatch": ">=11.0.1"
   },
   "optionalDependencies": {
-    "pdfjs-dist": "^6.4.299"
+    "pdfjs-dist": "^6.5.438"
   }
 }
